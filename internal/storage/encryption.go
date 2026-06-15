@@ -300,6 +300,8 @@ func (dem *DatabaseEncryptionManager) setupEncryptedFields() error {
 		{TableName: "feedback", ColumnName: "message", FieldType: "text"},
 		{TableName: "feedback", ColumnName: "user_email", FieldType: "text"},
 		{TableName: "providers", ColumnName: "token", FieldType: "text"},
+		{TableName: "function_dna_mutations", ColumnName: "original_code", FieldType: "text"},
+		{TableName: "function_dna_mutations", ColumnName: "mutated_code", FieldType: "text"},
 	}
 
 	for _, field := range encryptedFields {

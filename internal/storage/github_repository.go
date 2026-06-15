@@ -1287,3 +1287,68 @@ func (r *GitHubRepository) IncrementTemplateUsage(ctx context.Context, id uuid.U
 	}
 	return nil
 }
+
+// ─── OAuth State (for GitHub OAuth CSRF protection) ──────────────────────────
+
+// CreateOAuthState inserts a new OAuth state for CSRF protection.
+func (r *GitHubRepository) CreateOAuthState(ctx context.Context, state *OAuthState) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO oauth_states (state, user_id, tenant_id, provider, expires_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (state) DO UPDATE SET
+			user_id = EXCLUDED.user_id,
+			tenant_id = EXCLUDED.tenant_id,
+			provider = EXCLUDED.provider,
+			expires_at = EXCLUDED.expires_at`,
+		state.State, state.UserID, state.TenantID, state.Provider, state.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to create oauth state: %w", err)
+	}
+	return nil
+}
+
+// GetOAuthState retrieves an OAuth state and validates it's not expired.
+func (r *GitHubRepository) GetOAuthState(ctx context.Context, state string) (*OAuthState, error) {
+	oauthState := &OAuthState{}
+	var expiresAt time.Time
+	err := r.db.QueryRowContext(ctx, `
+		SELECT state, user_id, tenant_id, provider, expires_at
+		FROM oauth_states
+		WHERE state = $1 AND expires_at > $2`,
+		state, time.Now().UTC()).Scan(
+		&oauthState.State, &oauthState.UserID, &oauthState.TenantID, &oauthState.Provider, &expiresAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get oauth state: %w", err)
+	}
+	oauthState.ExpiresAt = expiresAt
+	return oauthState, nil
+}
+
+// ConsumeOAuthState deletes the OAuth state after it's been used (single-use).
+func (r *GitHubRepository) ConsumeOAuthState(ctx context.Context, state string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM oauth_states WHERE state = $1`,
+		state)
+	if err != nil {
+		return fmt.Errorf("failed to consume oauth state: %w", err)
+	}
+	return nil
+}
+
+// CleanupExpiredOAuthStates removes expired OAuth states from the database.
+func (r *GitHubRepository) CleanupExpiredOAuthStates(ctx context.Context) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM oauth_states WHERE expires_at <= $1`,
+		time.Now().UTC())
+	if err != nil {
+		return 0, fmt.Errorf("failed to cleanup expired oauth states: %w", err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return affected, nil
+}

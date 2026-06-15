@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Editor from '@monaco-editor/react';
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 import {
   AlertCircle,
   CheckCircle2,
@@ -186,7 +186,7 @@ export function CodeEditorSection({ editor }: Props) {
             {/* Explicit height: Monaco with height="100%" collapses here because flex parents use auto height. */}
             <div className="w-full" style={{ height: editorHeight }}>
               {activeTab === 'editor' && (
-                <Editor
+                <LazyMonacoEditor
                   height={editorHeight}
                   language={RUNTIME_META[runtime].monacoLang}
                   value={code}
@@ -265,7 +265,7 @@ export function CodeEditorSection({ editor }: Props) {
                 </div>
               </div>
               <div className="flex-1 min-h-0">
-                <Editor
+                <LazyMonacoEditor
                   height={testHeight}
                   language="json"
                   value={testInput}

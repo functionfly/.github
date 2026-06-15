@@ -2,6 +2,7 @@ package github
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -185,7 +186,9 @@ func TestHandler_HandleConnect_Unauthenticated(t *testing.T) {
 }
 
 func TestHandler_HandleConnect_Authenticated(t *testing.T) {
-	h, _ := newTestHandler()
+	h, _, mock := newTestHandlerWithMockDB(t)
+
+	mock.ExpectExec("INSERT INTO oauth_states").WillReturnResult(sqlmock.NewResult(1, 1))
 
 	req := httptest.NewRequest("GET", "/connect", nil)
 	req = setAuthContext(req, uuid.New(), uuid.New())
@@ -228,7 +231,11 @@ func TestHandler_HandleCallback_MissingParams(t *testing.T) {
 }
 
 func TestHandler_HandleCallback_InvalidState(t *testing.T) {
-	h, _ := newTestHandler()
+	h, _, mock := newTestHandlerWithMockDB(t)
+
+	mock.ExpectQuery("SELECT state, user_id, tenant_id, provider, expires_at FROM oauth_states").
+		WithArgs("nonexistent", sqlmock.AnyArg()).
+		WillReturnError(sql.ErrNoRows)
 
 	req := httptest.NewRequest("GET", "/callback?code=abc&state=nonexistent", nil)
 	w := httptest.NewRecorder()

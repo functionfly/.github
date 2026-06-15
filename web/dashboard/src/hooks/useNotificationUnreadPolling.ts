@@ -1,4 +1,5 @@
 import { notificationsApi } from '@/api/notifications';
+import { tokenVault } from '@/utils/token-vault';
 import { unreadPartialFromServerCount } from '@/lib/notification-unread-sync';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
@@ -19,8 +20,8 @@ export function useNotificationUnreadPolling(intervalMs: number = DEFAULT_MS) {
     if (!isAuthenticated || !userId) return;
 
     const tick = async () => {
-      const token =
-        typeof localStorage !== 'undefined' ? localStorage.getItem('ff-access-token') : null;
+      await tokenVault.initialize();
+      const token = await tokenVault.getAccessToken();
       if (!token?.trim()) return;
       try {
         const counts = await notificationsApi.fetchUnreadCounts();

@@ -6,6 +6,7 @@
  */
 
 import { notificationsApi } from '@/api/notifications';
+import { tokenVault } from '@/utils/token-vault';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -135,8 +136,8 @@ export function NotificationBell({
 
   const refreshUnreadCounts = useCallback(async () => {
     if (!user?.id) return;
-    const token =
-      typeof localStorage !== 'undefined' ? localStorage.getItem('ff-access-token') : null;
+    await tokenVault.initialize();
+    const token = await tokenVault.getAccessToken();
     if (!token) return;
 
     try {

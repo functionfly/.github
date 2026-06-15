@@ -1,6 +1,7 @@
 import { useAuthStore } from '@/stores/authStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 import { useCallback, useEffect, useRef } from 'react';
 
 export interface ExamStatusUpdate {
@@ -24,10 +25,11 @@ export function useExamStatusStream(examId: string | undefined) {
   const examIdRef = useRef(examId);
   examIdRef.current = examId;
 
-  const readStream = useCallback(() => {
+  const readStream = useCallback(async () => {
     if (!isAuthenticated || !examIdRef.current) return;
 
-    const token = localStorage.getItem('ff-access-token');
+    await tokenVault.initialize();
+    const token = await tokenVault.getAccessToken();
     if (!token?.trim()) return;
 
     const connect = () => {
@@ -71,7 +73,7 @@ export function useExamStatusStream(examId: string | undefined) {
 
   useEffect(() => {
     if (!isAuthenticated || !examId) return;
-    readStream();
+    void readStream();
     return () => {
       wsRef.current?.close();
       wsRef.current = null;

@@ -18,102 +18,6 @@ import {
 } from '@/lib/constants';
 import { unreadStoreKeyFromEventCategory } from '@/lib/notification-unread-sync';
 import { isPlatformAdminRole } from '@/lib/platform-admin';
-import { AgentAnalyticsPage } from '@/pages/AgentAnalyticsPage';
-import { AgentObservabilityPage } from '@/pages/AgentObservabilityPage';
-import { AgentCreatePage } from '@/pages/AgentCreatePage';
-import { AgentDetailPage } from '@/pages/AgentDetailPage';
-import { AgentEditPage } from '@/pages/AgentEditPage';
-import AgentMarketplaceDetailPage from '@/pages/AgentMarketplaceDetailPage';
-import { AgentMemoryPage } from '@/pages/AgentMemoryPage';
-import { AgentMemoryDetailPage } from '@/pages/AgentMemoryPage/AgentMemoryDetailPage';
-import { AgentSDKIntegrationsPage } from '@/pages/AgentSDKIntegrationsPage';
-import AgentsMarketplacePage from '@/pages/AgentsMarketplacePage';
-import { AgentsPage } from '@/pages/AgentsPage';
-import { AgentWalletPage } from '@/pages/AgentWalletPage';
-import { AIComposerPage } from '@/pages/AIComposerPage';
-import { AnalyticsPage } from '@/pages/AnalyticsPage';
-import { APIKeyDetailPage, APIKeysPage } from '@/pages/api-keys';
-import { AppDetailPage } from '@/pages/AppDetailPage';
-import { AppsPage, CreateAppPage } from '@/pages/AppsPage';
-import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
-import { MagicLinkVerifyPage } from '@/pages/AuthPage/MagicLinkVerifyPage';
-import { BrowseFunctionsPage } from '@/pages/BrowseFunctionsPage';
-import { BundlePricingPage } from '@/pages/BundlePricingPage';
-import BundleProvisioningPage from '@/pages/BundleProvisioningPage';
-import { BillingHubPage } from '@/pages/BillingHubPage';
-import { BrainPage } from '@/pages/BrainPage';
-import { CertificationPage } from '@/pages/CertificationPage';
-import ChangelogPage from '@/pages/ChangelogPage';
-import { CommunityPage } from '@/pages/CommunityPage';
-import { ConnectorsCallbackPage } from '@/pages/ConnectorsCallbackPage';
-import { ContactPage } from '@/pages/ContactPage';
-import ConversationsPage from '@/pages/ConversationsPage';
-import { CredentialsPage } from '@/pages/CredentialsPage';
-import { DashboardPage } from '@/pages/DashboardPage';
-import DecisionsPage from '@/pages/DecisionsPage';
-import DNAOverviewPage from '@/pages/DNAOverviewPage';
-import { EnterpriseAuditPage } from '@/pages/EnterpriseAuditPage';
-import EnterpriseSLAPage from '@/pages/EnterpriseSLAPage';
-import { EnterpriseSupportPage } from '@/pages/EnterpriseSupportPage';
-import { EvolutionPage } from '@/pages/EvolutionPage';
-import { ExamPage } from '@/pages/ExamPage';
-import { ExamResultsPage } from '@/pages/ExamResultsPage';
-import ExecutionExplorerPage from '@/pages/ExecutionExplorerPage';
-import { FAQPage } from '@/pages/FAQPage';
-import FavoritesPage from '@/pages/FavoritesPage';
-import { FeaturesPage } from '@/pages/FeaturesPage';
-import { FeedbackPage } from '@/pages/FeedbackPage';
-import { ForbiddenPage } from '@/pages/ForbiddenPage';
-import FRGEditorPage from '@/pages/FRGEditorPage';
-import FRGGraphsPage from '@/pages/FRGGraphsPage';
-import FRGShowcasePage from '@/pages/FRGShowcasePage';
-import FunctionDNAPage from '@/pages/FunctionDNAPage';
-import FunctionMarketplacePage from '@/pages/FunctionMarketplacePage';
-import FunctionPage from '@/pages/FunctionPage';
-import { FunctionsDiscoveryPage } from '@/pages/FunctionsDiscoveryPage';
-import { FunctionsPage } from '@/pages/FunctionsPage';
-import { FunctionDetailPage } from '@/pages/FunctionsPage/FunctionDetailPage';
-import { FunctionEditorPage } from '@/pages/FunctionsPage/FunctionEditorPage';
-import { FunctionLogsPage } from '@/pages/FunctionsPage/FunctionLogsPage';
-import { FunctionSettingsPage } from '@/pages/FunctionsPage/FunctionSettingsPage';
-import GalleryPage from '@/pages/GalleryPage';
-import GitHubPage from '@/pages/GitHubPage';
-import GitHubRepoImportPage from '@/pages/GitHubRepoImportPage';
-import { HelpCenterPage } from '@/pages/HelpCenterPage';
-import { IntegrationsPage } from '@/pages/IntegrationsPage';
-import { LaunchPage } from '@/pages/LaunchPage';
-import { MyProfilePage } from '@/pages/MyProfilePage';
-import { MyTeamPage } from '@/pages/MyTeamPage';
-import { NotFoundPage } from '@/pages/NotFoundPage';
-import { OnboardingPage } from '@/pages/OnboardingPage';
-import { PlaygroundPage } from '@/pages/PlaygroundPage';
-import { ProfilePage } from '@/pages/ProfilePage/ProfilePage';
-import { ProfileSettingsPage } from '@/pages/ProfileSettingsPage';
-import { ProvidersPage } from '@/pages/ProvidersPage';
-import RegistryDeployPage from '@/pages/RegistryDeployPage';
-import { ReplayPage } from '@/pages/ReplayPage';
-import { SecretsPage } from '@/pages/SecretsPage';
-import { VaultEnterprisePage } from '@/pages/VaultEnterprisePage';
-import { VaultPage } from '@/pages/VaultPage';
-import { SecurityPage } from '@/pages/SecurityPage';
-import { ServerErrorPage } from '@/pages/ServerErrorPage';
-import { SettingsPage } from '@/pages/SettingsPage';
-import { StandalonePlaygroundPage } from '@/pages/StandalonePlaygroundPage';
-import { StateFabricMarketingPage } from '@/pages/StateFabricMarketingPage';
-import { StateFabricPage } from '@/pages/StateFabricPage';
-import { StateFabricDetailPage } from '@/pages/StateFabricPage/StateFabricDetailPage';
-import { StatePage } from '@/pages/StatePage';
-import { StateDetailPage } from '@/pages/StatePage/StateDetailPage';
-import TeamDecisionsPage from '@/pages/TeamDecisionsPage';
-import TeamMemoryPage from '@/pages/TeamMemoryPage';
-import { TeamsPage } from '@/pages/TeamsPage';
-import { TimeMachinePage } from '@/pages/TimeMachinePage';
-import { NewReplayPage } from '@/pages/TimeMachinePage/NewReplayPage';
-import { ReplayDetailPage } from '@/pages/TimeMachinePage/ReplayDetailPage';
-import { UserDashboardFunctionsPage } from '@/pages/UserDashboardFunctionsPage';
-import { UserDashboardSettingsPage } from '@/pages/UserDashboardSettingsPage';
-import { VerifyPage } from '@/pages/VerifyPage';
-import WalletPage from '@/pages/WalletPage';
 import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
@@ -121,7 +25,7 @@ import type { Notification, NotificationCategory } from '@/types/notifications';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AlertTriangle, Bell, DollarSign, Loader2, MessageSquare, Shield } from 'lucide-react';
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v7';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import {
   BrowserRouter,
@@ -134,23 +38,136 @@ import {
 } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { AdaptiveUXPage } from '@/pages/AdaptiveUXPage';
-import { CodeIntelligencePage } from '@/pages/CodeIntelligencePage';
-import CollaborationPage from '@/pages/CollaborationPage';
-import { DataVisualizationPage } from '@/pages/DataVisualizationPage';
-import { DevOpsPage } from '@/pages/DevOpsPage';
-import FuturisticPage from '@/pages/FuturisticPage';
-import { MarketplaceEconomyPage } from '@/pages/MarketplaceEconomyPage';
-import { MCPCenterPage } from '@/pages/MCPCenterPage';
-import { MemoryPage } from '@/pages/MemoryPage';
-import { NotificationsPage } from '@/pages/NotificationsPage';
-import { PasteCodePage } from '@/pages/PasteCodePage';
-import { RoboticsPage } from '@/pages/RoboticsPage';
-import SimulationPage from '@/pages/SimulationPage';
-import StatusPage from '@/pages/StatusPage';
-import { StudioPage } from '@/pages/StudioPage';
-import { UniversalRuntimePage } from '@/pages/UniversalRuntimePage';
-import { UsagePage } from '@/pages/UsagePage';
+// Helper to create lazy loaded page components with named exports
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const lazyPage = (importFn: () => Promise<any>, exportName: string) =>
+  lazy(() => importFn().then((m) => ({ default: m[exportName] })));
+
+// Route components - all lazy-loaded for code splitting
+const AgentAnalyticsPage = lazyPage(() => import('@/pages/AgentAnalyticsPage'), 'AgentAnalyticsPage');
+const AgentCreatePage = lazyPage(() => import('@/pages/AgentCreatePage'), 'AgentCreatePage');
+const AgentDetailPage = lazyPage(() => import('@/pages/AgentDetailPage'), 'AgentDetailPage');
+const AgentEditPage = lazyPage(() => import('@/pages/AgentEditPage'), 'AgentEditPage');
+const AgentMarketplaceDetailPage = lazyPage(() => import('@/pages/AgentMarketplaceDetailPage'), 'AgentMarketplaceDetailPage');
+const AgentMemoryPage = lazyPage(() => import('@/pages/AgentMemoryPage'), 'AgentMemoryPage');
+const AgentMemoryDetailPage = lazyPage(() => import('@/pages/AgentMemoryPage/AgentMemoryDetailPage'), 'AgentMemoryDetailPage');
+const AgentSDKIntegrationsPage = lazyPage(() => import('@/pages/AgentSDKIntegrationsPage'), 'AgentSDKIntegrationsPage');
+const AgentsMarketplacePage = lazyPage(() => import('@/pages/AgentsMarketplacePage'), 'AgentsMarketplacePage');
+const AgentsPage = lazyPage(() => import('@/pages/AgentsPage'), 'AgentsPage');
+const AgentWalletPage = lazyPage(() => import('@/pages/AgentWalletPage'), 'AgentWalletPage');
+const AIComposerPage = lazyPage(() => import('@/pages/AIComposerPage'), 'AIComposerPage');
+const AnalyticsPage = lazyPage(() => import('@/pages/AnalyticsPage'), 'AnalyticsPage');
+const APIKeyDetailPage = lazyPage(() => import('@/pages/api-keys'), 'APIKeyDetailPage');
+const APIKeysPage = lazyPage(() => import('@/pages/api-keys'), 'APIKeysPage');
+const AppDetailPage = lazyPage(() => import('@/pages/AppDetailPage'), 'AppDetailPage');
+const AppsPage = lazyPage(() => import('@/pages/AppsPage'), 'AppsPage');
+const CreateAppPage = lazyPage(() => import('@/pages/AppsPage'), 'CreateAppPage');
+const AuthCallbackPage = lazyPage(() => import('@/pages/AuthCallbackPage'), 'AuthCallbackPage');
+const MagicLinkVerifyPage = lazyPage(() => import('@/pages/AuthPage/MagicLinkVerifyPage'), 'MagicLinkVerifyPage');
+const BrowseFunctionsPage = lazyPage(() => import('@/pages/BrowseFunctionsPage'), 'BrowseFunctionsPage');
+const BundlePricingPage = lazyPage(() => import('@/pages/BundlePricingPage'), 'BundlePricingPage');
+const BundleProvisioningPage = lazyPage(() => import('@/pages/BundleProvisioningPage'), 'BundleProvisioningPage');
+const BrainPage = lazyPage(() => import('@/pages/BrainPage'), 'BrainPage');
+const CertificationPage = lazyPage(() => import('@/pages/CertificationPage'), 'CertificationPage');
+const ChangelogPage = lazyPage(() => import('@/pages/ChangelogPage'), 'ChangelogPage');
+const CommunityPage = lazyPage(() => import('@/pages/CommunityPage'), 'CommunityPage');
+const ConnectorsCallbackPage = lazyPage(() => import('@/pages/ConnectorsCallbackPage'), 'ConnectorsCallbackPage');
+const ContactPage = lazyPage(() => import('@/pages/ContactPage'), 'ContactPage');
+const ConversationsPage = lazyPage(() => import('@/pages/ConversationsPage'), 'ConversationsPage');
+const CredentialsPage = lazyPage(() => import('@/pages/CredentialsPage'), 'CredentialsPage');
+const DashboardPage = lazyPage(() => import('@/pages/DashboardPage'), 'DashboardPage');
+const DecisionsPage = lazyPage(() => import('@/pages/DecisionsPage'), 'DecisionsPage');
+const DNAOverviewPage = lazyPage(() => import('@/pages/DNAOverviewPage'), 'DNAOverviewPage');
+const EnterpriseAuditPage = lazyPage(() => import('@/pages/EnterpriseAuditPage'), 'EnterpriseAuditPage');
+const EnterpriseSLAPage = lazyPage(() => import('@/pages/EnterpriseSLAPage'), 'EnterpriseSLAPage');
+const EnterpriseSupportPage = lazyPage(() => import('@/pages/EnterpriseSupportPage'), 'EnterpriseSupportPage');
+const EvolutionPage = lazyPage(() => import('@/pages/EvolutionPage'), 'EvolutionPage');
+const ExamPage = lazyPage(() => import('@/pages/ExamPage'), 'ExamPage');
+const ExamResultsPage = lazyPage(() => import('@/pages/ExamResultsPage'), 'ExamResultsPage');
+const ExecutionExplorerPage = lazyPage(() => import('@/pages/ExecutionExplorerPage'), 'ExecutionExplorerPage');
+const FAQPage = lazyPage(() => import('@/pages/FAQPage'), 'FAQPage');
+const FavoritesPage = lazyPage(() => import('@/pages/FavoritesPage'), 'FavoritesPage');
+const FeaturesPage = lazyPage(() => import('@/pages/FeaturesPage'), 'FeaturesPage');
+const FeedbackPage = lazyPage(() => import('@/pages/FeedbackPage'), 'FeedbackPage');
+const ForbiddenPage = lazyPage(() => import('@/pages/ForbiddenPage'), 'ForbiddenPage');
+const FRGEditorPage = lazyPage(() => import('@/pages/FRGEditorPage'), 'FRGEditorPage');
+const FRGGraphsPage = lazyPage(() => import('@/pages/FRGGraphsPage'), 'FRGGraphsPage');
+const FRGShowcasePage = lazyPage(() => import('@/pages/FRGShowcasePage'), 'FRGShowcasePage');
+const FunctionDNAPage = lazyPage(() => import('@/pages/FunctionDNAPage'), 'FunctionDNAPage');
+const FunctionMarketplacePage = lazyPage(() => import('@/pages/FunctionMarketplacePage'), 'FunctionMarketplacePage');
+const FunctionPage = lazyPage(() => import('@/pages/FunctionPage'), 'FunctionPage');
+const FunctionsDiscoveryPage = lazyPage(() => import('@/pages/FunctionsDiscoveryPage'), 'FunctionsDiscoveryPage');
+const FunctionsPage = lazyPage(() => import('@/pages/FunctionsPage'), 'FunctionsPage');
+const FunctionDetailPage = lazyPage(() => import('@/pages/FunctionsPage/FunctionDetailPage'), 'FunctionDetailPage');
+const FunctionEditorPage = lazyPage(() => import('@/pages/FunctionsPage/FunctionEditorPage'), 'FunctionEditorPage');
+const FunctionLogsPage = lazyPage(() => import('@/pages/FunctionsPage/FunctionLogsPage'), 'FunctionLogsPage');
+const FunctionSettingsPage = lazyPage(() => import('@/pages/FunctionsPage/FunctionSettingsPage'), 'FunctionSettingsPage');
+const GalleryPage = lazyPage(() => import('@/pages/GalleryPage'), 'GalleryPage');
+const GitHubPage = lazyPage(() => import('@/pages/GitHubPage'), 'GitHubPage');
+const GitHubRepoImportPage = lazyPage(() => import('@/pages/GitHubRepoImportPage'), 'GitHubRepoImportPage');
+const HelpCenterPage = lazyPage(() => import('@/pages/HelpCenterPage'), 'HelpCenterPage');
+const IntegrationsPage = lazyPage(() => import('@/pages/IntegrationsPage'), 'IntegrationsPage');
+const LaunchPage = lazyPage(() => import('@/pages/LaunchPage'), 'LaunchPage');
+const MyProfilePage = lazyPage(() => import('@/pages/MyProfilePage'), 'MyProfilePage');
+const MyTeamPage = lazyPage(() => import('@/pages/MyTeamPage'), 'MyTeamPage');
+const NotFoundPage = lazyPage(() => import('@/pages/NotFoundPage'), 'NotFoundPage');
+const OnboardingPage = lazyPage(() => import('@/pages/OnboardingPage'), 'OnboardingPage');
+const PlaygroundPage = lazyPage(() => import('@/pages/PlaygroundPage'), 'PlaygroundPage');
+const ProfilePage = lazyPage(() => import('@/pages/ProfilePage/ProfilePage'), 'ProfilePage');
+const ProfileSettingsPage = lazyPage(() => import('@/pages/ProfileSettingsPage'), 'ProfileSettingsPage');
+const ProvidersPage = lazyPage(() => import('@/pages/ProvidersPage'), 'ProvidersPage');
+const RegistryDeployPage = lazyPage(() => import('@/pages/RegistryDeployPage'), 'RegistryDeployPage');
+const ReplayPage = lazyPage(() => import('@/pages/ReplayPage'), 'ReplayPage');
+const SecretsPage = lazyPage(() => import('@/pages/SecretsPage'), 'SecretsPage');
+const SecurityPage = lazyPage(() => import('@/pages/SecurityPage'), 'SecurityPage');
+const ServerErrorPage = lazyPage(() => import('@/pages/ServerErrorPage'), 'ServerErrorPage');
+const SettingsPage = lazyPage(() => import('@/pages/SettingsPage'), 'SettingsPage');
+const StandalonePlaygroundPage = lazyPage(() => import('@/pages/StandalonePlaygroundPage'), 'StandalonePlaygroundPage');
+const StateFabricMarketingPage = lazyPage(() => import('@/pages/StateFabricMarketingPage'), 'StateFabricMarketingPage');
+const StateFabricPage = lazyPage(() => import('@/pages/StateFabricPage'), 'StateFabricPage');
+const StateFabricDetailPage = lazyPage(() => import('@/pages/StateFabricPage/StateFabricDetailPage'), 'StateFabricDetailPage');
+const StatePage = lazyPage(() => import('@/pages/StatePage'), 'StatePage');
+const StateDetailPage = lazyPage(() => import('@/pages/StatePage/StateDetailPage'), 'StateDetailPage');
+const TeamDecisionsPage = lazyPage(() => import('@/pages/TeamDecisionsPage'), 'TeamDecisionsPage');
+const TeamMemoryPage = lazyPage(() => import('@/pages/TeamMemoryPage'), 'TeamMemoryPage');
+const TeamsPage = lazyPage(() => import('@/pages/TeamsPage'), 'TeamsPage');
+const TimeMachinePage = lazyPage(() => import('@/pages/TimeMachinePage'), 'TimeMachinePage');
+const NewReplayPage = lazyPage(() => import('@/pages/TimeMachinePage/NewReplayPage'), 'NewReplayPage');
+const ReplayDetailPage = lazyPage(() => import('@/pages/TimeMachinePage/ReplayDetailPage'), 'ReplayDetailPage');
+const UserDashboardFunctionsPage = lazyPage(() => import('@/pages/UserDashboardFunctionsPage'), 'UserDashboardFunctionsPage');
+const UserDashboardSettingsPage = lazyPage(() => import('@/pages/UserDashboardSettingsPage'), 'UserDashboardSettingsPage');
+const VerifyPage = lazyPage(() => import('@/pages/VerifyPage'), 'VerifyPage');
+const WalletPage = lazyPage(() => import('@/pages/WalletPage'), 'WalletPage');
+const AdaptiveUXPage = lazyPage(() => import('@/pages/AdaptiveUXPage'), 'AdaptiveUXPage');
+const CodeIntelligencePage = lazyPage(() => import('@/pages/CodeIntelligencePage'), 'CodeIntelligencePage');
+const CollaborationPage = lazyPage(() => import('@/pages/CollaborationPage'), 'CollaborationPage');
+const DataVisualizationPage = lazyPage(() => import('@/pages/DataVisualizationPage'), 'DataVisualizationPage');
+const DevOpsPage = lazyPage(() => import('@/pages/DevOpsPage'), 'DevOpsPage');
+const FuturisticPage = lazyPage(() => import('@/pages/FuturisticPage'), 'FuturisticPage');
+const MarketplaceEconomyPage = lazyPage(() => import('@/pages/MarketplaceEconomyPage'), 'MarketplaceEconomyPage');
+const MCPCenterPage = lazyPage(() => import('@/pages/MCPCenterPage'), 'MCPCenterPage');
+const MemoryPage = lazyPage(() => import('@/pages/MemoryPage'), 'MemoryPage');
+const NotificationsPage = lazyPage(() => import('@/pages/NotificationsPage'), 'NotificationsPage');
+const PasteCodePage = lazyPage(() => import('@/pages/PasteCodePage'), 'PasteCodePage');
+const RoboticsPage = lazyPage(() => import('@/pages/RoboticsPage'), 'RoboticsPage');
+const SimulationPage = lazyPage(() => import('@/pages/SimulationPage'), 'SimulationPage');
+const StatusPage = lazyPage(() => import('@/pages/StatusPage'), 'StatusPage');
+const StudioPage = lazyPage(() => import('@/pages/StudioPage'), 'StudioPage');
+const UniversalRuntimePage = lazyPage(() => import('@/pages/UniversalRuntimePage'), 'UniversalRuntimePage');
+const UsagePage = lazyPage(() => import('@/pages/UsagePage'), 'UsagePage');
+
+// Loading fallback for Suspense boundaries
+function PageLoader() {
+  return (
+    <div
+      className="flex min-h-[40vh] items-center justify-center"
+      aria-busy="true"
+      aria-label="Loading page"
+    >
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 function RegistryFunctionRedirect() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -486,392 +503,382 @@ function AppContent() {
 
   return (
     <NotificationsProvider>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<HomeRedirect />} />
-        <Route path="/launch" element={<LaunchPage />} />
-        <Route path="/coming-soon" element={<LaunchPage />} />
-        <Route path="/status" element={<StatusPage />} />
-        <Route path="/pricing" element={<MarketingPricingRedirect />} />
-        <Route path="/features" element={<FeaturesPage />} />
-        <Route path="/integrations" element={<IntegrationsPage />} />
-        {/* /teams is the dashboard-protected route inside DashboardLayout */}
-        <Route path="/privacy" element={<MarketingLegalRedirect page="privacy" />} />
-        {/* SecurityPage is routed inside DashboardLayout */}
-        <Route path="/terms" element={<MarketingLegalRedirect page="terms" />} />
-        <Route path="/changelog" element={<ChangelogPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/faq" element={<FAQPage />} />
-        <Route path="/help" element={<HelpCenterPage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/docs" element={<DocsOutboundRedirect />} />
-        <Route path="/docs/:slug" element={<DocsOutboundRedirect />} />
-        <Route path="/blog" element={<MarketingBlogRedirect />} />
-        <Route path="/blog/:slug" element={<MarketingBlogRedirect />} />
-        <Route path="/products/state-fabric" element={<StateFabricMarketingPage />} />
-        <Route path="/frg-showcase" element={<FRGShowcasePage />} />
-        {/* Gallery is now inside DashboardLayout - see below */}
-        <Route path="/registry" element={<BrowseFunctionsPage />} />
-        <Route path="/registry/:author/:name" element={<RegistryFunctionRedirect />} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<HomeRedirect />} />
+          <Route path="/launch" element={<LaunchPage />} />
+          <Route path="/coming-soon" element={<LaunchPage />} />
+          <Route path="/status" element={<StatusPage />} />
+          <Route path="/pricing" element={<MarketingPricingRedirect />} />
+          <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/integrations" element={<IntegrationsPage />} />
+          {/* /teams is the dashboard-protected route inside DashboardLayout */}
+          <Route path="/privacy" element={<MarketingLegalRedirect page="privacy" />} />
+          {/* SecurityPage is routed inside DashboardLayout */}
+          <Route path="/terms" element={<MarketingLegalRedirect page="terms" />} />
+          <Route path="/changelog" element={<ChangelogPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/help" element={<HelpCenterPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/docs" element={<DocsOutboundRedirect />} />
+          <Route path="/docs/:slug" element={<DocsOutboundRedirect />} />
+          <Route path="/blog" element={<MarketingBlogRedirect />} />
+          <Route path="/blog/:slug" element={<MarketingBlogRedirect />} />
+          <Route path="/products/state-fabric" element={<StateFabricMarketingPage />} />
+          <Route path="/frg-showcase" element={<FRGShowcasePage />} />
+          {/* Gallery is now inside DashboardLayout - see below */}
+          <Route path="/registry" element={<BrowseFunctionsPage />} />
+          <Route path="/registry/:author/:name" element={<RegistryFunctionRedirect />} />
 
-        {/* Agent Marketplace Routes (Public) - temporarily inside DashboardLayout for auth */}
-        <Route path="/marketplace/agents/:id" element={<AgentMarketplaceDetailPage />} />
-        <Route path="/agents/:id" element={<AgentMarketplaceDetailPage />} />
+          {/* Agent Marketplace Routes (Public) - temporarily inside DashboardLayout for auth */}
+          <Route path="/marketplace/agents/:id" element={<AgentMarketplaceDetailPage />} />
+          <Route path="/agents/:id" element={<AgentMarketplaceDetailPage />} />
 
-        {/* Public user profile pages */}
-        <Route path="/u/:username" element={<ProfilePage />} />
-        <Route path="/profile/:username" element={<ProfilePage />} />
+          {/* Public user profile pages */}
+          <Route path="/u/:username" element={<ProfilePage />} />
+          <Route path="/profile/:username" element={<ProfilePage />} />
 
-        {/* Public credential verification */}
-        <Route path="/verify/:username" element={<VerifyPage />} />
+          {/* Public credential verification */}
+          <Route path="/verify/:username" element={<VerifyPage />} />
 
-        {/* Standalone Playground (Public) */}
-        <Route path="/playground" element={<StandalonePlaygroundPage />} />
+          {/* Standalone Playground (Public) */}
+          <Route path="/playground" element={<StandalonePlaygroundPage />} />
 
-        {/* Registry Playground Routes (Public) */}
-        <Route path="/fx/:author/:name" element={<FunctionPage />} />
-        <Route path="/run/:author/:name" element={<PlaygroundPage />} />
-        <Route path="/registry/:author/:name/executions" element={<ExecutionExplorerPage />} />
-        <Route path="/run/:appSlug/:functionName" element={<PlaygroundPage />} />
-        <Route path="/replay/:execId" element={<ReplayPage />} />
-        <Route path="/auth" element={<Navigate to="/login" replace />} />
-        <Route path="/login" element={<RedirectToAuth />} />
-        <Route path="/auth/login" element={<RedirectToAuth />} />
-        <Route path="/signup" element={<RedirectToAuth />} />
-        <Route path="/auth/verify-email" element={<RedirectToAuth />} />
-        <Route path="/auth/callback" element={<AuthCallbackPage />} />
-        <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
-        <Route path="/auth/reset-password" element={<RedirectToAuth />} />
-        <Route path="/auth/magic-link" element={<RedirectToAuth />} />
-        <Route path="/auth/magic-link/verify" element={<MagicLinkVerifyPage />} />
+          {/* Registry Playground Routes (Public) */}
+          <Route path="/fx/:author/:name" element={<FunctionPage />} />
+          <Route path="/run/:author/:name" element={<PlaygroundPage />} />
+          <Route path="/registry/:author/:name/executions" element={<ExecutionExplorerPage />} />
+          <Route path="/run/:appSlug/:functionName" element={<PlaygroundPage />} />
+          <Route path="/replay/:execId" element={<ReplayPage />} />
+          <Route path="/auth" element={<Navigate to="/login" replace />} />
+          <Route path="/login" element={<RedirectToAuth />} />
+          <Route path="/auth/login" element={<RedirectToAuth />} />
+          <Route path="/signup" element={<RedirectToAuth />} />
+          <Route path="/auth/verify-email" element={<RedirectToAuth />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/auth/oauth/callback" element={<AuthCallbackPage />} />
+          <Route path="/auth/reset-password" element={<RedirectToAuth />} />
+          <Route path="/auth/magic-link" element={<RedirectToAuth />} />
+          <Route path="/auth/magic-link/verify" element={<MagicLinkVerifyPage />} />
 
-        {/* Onboarding Routes */}
-        <Route
-          path="/onboarding"
-          element={
-            <OnboardingRoute>
-              <OnboardingPage />
-            </OnboardingRoute>
-          }
-        />
-        <Route
-          path="/onboarding/:step"
-          element={
-            <OnboardingRoute>
-              <OnboardingPage />
-            </OnboardingRoute>
-          }
-        />
-
-        {/* Protected Dashboard Routes */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<Navigate to="/overview" replace />} />
-          <Route path="dashboard" element={<FunctionMarketplacePage />} />
-          <Route path="overview" element={<DashboardPage />} />
-          <Route path="notifications" element={<NotificationsPage />} />
-          <Route path="apps" element={<AppsPage />} />
-          <Route path="apps/new" element={<CreateAppPage />} />
-          <Route path="apps/:slug" element={<AppDetailPage />} />
-          <Route path="functions" element={<FunctionsPage />} />
-          <Route path="functions/hot" element={<FunctionsDiscoveryPage />} />
-          <Route path="functions/trending" element={<FunctionsDiscoveryPage />} />
-          <Route path="functions/explore/new" element={<FunctionsDiscoveryPage />} />
-          <Route path="functions/popular" element={<FunctionsDiscoveryPage />} />
-          <Route path="functions/favorites" element={<FavoritesPage />} />
-          <Route path="functions/my" element={<FunctionsDiscoveryPage />} />
-          <Route path="functions/discovery" element={<FunctionMarketplacePage />} />
-          <Route path="functions/discovery/:filter" element={<FunctionsDiscoveryPage />} />
-          <Route path="gallery" element={<GalleryPage />} />
-          <Route path="functions/new" element={<FunctionEditorPage />} />
-          <Route path="functions/paste" element={<PasteCodePage />} />
-          <Route path="functions/deploy" element={<RegistryDeployPage />} />
-          <Route path="functions/:author/:name" element={<FunctionPage />} />
-          <Route path="functions/:author/:name/settings" element={<FunctionSettingsPage />} />
-          <Route path="functions/:author/:name/logs" element={<FunctionLogsPage />} />
-          <Route path="functions/:id" element={<FunctionDetailPage />} />
-          <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
-          <Route path="functions/:id/dna" element={<FunctionDNAPage />} />
-          <Route path="dna/overview" element={<DNAOverviewPage />} />
-          {/* AI Composer Routes - Multiple aliases for flexibility */}
-          <Route path="ai-composer" element={<AIComposerPage />} />
-          <Route path="composer" element={<AIComposerPage />} />
-          <Route path="generate" element={<AIComposerPage />} />
-          <Route path="functions/generate" element={<AIComposerPage />} />
-          {/* AI Namespace - Future expansion routes */}
-          <Route path="ai/composer" element={<AIComposerPage />} />
-          <Route path="ai/chat" element={<AIComposerPage />} />
-          <Route path="ai/suggest" element={<AIComposerPage />} />
-          {/* Code Intelligence Routes */}
-          <Route path="code-intelligence" element={<CodeIntelligencePage />} />
-          <Route path="code-intelligence/:panel" element={<CodeIntelligencePage />} />
-          <Route path="studio/code" element={<CodeIntelligencePage />} />
-          {/* FRG (Function Runtime Graph) Routes */}
-          <Route path="frg" element={<FRGGraphsPage />} />
-          <Route path="frg/new" element={<FRGEditorPage />} />
-          <Route path="frg/:author/:name" element={<FRGEditorPage />} />
-
-          {/* GitHub Integration Routes */}
-          <Route path="github" element={<GitHubPage />} />
-          <Route path="github/import/:repoId" element={<GitHubRepoImportPage />} />
-
-          <Route path="providers" element={<ProvidersPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="mcp" element={<MCPCenterPage />} />
-          <Route path="usage" element={<UsagePage />} />
-          <Route path="state-fabric" element={<StateFabricPage />} />
-          <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
-          <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
-          <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
-          <Route path="bundles" element={<BundlePricingPage />} />
-          <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
-
-          {/* Time Machine Routes */}
-          <Route path="time-machine" element={<TimeMachinePage />} />
-          <Route path="time-machine/new" element={<NewReplayPage />} />
-          <Route path="time-machine/:id" element={<ReplayDetailPage />} />
-
-          {/* Certification Routes */}
-          <Route path="certification" element={<CertificationPage />} />
-          <Route path="certification/exam/:examId" element={<ExamPage />} />
-          <Route path="certification/exam/:examId/results" element={<ExamResultsPage />} />
-          <Route path="credentials" element={<CredentialsPage />} />
-
-          <Route path="state" element={<StatePage />} />
-          <Route path="state/new" element={<StateDetailPage />} />
-          <Route path="state/:path" element={<StateDetailPage />} />
-          <Route path="agent-memories" element={<AgentMemoryPage />} />
-          <Route path="agent-memories/new" element={<AgentMemoryDetailPage />} />
-          <Route path="agent-memories/:id" element={<AgentMemoryDetailPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="billing" element={<BillingHubPage />} />
-          <Route path="api-keys" element={<APIKeysPage />} />
-          <Route path="api-keys/:keyId" element={<APIKeyDetailPage />} />
-          {/* Same pages at /dashboard/api-keys for consistent nav links */}
-          <Route path="dashboard/api-keys" element={<APIKeysPage />} />
-          <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
-<Route path="secrets" element={<SecretsPage deprecated />} />
-          <Route path="vault-enterprise" element={<VaultEnterprisePage deprecated />} />
-          <Route path="vault" element={<VaultPage />} />
-          <Route path="connectors/callback" element={<ConnectorsCallbackPage />} />
-          <Route path="connectors" element={<Navigate to="/settings#integrations" replace />} />
-          <Route path="brain" element={<BrainPage />} />
-          <Route path="teams" element={<TeamsPage />} />
-          <Route path="my-team" element={<MyTeamPage />} />
-          <Route path="teams/:teamId/memory" element={<TeamMemoryPage />} />
-          <Route path="decisions" element={<DecisionsPage />} />
-          <Route path="teams/:teamId/decisions" element={<TeamDecisionsPage />} />
-          {/* Enterprise Routes */}
-          <Route path="enterprise/sla" element={<EnterpriseSLAPage />} />
-          <Route path="enterprise/audit" element={<EnterpriseAuditPage />} />
-          <Route path="enterprise/support" element={<EnterpriseSupportPage />} />
-          <Route path="profile" element={<MyProfilePage />} />
-          <Route path="profile/settings" element={<ProfileSettingsPage />} />
-          <Route path="dashboard/:username/functions" element={<UserDashboardFunctionsPage />} />
+          {/* Onboarding Route */}
           <Route
-            path="u/:username/settings/billing"
-            element={<UserDashboardSettingsPage initialTab="billing" />}
+            path="/onboarding"
+            element={
+              <OnboardingRoute>
+                <OnboardingPage />
+              </OnboardingRoute>
+            }
           />
-          <Route path="u/:username/settings" element={<UserDashboardSettingsPage />} />
 
-          {/* Agent Routes */}
-          <Route path="agents" element={<AgentsPage />} />
-          <Route path="agents/new" element={<AgentCreatePage />} />
-          <Route path="agents/:id" element={<AgentDetailPage />} />
-          <Route path="agents/:id/edit" element={<AgentEditPage />} />
-          <Route path="agents/:id/wallet" element={<AgentWalletPage />} />
-          <Route path="agents/:id/analytics" element={<AgentAnalyticsPage />} />
-          <Route path="agent-observability" element={<AgentObservabilityPage />} />
-          <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
-          <Route path="marketplace" element={<AgentsMarketplacePage />} />
-          <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />
-          <Route path="wallet" element={<WalletPage />} />
-          <Route path="wallet/:slug" element={<WalletPage />} />
-          <Route path="evolution" element={<EvolutionPage />} />
-          <Route path="evolution/:slug" element={<EvolutionPage />} />
-          <Route path="conversations" element={<ConversationsPage />} />
-          <Route path="conversations/:id" element={<ConversationsPage />} />
-          <Route path="community" element={<CommunityPage />} />
-        </Route>
+          {/* Protected Dashboard Routes */}
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/overview" replace />} />
+            <Route path="dashboard" element={<FunctionMarketplacePage />} />
+            <Route path="overview" element={<DashboardPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="apps" element={<AppsPage />} />
+            <Route path="apps/new" element={<CreateAppPage />} />
+            <Route path="apps/:slug" element={<AppDetailPage />} />
+            <Route path="functions" element={<FunctionsPage />} />
+            <Route path="functions/hot" element={<FunctionsDiscoveryPage />} />
+            <Route path="functions/trending" element={<FunctionsDiscoveryPage />} />
+            <Route path="functions/explore/new" element={<FunctionsDiscoveryPage />} />
+            <Route path="functions/popular" element={<FunctionsDiscoveryPage />} />
+            <Route path="functions/favorites" element={<FavoritesPage />} />
+            <Route path="functions/my" element={<FunctionsDiscoveryPage />} />
+            <Route path="functions/discovery" element={<FunctionMarketplacePage />} />
+            <Route path="functions/discovery/:filter" element={<FunctionsDiscoveryPage />} />
+            <Route path="gallery" element={<GalleryPage />} />
+            <Route path="functions/new" element={<FunctionEditorPage />} />
+            <Route path="functions/paste" element={<PasteCodePage />} />
+            <Route path="functions/deploy" element={<RegistryDeployPage />} />
+            <Route path="functions/:author/:name" element={<FunctionPage />} />
+            <Route path="functions/:author/:name/settings" element={<FunctionSettingsPage />} />
+            <Route path="functions/:author/:name/logs" element={<FunctionLogsPage />} />
+            <Route path="functions/:id" element={<FunctionDetailPage />} />
+            <Route path="functions/:id/edit" element={<FunctionEditorPage />} />
+            <Route path="functions/:id/dna" element={<FunctionDNAPage />} />
+            <Route path="dna/overview" element={<DNAOverviewPage />} />
+            {/* AI Composer Routes - Multiple aliases for flexibility */}
+            <Route path="ai-composer" element={<AIComposerPage />} />
+            <Route path="composer" element={<AIComposerPage />} />
+            <Route path="generate" element={<AIComposerPage />} />
+            <Route path="functions/generate" element={<AIComposerPage />} />
+            {/* AI Namespace - Future expansion routes */}
+            <Route path="ai/composer" element={<AIComposerPage />} />
+            <Route path="ai/chat" element={<AIComposerPage />} />
+            <Route path="ai/suggest" element={<AIComposerPage />} />
+            {/* Code Intelligence Routes */}
+            <Route path="code-intelligence" element={<CodeIntelligencePage />} />
+            <Route path="code-intelligence/:panel" element={<CodeIntelligencePage />} />
+            <Route path="studio/code" element={<CodeIntelligencePage />} />
+            {/* FRG (Function Runtime Graph) Routes */}
+            <Route path="frg" element={<FRGGraphsPage />} />
+            <Route path="frg/new" element={<FRGEditorPage />} />
+            <Route path="frg/:author/:name" element={<FRGEditorPage />} />
 
-        {/* Studio Route - Outside DashboardLayout for fullscreen */}
-        <Route
-          path="studio"
-          element={
-            <ProtectedRoute>
-              <StudioPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="studio/:environment"
-          element={
-            <ProtectedRoute>
-              <StudioPage />
-            </ProtectedRoute>
-          }
-        />
+            {/* GitHub Integration Routes */}
+            <Route path="github" element={<GitHubPage />} />
+            <Route path="github/import/:repoId" element={<GitHubRepoImportPage />} />
 
-        <Route
-          path="devops"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DevOpsPage />} />
-          <Route path=":panel" element={<DevOpsPage />} />
-        </Route>
+            <Route path="providers" element={<ProvidersPage />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="mcp" element={<MCPCenterPage />} />
+            <Route path="usage" element={<UsagePage />} />
+            <Route path="state-fabric" element={<StateFabricPage />} />
+            <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
+            <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
+            <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
+            <Route path="bundles" element={<BundlePricingPage />} />
+            <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
 
-        <Route
-          path="security"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<SecurityPage />} />
-          <Route path=":panel" element={<SecurityPage />} />
-        </Route>
+            {/* Time Machine Routes */}
+            <Route path="time-machine" element={<TimeMachinePage />} />
+            <Route path="time-machine/new" element={<NewReplayPage />} />
+            <Route path="time-machine/:id" element={<ReplayDetailPage />} />
 
-        <Route
-          path="collaboration"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<CollaborationPage />} />
-          <Route path=":panel" element={<CollaborationPage />} />
-        </Route>
-        <Route
-          path="memory"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<MemoryPage />} />
-          <Route path=":panel" element={<MemoryPage />} />
-        </Route>
+            {/* Certification Routes */}
+            <Route path="certification" element={<CertificationPage />} />
+            <Route path="certification/exam/:examId" element={<ExamPage />} />
+            <Route path="certification/exam/:examId/results" element={<ExamResultsPage />} />
+            <Route path="credentials" element={<CredentialsPage />} />
 
-        <Route
-          path="simulation"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<SimulationPage />} />
-          <Route path=":panel" element={<SimulationPage />} />
-        </Route>
+            <Route path="state" element={<StatePage />} />
+            <Route path="state/new" element={<StateDetailPage />} />
+            <Route path="state/:path" element={<StateDetailPage />} />
+            <Route path="agent-memories" element={<AgentMemoryPage />} />
+            <Route path="agent-memories/new" element={<AgentMemoryDetailPage />} />
+            <Route path="agent-memories/:id" element={<AgentMemoryDetailPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="api-keys" element={<APIKeysPage />} />
+            <Route path="api-keys/:keyId" element={<APIKeyDetailPage />} />
+            {/* Same pages at /dashboard/api-keys for consistent nav links */}
+            <Route path="dashboard/api-keys" element={<APIKeysPage />} />
+            <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
+            <Route path="secrets" element={<SecretsPage />} />
+            <Route path="connectors/callback" element={<ConnectorsCallbackPage />} />
+            <Route path="connectors" element={<Navigate to="/settings#integrations" replace />} />
+            <Route path="brain" element={<BrainPage />} />
+            <Route path="teams" element={<TeamsPage />} />
+            <Route path="my-team" element={<MyTeamPage />} />
+            <Route path="teams/:teamId/memory" element={<TeamMemoryPage />} />
+            <Route path="decisions" element={<DecisionsPage />} />
+            <Route path="teams/:teamId/decisions" element={<TeamDecisionsPage />} />
+            {/* Enterprise Routes */}
+            <Route path="enterprise/sla" element={<EnterpriseSLAPage />} />
+            <Route path="enterprise/audit" element={<EnterpriseAuditPage />} />
+            <Route path="enterprise/support" element={<EnterpriseSupportPage />} />
+            <Route path="profile" element={<MyProfilePage />} />
+            <Route path="profile/settings" element={<ProfileSettingsPage />} />
+            <Route path="dashboard/:username/functions" element={<UserDashboardFunctionsPage />} />
+            <Route
+              path="u/:username/settings/billing"
+              element={<UserDashboardSettingsPage initialTab="billing" />}
+            />
+            <Route path="u/:username/settings" element={<UserDashboardSettingsPage />} />
 
-        <Route
-          path="robotics"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<RoboticsPage />} />
-          <Route path=":panel" element={<RoboticsPage />} />
-        </Route>
+            {/* Agent Routes */}
+            <Route path="agents" element={<AgentsPage />} />
+            <Route path="agents/new" element={<AgentCreatePage />} />
+            <Route path="agents/:id" element={<AgentDetailPage />} />
+            <Route path="agents/:id/edit" element={<AgentEditPage />} />
+            <Route path="agents/:id/wallet" element={<AgentWalletPage />} />
+            <Route path="agents/:id/analytics" element={<AgentAnalyticsPage />} />
+            <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
+            <Route path="marketplace" element={<AgentsMarketplacePage />} />
+            <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />
+            <Route path="wallet" element={<WalletPage />} />
+            <Route path="wallet/:slug" element={<WalletPage />} />
+            <Route path="evolution" element={<EvolutionPage />} />
+            <Route path="evolution/:slug" element={<EvolutionPage />} />
+            <Route path="conversations" element={<ConversationsPage />} />
+            <Route path="conversations/:id" element={<ConversationsPage />} />
+            <Route path="community" element={<CommunityPage />} />
+          </Route>
 
-        <Route
-          path="marketplace-economy"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<MarketplaceEconomyPage />} />
-          <Route path=":panel" element={<MarketplaceEconomyPage />} />
-        </Route>
+          {/* Studio Route - Outside DashboardLayout for fullscreen */}
+          <Route
+            path="studio"
+            element={
+              <ProtectedRoute>
+                <StudioPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="studio/:environment"
+            element={
+              <ProtectedRoute>
+                <StudioPage />
+              </ProtectedRoute>
+            }
+          />
 
-        <Route
-          path="adaptive-ux"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<AdaptiveUXPage />} />
-          <Route path=":panel" element={<AdaptiveUXPage />} />
-        </Route>
+          <Route
+            path="devops"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DevOpsPage />} />
+            <Route path=":panel" element={<DevOpsPage />} />
+          </Route>
 
-        <Route
-          path="universal-runtime"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<UniversalRuntimePage />} />
-          <Route path=":panel" element={<UniversalRuntimePage />} />
-        </Route>
+          <Route
+            path="security"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<SecurityPage />} />
+            <Route path=":panel" element={<SecurityPage />} />
+          </Route>
 
-        <Route
-          path="data-visualization"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<DataVisualizationPage />} />
-          <Route path=":panel" element={<DataVisualizationPage />} />
-        </Route>
+          <Route
+            path="collaboration"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<CollaborationPage />} />
+            <Route path=":panel" element={<CollaborationPage />} />
+          </Route>
+          <Route
+            path="memory"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<MemoryPage />} />
+            <Route path=":panel" element={<MemoryPage />} />
+          </Route>
+
+          <Route
+            path="simulation"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<SimulationPage />} />
+            <Route path=":panel" element={<SimulationPage />} />
+          </Route>
+
+          <Route
+            path="robotics"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<RoboticsPage />} />
+            <Route path=":panel" element={<RoboticsPage />} />
+          </Route>
+
+          <Route
+            path="marketplace-economy"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<MarketplaceEconomyPage />} />
+            <Route path=":panel" element={<MarketplaceEconomyPage />} />
+          </Route>
+
+          <Route
+            path="adaptive-ux"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<AdaptiveUXPage />} />
+            <Route path=":panel" element={<AdaptiveUXPage />} />
+          </Route>
+
+          <Route
+            path="universal-runtime"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<UniversalRuntimePage />} />
+            <Route path=":panel" element={<UniversalRuntimePage />} />
+          </Route>
+
+          <Route
+            path="data-visualization"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<DataVisualizationPage />} />
+            <Route path=":panel" element={<DataVisualizationPage />} />
+          </Route>
 
 
-        <Route
-          path="futuristic"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<FuturisticPage />} />
-          <Route path=":panel" element={<FuturisticPage />} />
-        </Route>
+          <Route
+            path="futuristic"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<FuturisticPage />} />
+            <Route path=":panel" element={<FuturisticPage />} />
+          </Route>
 
-        <Route
-          path="u/:username"
-          element={
-            <ProtectedRoute>
-              <UserProfileLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="agents" element={<AgentsPage />} />
-          <Route path="conversations" element={<ConversationsPage />} />
-          <Route path="conversations/:id" element={<ConversationsPage />} />
-        </Route>
+          <Route
+            path="u/:username"
+            element={
+              <ProtectedRoute>
+                <UserProfileLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="agents" element={<AgentsPage />} />
+            <Route path="conversations" element={<ConversationsPage />} />
+            <Route path="conversations/:id" element={<ConversationsPage />} />
+          </Route>
 
-        {/* 404 - Not Found */}
-        <Route path="*" element={<NotFoundPage />} />
+          {/* 404 - Not Found */}
+          <Route path="*" element={<NotFoundPage />} />
 
-        {/* 403 - Forbidden */}
-        <Route path="/forbidden" element={<ForbiddenPage />} />
+          {/* 403 - Forbidden */}
+          <Route path="/forbidden" element={<ForbiddenPage />} />
 
-        {/* 500 - Internal Server Error */}
-        <Route path="/error" element={<ServerErrorPage />} />
-      </Routes>
+          {/* 500 - Internal Server Error */}
+          <Route path="/error" element={<ServerErrorPage />} />
+        </Routes>
+      </Suspense>
     </NotificationsProvider>
   );
 }

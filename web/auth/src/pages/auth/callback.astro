@@ -10,6 +10,7 @@ const refreshToken = decodeURIComponent(Astro.url.searchParams.get("refresh_toke
 const error = Astro.url.searchParams.get("error") || "";
 const errorDescription = Astro.url.searchParams.get("error_description") || "";
 const isNewUser = Astro.url.searchParams.get("new_user") === "true";
+const redirectParam = decodeURIComponent(Astro.url.searchParams.get("redirect_to") || Astro.url.searchParams.get("redirect") || "");
 ---
 
 <html>
@@ -53,7 +54,7 @@ const isNewUser = Astro.url.searchParams.get("new_user") === "true";
       <div class="card">
         <h1>{isNewUser ? "Account created!" : "Signed in!"}</h1>
         <p>Redirecting to your dashboard…</p>
-        <script define:vars={{ token, refreshToken, isNewUser, appOrigin: APP_ORIGIN }}>
+        <script define:vars={{ token, refreshToken, isNewUser, redirectParam, appOrigin: APP_ORIGIN }}>
           function trackAuth(event, properties = {}) {
             const eventName = `auth_${event}`;
             if (typeof window !== "undefined" && (window.plausible || window.posthog)) {
@@ -79,6 +80,7 @@ const isNewUser = Astro.url.searchParams.get("new_user") === "true";
             params.set("token", token);
             if (refreshToken) params.set("refresh_token", refreshToken);
             if (isNewUser) params.set("new_user", "true");
+            if (redirectParam) params.set("redirect", redirectParam);
             // Navigate via location.replace to avoid polluting history
             window.location.replace(appOrigin + "/auth/callback#" + params.toString());
           } else {

@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
@@ -316,7 +317,8 @@ export const studioKeys = {
 
 async function studioFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const environment = localStorage.getItem('ff-current-environment') || 'production';
-  const token = localStorage.getItem('ff-access-token');
+  await tokenVault.initialize();
+  const token = await tokenVault.getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Environment': environment,

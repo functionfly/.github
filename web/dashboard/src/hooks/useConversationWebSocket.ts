@@ -6,6 +6,7 @@ import { getApiBaseUrl } from '@/lib/constants';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { conversationKeys } from './useConversations';
+import { tokenVault } from '@/utils/token-vault';
 
 // ---- Types ----------------------------------------------------------------
 
@@ -289,6 +290,38 @@ export function useConversationWebSocket(
             // Keep-alive response — no action needed.
             break;
           }
+
+          case 'auth_required': {
+            // Server is requesting authentication - send token
+            tokenVault.initialize().then(() => {
+              tokenVault.getAccessToken().then(token => {
+                if (token && wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify({
+                    type: 'auth',
+                    payload: { token },
+                  }));
+                }
+              });
+            });
+            break;
+          }
+
+          case 'auth_success': {
+            // Authentication successful, proceed with joining conversations
+            if (import.meta.env.DEV) {
+              console.log('Conversations WebSocket authenticated');
+            }
+            break;
+          }
+
+          case 'auth_failure': {
+            // Authentication failed
+            setState((prev) => ({
+              ...prev,
+              error: new Error('WebSocket authentication failed'),
+            }));
+            break;
+          }
         }
       } catch (err) {
         console.error('Failed to parse conversations WS message:', err);
@@ -313,7 +346,7 @@ export function useConversationWebSocket(
     try {
       const ws = new WebSocket(getWebSocketUrl());
 
-      ws.onopen = () => {
+      ws.onopen = async () => {
         reconnectAttemptsRef.current = 0;
         setState({
           isConnected: true,
@@ -321,6 +354,19 @@ export function useConversationWebSocket(
           error: null,
           reconnectAttempt: 0,
         });
+
+        // Send authentication message after connect (using cookie-based auth is preferred,
+        // but this provides explicit auth for cases where cookies aren't available)
+        await tokenVault.initialize();
+        const token = await tokenVault.getAccessToken();
+        if (token) {
+          ws.send(
+            JSON.stringify({
+              type: 'auth',
+              payload: { token },
+            }),
+          );
+        }
 
         // Re-join all tracked conversations.
         joinedIdsRef.current.forEach((id) => {

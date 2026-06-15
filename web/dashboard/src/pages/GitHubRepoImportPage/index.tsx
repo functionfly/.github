@@ -24,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { useGitHubRepo, useScanGitHubRepo, useGitHubBranches } from '@/hooks/useGitHubRepos';
 import { usePreviewImport, useStartImport, useImportProgress, useBulkImport, useGitHubImports } from '@/hooks/useGitHubImport';
+import { useGitHubConnection } from '@/hooks/useGitHubConnection';
 import { getWalletInfo } from '@/api/billing';
 import { useGitHubStore } from '@/stores/githubStore';
 import { ConflictResolutionDialog } from '@/components/github';
@@ -99,6 +100,7 @@ export default function GitHubRepoImportPage() {
 
   const { data: repo, isLoading: repoLoading } = useGitHubRepo(repoId || '');
   const { data: branches } = useGitHubBranches(repoId || '');
+  const { data: connection } = useGitHubConnection();
   const scanMutation = useScanGitHubRepo(repoId || '');
   const previewMutation = usePreviewImport();
   const startImportMutation = useStartImport();
@@ -153,7 +155,7 @@ export default function GitHubRepoImportPage() {
     const primaryFunction = selected[0];
 
     const request: StartImportRequest = {
-      connection_id: '',
+      connection_id: connection?.id || '',
       repo_id: repoId,
       source_branch: repo?.default_branch || 'main',
       source_path: primaryFunction.sub_directory || '/',
@@ -199,7 +201,7 @@ export default function GitHubRepoImportPage() {
     if (selected.length === 1) {
       const primaryFunction = selected[0];
       const request: StartImportRequest = {
-        connection_id: '',
+        connection_id: connection?.id || '',
         repo_id: repoId,
         source_branch: repo?.default_branch || 'main',
         source_path: primaryFunction.sub_directory || '/',
@@ -222,7 +224,7 @@ export default function GitHubRepoImportPage() {
       });
     } else {
       const requests: StartImportRequest[] = selected.map((fn) => ({
-        connection_id: '',
+        connection_id: connection?.id || '',
         repo_id: repoId,
         source_branch: repo?.default_branch || 'main',
         source_path: fn.sub_directory || '/',
@@ -247,6 +249,7 @@ export default function GitHubRepoImportPage() {
   }, [repoId, scanResult, importConfig, repo, startImportMutation, setActiveImportId, bulkImportMutation]);
 
   const handleCancel = useCallback(() => {
+    setShowCancelDialog(false);
     resetImportConfig();
     setScanResult(null);
     setActiveImportId(null);
@@ -313,12 +316,14 @@ export default function GitHubRepoImportPage() {
             size="icon"
             onClick={() => {
               if (currentStep > 1 && currentStep < 4) {
-                setCurrentStep((s) => (s - 1) as StepId);
-              } else {
+                setShowCancelDialog(true);
+              } else if (currentStep === 1) {
                 handleCancel();
+              } else {
+                // On step 4, don't show dialog, just navigate back
+                navigate('/github');
               }
             }}
-            disabled={currentStep === 4}
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
@@ -394,6 +399,7 @@ export default function GitHubRepoImportPage() {
                 setGlobalVisibility={setGlobalVisibility}
                 setAutoSync={setAutoSync}
                 setSyncBranches={setSyncBranches}
+                setEnvironmentMappings={setEnvironmentMappings}
                 onPreview={handlePreview}
                 isPreviewing={previewMutation.isPending}
               />
@@ -653,6 +659,7 @@ function StepConfigure({
   setGlobalVisibility,
   setAutoSync,
   setSyncBranches,
+  setEnvironmentMappings,
   onPreview,
   isPreviewing,
 }: {
@@ -663,6 +670,7 @@ function StepConfigure({
   setGlobalVisibility: (v: 'public' | 'private' | 'unlisted') => void;
   setAutoSync: (enabled: boolean) => void;
   setSyncBranches: (branches: string[]) => void;
+  setEnvironmentMappings: (mappings: Record<string, string>) => void;
   onPreview: () => void;
   isPreviewing: boolean;
 }) {

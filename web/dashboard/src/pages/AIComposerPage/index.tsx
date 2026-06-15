@@ -28,7 +28,7 @@ import { DenoIcon } from '@/components/icons/DenoIcon';
 import { BunIcon } from '@/components/icons/BunIcon';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { useTheme } from '@/components/common/ThemeProvider';
-import Editor from '@monaco-editor/react';
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 import type { RefinementChunk } from './types';
 import { createPlaygroundUrl } from '../StandalonePlaygroundPage';
 import { useGenerationHistory, type GenerationHistoryItem } from './useGenerationHistory';
@@ -1332,7 +1332,7 @@ export function AIComposerPage() {
                 <ContextMenu>
                   <ContextMenuTrigger className="w-full">
                     <div className="composer-editor-container overflow-hidden rounded-md border">
-                      <Editor
+                      <LazyMonacoEditor
                         height="300px"
                         language={monacoLanguage}
                         value={streamingResult.code || generatedFunction?.result?.code || ''}
@@ -1697,7 +1697,7 @@ export function AIComposerPage() {
                 </span>
               </div>
               <div className="rounded-md border overflow-hidden">
-                <Editor
+                <LazyMonacoEditor
                   height="400px"
                   language={compareItems[0] ? RUNTIME_MONACO_LANG[compareItems[0].runtime] || 'plaintext' : 'plaintext'}
                   value={compareItems[0]?.result.code || ''}
@@ -1722,7 +1722,7 @@ export function AIComposerPage() {
                 </span>
               </div>
               <div className="rounded-md border overflow-hidden">
-                <Editor
+                <LazyMonacoEditor
                   height="400px"
                   language={compareItems[1] ? RUNTIME_MONACO_LANG[compareItems[1].runtime] || 'plaintext' : 'plaintext'}
                   value={compareItems[1]?.result.code || '// No previous version to compare'}

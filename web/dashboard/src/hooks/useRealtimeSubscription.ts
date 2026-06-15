@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getApiBaseUrl } from '../lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 import { useAuthStore } from '../stores/authStore';
 import { RealtimeEvent } from './types';
 
@@ -67,18 +68,19 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   onEventRef.current = onEvent;
 
   // Get WebSocket URL from same base as REST API (getApiBaseUrl())
-  const getWebSocketUrl = useCallback(() => {
+  const getWebSocketUrl = useCallback(async () => {
     const base = getApiBaseUrl();
     const wsBase = base.replace(/^http/, 'ws');
-    const href = `${wsBase.replace(/\/$/, '')}/v1/monitoring/realtime`;
-
-    const token = localStorage.getItem('ff-access-token');
-    const url = new URL(href);
-    if (token && token.trim()) {
-      url.searchParams.set('token', token);
-    }
-
-    return url.toString();
+    
+    // Get token from TokenVault and append as query param
+    await tokenVault.initialize();
+    const token = await tokenVault.getAccessToken();
+    
+    const href = token
+      ? `${wsBase.replace(/\/$/, '')}/v1/monitoring/realtime?token=${encodeURIComponent(token)}`
+      : `${wsBase.replace(/\/$/, '')}/v1/monitoring/realtime`;
+    
+    return href;
   }, []);
 
   // Handle incoming WebSocket messages (stable callback; reads from refs)
@@ -110,13 +112,13 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   }, []);
 
   // Connect to WebSocket (stable: only depends on getWebSocketUrl)
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (connectionRef.current.ws?.readyState === WebSocket.OPEN) {
       return;
     }
 
     // Don't connect if no token
-    const token = localStorage.getItem('ff-access-token');
+    const token = await tokenVault.getAccessToken();
     if (!token || !token.trim()) {
       return;
     }
@@ -124,7 +126,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
     errorSetForAttemptRef.current = false;
 
     try {
-      const wsUrl = getWebSocketUrl();
+      const wsUrl = await getWebSocketUrl();
       const ws = new WebSocket(wsUrl);
       const channel = channelNameRef.current;
 
@@ -197,11 +199,17 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
           errorSetForAttemptRef.current = true;
           setError('Failed to reconnect after maximum attempts');
         } else if (isAuthFailure) {
-          // Clear invalid token on authentication failure
-          localStorage.removeItem('ff-access-token');
+          // Clear invalid token on authentication failure and log out properly
+          // This ensures the auth store state is consistent (isAuthenticated: false)
+          tokenVault.clearTokens();
           if (!errorSetForAttemptRef.current) {
             errorSetForAttemptRef.current = true;
             setError('Authentication failed - please log in again');
+            // Call logout(false) to properly clear auth state without redirecting
+            // This broadcasts a logout event so other tabs/listeners know auth failed
+            import('@/stores/authStore').then(({ useAuthStore }) => {
+              useAuthStore.getState().logout(false);
+            });
           }
         } else if (isAbnormalClosure) {
           // Set error once per abnormal close to avoid update storm (onerror + onclose both fire)
@@ -297,7 +305,8 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
   // Effect to manage WebSocket connection
   useEffect(() => {
     const checkAuthAndConnect = async () => {
-      const token = localStorage.getItem('ff-access-token');
+      await tokenVault.initialize();
+      const token = await tokenVault.getAccessToken();
       const hasAuth = !!(user?.id && user?.email && token);
 
       // Only log in dev when there's actual auth data to debug (reduces noise on public pages)
@@ -346,7 +355,7 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         if (import.meta.env.DEV) {
           console.log('Session validation failed, clearing auth state');
         }
-        localStorage.removeItem('ff-access-token');
+        tokenVault.clearTokens();
         disconnect();
       } finally {
         connectionAttemptRef.current = false;

@@ -1,7 +1,8 @@
 'use client';
 
-import { AlertTriangle, Home, RefreshCcw, Copy, CheckCheck } from 'lucide-react';
-import React from 'react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Home, Loader2, RefreshCcw } from 'lucide-react';
+import React, { Suspense } from 'react';
 
 export type ErrorReportFn = (error: Error, errorInfo: React.ErrorInfo) => void;
 
@@ -16,7 +17,6 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
-  copied: boolean;
 }
 
 /** Capture error to Sentry if available */
@@ -39,11 +39,11 @@ async function captureErrorToSentry(error: Error, errorInfo: React.ErrorInfo) {
 export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null, copied: false };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null, copied: false };
+    return { hasError: true, error, errorInfo: null };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -68,18 +68,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null, copied: false });
-  };
-
-  handleCopyError = () => {
-    if (!this.state.error) return;
-    const text = [
-      this.state.error.message,
-      this.state.errorInfo?.componentStack,
-    ].filter(Boolean).join('\n\n');
-    navigator.clipboard.writeText(text);
-    this.setState({ copied: true });
-    setTimeout(() => this.setState({ copied: false }), 2000);
+    this.setState({ hasError: false, error: null, errorInfo: null });
   };
 
   render() {
@@ -108,31 +97,9 @@ export class ErrorBoundary extends React.Component<Props, State> {
             {/* Error Details (only in development) */}
             {import.meta.env.DEV && this.state.error && (
               <div className="rounded-lg p-4 text-left" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-mono text-sm font-medium" style={{ color: 'var(--color-error, #ef4444)' }}>
-                    {this.state.error.message}
-                  </p>
-                  <button
-                    onClick={this.handleCopyError}
-                    className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium transition-all hover:brightness-110"
-                    style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', color: 'var(--color-error, #ef4444)' }}
-                    title="Copy error details"
-                  >
-                    {this.state.copied ? (
-                      <>
-                        <CheckCheck className="w-3.5 h-3.5" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        Copy
-                      </>
-                    )}
-                  </button>
-                </div>
+                <p className="font-mono text-sm mb-2" style={{ color: 'var(--color-error, #ef4444)' }}>{this.state.error.message}</p>
                 {this.state.errorInfo && (
-                  <pre className="font-mono text-xs overflow-auto max-h-48 whitespace-pre-wrap" style={{ color: 'var(--color-error, #ef4444)', opacity: 0.7 }}>
+                  <pre className="font-mono text-xs overflow-auto max-h-32 whitespace-pre-wrap" style={{ color: 'var(--color-error, #ef4444)', opacity: 0.7 }}>
                     {this.state.errorInfo.componentStack}
                   </pre>
                 )}
@@ -176,4 +143,130 @@ export function useErrorBoundary() {
   }
 
   return setError;
+}
+
+/**
+ * SectionErrorBoundary - A smaller error boundary for independent dashboard sections
+ * Renders an inline error message instead of full-page crash
+ */
+interface SectionErrorBoundaryProps {
+  children: React.ReactNode;
+  /** Name of the section for error reporting */
+  sectionName?: string;
+  /** Custom fallback UI */
+  fallback?: React.ReactNode;
+  /** Called when error is caught */
+  onError?: ErrorReportFn;
+}
+
+interface SectionErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+}
+
+export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryProps, SectionErrorBoundaryState> {
+  constructor(props: SectionErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: Error): SectionErrorBoundaryState {
+    return { hasError: true, error, errorInfo: null };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (import.meta.env.DEV) {
+      console.error(`Error in section "${this.props.sectionName}":`, error);
+    }
+
+    this.setState({ error, errorInfo });
+
+    if (import.meta.env.PROD) {
+      captureErrorToSentry(error, errorInfo);
+      if (this.props.onError) {
+        this.props.onError(error, errorInfo);
+      }
+    }
+  }
+
+  handleRetry = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+
+      return (
+        <div className="flex items-center justify-center p-6 rounded-lg border border-destructive/20 bg-destructive/5 min-h-[100px]">
+          <div className="text-center space-y-3">
+            <AlertTriangle className="h-6 w-6 mx-auto text-destructive" />
+            <p className="text-sm font-medium text-foreground">
+              {this.props.sectionName ? `${this.props.sectionName} couldn't load` : 'This section couldn\'t load'}
+            </p>
+            <div className="flex gap-2 justify-center">
+              <button
+                onClick={this.handleRetry}
+                className="text-xs px-3 py-1.5 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+            {import.meta.env.DEV && this.state.error && (
+              <p className="text-xs text-destructive/70 font-mono mt-2">
+                {this.state.error.message}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+/**
+ * PageWrapper - Combines Suspense and ErrorBoundary for route-level code splitting
+ * Use this to wrap lazy-loaded page components
+ */
+interface PageWrapperProps {
+  children: React.ReactNode;
+  /** Custom fallback for Suspense (loading state) */
+  suspenseFallback?: React.ReactNode;
+  /** Custom fallback for ErrorBoundary (error state) */
+  errorFallback?: React.ReactNode;
+  /** Called when error is caught */
+  onError?: ErrorReportFn;
+}
+
+const defaultPageErrorFallback = (
+  <div className="min-h-[40vh] flex items-center justify-center">
+    <div className="text-center space-y-4">
+      <p className="text-lg font-medium">This page encountered an error</p>
+      <p className="text-sm text-muted-foreground">Try refreshing the page</p>
+    </div>
+  </div>
+);
+
+export function PageWrapper({
+  children,
+  suspenseFallback = (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+    </div>
+  ),
+  errorFallback = defaultPageErrorFallback,
+  onError,
+}: PageWrapperProps) {
+  return (
+    <ErrorBoundary fallback={errorFallback} onError={onError}>
+      <Suspense fallback={suspenseFallback}>
+        {children}
+      </Suspense>
+    </ErrorBoundary>
+  );
 }

@@ -99,3 +99,80 @@ func getClientIP(r *http.Request) string {
 	}
 	return ip
 }
+
+// setAuthCookies sets the httpOnly auth cookies with security attributes
+func setAuthCookies(w http.ResponseWriter, accessToken, refreshToken string) {
+	opts := auth.CookieOptions{
+		HttpOnly: true,
+		Secure:   auth.IsProduction(),
+		SameSite: "Strict",
+		Path:     "/",
+	}
+
+	accessCookie := &http.Cookie{
+		Name:     auth.CookieNameAccessToken,
+		Value:    accessToken,
+		MaxAge:   auth.CookieMaxAgeAccessToken,
+		HttpOnly: opts.HttpOnly,
+		Secure:   opts.Secure,
+		SameSite: http.SameSiteStrictMode,
+		Path:     opts.Path,
+	}
+
+	refreshCookie := &http.Cookie{
+		Name:     auth.CookieNameRefreshToken,
+		Value:    refreshToken,
+		MaxAge:   auth.CookieMaxAgeRefreshToken,
+		HttpOnly: opts.HttpOnly,
+		Secure:   opts.Secure,
+		SameSite: http.SameSiteStrictMode,
+		Path:     opts.Path,
+	}
+
+	http.SetCookie(w, accessCookie)
+	http.SetCookie(w, refreshCookie)
+}
+
+// clearAuthCookies removes the auth cookies (for logout)
+func clearAuthCookies(w http.ResponseWriter) {
+	accessCookie := &http.Cookie{
+		Name:     auth.CookieNameAccessToken,
+		Value:    "",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   auth.IsProduction(),
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	}
+
+	refreshCookie := &http.Cookie{
+		Name:     auth.CookieNameRefreshToken,
+		Value:    "",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   auth.IsProduction(),
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+	}
+
+	http.SetCookie(w, accessCookie)
+	http.SetCookie(w, refreshCookie)
+}
+
+// wantsCookies checks if the client prefers cookie-based auth
+func wantsCookies(r *http.Request) bool {
+	// Clients can signal they want cookie-based auth via header
+	if r.Header.Get("Accept-Cookie") == "true" {
+		return true
+	}
+	// Or by not sending an Accept header that indicates JSON-only
+	accept := r.Header.Get("Accept")
+	if accept == "" {
+		return false // Default to JSON for API clients
+	}
+	// If explicitly requesting text/html, assume browser client wanting cookies
+	if strings.Contains(accept, "text/html") {
+		return true
+	}
+	return false
+}

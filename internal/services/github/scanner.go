@@ -68,7 +68,10 @@ func NewScannerWithConfig(client *Client, logger *logrus.Logger, config ScannerC
 }
 
 func (s *Scanner) ScanRepo(ctx context.Context, owner, repo, branch string) (*ScanResult, error) {
-	repoInfo, err := s.client.GetRepo(ctx, owner, repo)
+	scanCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
+	defer cancel()
+
+	repoInfo, err := s.client.GetRepo(scanCtx, owner, repo)
 	if err != nil {
 		return nil, fmt.Errorf("fetch repo info: %w", err)
 	}
@@ -77,7 +80,7 @@ func (s *Scanner) ScanRepo(ctx context.Context, owner, repo, branch string) (*Sc
 		branch = repoInfo.DefaultBranch
 	}
 
-	branches, err := s.client.ListBranches(ctx, owner, repo)
+	branches, err := s.client.ListBranches(scanCtx, owner, repo)
 	if err != nil {
 		return nil, fmt.Errorf("list branches: %w", err)
 	}
@@ -93,12 +96,12 @@ func (s *Scanner) ScanRepo(ctx context.Context, owner, repo, branch string) (*Sc
 		return nil, fmt.Errorf("branch %q not found", branch)
 	}
 
-	tree, err := s.client.GetTree(ctx, owner, repo, branchSHA, true)
+	tree, err := s.client.GetTree(scanCtx, owner, repo, branchSHA, true)
 	if err != nil {
 		return nil, fmt.Errorf("fetch tree: %w", err)
 	}
 
-	languages, err := s.client.GetLanguages(ctx, owner, repo)
+	languages, err := s.client.GetLanguages(scanCtx, owner, repo)
 	if err != nil {
 		s.logger.WithError(err).Warn("failed to fetch languages, continuing without")
 		languages = make(map[string]float64)
@@ -110,7 +113,7 @@ func (s *Scanner) ScanRepo(ctx context.Context, owner, repo, branch string) (*Sc
 	var allResults []*ScanResult
 
 	for _, detector := range s.detectors {
-		result, err := detector.Detect(ctx, repoInfo, entries)
+		result, err := detector.Detect(scanCtx, repoInfo, entries)
 		if err != nil {
 			s.logger.WithError(err).WithField("detector", detector.Name()).Warn("detector failed")
 			continue

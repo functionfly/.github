@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Editor from '@monaco-editor/react';
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { CODE_TEMPLATES, RUNTIME_META } from '../constants';
 import type { FunctionEditorModel } from '../useFunctionEditor';
@@ -128,7 +128,7 @@ export function FunctionEditorRightColumn({ editor }: Props) {
             >
               <div className="w-full h-full" style={{ minHeight: '420px' }}>
                 {activeTab === 'editor' && (
-                  <Editor
+                  <LazyMonacoEditor
                     height="100%"
                     language={RUNTIME_META[runtime].monacoLang}
                     value={code}

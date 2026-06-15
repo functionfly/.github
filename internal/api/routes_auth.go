@@ -91,6 +91,7 @@ func registerAuthRoutes(
 	api.HandleFunc("/auth/oauth/link", authRateLimiter.Limit(authHandler.HandleConfirmAccountLinking)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/validate", authMiddleware.RequireAuth(authHandler.HandleValidateToken)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
+	router.HandleFunc("/auth/logout", authMiddleware.RequireAuth(authHandler.HandleLogout)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/verify-password", authMiddleware.RequireAuth(authHandler.HandleVerifyPassword)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/auth/trusted-device", authMiddleware.RequireAuth(authHandler.HandleTrustedDeviceRequest)).Methods("POST", "OPTIONS")
 

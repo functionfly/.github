@@ -5,12 +5,12 @@
  * 1. OAuth provider flow via orchestrator: /auth/oauth/callback?token=xxx&refresh_token=yyy
  * 2. Standalone auth site (@web/auth): /auth/callback#token=xxx&refresh_token=yyy
  *
- * The page reads the token (from query params or fragment), stores it in localStorage,
- * validates the session, then navigates to the dashboard.
+ * Security: Tokens are stored encrypted via TokenVault to prevent XSS exfiltration.
  */
 
 import { buildAuthSiteLoginUrl } from '@/lib/auth-integration';
 import { logger } from '@/lib/logger';
+import { tokenVault } from '@/utils/token-vault';
 import { useAuthStore } from '@/stores/authStore';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -40,6 +40,27 @@ function getToken(key: string): string | null {
   return null;
 }
 
+/**
+ * Extract redirect path from URL — checks fragment first (from auth site), then query params.
+ * Fragment takes precedence because auth site passes redirect through the fragment.
+ */
+function getRedirect(): string {
+  // 1. Fragment (from auth site callback.astro redirect with tokens in fragment)
+  const hash = window.location.hash;
+  if (hash && hash.length > 1) {
+    const hashParams = new URLSearchParams(hash.substring(1));
+    const fromHash = hashParams.get('redirect');
+    if (fromHash) return fromHash;
+  }
+
+  // 2. Query params (standard OAuth pattern, fallback)
+  const url = new URL(window.location.href);
+  const fromQuery = url.searchParams.get('redirect');
+  if (fromQuery) return fromQuery;
+
+  return '/overview';
+}
+
 export function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -49,7 +70,6 @@ export function AuthCallbackPage() {
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Extract params from URL (for render-time use)
-  const redirectPath = searchParams.get('redirect') || '/overview';
   const errorParam = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
   const isNewUser = (getToken('new_user') || '') === 'true';
@@ -59,6 +79,7 @@ export function AuthCallbackPage() {
       // Extract tokens fresh from URL inside the effect to avoid stale values on re-renders
       const tokenParam = getToken('token');
       const refreshTokenParam = getToken('refresh_token');
+      const redirectPath = getRedirect();
 
       try {
         if (errorParam) {
@@ -78,11 +99,13 @@ export function AuthCallbackPage() {
           return;
         }
 
-        localStorage.setItem('ff-access-token', tokenParam);
+        // Store tokens in encrypted storage via TokenVault
+        await tokenVault.initialize();
+        await tokenVault.setAccessToken(tokenParam);
         if (refreshTokenParam) {
-          localStorage.setItem('ff-refresh-token', refreshTokenParam);
+          await tokenVault.setRefreshToken(refreshTokenParam);
         }
-        logger.info('Got tokens from auth site redirect');
+        logger.info('Got tokens from auth site redirect and stored in TokenVault');
 
         await initialize();
         const authState = useAuthStore.getState();
@@ -114,13 +137,24 @@ export function AuthCallbackPage() {
   }, [
     errorParam,
     errorDescription,
-    redirectPath,
     initialize,
     navigate,
   ]);
 
   // Handle "Try Again" click
   const handleTryAgain = () => {
+    // Extract just the path from the redirect URL to avoid double-encoding issues
+    const redirectValue = getRedirect();
+    let redirectPath = redirectValue;
+    try {
+      // If redirect is a full URL, extract just the path
+      if (redirectValue.startsWith('http://') || redirectValue.startsWith('https://')) {
+        const url = new URL(redirectValue);
+        redirectPath = url.pathname + url.search;
+      }
+    } catch {
+      // Use as-is if URL parsing fails
+    }
     window.location.href = buildAuthSiteLoginUrl(redirectPath);
   };
 

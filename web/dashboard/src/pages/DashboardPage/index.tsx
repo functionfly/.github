@@ -88,13 +88,21 @@ export function DashboardPage() {
     queryFn: () => functionsApi.list(),
   });
 
-  // Fetch trust scores for all functions
+  const functions = functionsData?.functions ?? [];
+
+  // Stable function IDs for trust score queries - only recompute when IDs actually change
+  const deployedFunctionIds = useMemo(
+    () => functions.filter((f) => f.id && f.status === 'deployed').map((f) => f.id),
+    [functions]
+  );
+
+  // Fetch trust scores for all deployed functions using stable query keys
   const functionTrustQueries = useQueries({
-    queries: (functionsData?.functions ?? []).map((fn) => ({
-      queryKey: ['function-trust', fn.id],
-      queryFn: () => functionsApi.getTrustScore(fn.id),
-      enabled: !!fn.id && fn.status === 'deployed',
-      staleTime: 5 * 60 * 1000, // 5 minutes
+    queries: deployedFunctionIds.map((fnId) => ({
+      queryKey: ['function-trust', fnId] as const,
+      queryFn: () => functionsApi.getTrustScore(fnId),
+      enabled: deployedFunctionIds.length > 0,
+      staleTime: 5 * 60 * 1000,
     })),
   });
 
@@ -125,7 +133,6 @@ export function DashboardPage() {
     queryFn: () => providersApi.getConnectedProviders(),
   });
 
-  const functions = functionsData?.functions ?? [];
   const activeFunctions = functions.filter((f) => f.status === 'deployed').length;
 
   const handleResumeOnboarding = () => {
@@ -783,7 +790,6 @@ export function DashboardPage() {
     uptimeSparkline,
     requestsThisMonth,
     requestsChangePercent,
-    formatRequests,
     requestsSparkline,
     isFree,
     navigate,
@@ -794,7 +800,7 @@ export function DashboardPage() {
     executionRateData,
     memoryLoading,
     memoryData,
-    functions,
+    functions.length,
     trustScoresLoading,
     aggregateTrustScore,
     providerStatusList,

@@ -1,5 +1,6 @@
 import { apiClient } from '@/api/client';
 import { getApiBaseUrl } from '@/lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 import type { LoginRequest, Session, SignupRequest, SignupResponse, User } from '@/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
@@ -40,13 +41,23 @@ function setupAuthSyncListener(store: ReturnType<typeof authStore>) {
   if (typeof window === 'undefined' || window.hasAuthSyncListener) return;
   window.hasAuthSyncListener = true;
 
-  const handleAuthEvent = (event: AuthSyncEvent) => {
+  const handleAuthEvent = async (event: AuthSyncEvent) => {
     if (event.type === 'logout') {
-      const token = localStorage.getItem('ff-access-token');
+      // Check if we already processed this logout event (prevent double-processing)
+      const lastLogoutTime = localStorage.getItem('ff-last-logout-time');
+      const now = Date.now();
+      if (lastLogoutTime && now - parseInt(lastLogoutTime, 10) < 1000) {
+        // Processed a logout within the last second, skip duplicate
+        return;
+      }
+      localStorage.setItem('ff-last-logout-time', now.toString());
+
+      // Check if token is still valid (within 60 seconds of expiry)
+      const token = await tokenVault.getAccessToken();
       if (token) {
         const payload = safeDecodeJwtPayload(token);
-        const now = Math.floor(Date.now() / 1000);
-        if (payload?.exp && payload.exp > now - 60) {
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (payload?.exp && payload.exp > currentTime - 60) {
           return;
         }
       }
@@ -148,8 +159,10 @@ const authStore = create<AuthState>()(
       initialize: async () => {
         setupAuthSyncListener(authStore);
 
-        const jwtToken = localStorage.getItem('ff-access-token');
-        const refreshToken = localStorage.getItem('ff-refresh-token');
+        // Initialize TokenVault and get tokens from secure storage
+        await tokenVault.initialize();
+        const jwtToken = await tokenVault.getAccessToken();
+        const refreshToken = await tokenVault.getRefreshToken();
 
         if (!jwtToken) {
           set({ user: null, session: null, isAuthenticated: false, authChecked: true });
@@ -157,11 +170,10 @@ const authStore = create<AuthState>()(
         }
 
         let cleared = false;
-        const clearAuth = () => {
+        const clearAuth = async () => {
           if (cleared) return;
           cleared = true;
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
+          await tokenVault.clearTokens();
           localStorage.removeItem('ff-last-wallet-agent-id');
           set({
             user: null,
@@ -181,7 +193,7 @@ const authStore = create<AuthState>()(
             const payload = safeDecodeJwtPayload(jwtToken);
             if (!payload) {
               if (!refreshToken) {
-                clearAuth();
+                await clearAuth();
                 return;
               }
             }
@@ -201,7 +213,7 @@ const authStore = create<AuthState>()(
 
               if (!response.ok) {
                 if (!refreshToken) {
-                  clearAuth();
+                  await clearAuth();
                   return;
                 }
               } else {
@@ -264,9 +276,9 @@ const authStore = create<AuthState>()(
               if (refreshResponse.ok) {
                 const refreshData = await refreshResponse.json();
 
-                // Store new tokens
-                localStorage.setItem('ff-access-token', refreshData.token);
-                localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
+                // Store new tokens in encrypted storage
+                await tokenVault.setAccessToken(refreshData.token);
+                await tokenVault.setRefreshToken(refreshData.refresh_token);
 
                 // Create user object from refresh response
                 const user: User = {
@@ -320,7 +332,7 @@ const authStore = create<AuthState>()(
 
               // Refresh failed with 4xx (not 429) - token is invalid, don't retry
               if (refreshResponse.status >= 400 && refreshResponse.status < 500 && refreshResponse.status !== 429) {
-                clearAuth();
+                await clearAuth();
                 return;
               }
 
@@ -333,7 +345,7 @@ const authStore = create<AuthState>()(
             }
 
             // No refresh token or all retries failed
-            clearAuth();
+            await clearAuth();
             return;
           } catch (error) {
             lastError = error instanceof Error ? error : new Error(String(error));
@@ -363,7 +375,7 @@ const authStore = create<AuthState>()(
         }
 
         console.error('Auth initialization failed after all retries:', lastError);
-        clearAuth();
+        await clearAuth();
       },
 
       login: async (data: LoginRequest) => {
@@ -376,9 +388,10 @@ const authStore = create<AuthState>()(
 
           const { user, session } = response;
 
-          localStorage.setItem('ff-access-token', session.access_token);
+          // Store tokens in encrypted storage
+          await tokenVault.setAccessToken(session.access_token);
           if (session.refresh_token) {
-            localStorage.setItem('ff-refresh-token', session.refresh_token);
+            await tokenVault.setRefreshToken(session.refresh_token);
           }
 
           set({
@@ -422,8 +435,8 @@ const authStore = create<AuthState>()(
         } catch (error) {
           console.warn('Logout API call failed:', error);
         } finally {
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
+          await tokenVault.clearTokens();
+          await tokenVault.clearSessionKey();
           localStorage.removeItem('ff-last-wallet-agent-id');
           broadcastAuthEvent({ type: 'logout', timestamp: Date.now() });
           set({
@@ -434,7 +447,7 @@ const authStore = create<AuthState>()(
             mfaRequired: false,
             authChecked: true,
           });
-          // Redirect to login if not already there
+          // Redirect to login if shouldRedirect is true and not already there
           if (shouldRedirect && window.location.pathname !== '/login') {
             const currentPath = window.location.pathname + window.location.search;
             window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
@@ -445,7 +458,7 @@ const authStore = create<AuthState>()(
       clearError: () => set({ error: null }),
 
       refreshSession: async () => {
-        const refreshToken = localStorage.getItem('ff-refresh-token');
+        const refreshToken = await tokenVault.getRefreshToken();
         if (!refreshToken) {
           set({ isAuthenticated: false, authChecked: true });
           return;
@@ -466,8 +479,8 @@ const authStore = create<AuthState>()(
           }
 
           const data = await response.json();
-          localStorage.setItem('ff-access-token', data.token);
-          localStorage.setItem('ff-refresh-token', data.refresh_token);
+          await tokenVault.setAccessToken(data.token);
+          await tokenVault.setRefreshToken(data.refresh_token);
 
           const user: User = {
             id: data.user.id,
@@ -512,8 +525,7 @@ const authStore = create<AuthState>()(
           });
         } catch (error) {
           console.error('Session refresh failed:', error);
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
+          await tokenVault.clearTokens();
           set({
             user: null,
             session: null,
@@ -533,9 +545,10 @@ const authStore = create<AuthState>()(
 
           const { user, session } = response;
 
-          localStorage.setItem('ff-access-token', session.access_token);
+          // Store tokens in encrypted storage
+          await tokenVault.setAccessToken(session.access_token);
           if (session.refresh_token) {
-            localStorage.setItem('ff-refresh-token', session.refresh_token);
+            await tokenVault.setRefreshToken(session.refresh_token);
           }
 
           set({

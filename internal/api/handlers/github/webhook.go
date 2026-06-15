@@ -105,7 +105,13 @@ func (h *Handler) processWebhookEvent(
 		return
 	}
 
-	if sig != "" && !verifyHMAC(body, sig, webhook.WebhookSecret) {
+	if sig == "" {
+		log.Warn("Webhook missing signature header")
+		_ = h.githubRepo.UpdateWebhookDelivery(ctx, webhook.ID, event, false, "missing signature header")
+		return
+	}
+
+	if !verifyHMAC(body, sig, webhook.WebhookSecret) {
 		log.Warn("Webhook signature verification failed")
 		_ = h.githubRepo.UpdateWebhookDelivery(ctx, webhook.ID, event, false, "signature verification failed")
 		return

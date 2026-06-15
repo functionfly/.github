@@ -1,167 +1,53 @@
 /**
  * React hooks for FunctionFly authentication
+ * 
+ * Note: FunctionFlyAuth from '../lib/auth' is deprecated.
+ * Use apiClient from '@/api/client' for all API requests.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { auth, FunctionFlyAuth } from '../lib/auth';
 import { authApi } from '@/api/auth';
+import { apiClient } from '@/api/client';
+import { useAuthStore } from '@/stores/authStore';
 import type { LoginRequest, SignupRequest } from '@/types';
 
-interface User {
-  id: string;
-  email: string;
-  username: string;
-  role: string;
-  plan: string;
-  email_verified: boolean;
-}
-
-interface AuthState {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  error: string | null;
-}
-
+/**
+ * @deprecated Use authStore directly instead. This hook is kept for
+ * backward compatibility.
+ */
 export function useAuth() {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    isLoading: true,
-    error: null,
-  });
+  const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const error = useAuthStore((state) => state.error);
+  const initialize = useAuthStore((state) => state.initialize);
+  const login = useAuthStore((state) => state.login);
+  const logout = useAuthStore((state) => state.logout);
 
-  // Initialize auth state on mount
   useEffect(() => {
-    checkAuthStatus();
-  }, []);
-
-  const checkAuthStatus = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-
-      if (!auth.isAuthenticated()) {
-        setState({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: null,
-        });
-        return;
-      }
-
-      // Try to get user profile to validate token
-      const response = await auth.get('/users/me');
-      if (response.ok) {
-        const userData = await response.json();
-        setState({
-          user: userData,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
-      } else if (response.status === 401) {
-        // Token expired, try refresh
-        try {
-          await auth.refreshAuthToken();
-          const retryResponse = await auth.get('/users/me');
-          if (retryResponse.ok) {
-            const userData = await retryResponse.json();
-            setState({
-              user: userData,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            });
-          } else {
-            throw new Error('Failed to refresh token');
-          }
-        } catch (refreshError) {
-          await auth.logout();
-          setState({
-            user: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: 'Session expired',
-          });
-        }
-      } else {
-        throw new Error(`Failed to get user profile: ${response.statusText}`);
-      }
-    } catch (error) {
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Authentication check failed',
-      });
-    }
-  }, []);
-
-  const login = useCallback(async (email: string, password: string) => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
-
-      await auth.login(email, password);
-
-      // Get user profile after login
-      const response = await auth.get('/users/me');
-      if (response.ok) {
-        const userData = await response.json();
-        setState({
-          user: userData,
-          isAuthenticated: true,
-          isLoading: false,
-          error: null,
-        });
-      } else {
-        throw new Error('Failed to get user profile after login');
-      }
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Login failed',
-      }));
-      throw error;
-    }
-  }, []);
-
-  const logout = useCallback(async () => {
-    try {
-      await auth.logout();
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      });
-    } catch (error) {
-      // Even if logout fails, clear local state
-      setState({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        error: null,
-      });
-    }
-  }, []);
+    initialize();
+  }, [initialize]);
 
   return {
-    user: state.user,
-    isAuthenticated: state.isAuthenticated,
-    isLoading: state.isLoading,
-    error: state.error,
+    user,
+    isAuthenticated,
+    isLoading,
+    error,
     login,
     logout,
-    checkAuthStatus,
+    checkAuthStatus: initialize,
   };
 }
 
 /**
  * Hook for making authenticated API requests with automatic token refresh
+ * Uses apiClient (Axios-based) for consistent behavior with other API calls.
+ * Token refresh is handled automatically by apiClient interceptors.
+ * 
+ * @deprecated Use direct apiClient calls instead. This hook is kept for
+ * backward compatibility during migration.
  */
 export function useAuthenticatedRequest() {
   const [isLoading, setIsLoading] = useState(false);
@@ -170,28 +56,34 @@ export function useAuthenticatedRequest() {
   const makeRequest = useCallback(async (
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
-    body?: any,
-    headers?: Record<string, string>
+    body?: unknown
   ) => {
     try {
       setIsLoading(true);
       setError(null);
 
-      const request = { method, path, body, headers };
-      const response = await auth.request(request);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Request failed: ${response.status} ${response.statusText} - ${errorText}`);
+      let response: unknown;
+      switch (method) {
+        case 'GET':
+          response = await apiClient.get(path);
+          break;
+        case 'POST':
+          response = await apiClient.post(path, body);
+          break;
+        case 'PUT':
+          response = await apiClient.put(path, body);
+          break;
+        case 'PATCH':
+          response = await apiClient.patch(path, body);
+          break;
+        case 'DELETE':
+          response = await apiClient.delete(path);
+          break;
+        default:
+          throw new Error(`Unsupported method: ${method}`);
       }
 
-      // Try to parse JSON response
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        return await response.json();
-      } else {
-        return await response.text();
-      }
+      return response;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Request failed';
       setError(errorMessage);
@@ -210,20 +102,57 @@ export function useAuthenticatedRequest() {
 
 /**
  * Hook for admin operations that automatically handles CSRF and HMAC
+ * Uses apiClient for consistent request handling.
+ * 
+ * @deprecated Admin operations should use specific authApi methods or
+ * direct apiClient calls. This hook is kept for backward compatibility.
  */
 export function useAdminAPI() {
-  const { makeRequest, isLoading, error } = useAuthenticatedRequest();
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const adminRequest = useCallback(async (
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
-    body?: any
+    body?: unknown
   ) => {
-    // Ensure path starts with /v1/admin/
-    const fullPath = path.startsWith('/v1/admin/') ? path : `/v1/admin/${path}`;
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Ensure path starts with /v1/admin/
+      const fullPath = path.startsWith('/v1/admin/') ? path : `/v1/admin/${path}`;
 
-    return makeRequest(method, fullPath, body);
-  }, [makeRequest]);
+      let response: unknown;
+      switch (method) {
+        case 'GET':
+          response = await apiClient.get(fullPath);
+          break;
+        case 'POST':
+          response = await apiClient.post(fullPath, body);
+          break;
+        case 'PUT':
+          response = await apiClient.put(fullPath, body);
+          break;
+        case 'PATCH':
+          response = await apiClient.patch(fullPath, body);
+          break;
+        case 'DELETE':
+          response = await apiClient.delete(fullPath);
+          break;
+        default:
+          throw new Error(`Unsupported method: ${method}`);
+      }
+
+      return response;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Request failed';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   return {
     // Convenience methods for common admin operations

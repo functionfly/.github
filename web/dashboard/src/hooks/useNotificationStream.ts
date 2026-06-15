@@ -59,17 +59,14 @@ export function useNotificationStream(options: UseNotificationStreamOptions = {}
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectAttempts = useRef(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const onNotificationRef = useRef(onNotification);
   onNotificationRef.current = onNotification;
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!enabled || !isAuthenticated || !userId) return;
 
-    const token = localStorage.getItem('ff-access-token');
-    if (!token?.trim()) return;
-
     const url = new URL(`${wsBaseFromApiUrl()}/v1/notifications/stream`);
-    url.searchParams.set('token', token);
 
     const ws = new WebSocket(url.toString());
     wsRef.current = ws;
@@ -99,30 +96,35 @@ export function useNotificationStream(options: UseNotificationStreamOptions = {}
       }
     };
 
-    ws.onerror = () => {
-      setError('Notification stream connection error');
-    };
-
     ws.onclose = () => {
       setIsConnected(false);
       wsRef.current = null;
-      if (!enabled || !isAuthenticated) return;
-      if (reconnectAttempts.current >= 5) return;
-      reconnectAttempts.current += 1;
-      const delay = Math.min(1000 * 2 ** reconnectAttempts.current, 30000);
-      window.setTimeout(connect, delay);
+      if (enabled && isAuthenticated && reconnectAttempts.current < 5) {
+        reconnectAttempts.current += 1;
+        const delay = Math.min(1000 * 2 ** reconnectAttempts.current, 30000);
+        reconnectTimeoutRef.current = setTimeout(() => void connect(), delay);
+      }
+    };
+
+    ws.onerror = () => {
+      setError('Notification stream connection failed');
     };
   }, [enabled, isAuthenticated, userId]);
 
   useEffect(() => {
-    connect();
+    if (!enabled || !isAuthenticated) return;
+    void connect();
     return () => {
-      wsRef.current?.close();
-      wsRef.current = null;
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
-  }, [connect]);
+  }, [enabled, isAuthenticated, connect]);
 
   return { isConnected, error };
 }
-
-export default useNotificationStream;

@@ -1899,13 +1899,16 @@ type RevenueRecognitionReport struct {
 // LoginHint preserves the tenant subdomain or email context through the OAuth flow.
 // DeviceFingerprint stores a hash of device characteristics for session binding validation.
 type OAuthState struct {
-	State             string    `gorm:"column:state;primaryKey;size:512"`
-	ExpiresAt         time.Time `gorm:"column:expires_at;not null"`
-	RedirectURI       string    `gorm:"column:redirect_uri;type:text"`
-	InviteCode        string    `gorm:"column:invite_code;type:text"`
-	CodeVerifier      string    `gorm:"column:code_verifier;type:text"`      // PKCE code verifier (S256)
-	LoginHint         string    `gorm:"column:login_hint;type:text"`         // Preserved tenant/email context
-	DeviceFingerprint string    `gorm:"column:device_fingerprint;type:text"` // Device fingerprint for session binding
+	State             string     `gorm:"column:state;primaryKey;size:512"`
+	ExpiresAt         time.Time  `gorm:"column:expires_at;not null"`
+	RedirectURI       string     `gorm:"column:redirect_uri;type:text"`
+	InviteCode        string     `gorm:"column:invite_code;type:text"`
+	CodeVerifier      string     `gorm:"column:code_verifier;type:text"`      // PKCE code verifier (S256)
+	LoginHint         string     `gorm:"column:login_hint;type:text"`         // Preserved tenant/email context
+	DeviceFingerprint string     `gorm:"column:device_fingerprint;type:text"` // Device fingerprint for session binding
+	UserID            uuid.UUID  `gorm:"column:user_id;type:uuid;index"`
+	TenantID          uuid.UUID  `gorm:"column:tenant_id;type:uuid;index"`
+	Provider          string     `gorm:"column:provider;size:64;index"`
 }
 
 // SignupInviteCode stores hashed platform signup invite codes (invite-only launch).

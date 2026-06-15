@@ -12,7 +12,7 @@ import { APP_ORIGIN, API_ORIGIN } from "../config";
 export const prerender = false;
 
 const inviteCode = Astro.url.searchParams.get("invite_code") || undefined;
-const redirectTo = Astro.url.searchParams.get("redirect_to") || undefined;
+const redirectTo = Astro.url.searchParams.get("redirect") || Astro.url.searchParams.get("redirect_to") || undefined;
 const magicParam = Astro.url.searchParams.get("magic") || undefined;
 const showMagic = magicParam === "true";
 const resetSuccess = Astro.url.searchParams.get("reset") === "success";

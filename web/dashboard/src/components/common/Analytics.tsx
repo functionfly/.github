@@ -1,4 +1,5 @@
 import { getAnalyticsSettings } from '@/api';
+import { tokenVault } from '@/utils/token-vault';
 import { loadGoogleAnalytics } from '@/components/cookie-consent/ConditionalScriptLoader';
 import { identifyUser, initMixpanel, resetUser } from '@/lib/analytics/mixpanel';
 import { COMING_SOON_ONLY } from '@/lib/constants';
@@ -58,7 +59,8 @@ export function Analytics() {
   useEffect(() => {
     const loadAnalyticsSettings = async () => {
       try {
-        const token = localStorage.getItem('ff-access-token');
+        await tokenVault.initialize();
+        const token = await tokenVault.getAccessToken();
         if (!token) {
           setLoaded(true);
           return;

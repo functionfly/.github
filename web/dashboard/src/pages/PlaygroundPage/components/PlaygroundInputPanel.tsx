@@ -2,7 +2,7 @@ import { ManifestInputForm } from '@/components/common/ManifestInputForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useThemeStore } from '@/stores/themeStore';
-import Editor from '@monaco-editor/react';
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 import { AnimatePresence, motion } from 'framer-motion';
 import { BookOpen, FileCode2, FormInput } from 'lucide-react';
 import { useCallback } from 'react';
@@ -146,7 +146,7 @@ export function PlaygroundInputPanel({ className }: PlaygroundInputPanelProps) {
                   transition={{ duration: 0.15 }}
                   className="h-full"
                 >
-                  <Editor
+                  <LazyMonacoEditor
                     height="100%"
                     language="json"
                     value={inputJson}

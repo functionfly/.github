@@ -1,6 +1,7 @@
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
 import fs from 'fs';
 import path from 'path';
 import type { PluginOption } from 'vite';
@@ -82,6 +83,12 @@ export default defineConfig({
           sourcemaps: { assets: './dist/**' },
         })
       : undefined,
+    visualizer({
+      filename: 'dist/bundle-stats.html',
+      open: false,
+      gzipSize: true,
+      brotliSize: true,
+    }),
   ].filter(Boolean) as PluginOption[],
 
   resolve: {
@@ -134,6 +141,24 @@ export default defineConfig({
       '@react-three/postprocessing',
     ],
     exclude: [],
+  },
+
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('react') && (id.includes('react-dom') || id.includes('react-router'))) return 'vendor-react';
+            if (id.includes('framer-motion')) return 'vendor-motion';
+            if (id.includes('@radix-ui/')) return 'vendor-radix';
+            if (id.includes('zustand') || id.includes('immer') || id.includes('date-fns') || id.includes('clsx') || id.includes('tailwind-merge') || id.includes('lodash') || id.includes('axios') || id.includes('zod')) return 'vendor-utils';
+            if (id.includes('three') || id.includes('@react-three/')) return 'vendor-three';
+            if (id.includes('recharts')) return 'vendor-charts';
+            if (id.includes('monaco-editor') || id.includes('@monaco-editor/')) return 'vendor-monaco';
+          }
+        },
+      },
+    },
   },
 
   server: {

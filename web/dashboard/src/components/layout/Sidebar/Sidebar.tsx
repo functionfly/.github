@@ -77,53 +77,44 @@ import {
 // Error Boundary — prevents sidebar crash from taking down the whole app
 // ============================================================================
 
-interface ErrorBoundaryState {
-  hasError: boolean;
-  error: Error | null;
+import { ErrorBoundary } from 'react-error-boundary';
+
+function SidebarErrorFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
+  return (
+    <div className="flex items-center justify-center h-screen bg-aviation-bg-primary text-aviation-text-secondary p-6">
+      <div className="text-center">
+        <p className="text-sm font-medium text-aviation-red mb-1">
+          Sidebar failed to load
+        </p>
+        <p className="text-xs text-aviation-text-muted">
+          Refresh the page or sign out to continue.
+        </p>
+        <button
+          onClick={resetErrorBoundary}
+          className="mt-2 text-xs text-aviation-text-muted hover:text-aviation-text-secondary underline"
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  );
 }
 
-class SidebarErrorBoundary extends React.Component<
-  React.PropsWithChildren<Record<string, unknown>>,
-  ErrorBoundaryState
-> {
-  constructor(props: React.PropsWithChildren<Record<string, unknown>>) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
+function SidebarErrorBoundary({ children }: { children: React.ReactNode }) {
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
-  }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('[Sidebar] Render error:', error, errorInfo);
-  }
-
-  componentDidUpdate(prevProps: React.PropsWithChildren<Record<string, unknown>>) {
-    // If the children changed (e.g. route change triggered a re-render),
-    // attempt to recover from a stale error state.
-    if (this.state.hasError && this.props.children !== prevProps.children) {
-      this.setState({ hasError: false, error: null });
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex items-center justify-center h-screen bg-aviation-bg-primary text-aviation-text-secondary p-6">
-          <div className="text-center">
-            <p className="text-sm font-medium text-aviation-red mb-1">
-              Sidebar failed to load
-            </p>
-            <p className="text-xs text-aviation-text-muted">
-              Refresh the page or sign out to continue.
-            </p>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
+  return (
+    <ErrorBoundary
+      onError={(error, info) => {
+        console.error('[Sidebar] Render error:', error, info);
+      }}
+      fallbackRender={({ resetErrorBoundary }) => (
+        <SidebarErrorFallback resetErrorBoundary={resetErrorBoundary} />
+      )}
+    >
+      {children}
+    </ErrorBoundary>
+  );
 }
 
 // ============================================================================

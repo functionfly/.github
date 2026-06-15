@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import Editor, { OnMount, OnChange } from '@monaco-editor/react';
+import { LazyMonacoEditor, type OnMount, type OnChange } from '@/components/LazyMonacoEditor';
 import type { editor } from 'monaco-editor';
 import { SUPPORTED_LANGUAGES, SupportedLanguage } from '../../types/codePaste';
 
@@ -72,7 +72,7 @@ export function CodeEditor({
 
   return (
     <div className="code-editor-wrapper" style={{ height, position: 'relative' }}>
-      <Editor
+      <LazyMonacoEditor
         height={height}
         language={getLanguage()}
         value={value}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { tokenVault } from '@/utils/token-vault';
 import { apiClient } from './client';
 import {
   githubConnectionSchema,
@@ -286,14 +287,15 @@ export const githubApi = {
   // SSE Import Progress
   // ==========================================================================
 
-  streamImportProgress: (
+  streamImportProgress: async (
     importId: string,
     onProgress: (event: ImportProgressEvent) => void,
     onComplete: (event: ImportCompleteEvent) => void,
     onError: (event: ImportErrorEvent) => void
-  ): EventSource => {
+  ): Promise<EventSource> => {
     const baseUrl = apiClient.getBaseUrl();
-    const token = localStorage.getItem('ff-access-token');
+    await tokenVault.initialize();
+    const token = await tokenVault.getAccessToken();
     const url = `${baseUrl}/v1/github/imports/${importId}/progress?token=${encodeURIComponent(token || '')}`;
 
     const eventSource = new EventSource(url);

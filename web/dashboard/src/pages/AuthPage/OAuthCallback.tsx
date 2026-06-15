@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { notifyAdminPanelAfterLogin } from '@/lib/platform-admin';
+import { tokenVault } from '@/utils/token-vault';
 import { useAuthStore } from '@/stores/authStore';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -57,9 +58,8 @@ export function OAuthCallback() {
                 errorDescription || 'An unexpected error occurred during authentication.';
           }
 
-          // Avoid leaving stale tokens from a previous attempt.
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
+          // Clear any stale tokens from encrypted storage
+          await tokenVault.clearTokens();
 
           setErrorMessage(userFriendlyMessage);
           setIsProcessing(false);
@@ -68,21 +68,20 @@ export function OAuthCallback() {
 
         if (!token) {
           console.error('No token received from OAuth callback');
-          localStorage.removeItem('ff-access-token');
-          localStorage.removeItem('ff-refresh-token');
+          await tokenVault.clearTokens();
           setErrorMessage('Authentication failed - no token received. Please try again.');
           setIsProcessing(false);
           return;
         }
 
-        // Avoid leaving stale tokens if initialize() fails.
-        localStorage.removeItem('ff-access-token');
-        localStorage.removeItem('ff-refresh-token');
+        // Clear any stale tokens first
+        await tokenVault.clearTokens();
 
-        // Store the JWT token and refresh token — initialize() will validate them and fetch real user data
-        localStorage.setItem('ff-access-token', token);
+        // Store the JWT token and refresh token in encrypted storage
+        await tokenVault.initialize();
+        await tokenVault.setAccessToken(token);
         if (refreshToken) {
-          localStorage.setItem('ff-refresh-token', refreshToken);
+          await tokenVault.setRefreshToken(refreshToken);
         }
 
         // Re-initialize auth store: validates the token against the backend
@@ -99,8 +98,7 @@ export function OAuthCallback() {
         }
       } catch (error) {
         console.error('OAuth callback processing failed:', error);
-        localStorage.removeItem('ff-access-token');
-        localStorage.removeItem('ff-refresh-token');
+        await tokenVault.clearTokens();
         setErrorMessage('Authentication failed. Please try again.');
         setIsProcessing(false);
       }

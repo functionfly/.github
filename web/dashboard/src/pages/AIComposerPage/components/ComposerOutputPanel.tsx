@@ -1,6 +1,6 @@
 import type { FunctionGenerationResponse, FunctionGenerationResult } from '@/api/composer';
 import { RUNTIME_MONACO_LANG } from '@/api/composer';
-import Editor, { type OnMount } from '@monaco-editor/react';
+import { LazyMonacoEditor, type OnMount } from '@/components/LazyMonacoEditor';
 import {
   Activity,
   Brain,
@@ -335,7 +335,7 @@ export function ComposerOutputPanel({
             <ContextMenu>
               <ContextMenuTrigger className="w-full">
                 <div className="rounded-md border bg-muted/50 overflow-hidden">
-                  <Editor
+                  <LazyMonacoEditor
                     height="300px"
                     language={monacoLanguage}
                     value={streamingResult.code || generatedFunction?.result?.code || ''}

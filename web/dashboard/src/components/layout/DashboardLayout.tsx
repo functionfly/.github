@@ -1,3 +1,4 @@
+import { ErrorBoundary, SectionErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Navbar } from '@/components/common/Navbar';
 import { SupportBubble, SupportChatProvider, UnifiedChatWindow } from '@/components/support';
 import { Footer } from '@/pages/LandingPage/components';
@@ -62,7 +63,7 @@ export function DashboardLayout() {
       />
 
       <div
-        className="h-screen flex flex-row relative mesh-gradient-bg overflow-hidden"
+        className="min-h-screen flex flex-row relative mesh-gradient-bg"
         {...openGestureHandlers}
       >
         {/* Background Effects */}
@@ -74,22 +75,37 @@ export function DashboardLayout() {
           </div>
         </div>
 
-        {/* Sidebar */}
+        {/* Sidebar - min-h-screen ensures it extends full height */}
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
         />
 
-        {/* Main Content */}
+        {/* Main Content - No margin needed on desktop since sidebar is in flex flow */}
         <div className="flex-1 flex flex-col min-w-0 relative dashboard-main-bg transition-all duration-300 ease-in-out">
           <Navbar variant="dashboard" onMenuClick={() => setSidebarOpen(true)} />
 
-          <main className="flex-1 min-h-0 overflow-y-auto pt-20 lg:pt-24 p-4 lg:p-6 pb-24" aria-label="Main content">
+          <main className="flex-1 pt-20 lg:pt-24 p-4 lg:p-6" aria-label="Main content">
             <div className="max-w-7xl mx-auto">
-              <Outlet />
-              <Footer showScrollToTop={false} />
+              {/* ErrorBoundary wraps each dashboard page to prevent one failing component from crashing the entire dashboard */}
+              <ErrorBoundary
+                fallback={
+                  <div className="min-h-[40vh] flex items-center justify-center">
+                    <div className="text-center space-y-4">
+                      <p className="text-lg font-medium">This page encountered an error</p>
+                      <p className="text-sm text-muted-foreground">Try refreshing the page</p>
+                    </div>
+                  </div>
+                }
+              >
+                <SectionErrorBoundary sectionName="Dashboard page">
+                  <Outlet />
+                </SectionErrorBoundary>
+              </ErrorBoundary>
             </div>
           </main>
+
+          <Footer showScrollToTop={false} />
 
           {/* Unified AI + support chat - bottom right */}
           <SupportBubble />

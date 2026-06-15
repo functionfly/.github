@@ -463,6 +463,11 @@ Credit cost per acceptance: **50 credits** (~$0.50)
 
 - All endpoints require JWT auth
 - Tenant isolation: `WHERE tenant_id = $claims.TenantID` on every query
-- Original/mutated code encrypted at rest (AES-256-GCM, same as vault)
+- Original/mutated code encrypted at rest (AES-256-GCM)
+  - Implemented via `DatabaseEncryptionManager` in `internal/storage/encryption.go`
+  - Uses two-tier key system: Master Key (derived via scrypt from `DB_MASTER_KEY_PASSWORD`) → Data Key
+  - Data encrypted with AES-256-GCM, values prefixed with `ENC:` when stored
+  - DNA code fields registered in `encrypted_fields` table for key versioning
+  - Enable via `DB_ENCRYPTION_ENABLED=true` environment variable
 - AI Service calls authenticated via `AI_SERVICE_API_KEY`
 - Mutation acceptance requires wallet balance check before proceeding

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import Editor from '@monaco-editor/react'
+import { LazyMonacoEditor } from '../../components/LazyMonacoEditor'
 import { useTheme } from '../../components/common/ThemeProvider'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
@@ -151,7 +151,7 @@ export function StandalonePlaygroundPage() {
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Code</span>
           </div>
           <div className="flex-1 overflow-hidden">
-            <Editor height="100%" language={runtime.startsWith('python') ? 'python' : 'javascript'}
+            <LazyMonacoEditor height="100%" language={runtime.startsWith('python') ? 'python' : 'javascript'}
               value={code} onChange={v => setCode(v ?? '')} theme={monacoTheme}
               options={{ minimap: { enabled: false }, fontSize: 13, lineNumbers: 'on',
                 scrollBeyondLastLine: false, wordWrap: 'on', tabSize: 4, automaticLayout: true,
@@ -165,7 +165,7 @@ export function StandalonePlaygroundPage() {
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Input (JSON)</span>
             </div>
             <div className="flex-1 overflow-hidden">
-              <Editor height="100%" language="json" value={input} onChange={v => setInput(v ?? '')}
+              <LazyMonacoEditor height="100%" language="json" value={input} onChange={v => setInput(v ?? '')}
                 theme={monacoTheme}
                 options={{ minimap: { enabled: false }, fontSize: 12, lineNumbers: 'off',
                   scrollBeyondLastLine: false, wordWrap: 'on', automaticLayout: true,

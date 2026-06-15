@@ -15,6 +15,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // NotificationDispatcher sends consciousness insights through configured channels.
@@ -666,7 +668,7 @@ func buildDigestHTML(digest *Digest) string {
 </table>
 </td></tr></table>
 </body></html>`,
-		strings.Title(digest.Period),
+		cases.Title(language.English).String(digest.Period),
 		scoreText,
 		len(digest.Insights),
 		insightRows,

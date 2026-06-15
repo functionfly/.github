@@ -132,6 +132,10 @@ func (ws *WorkerService) processChildTasks(ctx context.Context, child *identity.
 }
 
 func (ws *WorkerService) handleTask(ctx context.Context, worker *identity.AgentIdentity, msg *identity.AgentMessage) {
+	// Only process task_delegation messages - ignore heartbeats, capability_discovery, etc.
+	if msg.MessageType != identity.MessageTypeTaskDelegation {
+		return
+	}
 	taskType, _ := msg.Payload["task_type"].(string)
 	taskData, _ := msg.Payload["task_data"].(map[string]any)
 

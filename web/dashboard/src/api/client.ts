@@ -1,6 +1,7 @@
 import { getApiBaseUrl } from '@/lib/constants';
 import { safeParse, ValidationResult } from '@/lib/validation-utils';
 import { useApiReachableStore } from '@/stores/apiReachableStore';
+import { tokenVault } from '@/utils/token-vault';
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { z } from 'zod';
 
@@ -10,6 +11,8 @@ class ApiClient {
   /** Prevents concurrent refresh attempts — the API uses token rotation,
    *  so a second refresh with the old token would 401 and trigger logout. */
   private refreshPromise: Promise<string | null> | null = null;
+  /** Ensures initialization completes before any requests are sent */
+  private initPromise: Promise<void> | null = null;
 
   constructor() {
     const baseURL = getApiBaseUrl();
@@ -20,11 +23,19 @@ class ApiClient {
       },
     });
 
+    // Initialize token vault and load token — block subsequent requests until ready
+    this.initPromise = this.initializeTokenVault();
+
     // Add request interceptor to include auth token and environment header
     this.client.interceptors.request.use(
-      (config) => {
-        // Always get the latest token from localStorage
-        const storedToken = localStorage.getItem('ff-access-token');
+      async (config) => {
+        // Wait for token vault initialization before sending any request
+        if (this.initPromise) {
+          await this.initPromise;
+        }
+
+        // Get token from secure storage (TokenVault encrypted)
+        const storedToken = await tokenVault.getAccessToken();
 
         if (storedToken) {
           this.token = storedToken;
@@ -32,7 +43,6 @@ class ApiClient {
         }
 
         // Add X-Environment header from sidebar store (for API scoping)
-        // Access from localStorage to avoid circular dependencies
         const environment = localStorage.getItem('ff-current-environment');
         if (environment) {
           config.headers['X-Environment'] = environment;
@@ -65,7 +75,7 @@ class ApiClient {
         // Only attempt refresh once per request — _retry flag prevents infinite loops
         // when the retried request itself returns 401 (e.g. wrong tenant, revoked token).
         if (status === 401 && !originalRequest._retry) {
-          const refreshToken = localStorage.getItem('ff-refresh-token');
+          const refreshToken = await tokenVault.getRefreshToken();
           if (refreshToken) {
             try {
               // Prevent concurrent refresh attempts — token rotation means
@@ -98,14 +108,24 @@ class ApiClient {
         return Promise.reject(error);
       }
     );
+  }
 
-    // Load token on initialization
-    this.loadToken();
+  /**
+   * Initialize the TokenVault and load existing tokens
+   */
+  private async initializeTokenVault(): Promise<void> {
+    await tokenVault.initialize();
+    const accessToken = await tokenVault.getAccessToken();
+    if (accessToken) {
+      this.token = accessToken;
+    }
+    // Clear initPromise so subsequent requests don't block unnecessarily
+    this.initPromise = null;
   }
 
   // Helper method to handle auth failures
-  private _handleAuthFailure() {
-    this.clearToken();
+  private async _handleAuthFailure() {
+    await this.clearToken();
     import('@/stores/authStore').then(({ useAuthStore }) => {
       useAuthStore.getState().logout(true);
     });
@@ -113,8 +133,7 @@ class ApiClient {
 
   clearToken() {
     this.token = null;
-    localStorage.removeItem('ff-access-token');
-    localStorage.removeItem('ff-refresh-token');
+    tokenVault.clearTokens();
     localStorage.removeItem('ff-last-wallet-agent-id');
   }
 
@@ -157,7 +176,7 @@ class ApiClient {
    * we retry once after token refresh.
    */
   async fetchCSRFTokenWithRetry(): Promise<string | null> {
-    const refreshToken = localStorage.getItem('ff-refresh-token');
+    const refreshToken = await tokenVault.getRefreshToken();
     if (!refreshToken) {
       return this.fetchCSRFToken();
     }
@@ -181,22 +200,24 @@ class ApiClient {
   }
 
   loadToken() {
-    const token = localStorage.getItem('ff-access-token');
-    if (token) {
-      this.token = token;
-    }
+    // Token is loaded async via TokenVault during initialization
+    // This method is kept for compatibility but is a no-op
   }
 
   getToken() {
     return this.token;
   }
 
-  reloadToken() {
-    this.loadToken();
+  async reloadToken() {
+    await tokenVault.initialize();
+    const accessToken = await tokenVault.getAccessToken();
+    if (accessToken) {
+      this.token = accessToken;
+    }
   }
 
-  checkTokenInStorage() {
-    return localStorage.getItem('ff-access-token');
+  async checkTokenInStorage() {
+    return await tokenVault.getAccessToken();
   }
 
   private async _doRefresh(refreshToken: string): Promise<string | null> {
@@ -215,8 +236,11 @@ class ApiClient {
 
         if (refreshResponse.ok) {
           const refreshData = await refreshResponse.json();
-          localStorage.setItem('ff-access-token', refreshData.token);
-          localStorage.setItem('ff-refresh-token', refreshData.refresh_token);
+          
+          // Store new tokens in encrypted storage
+          await tokenVault.setAccessToken(refreshData.token);
+          await tokenVault.setRefreshToken(refreshData.refresh_token);
+          
           this.token = refreshData.token;
           this.clearCSRFToken();
           return refreshData.token;

@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { tokenVault } from '@/utils/token-vault';
 import { getApiBaseUrl } from '@/lib/constants';
 
 export type PresenceStatus = 'online' | 'away' | 'offline';
@@ -57,24 +58,29 @@ export class PresenceWebSocket {
   private reconnectDelay = 1000;
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private listeners: Map<string, Set<(data: PresenceSocketEvent) => void>> = new Map();
-  private url: string;
+  private baseUrl: string;
   private intentionalClose = false;
 
   constructor() {
-    const baseUrl = getWebSocketUrl();
-    const token = localStorage.getItem('ff-access-token');
-    this.url = token
-      ? `${baseUrl}/v1/users/presence/ws?token=${encodeURIComponent(token)}`
-      : `${baseUrl}/v1/users/presence/ws`;
+    this.baseUrl = getWebSocketUrl();
   }
 
-  connect() {
+  private getWebSocketUrl(token?: string): string {
+    return token
+      ? `${this.baseUrl}/v1/users/presence/ws?token=${encodeURIComponent(token)}`
+      : `${this.baseUrl}/v1/users/presence/ws`;
+  }
+
+  async connect() {
     if (this.ws?.readyState === WebSocket.OPEN) {
       return;
     }
 
     try {
-      this.ws = new WebSocket(this.url);
+      await tokenVault.initialize();
+      const token = await tokenVault.getAccessToken();
+      const url = this.getWebSocketUrl(token || undefined);
+      this.ws = new WebSocket(url);
 
       this.ws.onopen = () => {
         this.intentionalClose = false;
@@ -151,7 +157,7 @@ export class PresenceWebSocket {
 
     setTimeout(() => {
       this.emit('reconnecting', { type: 'reconnecting', attempt: this.reconnectAttempts });
-      this.connect();
+      void this.connect();
     }, delay);
   }
 
@@ -160,29 +166,23 @@ export class PresenceWebSocket {
       this.listeners.set(event, new Set());
     }
     this.listeners.get(event)!.add(callback);
-    return () => {
-      this.listeners.get(event)?.delete(callback);
-    };
+  }
+
+  off(event: string, callback: (data: PresenceSocketEvent) => void) {
+    this.listeners.get(event)?.delete(callback);
   }
 
   private emit(event: string, data: PresenceSocketEvent) {
-    this.listeners.get(event)?.forEach(cb => cb(data));
-    this.listeners.get('*')?.forEach(cb => cb(data));
-  }
-
-  isConnected() {
-    return this.ws?.readyState === WebSocket.OPEN;
+    this.listeners.get(event)?.forEach((cb) => cb(data));
   }
 }
 
 function getWebSocketUrl(): string {
-  const base = getApiBaseUrl() || window.location.origin;
-  if (base.startsWith('http://')) {
-    return base.replace('http://', 'ws://');
-  } else if (base.startsWith('https://')) {
-    return base.replace('https://', 'wss://');
-  }
-  return `ws://${base}`;
+  const base =
+    getApiBaseUrl().startsWith('http://') || getApiBaseUrl().startsWith('https://')
+      ? getApiBaseUrl()
+      : `${typeof window !== 'undefined' ? window.location.origin : ''}${getApiBaseUrl()}`;
+  return base.replace(/^http/, 'ws').replace(/\/$/, '');
 }
 
 export type PresenceSocketEvent =
@@ -191,15 +191,4 @@ export type PresenceSocketEvent =
   | { type: 'reconnecting'; attempt: number }
   | { type: 'failed'; error: string }
   | { type: 'error'; error: string }
-  | { type: 'presence_join'; userId: string; status: PresenceStatus; heartbeat?: PresenceHeartbeatData }
-  | { type: 'presence_leave'; userId: string; status: PresenceStatus }
-  | { type: 'presence_update'; userId: string; status: PresenceStatus; heartbeat?: PresenceHeartbeatData }
-  | { type: 'pong'; timestamp: string };
-
-export interface PresenceHeartbeatData {
-  userId: string;
-  tenantId: string;
-  username?: string;
-  activeAt: string;
-  lastActive: string;
-}
+  | { type: 'presence_update'; userId: string; status: PresenceStatus };

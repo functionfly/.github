@@ -1,6 +1,6 @@
 import type { FunctionGenerationResponse, FunctionGenerationResult } from '@/api/composer';
 import { RUNTIME_MONACO_LANG } from '@/api/composer';
-import Editor from '@monaco-editor/react';
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 import {
   Button,
 } from '@/components/ui/button';
@@ -44,7 +44,7 @@ export function CompareVersionsDialog({
               </span>
             </div>
             <div className="rounded-md border overflow-hidden">
-              <Editor
+              <LazyMonacoEditor
                 height="400px"
                 language={
                   compareItems[0]
@@ -75,7 +75,7 @@ export function CompareVersionsDialog({
               </span>
             </div>
             <div className="rounded-md border overflow-hidden">
-              <Editor
+              <LazyMonacoEditor
                 height="400px"
                 language={
                   compareItems[1]

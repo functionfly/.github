@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { tokenVault } from '@/utils/token-vault';
 import { z } from 'zod';
 
 // Validation schemas
@@ -176,7 +177,7 @@ export const composerApi = {
   },
 
   // Stream function generation (returns EventSource)
-  generateFunctionStream: (data: FunctionGenerationRequest): EventSource => {
+  generateFunctionStream: async (data: FunctionGenerationRequest): Promise<EventSource> => {
     const queryParams = new URLSearchParams({
       description: data.description,
       runtime: data.runtime || 'python',
@@ -185,7 +186,8 @@ export const composerApi = {
       queryParams.append('constraints', data.constraints);
     }
     // EventSource doesn't support headers, so we include a token in the URL for auth
-    const token = localStorage.getItem('ff-access-token');
+    await tokenVault.initialize();
+    const token = await tokenVault.getAccessToken();
     if (token) {
       queryParams.append('_token', token);
     }
@@ -201,14 +203,15 @@ export const composerApi = {
   },
 
   // Stream refinement (returns EventSource)
-  refineFunctionStream: (data: FunctionRefinementRequest): EventSource => {
+  refineFunctionStream: async (data: FunctionRefinementRequest): Promise<EventSource> => {
     const queryParams = new URLSearchParams({
       generation_id: data.generation_id,
       modification_request: data.modification_request,
       preserve_structure: data.preserve_structure?.toString() ?? 'true',
     });
     // EventSource doesn't support headers, so we include a token in the URL for auth
-    const token = localStorage.getItem('ff-access-token');
+    await tokenVault.initialize();
+    const token = await tokenVault.getAccessToken();
     if (token) {
       queryParams.append('_token', token);
     }

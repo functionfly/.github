@@ -572,7 +572,9 @@ func (s *Server) handleDNAServiceHealth(w http.ResponseWriter, r *http.Request) 
 
 	var queueDepth float64
 	if s.dnaRepo != nil {
-		queueDepth = float64(s.dnaRepo.GetQueueDepth(r.Context()))
+		if depth, err := s.dnaRepo.GetQueueDepth(r.Context()); err == nil {
+			queueDepth = float64(depth)
+		}
 	}
 	dna.SetQueueDepth(queueDepth)
 

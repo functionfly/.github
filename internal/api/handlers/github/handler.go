@@ -83,13 +83,9 @@ func (h *Handler) requireAuth(w http.ResponseWriter, r *http.Request) *auth.Clai
 	return claims
 }
 
-// requireAuthOrToken checks Authorization header first, then falls back to ?token= query param.
-// This is needed for SSE (EventSource) which cannot set custom headers.
-//
-// SECURE SSE PATTERN: For production, use cookie-based auth instead of query params.
-// 1. Client calls /imports/{importId}/progress-auth to get a short-lived token in a HttpOnly cookie
-// 2. SSE connection automatically sends the cookie
-// 3. Query param remains as fallback but tokens should be short-lived (<5 min) and single-use
+// requireAuthOrToken validates SSE connections using HttpOnly cookie-based auth.
+// For SSE (EventSource), the client must first obtain a short-lived token via a separate
+// auth endpoint and receive it in a HttpOnly cookie. SSE automatically sends cookies.
 func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *auth.Claims {
 	// Try standard auth first (from middleware)
 	claims := middleware.GetUserFromContext(r)
@@ -97,7 +93,7 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 		return claims
 	}
 
-	// Try HttpOnly cookie first (secure SSE pattern)
+	// Try HttpOnly cookie (secure SSE pattern)
 	if cookie, err := r.Cookie("sse_token"); err == nil && cookie.Value != "" {
 		if h.authSvc != nil {
 			if parsedClaims, err := h.authSvc.ValidateToken(r.Context(), cookie.Value); err == nil {
@@ -106,25 +102,8 @@ func (h *Handler) requireAuthOrToken(w http.ResponseWriter, r *http.Request) *au
 		}
 	}
 
-	// Fall back to token query param for SSE (legacy support)
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		h.respondError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
-		return nil
-	}
-
-	if h.authSvc == nil {
-		h.respondError(w, http.StatusInternalServerError, "config_error", "Auth service not available")
-		return nil
-	}
-
-	parsedClaims, err := h.authSvc.ValidateToken(r.Context(), token)
-	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, "invalid_token", "Invalid or expired token")
-		return nil
-	}
-
-	return parsedClaims
+	h.respondError(w, http.StatusUnauthorized, "unauthorized", "Authentication required")
+	return nil
 }
 
 // resolveAuthorUsername fetches the username for a user ID, required for proper registry authorship.
@@ -172,7 +151,6 @@ func (h *Handler) getGitHubClient(ctx context.Context, userID uuid.UUID) (*githu
 		return nil, fmt.Errorf("decrypt token: %w", err)
 	}
 
-	h.logger.WithField("token_prefix", token[:min(10, len(token))]).Info("getGitHubClient: token decrypted")
 	client := githubsvc.NewClient(token, githubsvc.WithLogger(h.logger))
 	return client, nil
 }

@@ -3,6 +3,7 @@
  * production `admin.functionfly.com`). The main user dashboard links here via `ADMIN_DASHBOARD_URL`.
  */
 import { ADMIN_DASHBOARD_URL } from '@/lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 import { toast } from 'sonner';
 
 /** Matches `internal/auth/roles.go` IsAdminRole — platform staff who may use the standalone admin app. */
@@ -34,12 +35,14 @@ export function decodeJwtRole(token: string | null | undefined): string | undefi
  * After email/OAuth/MFA sign-in, prompt platform staff to open the admin SPA (local :3002 or production host).
  * Uses JWT if `role` is missing (e.g. MFA path before user is hydrated).
  */
-export function notifyAdminPanelAfterLogin(role: string | undefined): void {
+export async function notifyAdminPanelAfterLogin(role: string | undefined): Promise<void> {
   const resolved =
     role ??
-    decodeJwtRole(
-      typeof localStorage !== 'undefined' ? localStorage.getItem('ff-access-token') : null
-    );
+    (await (async () => {
+      await tokenVault.initialize();
+      const token = await tokenVault.getAccessToken();
+      return token ? decodeJwtRole(token) : undefined;
+    })());
   if (!isPlatformAdminRole(resolved) || !ADMIN_DASHBOARD_URL) return;
   toast.success('Signed in', {
     description: 'Open the admin dashboard to manage the platform.',

@@ -6,51 +6,13 @@ import (
 	"encoding/hex"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
 	githubsvc "github.com/functionfly/functionfly/internal/services/github"
-	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	ghOAuth "golang.org/x/oauth2/github"
 )
-
-var (
-	oauthStates   = &stateStore{entries: make(map[string]stateEntry)}
-	oauthStatesMu sync.Mutex
-)
-
-type stateEntry struct {
-	userID   uuid.UUID
-	tenantID uuid.UUID
-	expires  time.Time
-}
-
-type stateStore struct {
-	entries map[string]stateEntry
-}
-
-func (s *stateStore) Set(state string, entry stateEntry) {
-	s.entries[state] = entry
-}
-
-func (s *stateStore) Consume(state string) (stateEntry, bool) {
-	entry, ok := s.entries[state]
-	if ok {
-		delete(s.entries, state)
-	}
-	return entry, ok
-}
-
-func (s *stateStore) Cleanup() {
-	now := time.Now()
-	for k, v := range s.entries {
-		if now.After(v.expires) {
-			delete(s.entries, k)
-		}
-	}
-}
 
 func (h *Handler) getOAuthConfig() *oauth2.Config {
 	clientID := os.Getenv("GITHUB_CLIENT_ID")
@@ -90,13 +52,18 @@ func (h *Handler) HandleConnect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oauthStatesMu.Lock()
-	oauthStates.Set(state, stateEntry{
-		userID:   claims.UserID,
-		tenantID: claims.TenantID,
-		expires:  time.Now().Add(10 * time.Minute),
-	})
-	oauthStatesMu.Unlock()
+	oauthState := &storage.OAuthState{
+		State:    state,
+		UserID:   claims.UserID,
+		TenantID: claims.TenantID,
+		Provider: "github",
+		ExpiresAt: time.Now().Add(10 * time.Minute),
+	}
+	if err := h.githubRepo.CreateOAuthState(r.Context(), oauthState); err != nil {
+		h.logger.WithError(err).Error("Failed to store OAuth state")
+		h.respondError(w, http.StatusInternalServerError, "state_error", "Failed to generate state")
+		return
+	}
 
 	conf := h.getOAuthConfig()
 	url := conf.AuthCodeURL(state, oauth2.AccessTypeOffline)
@@ -114,18 +81,19 @@ func (h *Handler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	oauthStatesMu.Lock()
-	entry, ok := oauthStates.Consume(state)
-	oauthStatesMu.Unlock()
-
-	if !ok {
+	entry, err := h.githubRepo.GetOAuthState(r.Context(), state)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get OAuth state from database")
+		h.respondError(w, http.StatusInternalServerError, "state_error", "Failed to validate OAuth state")
+		return
+	}
+	if entry == nil {
 		h.respondError(w, http.StatusBadRequest, "invalid_state", "Invalid or expired OAuth state")
 		return
 	}
 
-	if time.Now().After(entry.expires) {
-		h.respondError(w, http.StatusBadRequest, "state_expired", "OAuth state has expired")
-		return
+	if err := h.githubRepo.ConsumeOAuthState(r.Context(), state); err != nil {
+		h.logger.WithError(err).Warn("Failed to consume OAuth state (may already be consumed)")
 	}
 
 	conf := h.getOAuthConfig()
@@ -181,7 +149,7 @@ func (h *Handler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		expiresAt = &token.Expiry
 	}
 
-	existing, err := h.githubRepo.GetConnectionByUserAndGitHubID(r.Context(), entry.userID, int64(ghUser.ID))
+	existing, err := h.githubRepo.GetConnectionByUserAndGitHubID(r.Context(), entry.UserID, int64(ghUser.ID))
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to check existing connection")
 		h.respondError(w, http.StatusInternalServerError, "db_error", "Internal server error")
@@ -214,8 +182,8 @@ func (h *Handler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		conn := &storage.GitHubConnection{
-			UserID:           entry.userID,
-			TenantID:         entry.tenantID,
+			UserID:           entry.UserID,
+			TenantID:         entry.TenantID,
 			GithubUserID:     int64(ghUser.ID),
 			GithubUsername:    ghUser.Login,
 			GithubAvatarURL:  &avatarURL,
@@ -407,16 +375,4 @@ func (h *Handler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.respondJSON(w, http.StatusOK, RefreshTokenResponse{ExpiresAt: expiresAt})
-}
-
-func init() {
-	go func() {
-		ticker := time.NewTicker(5 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			oauthStatesMu.Lock()
-			oauthStates.Cleanup()
-			oauthStatesMu.Unlock()
-		}
-	}()
 }

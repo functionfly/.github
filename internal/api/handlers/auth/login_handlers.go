@@ -77,6 +77,14 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	response, err := h.authSvc.Login(context.Background(), identifier, req.Password, ipAddress, userAgent)
 
+	// DEBUG: Log response details
+	logrus.WithFields(logrus.Fields{
+		"identifier": identifier,
+		"err":        err,
+		"hasResponse": response != nil,
+		"hasToken":   response != nil && response.Token != "",
+	}).Debug("Login result")
+
 	if user != nil {
 		_, recordErr := h.authSvc.Repo().CreateLoginAttempt(context.Background(), user.ID, ipAddress, userAgent, err == nil, nil)
 		if recordErr != nil {
@@ -157,6 +165,12 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+
+	// If client wants cookie-based auth (browser clients), set httpOnly cookies
+	// SameSite=Strict provides CSRF protection; Secure ensures HTTPS in production
+	if wantsCookies(r) {
+		setAuthCookies(w, response.Token, response.RefreshToken)
+	}
 	_ = json.NewEncoder(w).Encode(response)
 }
 

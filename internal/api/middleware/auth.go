@@ -33,20 +33,23 @@ func NewAuthMiddleware(authSvc *auth.AuthService) *AuthMiddleware {
 	}
 }
 
-// extractUserFromToken extracts user information from JWT token in Authorization header
+// extractUserFromToken extracts user information from JWT token in Authorization header or httpOnly cookie
 func (m *AuthMiddleware) extractUserFromToken(r *http.Request) (*auth.Claims, error) {
+	// Try Authorization header first (API clients)
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return nil, fmt.Errorf("missing authorization header")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && parts[0] == "Bearer" {
+			return m.authSvc.ValidateToken(r.Context(), parts[1])
+		}
 	}
 
-	// Expected format: "Bearer <token>"
-	parts := strings.SplitN(authHeader, " ", 2)
-	if len(parts) != 2 || parts[0] != "Bearer" {
-		return nil, fmt.Errorf("invalid authorization header format")
+	// Fall back to httpOnly cookie (browser clients)
+	if cookie, err := r.Cookie(auth.CookieNameAccessToken); err == nil && cookie.Value != "" {
+		return m.authSvc.ValidateToken(r.Context(), cookie.Value)
 	}
 
-	return m.authSvc.ValidateToken(ctx, parts[1])
+	return nil, fmt.Errorf("missing authorization header and cookie")
 }
 
 // OptionalAuth parses a valid Bearer JWT when present and sets user context.

@@ -5,16 +5,19 @@
  * auth site (auth.functionfly.com). The auth site manages login/signup flows
  * and redirects back to the dashboard with tokens stored in sessionStorage.
  *
+ * Security: Tokens are stored encrypted via TokenVault to prevent XSS exfiltration.
+ *
  * Flow:
  * 1. Dashboard detects unauthenticated user
  * 2. Redirects to auth site with ?redirect_uri=dashboard/login/callback
  * 3. User authenticates on auth site
  * 4. Auth site stores tokens in sessionStorage and redirects to /auth/callback
- * 5. Dashboard callback handler extracts tokens and stores in localStorage
+ * 5. Dashboard callback handler extracts tokens and stores in TokenVault (encrypted)
  * 6. User continues to intended destination
  */
 
 import { logger } from '@/lib/logger';
+import { tokenVault } from '@/utils/token-vault';
 
 /** Auth site origin - matches web/auth/src/config.ts */
 export function getAuthSiteOrigin(): string {
@@ -95,18 +98,18 @@ export function buildAuthSiteForgotPasswordUrl(): string {
 }
 
 /**
- * Extract and migrate tokens from sessionStorage (set by auth site) to localStorage
+ * Extract and migrate tokens from sessionStorage (set by auth site) to TokenVault (encrypted)
  * This is called by the auth callback handler.
  *
  * The auth site uses these sessionStorage keys:
  * - ff_token (access token)
  * - ff_refresh_token (refresh token)
  */
-export function migrateTokensFromSessionStorage(): {
+export async function migrateTokensFromSessionStorage(): Promise<{
   accessToken: string | null;
   refreshToken: string | null;
-  source: 'sessionStorage' | 'localStorage' | 'none';
-} {
+  source: 'sessionStorage' | 'TokenVault' | 'none';
+}> {
   if (typeof window === 'undefined') {
     return { accessToken: null, refreshToken: null, source: 'none' };
   }
@@ -116,17 +119,18 @@ export function migrateTokensFromSessionStorage(): {
   const sessionRefresh = sessionStorage.getItem('ff_refresh_token');
 
   if (sessionToken) {
-    // Migrate to localStorage for dashboard's existing token management
-    localStorage.setItem('ff-access-token', sessionToken);
+    // Initialize TokenVault and store tokens in encrypted storage
+    await tokenVault.initialize();
+    await tokenVault.setAccessToken(sessionToken);
     if (sessionRefresh) {
-      localStorage.setItem('ff-refresh-token', sessionRefresh);
+      await tokenVault.setRefreshToken(sessionRefresh);
     }
 
     // Clear from sessionStorage to prevent reuse
     sessionStorage.removeItem('ff_token');
     sessionStorage.removeItem('ff_refresh_token');
 
-    logger.info('Migrated tokens from sessionStorage to localStorage');
+    logger.info('Migrated tokens from sessionStorage to TokenVault (encrypted)');
 
     return {
       accessToken: sessionToken,
@@ -135,15 +139,16 @@ export function migrateTokensFromSessionStorage(): {
     };
   }
 
-  // Fall back to checking existing localStorage tokens
-  const localToken = localStorage.getItem('ff-access-token');
-  const localRefresh = localStorage.getItem('ff-refresh-token');
+  // Fall back to checking TokenVault tokens
+  await tokenVault.initialize();
+  const vaultAccess = await tokenVault.getAccessToken();
+  const vaultRefresh = await tokenVault.getRefreshToken();
 
-  if (localToken) {
+  if (vaultAccess) {
     return {
-      accessToken: localToken,
-      refreshToken: localRefresh,
-      source: 'localStorage',
+      accessToken: vaultAccess,
+      refreshToken: vaultRefresh,
+      source: 'TokenVault',
     };
   }
 
@@ -162,12 +167,16 @@ export function hasPendingAuthTokens(): boolean {
 }
 
 /**
- * Clear all auth tokens from both storage types
+ * Clear all auth tokens from both storage types and TokenVault
  */
-export function clearAllAuthTokens(): void {
+export async function clearAllAuthTokens(): Promise<void> {
   if (typeof window === 'undefined') return;
 
-  // Clear localStorage (dashboard's primary storage)
+  // Clear TokenVault (encrypted storage)
+  await tokenVault.clearTokens();
+  await tokenVault.clearSessionKey();
+
+  // Clear localStorage (legacy/unencrypted storage)
   localStorage.removeItem('ff-access-token');
   localStorage.removeItem('ff-refresh-token');
   localStorage.removeItem('ff-last-wallet-agent-id');

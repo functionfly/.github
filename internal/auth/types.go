@@ -5,6 +5,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"
+	"os"
 )
 
 // OAuthProvider represents an OAuth provider configuration
@@ -255,4 +256,50 @@ func GetErrorDescription(code AuthCallbackErrorCode) string {
 		return desc
 	}
 	return ErrorDescriptions[AuthErrUnknown]
+}
+
+// Cookie configuration constants for httpOnly cookie-based auth
+const (
+	// CookieNameAccessToken is the name of the httpOnly cookie holding the access token
+	CookieNameAccessToken = "ff_token"
+	// CookieNameRefreshToken is the name of the httpOnly cookie holding the refresh token
+	CookieNameRefreshToken = "ff_refresh_token"
+	// CookieNameTrustedDevice is the name of the httpOnly cookie for trusted device tokens
+	CookieNameTrustedDevice = "ff_trusted"
+	
+	// CookieMaxAgeAccessToken is the max age for access token cookie (4 hours)
+	CookieMaxAgeAccessToken = 14400 // 4 * 60 * 60
+	// CookieMaxAgeRefreshToken is the max age for refresh token cookie (30 days)
+	CookieMaxAgeRefreshToken = 2592000 // 30 * 24 * 60 * 60
+	// CookieMaxAgeTrustedDevice is the max age for trusted device cookie (30 days)
+	CookieMaxAgeTrustedDevice = 2592000 // 30 * 24 * 60 * 60
+	
+	// CookiePath is the path for auth cookies
+	CookiePath = "/"
+)
+
+// CookieOptions defines the security attributes for auth cookies
+type CookieOptions struct {
+	HttpOnly bool
+	Secure   bool   // true in production (requires HTTPS)
+	SameSite string // Strict, Lax, or None
+	Path     string
+	MaxAge   int
+	Domain   string
+}
+
+// DefaultCookieOptions returns secure cookie options appropriate for the environment
+func DefaultCookieOptions() CookieOptions {
+	secure := os.Getenv("PRODUCTION_ENV") == "true"
+	return CookieOptions{
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: "Strict", // Strict provides CSRF protection
+		Path:     CookiePath,
+	}
+}
+
+// IsProduction returns true if running in production environment
+func IsProduction() bool {
+	return os.Getenv("PRODUCTION_ENV") == "true"
 }

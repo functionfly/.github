@@ -4,6 +4,7 @@
  */
 
 import { getAiServiceBaseUrl } from '@/lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 
 export type ChatRole = 'system' | 'user' | 'assistant';
 
@@ -50,8 +51,8 @@ export async function complete(request: CompletionRequest): Promise<CompletionRe
     stream: false,
   };
 
-  const token =
-    typeof localStorage !== 'undefined' ? localStorage.getItem('ff-access-token') : null;
+  await tokenVault.initialize();
+  const token = await tokenVault.getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -68,15 +69,12 @@ export async function complete(request: CompletionRequest): Promise<CompletionRe
     throw new Error(
       res.status === 502 || res.status === 503
         ? 'AI service is temporarily unavailable.'
-        : text || `AI request failed (${res.status})`
+        : res.status === 401
+        ? 'Authentication required.'
+        : `AI request failed: ${text}`
     );
   }
 
   const data = (await res.json()) as CompletionResponse;
   return data;
-}
-
-/** True when the dashboard can call the AI completion API. */
-export function isAiServiceConfigured(): boolean {
-  return getAiServiceBaseUrl().length > 0;
 }

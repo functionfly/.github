@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 import { API_BASE_URL } from '@/lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 
 // ============================================================================
 // Types & Interfaces
@@ -50,9 +51,10 @@ export interface SupportContext {
 // API Functions
 // ============================================================================
 
-// Helper to get auth token (dashboard uses ff-access-token; legacy auth_token fallback)
-function getAuthToken(): string {
-  return localStorage.getItem('ff-access-token') || localStorage.getItem('auth_token') || '';
+// Helper to get auth token (dashboard uses TokenVault for encrypted storage)
+async function getAuthToken(): Promise<string> {
+  await tokenVault.initialize();
+  return (await tokenVault.getAccessToken()) || '';
 }
 
 async function createConversation(data: {
@@ -63,11 +65,12 @@ async function createConversation(data: {
   function_version?: string;
   is_emergency?: boolean;
 }): Promise<SupportConversation> {
+  const token = await getAuthToken();
   const response = await fetch(`${API_BASE_URL}/v1/support/conversations`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAuthToken()}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(data),
   });
@@ -85,9 +88,10 @@ async function createConversation(data: {
 }
 
 async function getConversation(id: string): Promise<SupportConversation> {
+  const token = await getAuthToken();
   const response = await fetch(`${API_BASE_URL}/v1/support/conversations/${id}`, {
     headers: {
-      Authorization: `Bearer ${getAuthToken()}`,
+      Authorization: `Bearer ${token}`,
     },
   });
   if (!response.ok) throw new Error('Failed to get conversation');
@@ -99,11 +103,12 @@ async function fetchMessages(
   limit = 50,
   offset = 0
 ): Promise<SupportMessage[]> {
+  const token = await getAuthToken();
   const response = await fetch(
     `${API_BASE_URL}/v1/support/conversations/${conversationId}/messages?limit=${limit}&offset=${offset}`,
     {
       headers: {
-        Authorization: `Bearer ${getAuthToken()}`,
+        Authorization: `Bearer ${token}`,
       },
     }
   );
@@ -113,13 +118,14 @@ async function fetchMessages(
 }
 
 async function postMessage(conversationId: string, content: string): Promise<SupportMessage> {
+  const token = await getAuthToken();
   const response = await fetch(
     `${API_BASE_URL}/v1/support/conversations/${conversationId}/messages`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${getAuthToken()}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ content }),
     }
@@ -129,12 +135,13 @@ async function postMessage(conversationId: string, content: string): Promise<Sup
 }
 
 async function escalateConversation(conversationId: string): Promise<void> {
+  const token = await getAuthToken();
   const response = await fetch(
     `${API_BASE_URL}/v1/support/conversations/${conversationId}/escalate`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${getAuthToken()}`,
+        Authorization: `Bearer ${token}`,
       },
     }
   );
@@ -142,13 +149,14 @@ async function escalateConversation(conversationId: string): Promise<void> {
 }
 
 async function resolveConversationRequest(conversationId: string, note?: string): Promise<void> {
+  const token = await getAuthToken();
   const response = await fetch(
     `${API_BASE_URL}/v1/support/conversations/${conversationId}/resolve`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${getAuthToken()}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ note }),
     }
@@ -161,13 +169,14 @@ async function createEmergencyFix(
   functionId: string,
   reason: string
 ): Promise<void> {
+  const token = await getAuthToken();
   const response = await fetch(
     `${API_BASE_URL}/v1/support/conversations/${conversationId}/emergency`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${getAuthToken()}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ function_id: functionId, reason }),
     }
@@ -201,7 +210,7 @@ function useSupportWebSocket({
   const [wsError, setWsError] = useState<string | null>(null);
   const [reconnectAttempt, setReconnectAttempt] = useState(0);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!conversationId) return;
     // Build WebSocket URL from API base (same pattern as useRealtimeSubscription)
     const base =
@@ -210,7 +219,7 @@ function useSupportWebSocket({
         : `${typeof window !== 'undefined' ? window.location.origin : ''}${API_BASE_URL}`;
     const wsBase = base.replace(/^http/, 'ws');
     const wsUrl = `${wsBase.replace(/\/$/, '')}/v1/support/ws`;
-    const token = getAuthToken();
+    const token = await getAuthToken();
     const wsUrlObj = new URL(wsUrl);
     if (token && token.trim()) wsUrlObj.searchParams.set('token', token);
 

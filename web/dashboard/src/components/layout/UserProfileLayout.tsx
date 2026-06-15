@@ -1,3 +1,4 @@
+import { ErrorBoundary, SectionErrorBoundary } from '@/components/common/ErrorBoundary';
 import { Navbar } from '@/components/common/Navbar';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { useSidebarStore } from '@/stores/sidebarStore';
@@ -54,7 +55,21 @@ export function UserProfileLayout() {
 
         <main className="flex-1 pt-20 lg:pt-24 p-4 lg:p-6" aria-label="Main content">
           <div className="max-w-7xl mx-auto">
-            <Outlet />
+            {/* ErrorBoundary wraps each profile page to prevent one failing component from crashing the entire section */}
+            <ErrorBoundary
+              fallback={
+                <div className="min-h-[40vh] flex items-center justify-center">
+                  <div className="text-center space-y-4">
+                    <p className="text-lg font-medium">This page encountered an error</p>
+                    <p className="text-sm text-muted-foreground">Try refreshing the page</p>
+                  </div>
+                </div>
+              }
+            >
+              <SectionErrorBoundary sectionName="Profile page">
+                <Outlet />
+              </SectionErrorBoundary>
+            </ErrorBoundary>
           </div>
         </main>
       </div>

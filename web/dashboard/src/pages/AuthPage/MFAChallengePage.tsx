@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { trackEvent } from '@/lib/analytics';
 import { ADMIN_DASHBOARD_URL } from '@/lib/constants';
+import { tokenVault } from '@/utils/token-vault';
 import {
     decodeJwtRole,
     isPlatformAdminRole,
@@ -54,7 +55,9 @@ export function MFAChallengePage({ onVerify }: MFAChallengePageProps) {
         await verifyMFA(code);
       }
       trackEvent('auth_mfa_verified');
-      const role = decodeJwtRole(localStorage.getItem('ff-access-token'));
+      await tokenVault.initialize();
+      const token = await tokenVault.getAccessToken();
+      const role = decodeJwtRole(token);
       if (
         openAdminAfterLogin &&
         isPlatformAdminRole(role) &&

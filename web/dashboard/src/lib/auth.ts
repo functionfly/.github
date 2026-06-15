@@ -1,7 +1,18 @@
 /**
  * FunctionFly API Authentication Client
- * Handles JWT tokens, CSRF tokens, and HMAC signing for API requests
+ * 
+ * DEPRECATED: This class is deprecated. Use `apiClient` from `@/api/client` and
+ * `authStore` from `@/stores/authStore` instead.
+ * 
+ * This class handles JWT tokens, CSRF tokens, and HMAC signing for API requests.
+ * 
+ * Security: Tokens are stored encrypted via TokenVault to prevent XSS exfiltration.
+ * 
+ * @deprecated Use apiClient (Axios-based) for all API calls. This class will be removed
+ * in a future version. HMAC signing is disabled in browser environments anyway.
  */
+
+import { tokenVault } from '@/utils/token-vault';
 
 interface AuthTokens {
   jwt: string;
@@ -24,6 +35,10 @@ interface SignedRequest extends APIRequest {
   headers: Record<string, string>;
 }
 
+/**
+ * @deprecated Use apiClient from @/api/client for all API requests.
+ * This class is kept for backward compatibility and will be removed.
+ */
 export class FunctionFlyAuth {
   private baseURL: string;
   private jwtToken: string | null = null;
@@ -48,6 +63,15 @@ export class FunctionFlyAuth {
   }
 
   /**
+   * Initialize the auth client and load tokens from secure storage
+   */
+  async initialize(): Promise<void> {
+    await tokenVault.initialize();
+    this.jwtToken = await tokenVault.getAccessToken();
+    this.refreshTokenValue = await tokenVault.getRefreshToken();
+  }
+
+  /**
    * Authenticate user with email/password
    */
   async login(email: string, password: string): Promise<AuthTokens> {
@@ -67,8 +91,11 @@ export class FunctionFlyAuth {
     this.jwtToken = data.token;
     this.refreshTokenValue = data.refresh_token;
 
-    // Store tokens (in production, use secure storage)
-    this.storeTokens();
+    // Store tokens in encrypted storage
+    await tokenVault.setAccessToken(data.token);
+    if (data.refresh_token) {
+      await tokenVault.setRefreshToken(data.refresh_token);
+    }
 
     return {
       jwt: data.token,
@@ -117,8 +144,11 @@ export class FunctionFlyAuth {
     this.jwtToken = data.token;
     this.refreshTokenValue = data.refresh_token;
 
-    // Store tokens (in production, use secure storage)
-    this.storeTokens();
+    // Store tokens in encrypted storage
+    await tokenVault.setAccessToken(data.token);
+    if (data.refresh_token) {
+      await tokenVault.setRefreshToken(data.refresh_token);
+    }
 
     return {
       jwt: data.token,
@@ -150,7 +180,12 @@ export class FunctionFlyAuth {
 
     const data = await response.json();
     this.jwtToken = data.token;
-    this.storeTokens();
+    
+    // Store in encrypted storage
+    await tokenVault.setAccessToken(data.token);
+    if (data.refresh_token) {
+      await tokenVault.setRefreshToken(data.refresh_token);
+    }
 
     return data.token;
   }
@@ -282,7 +317,7 @@ export class FunctionFlyAuth {
         return this.request(request);
       } catch (error) {
         // Refresh failed, user needs to login again
-        this.clearTokens();
+        await this.clearTokens();
         throw new Error('Session expired, please login again');
       }
     }
@@ -314,43 +349,16 @@ export class FunctionFlyAuth {
   }
 
   /**
-   * Token storage (use secure storage in production)
+   * Clear tokens from secure storage
    */
-  private storeTokens(): void {
-    if (typeof window !== 'undefined') {
-      if (this.jwtToken) {
-        localStorage.setItem('ff-access-token', this.jwtToken);
-      }
-      if (this.refreshTokenValue) {
-        localStorage.setItem('ff-refresh-token', this.refreshTokenValue);
-      }
-    }
-  }
-
-  private loadTokens(): void {
-    if (typeof window !== 'undefined') {
-      this.jwtToken = localStorage.getItem('ff-access-token');
-      this.refreshTokenValue = localStorage.getItem('ff-refresh-token');
-    }
-  }
-
-  private clearTokens(): void {
+  async clearTokens(): Promise<void> {
     this.jwtToken = null;
     this.refreshTokenValue = null;
     this.csrfToken = null;
     this.csrfExpiresAt = null;
 
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('ff-access-token');
-      localStorage.removeItem('ff-refresh-token');
-    }
-  }
-
-  /**
-   * Initialize from stored tokens
-   */
-  initialize(): void {
-    this.loadTokens();
+    await tokenVault.clearTokens();
+    await tokenVault.clearSessionKey();
   }
 
   /**
@@ -368,7 +376,7 @@ export class FunctionFlyAuth {
       // Ignore logout errors
     }
 
-    this.clearTokens();
+    await this.clearTokens();
   }
 
   /**

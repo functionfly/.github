@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { tokenVault } from '@/utils/token-vault';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { githubApi } from '@/api/github';
@@ -166,10 +167,11 @@ export function useImportProgress(importId: string | null) {
     }
   }, []);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (!importId) return;
 
-    const token = localStorage.getItem('ff-access-token');
+    await tokenVault.initialize();
+    const token = await tokenVault.getAccessToken();
     if (!token) {
       setStatus('idle');
       return;
@@ -177,7 +179,7 @@ export function useImportProgress(importId: string | null) {
 
     setStatus('connecting');
 
-    const eventSource = githubApi.streamImportProgress(
+    const eventSource = await githubApi.streamImportProgress(
       importId,
       (event) => {
         setProgress(event);
