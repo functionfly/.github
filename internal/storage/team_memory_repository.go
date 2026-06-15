@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"github.com/functionfly/functionfly/internal/types"
 	"context"
 	"fmt"
 	"strings"
@@ -592,4 +593,9 @@ func (r *teamMemoryRepo) CreateEncryptedMemory(ctx context.Context, memory *Team
 // EmbeddingService interface for generating embeddings
 type EmbeddingService interface {
 	GenerateEmbedding(ctx context.Context, text string) ([]float32, error)
+}
+
+// extractTextFromContent is a wrapper around types.ExtractTextFromContent.
+func extractTextFromContent(content types.JSONMap, memoryType string) string {
+	return types.ExtractTextFromContent(content, memoryType)
 }

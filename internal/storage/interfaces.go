@@ -5,14 +5,250 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/functionfly/functionfly/internal/types"
 )
 
-// PgNotification represents a PostgreSQL notification
-type PgNotification struct {
-	PID     int    `json:"pid"`
-	Channel string `json:"channel"`
-	Payload string `json:"payload"`
-}
+// PgNotification is re-exported from the types package.
+type PgNotification = types.PgNotification
+
+// Type aliases for the types package. The canonical definitions live in
+// internal/types; these aliases preserve the public API of the storage package
+// (e.g. `storage.User`, `storage.Repository`, etc.) so existing callers continue
+// to compile unchanged.
+type (
+	APIKeyBudget                      = types.APIKeyBudget
+	APIKeyCostSummary                 = types.APIKeyCostSummary
+	ARRMetrics                        = types.ARRMetrics
+	Achievement                       = types.Achievement
+	AgentFunction                     = types.AgentFunction
+	AgentFunctionCategory             = types.AgentFunctionCategory
+	AgentFunctionDefinition           = types.AgentFunctionDefinition
+	AgentFunctionExecution            = types.AgentFunctionExecution
+	AgentFunctionExecutionsFilter     = types.AgentFunctionExecutionsFilter
+	AgentFunctionPolicy               = types.AgentFunctionPolicy
+	AgentMemory                       = types.AgentMemory
+	AgentMemoryIndex                  = types.AgentMemoryIndex
+	AgentSubscription                 = types.AgentSubscription
+	AgentTierPricing                  = types.AgentTierPricing
+	AgentUsage                        = types.AgentUsage
+	AggregatedBillingUsage            = types.AggregatedBillingUsage
+	AffiliateCode                     = types.AffiliateCode
+	AffiliateCommission               = types.AffiliateCommission
+	AffiliateReferral                 = types.AffiliateReferral
+	Alert                             = types.Alert
+	AnalyticsEvent                    = types.AnalyticsEvent
+	App                               = types.App
+	AuditEvent                        = types.AuditEvent
+	AuthEvent                         = types.AuthEvent
+	Backend                           = types.Backend
+	BackendStatus                     = types.BackendStatus
+	BillingIntegrationSync            = types.BillingIntegrationSync
+	BlogDailyAnalytics                = types.BlogDailyAnalytics
+	BlogAnalyticsSummary              = types.BlogAnalyticsSummary
+	BlogAuthor                        = types.BlogAuthor
+	BlogCategory                      = types.BlogCategory
+	BlogPageView                      = types.BlogPageView
+	BlogPost                          = types.BlogPost
+	BlogSettings                      = types.BlogSettings
+	BlogViewsTimeSeries               = types.BlogViewsTimeSeries
+	BundleSubscription                = types.BundleSubscription
+	ChurnMetrics                      = types.ChurnMetrics
+	CohortRetention                   = types.CohortRetention
+	CostAllocationChargeback          = types.CostAllocationChargeback
+	CostAllocationEntry               = types.CostAllocationEntry
+	CostAllocationFilter              = types.CostAllocationFilter
+	CostAllocationReport              = types.CostAllocationReport
+	CostAnomaly                       = types.CostAnomaly
+	Coupon                            = types.Coupon
+	CouponRedemption                  = types.CouponRedemption
+	CreditNote                        = types.CreditNote
+	CreditNoteFilter                  = types.CreditNoteFilter
+	CreditNoteLineItem                = types.CreditNoteLineItem
+	CreditNoteStats                   = types.CreditNoteStats
+	CurrencyExchangeRate              = types.CurrencyExchangeRate
+	DashboardActivityItem             = types.DashboardActivityItem
+	DashboardMetrics                  = types.DashboardMetrics
+	DeploymentArtifact                = types.DeploymentArtifact
+	EmailEvent                        = types.EmailEvent
+	ExecutionRateByHour               = types.ExecutionRateByHour
+	ExecutionRetentionSettings        = types.ExecutionRetentionSettings
+	ExecutionRetentionSettingsUpdate  = types.ExecutionRetentionSettingsUpdate
+	FailedPaymentMetrics              = types.FailedPaymentMetrics
+	FinancialReport                   = types.FinancialReport
+	FunctionUsageRollup               = types.FunctionUsageRollup
+	GradingConfig                     = types.GradingConfig
+	HealthCheck                       = types.HealthCheck
+	Invoice                           = types.Invoice
+	JSONMap                           = types.JSONMap
+	LTVMetrics                        = types.LTVMetrics
+	LoginAttempt                      = types.LoginAttempt
+	MRRCohortData                     = types.MRRCohortData
+	MRRMetrics                        = types.MRRMetrics
+	MagicLink                         = types.MagicLink
+	NewsletterCampaign                = types.NewsletterCampaign
+	NewsletterCampaignEmail           = types.NewsletterCampaignEmail
+	NewsletterSubscriber              = types.NewsletterSubscriber
+	OAuthState                        = types.OAuthState
+	PasswordPolicy                    = types.PasswordPolicy
+	PaymentMethodInfoExtended         = types.PaymentMethodInfoExtended
+	PendingUsernameChange             = types.PendingUsernameChange
+	PricingModel                      = types.PricingModel
+	PricingTier                       = types.PricingTier
+	Provider                          = types.Provider
+	ProviderSettings                  = types.ProviderSettings
+	RefreshToken                      = types.RefreshToken
+	RevenueRecognitionEntry           = types.RevenueRecognitionEntry
+	RoutingEvent                      = types.RoutingEvent
+	Session                           = types.Session
+	SignupInviteCode                  = types.SignupInviteCode
+	SignupInviteCodeAdminList         = types.SignupInviteCodeAdminList
+	SocialLinks                       = types.SocialLinks
+	StateCheck                        = types.StateCheck
+	StoredWebhookPayload              = types.StoredWebhookPayload
+	StripeSyncEvent                   = types.StripeSyncEvent
+	Subscription                      = types.Subscription
+	SubscriptionChurnEvent            = types.SubscriptionChurnEvent
+	SubscriptionLifecycleMetrics      = types.SubscriptionLifecycleMetrics
+	SupportedCurrency                 = types.SupportedCurrency
+	TaxCalculationRequest             = types.TaxCalculationRequest
+	TaxCalculationResult              = types.TaxCalculationResult
+	TaxExemptionCertificate           = types.TaxExemptionCertificate
+	TaxIDType                         = types.TaxIDType
+	TaxIDValidationLog                = types.TaxIDValidationLog
+	TaxRate                           = types.TaxRate
+	TaxSettings                       = types.TaxSettings
+	TeamInvite                        = types.TeamInvite
+	TeamMemory                        = types.TeamMemory
+	TeamMemoryFilter                  = types.TeamMemoryFilter
+	TeamMemorySearchResult            = types.TeamMemorySearchResult
+	TeamMembership                    = types.TeamMembership
+	TeamPermission                    = types.TeamPermission
+	Tenant                            = types.Tenant
+	TenantAuthAuditLog                = types.TenantAuthAuditLog
+	TenantAuthSettings                = types.TenantAuthSettings
+	TenantInviteCode                  = types.TenantInviteCode
+	TenantMembership                  = types.TenantMembership
+	TenantOAuthProvider               = types.TenantOAuthProvider
+	User                              = types.User
+	UserAchievement                   = types.UserAchievement
+	UserActivity                      = types.UserActivity
+	UserSearchHit                     = types.UserSearchHit
+	UserSkill                         = types.UserSkill
+	UsernameChangeHistory             = types.UsernameChangeHistory
+	UsageByDay                        = types.UsageByDay
+	UsageEvent                        = types.UsageEvent
+	UsageForecastConfig               = types.UsageForecastConfig
+	UsageRollup                       = types.UsageRollup
+	UsageTrend                        = types.UsageTrend
+	VerificationFee                   = types.VerificationFee
+	FunctionVerificationPayment       = types.FunctionVerificationPayment
+	PublisherEarning                  = types.PublisherEarning
+	PlatformFee                       = types.PlatformFee
+	PricingBundle                     = types.PricingBundle
+	PricingTierExtended               = types.PricingTierExtended
+	FounderModeRegistration           = types.FounderModeRegistration
+	DeferredBillingConfig             = types.DeferredBillingConfig
+	FeatureMeasure                    = types.FeatureMeasure
+	CircuitState                      = types.CircuitState
+	Deployment                        = types.Deployment
+	EmailWorkflowConfig               = types.EmailWorkflowConfig
+	EmailWorkflowExecution            = types.EmailWorkflowExecution
+	EnvironmentVariable               = types.EnvironmentVariable
+	MemoryExtraction                  = types.MemoryExtraction
+	ChangelogEntry                    = types.ChangelogEntry
+	ChangelogChange                   = types.ChangelogChange
+	FeedbackType                      = types.FeedbackType
+	FeedbackStatus                    = types.FeedbackStatus
+	FeedbackPriority                  = types.FeedbackPriority
+	DeploymentStatus                  = types.DeploymentStatus
+	DeploymentStatusType              = types.DeploymentStatusType
+	HealthCheckType                   = types.HealthCheckType
+	Team                              = types.Team
+	FeedbackAttachment = types.FeedbackAttachment
+	MonitoringEvent = types.MonitoringEvent
+	PerformanceMetric = types.PerformanceMetric
+	SystemHealthCheck = types.SystemHealthCheck
+	DatabaseMetric = types.DatabaseMetric
+	SecurityScan = types.SecurityScan
+	Vulnerability = types.Vulnerability
+	DashboardConfig = types.DashboardConfig
+	LocalRuntimeInstance = types.LocalRuntimeInstance
+	FunctionConfig = types.FunctionConfig
+	LocalRuntimeHealth = types.LocalRuntimeHealth
+	LocalRuntimeMetric = types.LocalRuntimeMetric
+	FunctionDeployment = types.FunctionDeployment
+	FunctionLog = types.FunctionLog
+	Incident = types.Incident
+	FunctionFavorite = types.FunctionFavorite
+	FunctionFollow = types.FunctionFollow
+	UserFollow = types.UserFollow
+	UsageAlert = types.UsageAlert
+	WaitlistEntry = types.WaitlistEntry
+	WaitlistEntryAdminList = types.WaitlistEntryAdminList
+	WaitlistStats = types.WaitlistStats
+	DailyUsagePoint = types.DailyUsagePoint
+	SpendCap = types.SpendCap
+	UsageAlertHistory = types.UsageAlertHistory
+	UsageForecast = types.UsageForecast
+	CostAllocationSummary = types.CostAllocationSummary
+	DailyCostBreakdown = types.DailyCostBreakdown
+	TenantCostSummary = types.TenantCostSummary
+	UsageExportConfiguration = types.UsageExportConfiguration
+	ExternalBillingSystem = types.ExternalBillingSystem
+	UsageExportJob = types.UsageExportJob
+	UsageExportStatus = types.UsageExportStatus
+	MemoryShare = types.MemoryShare
+	UsageExportTemplate = types.UsageExportTemplate
+	EUVATValidation = types.EUVATValidation
+	TaxJurisdictionReport = types.TaxJurisdictionReport
+	WebhookReplayRequest = types.WebhookReplayRequest
+	DepartmentBudget = types.DepartmentBudget
+	TeamCostAllocation = types.TeamCostAllocation
+	TeamCostBreakdown = types.TeamCostBreakdown
+	BrainSignal = types.BrainSignal
+	BudgetAlert = types.BudgetAlert
+	SignalListParams = types.SignalListParams
+	BrainComposer = types.BrainComposer
+	BrainFeedbackRequest = types.BrainFeedbackRequest
+	BrainSearchResult = types.BrainSearchResult
+	BrainStats = types.BrainStats
+	BrainTrigger = types.BrainTrigger
+	CertQuestion = types.CertQuestion
+	CertQuestionPublic = types.CertQuestionPublic
+	CertTier = types.CertTier
+	CertExam = types.CertExam
+	CertPracticalChallenge = types.CertPracticalChallenge
+	CertCredential = types.CertCredential
+	CertGradingQueueItem = types.CertGradingQueueItem
+	Connector = types.Connector
+	UserConnector = types.UserConnector
+	TopBlogPost = types.TopBlogPost
+	Feedback = types.Feedback
+	UsageSummary = types.UsageSummary
+	DeployKey = types.DeployKey
+	FunctionWebhookDelivery = types.FunctionWebhookDelivery
+	FunctionWebhookSubscription = types.FunctionWebhookSubscription
+	FunctionWebhookTestResponse = types.FunctionWebhookTestResponse
+	GitHubConnection = types.GitHubConnection
+	GitHubRepo = types.GitHubRepo
+	ListReposParams = types.ListReposParams
+	GitHubImport = types.GitHubImport
+	GitHubSyncLog = types.GitHubSyncLog
+	GitHubWebhook = types.GitHubWebhook
+	ListImportsParams = types.ListImportsParams
+	ListSyncLogsParams = types.ListSyncLogsParams
+	GitHubImportTemplate = types.GitHubImportTemplate
+	PCIAuditEvent = types.PCIAuditEvent
+	ContractAsset = types.ContractAsset
+	DeferredRevenueSummary = types.DeferredRevenueSummary
+	PerformanceObligation = types.PerformanceObligation
+	RevenueRecognitionEvent = types.RevenueRecognitionEvent
+	RevenueRecognitionSchedule = types.RevenueRecognitionSchedule
+	RecognizedRevenueSummary = types.RecognizedRevenueSummary
+	UsageExportFormat = types.UsageExportFormat
+	RevenueRecognitionReport = types.RevenueRecognitionReport
+
+)
 
 // Repository defines the interface for data access
 type Repository interface {
@@ -822,3 +1058,33 @@ type Repository interface {
 	CreateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error
 	UpdateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error
 }
+
+// Untyped re-exports of typed string constants from the types package.
+// These allow callers in other packages to use `storage.ExportStatusPending`
+// as a bare identifier (matching the pre-refactor API).
+const (
+	ExportStatusPending    = types.ExportStatusPending
+	ExportStatusProcessing = types.ExportStatusProcessing
+	ExportStatusCompleted  = types.ExportStatusCompleted
+	ExportStatusFailed     = types.ExportStatusFailed
+	ExportStatusExpired    = types.ExportStatusExpired
+
+	ExportFormatCSV     = types.ExportFormatCSV
+	ExportFormatJSON    = types.ExportFormatJSON
+	ExportFormatParquet = types.ExportFormatParquet
+	ExportFormatExcel   = types.ExportFormatExcel
+)
+
+const (
+	Plan           = "plan"
+	PlanFree       = "free"
+	PlanPro        = "pro"
+	PlanTeam       = "team"
+	PlanEnterprise = "enterprise"
+)
+
+const (
+	RecognitionMethodPointInTime = "point_in_time"
+	RecognitionMethodOverTime     = "over_time"
+	ContractAssetType             = "contract_asset"
+)

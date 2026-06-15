@@ -923,12 +923,24 @@ type UsageRollup struct {
 
 // AggregatedBillingUsage represents aggregated usage for billing
 type AggregatedBillingUsage struct {
-	TenantID      uuid.UUID `json:"tenant_id"`
-	EventType     string    `json:"event_type"`
-	PeriodStart   time.Time `json:"period_start"`
-	PeriodEnd     time.Time `json:"period_end"`
-	TotalQuantity int       `json:"total_quantity"`
-	TotalCostCents int64    `json:"total_cost_cents"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	EventType      string    `json:"event_type"`
+	FunctionID     uuid.UUID `json:"function_id"`
+	FunctionName   string    `json:"function_name"`
+	Author         string    `json:"author"`
+	PeriodStart    time.Time `json:"period_start"`
+	PeriodEnd      time.Time `json:"period_end"`
+	TotalQuantity  int       `json:"total_quantity"`
+	TotalCostCents int64     `json:"total_cost_cents"`
+	// Legacy execution-aggregation fields preserved for billing_repository_aggregation.go
+	TotalCalls     int     `json:"total_calls"`
+	SuccessCalls   int     `json:"success_calls"`
+	ErrorCalls     int     `json:"error_calls"`
+	CachedCalls    int     `json:"cached_calls"`
+	TotalDuration  int64   `json:"total_duration_ms"`
+	AvgDuration    float64 `json:"avg_duration_ms"`
+	TotalCPUTimeMs int64   `json:"total_cpu_time_ms"`
+	TotalMemoryMB  int64   `json:"total_memory_mb"`
 }
 
 // Coupon represents a discount coupon
@@ -1623,69 +1635,94 @@ func (CreditNoteLineItem) TableName() string {
 
 // CreditNoteStats represents credit note statistics
 type CreditNoteStats struct {
-	TotalCount      int   `json:"total_count"`
-	TotalValueCents int64 `json:"total_value_cents"`
-	ByStatus        map[string]int `json:"by_status"`
+	TotalCount         int             `json:"total_count"`
+	TotalValueCents    int64           `json:"total_value_cents"`
+	TotalCreditNotes   int64           `json:"total_credit_notes"`
+	TotalCreditedCents int64           `json:"total_credited_cents"`
+	ByStatus           map[string]int64 `json:"by_status"`
 }
 
 // UsageSummary represents a summary of usage for a period
 type UsageSummary struct {
-	TenantID       uuid.UUID `json:"tenant_id"`
-	PeriodStart    time.Time `json:"period_start"`
-	PeriodEnd      time.Time `json:"period_end"`
-	TotalExecutions int64    `json:"total_executions"`
-	TotalCostCents int64    `json:"total_cost_cents"`
-	UniqueFunctions int     `json:"unique_functions"`
+	TenantID        uuid.UUID `json:"tenant_id"`
+	PeriodStart     time.Time `json:"period_start"`
+	PeriodEnd       time.Time `json:"period_end"`
+	TotalExecutions int64     `json:"total_executions"`
+	TotalComputeMs  int64     `json:"total_compute_ms"`
+	EstimatedCost   int       `json:"estimated_cost"`
+	TotalCostCents  int64     `json:"total_cost_cents"`
+	UniqueFunctions int       `json:"unique_functions"`
 }
 
 // FunctionUsageRollup represents function-specific usage rollup
 type FunctionUsageRollup struct {
-	FunctionID     uuid.UUID `json:"function_id"`
-	FunctionName  string    `json:"function_name"`
-	TotalCalls    int64     `json:"total_calls"`
-	TotalCostCents int64    `json:"total_cost_cents"`
+	FunctionID      uuid.UUID `json:"function_id"`
+	FunctionName    string    `json:"function_name"`
+	TotalCalls      int64     `json:"total_calls"`
+	TotalExecutions int64     `json:"total_executions"`
+	TotalDurationMs int64     `json:"total_duration_ms"`
+	TotalCostCents  int64     `json:"total_cost_cents"`
 }
 
 // UsageByDay represents daily usage for dashboard
 type UsageByDay struct {
-	Date     time.Time `json:"date"`
-	Executions int     `json:"executions"`
-	CostCents  int     `json:"cost_cents"`
+	Time       string    `json:"time"`
+	Date       time.Time `json:"date"`
+	Value      int       `json:"value"`
+	Executions int       `json:"executions"`
+	CostCents  int       `json:"cost_cents"`
 }
 
 // ExecutionRateByHour represents hourly execution rate for dashboard
 type ExecutionRateByHour struct {
+	Time        string  `json:"time"`
 	Hour        int     `json:"hour"`
+	Rate        int     `json:"rate"`
+	Value       int     `json:"value"`
 	Executions  int     `json:"executions"`
 	SuccessRate float64 `json:"success_rate"`
 }
 
 // DashboardActivityItem represents an activity item for dashboard
 type DashboardActivityItem struct {
-	ID        uuid.UUID `json:"id"`
-	Type      string    `json:"type"`
-	Title     string    `json:"title"`
-	Timestamp time.Time `json:"timestamp"`
-	Metadata  JSONMap  `json:"metadata,omitempty"`
+	ID           uuid.UUID `json:"id"`
+	Type         string    `json:"type"`
+	Title        string    `json:"title"`
+	Description  string    `json:"description,omitempty"`
+	Timestamp    time.Time `json:"timestamp"`
+	FunctionID   string    `json:"function_id,omitempty"`
+	FunctionName string    `json:"function_name,omitempty"`
+	Metadata     JSONMap   `json:"metadata,omitempty"`
 }
 
 // DashboardMetrics represents dashboard metrics
 type DashboardMetrics struct {
-	TenantID         uuid.UUID `json:"tenant_id"`
-	TotalExecutions  int64     `json:"total_executions"`
-	TotalCostCents   int64     `json:"total_cost_cents"`
-	ActiveFunctions  int      `json:"active_functions"`
-	SuccessRate      float64   `json:"success_rate"`
-	PeriodStart      time.Time `json:"period_start"`
-	PeriodEnd        time.Time `json:"period_end"`
+	TenantID             uuid.UUID `json:"tenant_id"`
+	TotalExecutions      int64     `json:"total_executions"`
+	TotalCostCents       int64     `json:"total_cost_cents"`
+	ActiveFunctions      int       `json:"active_functions"`
+	SuccessRate          float64   `json:"success_rate"`
+	RequestsThisMonth    int64     `json:"requests_this_month"`
+	RequestsPrevMonth    int64     `json:"requests_prev_month"`
+	AvgLatencyMs         *float64  `json:"avg_latency_ms"`
+	UptimePct            *float64  `json:"uptime_pct"`
+	UptimePrevPct        *float64  `json:"uptime_prev_pct"`
+	UptimeSparkline      []float64 `json:"uptime_sparkline,omitempty"`
+	RequestsSparkline    []int64   `json:"requests_sparkline,omitempty"`
+	PeriodStart          time.Time `json:"period_start"`
+	PeriodEnd            time.Time `json:"period_end"`
 }
 
 // CreditNoteFilter represents filter options for credit note queries
 type CreditNoteFilter struct {
-	TenantID *uuid.UUID
-	Status   *string
-	StartDate *time.Time
-	EndDate   *time.Time
+	TenantID        *uuid.UUID
+	InvoiceID       *uuid.UUID
+	PaymentRefundID *uuid.UUID
+	Status          *string
+	StartDate       *time.Time
+	EndDate         *time.Time
+	Limit           int
+	Offset          int
 }
 
 // PaymentRefund represents a refund for a payment

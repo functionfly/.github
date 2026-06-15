@@ -3,7 +3,7 @@ package registry
 import (
 	"database/sql"
 	"database/sql/driver"
-	"encoding/json"
+		"encoding/json"
 	"strings"
 	"fmt"
 	"time"
