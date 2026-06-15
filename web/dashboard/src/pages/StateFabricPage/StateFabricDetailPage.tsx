@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { TriggerConfiguration } from "./components/TriggerConfiguration";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,

@@ -34,6 +34,8 @@ import {
   DollarSign,
   Shield,
   Building2,
+  Gauge,
+  Boxes,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 

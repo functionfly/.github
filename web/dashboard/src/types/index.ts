@@ -1594,7 +1594,7 @@ export interface TenantAuthAuditLog {
 export * from './dna';
 
 /** User certification badge */
-export interface UserCertification extends Omit<PublicBadge, 'tier'> {
+export interface UserCertification extends Omit<import('@/api/certification').PublicBadge, 'tier'> {
   id: string;
   tier_slug: string;
   tier_name: string;

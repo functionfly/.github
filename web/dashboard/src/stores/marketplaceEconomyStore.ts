@@ -8,6 +8,7 @@ import { immer } from 'zustand/middleware/immer'
 import type {
   CreatorEarnings,
   RevenueDataPoint,
+  Subscription,
   SubscriptionStatus,
   BillingCycle,
   LicenseType,

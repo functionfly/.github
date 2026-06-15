@@ -38,6 +38,7 @@ import {
 import { useObservabilityStore } from "@/stores/observabilityStore"
 import { cn } from "@functionfly/ui-core"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@functionfly/ui-core"
+import { Activity } from "lucide-react"
 
 // ============================================================================
 // Types

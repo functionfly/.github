@@ -17,6 +17,7 @@ import {
   SwarmMindVisualizer as SwarmAgentMonitor,
   AmbientTelemetryLayer as TelemetryMetricsPanel,
   DigitalTwinViewport as DigitalTwinView,
+  AmbientEffects,
 } from '@functionfly/ui-futuristic';
 import { Sparkles, Brain, Zap, Activity, Wifi, AudioWaveform, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';

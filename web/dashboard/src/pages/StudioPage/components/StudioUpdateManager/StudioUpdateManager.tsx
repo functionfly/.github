@@ -2,6 +2,7 @@ import { useState } from "react";
 import { GlassCard, Badge, Button } from "@functionfly/ui-core";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Download, RefreshCw, Check, AlertTriangle, Clock, HardDrive,

@@ -192,7 +192,7 @@ export function ConfigurePluginDialog({ plugin, open, onOpenChange, onSaveConfig
 
           {/* Generic / Fallback */}
           {pluginType === "generic" && (
-            <GenericConfigSection config={config} updateConfig={updateConfig} />
+            <GenericConfigSection config={config} updateConfig={updateConfig} setConfig={setConfig} />
           )}
         </div>
 
@@ -217,6 +217,7 @@ export function ConfigurePluginDialog({ plugin, open, onOpenChange, onSaveConfig
 interface ConfigSectionProps {
   config: Record<string, string>;
   updateConfig: (key: string, value: string) => void;
+  setConfig?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
 interface GitHubSectionProps extends ConfigSectionProps {
@@ -985,7 +986,7 @@ function RateLimiterConfigSection({ config, updateConfig }: ConfigSectionProps) 
   );
 }
 
-function GenericConfigSection({ config, updateConfig }: ConfigSectionProps) {
+function GenericConfigSection({ config, updateConfig, setConfig }: ConfigSectionProps) {
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-medium text-white">Plugin Settings</h3>
@@ -1021,7 +1022,16 @@ function GenericConfigSection({ config, updateConfig }: ConfigSectionProps) {
           <textarea
             value={JSON.stringify(config, null, 2)}
             onChange={(e) => {
-              try { setConfig(JSON.parse(e.target.value)); } catch {}
+              try {
+                const parsed = JSON.parse(e.target.value);
+                if (setConfig) {
+                  setConfig(parsed);
+                } else {
+                  Object.entries(parsed).forEach(([k, v]) => {
+                    updateConfig(k, typeof v === "string" ? v : JSON.stringify(v));
+                  });
+                }
+              } catch {}
             }}
             className="w-full h-40 bg-white/5 border border-white/10 rounded-lg p-3 text-xs font-mono text-white/80 resize-none"
           />
