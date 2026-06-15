@@ -16,7 +16,7 @@ export interface UseReceiptRunInput {
 }
 
 async function runReceipt(input: UseReceiptRunInput): Promise<ReceiptRunResponse> {
-  const res = await fetch(API_URLS.receipt.run(input.receiptId), {
+  const res = await fetch(API_URLS.receipts.run(input.receiptId), {
     method: "POST",
     credentials: "omit",
     headers: { "Content-Type": "application/json", Accept: "application/json" },

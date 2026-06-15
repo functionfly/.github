@@ -37,7 +37,7 @@ export default function DNAOverviewPage() {
   const totalFunctions = insights?.total_functions_analyzed || 0;
   const totalMutations = insights?.total_mutations_proposed || 0;
   const acceptedMutations = insights?.total_mutations_accepted || 0;
-  const pendingMutations = insights?.total_mutations_pending || 0;
+  const pendingMutations = insights?.total_mutations_proposed || 0;
   const avgFitness = insights?.avg_fitness_score || 0;
   const costSavings = insights?.total_cost_savings_usd || 0;
   const latencyImprovement = insights?.avg_latency_improvement_pct || 0;

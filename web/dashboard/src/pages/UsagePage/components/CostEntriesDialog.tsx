@@ -178,7 +178,7 @@ export function CostEntriesDialog({
                       </span>
                     </td>
                     <td className="p-2.5 text-right font-mono font-medium">
-                      {formatCostUsd(e.total_cost_cents)}
+                      {formatCostUsd(e.total_cost_usd)}
                     </td>
                   </tr>
                 ))

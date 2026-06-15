@@ -283,6 +283,75 @@ interface CollaborationState {
   pairSession: PairProgrammingSession | null
   tasks: TaskAssignment[]
   selectedTaskId: string | null
+
+  // Actions (defined in the immer setup; exposed on the type for hook access)
+  setPresences: (presences: CollaboratorPresence[]) => void
+  addPresence: (presence: CollaboratorPresence) => void
+  updatePresence: (userId: string, updates: Partial<CollaboratorPresence>) => void
+  removePresence: (userId: string) => void
+  setCurrentUserId: (userId: string | null) => void
+  setVoiceSession: (session: VoiceSession | null) => void
+  setVoiceConnected: (connected: boolean) => void
+  updateVoiceParticipant: (participantId: string, updates: unknown) => void
+  setSharedExecutionId: (id: string | null) => void
+  setSharedExecutionStep: (step: number) => void
+  setSharedExecutionPaused: (paused: boolean) => void
+  addBookmark: (bookmark: ExecutionBookmark) => void
+  removeBookmark: (bookmarkId: string) => void
+  setGraphNodes: (nodes: GraphNode[]) => void
+  setGraphEdges: (edges: unknown[]) => void
+  addGraphNode: (node: unknown) => void
+  updateGraphNode: (nodeId: string, updates: unknown) => void
+  removeGraphNode: (nodeId: string) => void
+  addGraphEdge: (edge: unknown) => void
+  removeGraphEdge: (edgeId: string) => void
+  addGraphOperation: (operation: unknown) => void
+  lockNode: (nodeId: string) => void
+  unlockNode: (nodeId: string) => void
+  setAnnotations: (annotations: Annotation[]) => void
+  addAnnotation: (annotation: Annotation) => void
+  updateAnnotation: (id: string, updates: unknown) => void
+  resolveAnnotation: (id: string) => void
+  deleteAnnotation: (id: string) => void
+  setSelectedAnnotationId: (id: string | null) => void
+  setCurrentRecording: (recording: SessionRecording | null) => void
+  setReplayTime: (time: number) => void
+  setReplaySpeed: (speed: number) => void
+  setIsReplaying: (replaying: boolean) => void
+  setActivities: (activities: ActivityItem[]) => void
+  addActivity: (activity: ActivityItem) => void
+  setHasMoreActivities: (hasMore: boolean) => void
+  setIsLoadingActivities: (loading: boolean) => void
+  setMemoryCards: (cards: MemoryCard[]) => void
+  addMemoryCard: (card: MemoryCard) => void
+  updateMemoryCard: (cardId: string, updates: Partial<MemoryCard>) => void
+  moveMemoryCard: (cardId: string, position: unknown) => void
+  deleteMemoryCard: (cardId: string) => void
+  linkMemoryCards: (cardId: string, targetCardId: string) => void
+  setConflicts: (conflicts: ConflictResolution[]) => void
+  selectConflict: (id: string | null) => void
+  resolveConflict: (id: string, resolution: unknown) => void
+  dismissConflict: (id: string) => void
+  setCurrentReview: (review: ReviewSession | null) => void
+  addReviewComment: (comment: unknown) => void
+  resolveReviewComment: (commentId: string) => void
+  updateReviewStatus: (status: unknown) => void
+  setPromptSegments: (segments: PromptSegment[]) => void
+  addPromptSegment: (segment: PromptSegment) => void
+  updatePromptSegment: (segmentId: string, content: string) => void
+  deletePromptSegment: (segmentId: string) => void
+  setPairSession: (session: PairProgrammingSession | null) => void
+  switchPairRoles: () => void
+  handoverDriver: (newDriverId: string) => void
+  endPairSession: () => void
+  setTasks: (tasks: TaskAssignment[]) => void
+  addTask: (task: TaskAssignment) => void
+  updateTask: (taskId: string, updates: Partial<TaskAssignment>) => void
+  deleteTask: (taskId: string) => void
+  selectTask: (taskId: string | null) => void
+  assignTask: (taskId: string, assignee: string) => void
+  acceptAISuggestion: (taskId: string) => void
+  rejectAISuggestion: (taskId: string) => void
 }
 
 // ============================================================================

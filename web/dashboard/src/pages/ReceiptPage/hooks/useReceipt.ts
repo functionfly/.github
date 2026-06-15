@@ -13,7 +13,7 @@ export function useReceipt(execId: string | undefined): UseQueryResult<Receipt, 
     queryKey: ["receipt", execId],
     queryFn: async () => {
       if (!execId) throw new ApiError(0, "MISSING_ID", "Receipt id is required");
-      const res = await fetch(API_URLS.receipt.get(execId), {
+      const res = await fetch(API_URLS.receipts.get(execId), {
         credentials: "omit",
         headers: { Accept: "application/json" },
       });

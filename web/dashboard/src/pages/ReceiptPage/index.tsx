@@ -48,7 +48,7 @@ function useIsAuthenticated(): boolean {
 function fireViewPing(id: string) {
   // Best-effort. Don't await — never block the page render.
   try {
-    fetch(API_URLS.receipt.view(id), { method: "POST", credentials: "omit", keepalive: true });
+    fetch(API_URLS.receipts.view(id), { method: "POST", credentials: "omit", keepalive: true });
   } catch {
     // ignore
   }

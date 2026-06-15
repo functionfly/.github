@@ -61,6 +61,10 @@ export class PresenceWebSocket {
   private baseUrl: string;
   private intentionalClose = false;
 
+  isConnected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
   constructor() {
     this.baseUrl = getWebSocketUrl();
   }
