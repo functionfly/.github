@@ -1,11 +1,56 @@
-import json
+"""Loan Payment Calculator - Calculate loan amortization."""
+
 
 def handler(event):
-    if isinstance(event, dict):
-        data = event.get("data", "")
-    else:
-        data = ""
-    
-    # TODO: Implement Loan Payment Calculator logic
-    result = {"ok": True, "result": data, "tier": "pro"}
-    return result
+    try:
+        principal = float(event.get("principal", 0))
+        annual_rate = float(event.get("annual_rate", 0))
+        term_months = int(event.get("term_months", 0))
+
+        if principal <= 0:
+            return {"ok": False, "error": "principal must be positive"}
+        if annual_rate < 0 or annual_rate > 100:
+            return {"ok": False, "error": "annual_rate must be between 0 and 100"}
+        if term_months <= 0 or term_months > 600:
+            return {"ok": False, "error": "term_months must be between 1 and 600"}
+
+        monthly_rate = (annual_rate / 100.0) / 12.0
+        num_payments = term_months
+
+        if monthly_rate > 0:
+            monthly_payment = principal * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
+        else:
+            monthly_payment = principal / num_payments
+        monthly_payment = round(monthly_payment, 2)
+
+        total_payment = round(monthly_payment * num_payments, 2)
+        total_interest = round(total_payment - principal, 2)
+
+        schedule = []
+        balance = principal
+        for month in range(1, num_payments + 1):
+            interest_payment = round(balance * monthly_rate, 2)
+            principal_payment = round(monthly_payment - interest_payment, 2)
+            balance = round(balance - principal_payment, 2)
+            if balance < 0:
+                balance = 0
+
+            schedule.append({
+                "month": month,
+                "payment": monthly_payment,
+                "principal": principal_payment,
+                "interest": interest_payment,
+                "balance": balance
+            })
+
+        return {
+            "ok": True,
+            "monthly_payment": monthly_payment,
+            "total_interest": total_interest,
+            "total_payment": total_payment,
+            "amortization_schedule": schedule
+        }
+    except (ValueError, TypeError) as e:
+        return {"ok": False, "error": f"Invalid input: {str(e)}"}
+    except Exception as e:
+        return {"ok": False, "error": f"Internal error: {str(e)}"}
