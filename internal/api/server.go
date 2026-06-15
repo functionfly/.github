@@ -47,6 +47,7 @@ import (
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
+	"github.com/functionfly/functionfly/internal/wallet"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -158,6 +159,8 @@ type Server struct {
 	dnaPartitionScheduler   *scheduler.DNAPartitionScheduler
 	dnaInsightsScheduler    *scheduler.DNAInsightsScheduler
 	browserSvc           browser.Browser
+
+	walletService *wallet.Service
 }
 
 func NewServer(db *storage.PostgresDB) *Server {

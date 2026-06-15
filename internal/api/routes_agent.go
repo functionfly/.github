@@ -84,10 +84,9 @@ func registerAgentRoutes(
 
 	// Create agent runtime handler with billing controller
 	var agentRuntimeBillingCtrl agentruntime.BillingController
-	// TODO: s.walletService is not wired on the Server struct yet.
-	// if s.walletService != nil {
-	// 	agentRuntimeBillingCtrl = &walletBillingAdapter{wallet: s.walletService}
-	// }
+	if s.walletService != nil {
+		agentRuntimeBillingCtrl = &walletBillingAdapter{wallet: s.walletService}
+	}
 	agentRuntimeHandler := agentruntime.NewHandler(agentFuncRepo, agentRuntimeBillingCtrl)
 
 	// Agent function discovery (public)

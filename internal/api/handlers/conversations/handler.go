@@ -103,7 +103,6 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 	}
 
 	// Get real collaboration stats from database
-	_ = r.Context() // TODO: fix - ctx was unused
 	reputation := map[string]int{
 		"builder": 0,
 		"mentor":  0,
@@ -113,7 +112,7 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 
 	// Query trust score from registry ratings
 	var avgTrustScore float64
-	if err := h.repo.DB().Raw(`
+	if err := h.repo.DB().WithContext(r.Context()).Raw(`
 		SELECT COALESCE(AVG(rat.overall_score), 0)
 		FROM registry_functions rf
 		LEFT JOIN registry_function_ratings rat ON rat.function_id = rf.id
@@ -123,12 +122,12 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 
 	// Query function count (builder reputation)
 	var functionCount int64
-	if err := h.repo.DB().Model(&storage.RegistryFunction{}).Where("owner_user_id = ?", targetUserID).Count(&functionCount).Error; err != nil {
+	if err := h.repo.DB().WithContext(r.Context()).Model(&storage.RegistryFunction{}).Where("owner_user_id = ?", targetUserID).Count(&functionCount).Error; err != nil {
 		h.logger.WithError(err).Warn("Failed to get function count for collaboration profile")
 	}
 
 	// Query shared conversations (threads) between current user and target user
-	if err := h.repo.DB().Raw(`
+	if err := h.repo.DB().WithContext(r.Context()).Raw(`
 		SELECT COUNT(DISTINCT cc.id)
 		FROM conversation_conversations cc
 		JOIN conversation_conversation_participants ccp1 ON cc.id = ccp1.conversation_id AND ccp1.user_id = ?
@@ -143,7 +142,7 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 
 	// Query execution count as mentor indicator
 	var executionCount int64
-	if err := h.repo.DB().Raw(`
+	if err := h.repo.DB().WithContext(r.Context()).Raw(`
 		SELECT COALESCE(SUM(execution_count), 0)
 		FROM registry_function_executions
 		WHERE function_id IN (SELECT id FROM registry_functions WHERE owner_user_id = ?)
@@ -170,7 +169,7 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 		FunctionName string
 	}
 	var overlaps []functionOverlap
-	if err := h.repo.DB().Raw(`
+	if err := h.repo.DB().WithContext(r.Context()).Raw(`
 		SELECT rf.author || '/' || rf.name as function_name
 		FROM registry_functions rf
 		WHERE rf.owner_user_id = ?

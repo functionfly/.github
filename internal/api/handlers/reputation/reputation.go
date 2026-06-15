@@ -7,8 +7,10 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,6 +35,8 @@ func NewHandler(repo *storage.PostgresDB, logger *logrus.Logger) *Handler {
 type ReputationProfileResponse struct {
 	UserID              uuid.UUID                      `json:"user_id"`
 	TenantID            uuid.UUID                      `json:"tenant_id"`
+	Username            string                         `json:"username,omitempty"`
+	DisplayName         string                         `json:"display_name,omitempty"`
 	BuilderScore        int                            `json:"builder_score"`
 	OptimizerScore      int                            `json:"optimizer_score"`
 	MentorScore         int                            `json:"mentor_score"`
@@ -89,8 +93,8 @@ type ReputationFarmingAlertResponse struct {
 	ID                uuid.UUID              `json:"id"`
 	Type              string                `json:"type"`
 	Description       string                `json:"description"`
-	AffectedFunctions []string              `json:"affected_functions"`
-	AffectedUsers     []string              `json:"affected_users"`
+	AffectedFunctions []uuid.UUID           `json:"affected_functions"`
+	AffectedUsers     []uuid.UUID           `json:"affected_users"`
 	Severity          string                `json:"severity"`
 	Status            string                `json:"status"`
 	DetectedAt        time.Time             `json:"detected_at"`
@@ -182,16 +186,107 @@ func (h *Handler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetProfileByUserID handles GET /v1/reputation/profile/{userId}
 // Returns a specific user's reputation profile (public)
-// TODO: fix - stubbed due to GORM .Scan() type mismatches
 func (h *Handler) HandleGetProfileByUserID(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	vars := mux.Vars(r)
+	userIDStr := vars["userId"]
+	if userIDStr == "" {
+		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		http.Error(w, `{"error":"Invalid user_id"}`, http.StatusBadRequest)
+		return
+	}
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	profile, err := repo.GetProfile(userID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get reputation profile")
+		http.Error(w, "Failed to get reputation profile", http.StatusInternalServerError)
+		return
+	}
+
+	if profile == nil {
+		http.Error(w, `{"error":"Profile not found"}`, http.StatusNotFound)
+		return
+	}
+
+
+	response := ReputationProfileResponse{
+		UserID:              profile.UserID,
+		TenantID:            profile.TenantID,
+		BuilderScore:        profile.BuilderScore,
+		OptimizerScore:      profile.OptimizerScore,
+		MentorScore:         profile.MentorScore,
+		AgentWhispererScore: profile.AgentWhispererScore,
+		ReliabilityIndex:    profile.ReliabilityIndex,
+		ConsistencyScore:    profile.ConsistencyScore,
+		OverallScore:        profile.OverallScore,
+		Tier:                string(profile.Tier),
+		Badges:              profile.GetBadges(),
+		Stats:               profile.GetStats(),
+		FunctionCount:       profile.FunctionCount,
+		UpdatedAt:           profile.UpdatedAt,
+	}
+
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // HandleGetLeaderboard handles GET /v1/reputation/leaderboard
 // Returns the reputation leaderboard
-// TODO: fix - stubbed due to GORM .Scan() and type mismatches
 func (h *Handler) HandleGetLeaderboard(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	entries, err := repo.GetLeaderboard(pageSize, offset)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get leaderboard")
+		http.Error(w, "Failed to get leaderboard", http.StatusInternalServerError)
+		return
+	}
+
+	// Get total count for pagination
+	var total int64
+	h.repo.GORM.Model(&storage.ReputationProfile{}).Count(&total)
+
+	response := ReputationLeaderboardResponse{
+		Entries:  make([]ReputationLeaderboardEntry, 0, len(entries)),
+		Total:     total,
+		Page:      page,
+		PageSize:  pageSize,
+	}
+
+	for _, entry := range entries {
+		response.Entries = append(response.Entries, ReputationLeaderboardEntry{
+			Rank:                entry.Rank,
+			UserID:              entry.UserID,
+			Username:            entry.Username,
+			DisplayName:         entry.DisplayName,
+			OverallScore:        entry.OverallScore,
+			Tier:                entry.Tier,
+			BuilderScore:        entry.BuilderScore,
+			OptimizerScore:      entry.OptimizerScore,
+			MentorScore:         entry.MentorScore,
+			AgentWhispererScore: entry.AgentWhispererScore,
+			FunctionCount:       entry.FunctionCount,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // HandleGetReputationEvents handles GET /v1/reputation/events
@@ -350,9 +445,39 @@ func (h *Handler) HandleGetTrustWeights(w http.ResponseWriter, r *http.Request) 
 
 // HandleUpdateTrustWeights handles PUT /v1/reputation/trust-weights
 // Updates the trust score weights configuration (admin only)
-// TODO: fix - stubbed due to HasPermission undefined on Claims
 func (h *Handler) HandleUpdateTrustWeights(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	var req TrustScoreWeightsConfigResponse
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	config := &storage.TrustScoreWeightsConfigV2{
+		ID:           req.ID,
+		Name:         req.Name,
+		Description:  req.Description,
+		Reliability:  req.Reliability,
+		Latency:      req.Latency,
+		ErrorRate:    req.ErrorRate,
+		UserRating:   req.UserRating,
+		Verification: req.Verification,
+		IsActive:     req.IsActive,
+	}
+
+	if err := repo.UpdateTrustScoreWeights(config); err != nil {
+		h.logger.WithError(err).Error("Failed to update trust score weights")
+		http.Error(w, "Failed to update trust score weights", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleGetTrustWeightsHistory handles GET /v1/reputation/trust-weights/history
@@ -411,35 +536,206 @@ func (h *Handler) HandleGetTrustWeightsHistory(w http.ResponseWriter, r *http.Re
 
 // HandleGetReputationFarmingAlerts handles GET /v1/reputation/alerts
 // Returns reputation farming alerts (admin only)
-// TODO: fix - stubbed due to HasPermission undefined on Claims
 func (h *Handler) HandleGetReputationFarmingAlerts(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || !claims.HasPermission(auth.PermSystemRead) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	status := r.URL.Query().Get("status")
+
+	offset := (page - 1) * pageSize
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	alerts, total, err := repo.GetReputationFarmingAlerts(status, pageSize, offset)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get reputation farming alerts")
+		http.Error(w, "Failed to get alerts", http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		Alerts   []ReputationFarmingAlertResponse `json:"alerts"`
+		Total    int64                            `json:"total"`
+		Page     int                              `json:"page"`
+		PageSize int                              `json:"page_size"`
+	}{
+		Alerts:   make([]ReputationFarmingAlertResponse, 0, len(alerts)),
+		Total:    total,
+		Page:     page,
+		PageSize: pageSize,
+	}
+
+	for _, alert := range alerts {
+		response.Alerts = append(response.Alerts, ReputationFarmingAlertResponse{
+			ID:                alert.ID,
+			Type:              alert.Type,
+			Description:       alert.Description,
+			AffectedFunctions: alert.AffectedFunctions,
+			AffectedUsers:     alert.AffectedUsers,
+			Severity:          alert.Severity,
+			Status:            alert.Status,
+			DetectedAt:        alert.DetectedAt,
+			ResolvedAt:        alert.ResolvedAt,
+			Notes:             alert.Notes,
+			Details:           alert.Details,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // HandleResolveReputationFarmingAlert handles POST /v1/reputation/alerts/{alertId}/resolve
 // Resolves a reputation farming alert (admin only)
-// TODO: fix - stubbed due to HasPermission undefined on Claims
 func (h *Handler) HandleResolveReputationFarmingAlert(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	vars := mux.Vars(r)
+	alertIDStr := vars["alertId"]
+	alertID, err := uuid.Parse(alertIDStr)
+	if err != nil {
+		http.Error(w, "Invalid alert_id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Notes string `json:"notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	if err := repo.ResolveReputationFarmingAlert(alertID, claims.UserID, req.Notes); err != nil {
+		h.logger.WithError(err).Error("Failed to resolve alert")
+		http.Error(w, "Failed to resolve alert", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleDismissReputationFarmingAlert handles POST /v1/reputation/alerts/{alertId}/dismiss
 // Dismisses a reputation farming alert (admin only)
-// TODO: fix - stubbed due to HasPermission undefined on Claims
 func (h *Handler) HandleDismissReputationFarmingAlert(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	vars := mux.Vars(r)
+	alertIDStr := vars["alertId"]
+	alertID, err := uuid.Parse(alertIDStr)
+	if err != nil {
+		http.Error(w, "Invalid alert_id", http.StatusBadRequest)
+		return
+	}
+
+	var req struct {
+		Notes string `json:"notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	if err := repo.DismissReputationFarmingAlert(alertID, claims.UserID, req.Notes); err != nil {
+		h.logger.WithError(err).Error("Failed to dismiss alert")
+		http.Error(w, "Failed to dismiss alert", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // HandleDetectReputationFarming handles POST /v1/reputation/detect-farming
 // Triggers reputation farming detection (admin only)
-// TODO: fix - stubbed due to HasPermission undefined on Claims
 func (h *Handler) HandleDetectReputationFarming(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	alerts, err := repo.DetectReputationFarming(r.Context())
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to detect reputation farming")
+		http.Error(w, "Failed to detect reputation farming", http.StatusInternalServerError)
+		return
+	}
+
+	response := struct {
+		AlertsDetected int                            `json:"alerts_detected"`
+		Alerts        []ReputationFarmingAlertResponse `json:"alerts"`
+	}{
+		AlertsDetected: len(alerts),
+		Alerts:        make([]ReputationFarmingAlertResponse, 0, len(alerts)),
+	}
+
+	for _, alert := range alerts {
+		response.Alerts = append(response.Alerts, ReputationFarmingAlertResponse{
+			ID:                alert.ID,
+			Type:              alert.Type,
+			Description:       alert.Description,
+			AffectedFunctions: alert.AffectedFunctions,
+			AffectedUsers:     alert.AffectedUsers,
+			Severity:          alert.Severity,
+			Status:            alert.Status,
+			DetectedAt:        alert.DetectedAt,
+			ResolvedAt:        alert.ResolvedAt,
+			Notes:             alert.Notes,
+			Details:           alert.Details,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // HandleCleanupTrustHistory handles POST /v1/reputation/cleanup-trust-history
 // Triggers cleanup of old trust history entries (admin only)
-// TODO: fix - stubbed due to HasPermission undefined on Claims
 func (h *Handler) HandleCleanupTrustHistory(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	var req struct {
+		RetentionDays int `json:"retention_days"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		req.RetentionDays = 90 // default to 90 days
+	}
+
+	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
+	deleted, err := repo.CleanupOldTrustHistory(r.Context(), req.RetentionDays)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to cleanup trust history")
+		http.Error(w, "Failed to cleanup trust history", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"deleted_entries": deleted,
+	})
 }

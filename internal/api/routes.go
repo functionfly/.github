@@ -147,14 +147,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Wallet Service Initialization ────────────────────────────────────────────
 	// Initialize the unified wallet system (replaces user_wallets and agent_billing_controls)
 	walletRepo := wallet.NewRepository(s.postgresDB.GORM)
-	walletService := wallet.NewService(walletRepo, s.redisClient)
-	_ = walletService // Used by admin handlers and webhooks
+	s.walletService = wallet.NewService(walletRepo, s.redisClient)
 
 	// Legacy platform fee repository (still used by registry handlers during migration)
 	platformFeeRepo := registry.NewPlatformFeeRepository(s.postgresDB.GORM)
 	sfAddonRepo := statefabricaddons.NewRepository(s.postgresDB.GORM)
 	billingHandler := billinghandler.NewHandler(s.repo, platformFeeRepo, sfAddonRepo, s.redisClient)
-	billingHandler.SetWalletService(walletService)
+	billingHandler.SetWalletService(s.walletService)
 	tenantWebhookHandler := billinghandler.NewTenantWebhookHandler(s.repo)
 	appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
@@ -163,7 +162,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc, pasteHandler)
 	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
 	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.postgresDB.AnalyticsRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
-	adminHandler.SetWalletService(walletService)
+	adminHandler.SetWalletService(s.walletService)
 
 	// Initialize billing operational repository for webhook replay and tax exemption management
 	billingOperationalRepo := storage.NewBillingOperationalRepository(s.postgresDB.GORM)
@@ -373,7 +372,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	functionRepo := storage.NewFunctionRepository(s.postgresDB.DB)
 
 	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, functionRepo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo, s.recommendationSvc, realtimeUsageTracker)
-	registryHandler.SetWalletService(walletService)
+	registryHandler.SetWalletService(s.walletService)
 
 	// Initialize privacy service and wire it into the registry handler
 	privacyRepo := privacy.NewRepository(s.postgresDB)
@@ -385,7 +384,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	registryHandler.SetPrivacyService(privacyService)
 
 	// Wire up billing controller for paid function execution using the unified wallet system
-	registryHandler.SetBillingController(wallet.NewBillingControllerWrapper(walletService))
+	registryHandler.SetBillingController(wallet.NewBillingControllerWrapper(s.walletService))
 
 	// ---------------------------------------------------------------------------
 	// RuntimeRouter + eager bundling wiring

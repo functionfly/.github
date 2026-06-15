@@ -5,6 +5,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/handlers/reputation"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
@@ -23,6 +24,15 @@ func registerReputationRoutes(
 		return authMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			next.ServeHTTP(w, r)
 		}))
+	}
+
+	// Adapter for RequirePermission to work with mux.Router.Use
+	requirePermission := func(permission string) func(http.Handler) http.Handler {
+		return func(next http.Handler) http.Handler {
+			return authMiddleware.RequirePermission(permission)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				next.ServeHTTP(w, r)
+			}))
+		}
 	}
 
 	reputationRouter := api.PathPrefix("/v1/reputation").Subrouter()
@@ -47,8 +57,7 @@ func registerReputationRoutes(
 	// Admin-only routes
 	adminRouter := reputationRouter.PathPrefix("").Subrouter()
 	adminRouter.Use(requireAuth)
-	// TODO: middleware.RequirePermission is not yet implemented
-	// adminRouter.Use(middleware.RequirePermission("admin:system:read"))
+	adminRouter.Use(requirePermission(auth.PermSystemRead))
 
 	adminRouter.HandleFunc("/trust-weights", reputationHandler.HandleUpdateTrustWeights).Methods("PUT")
 	adminRouter.HandleFunc("/alerts", reputationHandler.HandleGetReputationFarmingAlerts).Methods("GET")
@@ -58,8 +67,7 @@ func registerReputationRoutes(
 	// Admin routes that require write permission
 	adminWriteRouter := reputationRouter.PathPrefix("").Subrouter()
 	adminWriteRouter.Use(requireAuth)
-	// TODO: middleware.RequirePermission is not yet implemented
-	// adminWriteRouter.Use(middleware.RequirePermission("admin:system:write"))
+	adminWriteRouter.Use(requirePermission(auth.PermSystemWrite))
 
 	adminWriteRouter.HandleFunc("/alerts/{alertId}/resolve", reputationHandler.HandleResolveReputationFarmingAlert).Methods("POST")
 	adminWriteRouter.HandleFunc("/alerts/{alertId}/dismiss", reputationHandler.HandleDismissReputationFarmingAlert).Methods("POST")
