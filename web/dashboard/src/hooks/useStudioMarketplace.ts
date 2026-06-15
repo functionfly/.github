@@ -40,6 +40,20 @@ export interface RoyaltyEntry {
   paid: boolean;
 }
 
+export interface MarketplaceLicense {
+  id: string;
+  key?: string;
+  type: 'open' | 'restricted' | 'commercial';
+  functionId: string;
+  functionName: string;
+  purchaserId: string;
+  purchaserName: string;
+  maxActivations?: number;
+  expiresAt?: string;
+  createdAt: string;
+  revokedAt?: string | null;
+}
+
 async function marketplaceFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
@@ -212,6 +226,51 @@ export function useUpdatePricing() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to update pricing: ${error.message}`);
+    },
+  });
+}
+
+export function useMarketplaceLicenses() {
+  return useQuery({
+    queryKey: ['marketplace', 'licenses'],
+    queryFn: () => marketplaceFetch<{ licenses: MarketplaceLicense[] }>('/v1/marketplace/licenses'),
+    staleTime: 1000 * 60,
+  });
+}
+
+export function useCreateLicense() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: Omit<MarketplaceLicense, 'id' | 'key' | 'createdAt' | 'revokedAt'>) =>
+      marketplaceFetch<MarketplaceLicense>('/v1/marketplace/licenses', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketplace', 'licenses'] });
+      toast.success('License created');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to create license: ${error.message}`);
+    },
+  });
+}
+
+export function useRevokeLicense() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (licenseId: string) =>
+      marketplaceFetch<{ ok: boolean }>(`/v1/marketplace/licenses/${licenseId}/revoke`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['marketplace', 'licenses'] });
+      toast.success('License revoked');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to revoke license: ${error.message}`);
     },
   });
 }
