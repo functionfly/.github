@@ -8,7 +8,7 @@
 import { getTrustColorConfig, getTrustScoreBand } from '@/components/functions/TrustScoreBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { BookOpen, Shield, Target, Users, Zap, Hammer, Lightbulb, GraduationCap, Bot } from 'lucide-react';
+import { BookOpen, Shield, Target, Users, Zap, Hammer, Lightbulb, GraduationCap, Bot, type LucideIcon } from 'lucide-react';
 
 export interface TrustMetricsSectionProps {
   trustScore: number;
@@ -73,7 +73,7 @@ interface ReputationScoreBarProps {
   label: string;
   score: number;
   maxScore: number;
-  icon: React.ElementType;
+  icon: LucideIcon;
   color: string;
 }
 

@@ -108,6 +108,7 @@ const InteractiveCard = ({
               await new Promise((resolve) => setTimeout(resolve, 1000));
               setConnected(true);
               setStatus('online');
+              return { success: true };
             }}
           />
         }
@@ -154,7 +155,7 @@ export const DefaultProvider: RenderStory = {
           functionCount={15}
           accent={providerAccents[provider.id]}
           connectDialog={
-            <ConnectDialog provider={provider} accent={providerAccents[provider.id]} onConnect={async () => {}} />
+            <ConnectDialog provider={provider} accent={providerAccents[provider.id]} onConnect={async () => ({ success: false })} />
           }
         />
       </div>

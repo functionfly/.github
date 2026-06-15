@@ -135,7 +135,7 @@ const TimeMachinePage = lazyPage(() => import('@/pages/TimeMachinePage'), 'TimeM
 const NewReplayPage = lazyPage(() => import('@/pages/TimeMachinePage/NewReplayPage'), 'NewReplayPage');
 const ReplayDetailPage = lazyPage(() => import('@/pages/TimeMachinePage/ReplayDetailPage'), 'ReplayDetailPage');
 const UserDashboardFunctionsPage = lazyPage(() => import('@/pages/UserDashboardFunctionsPage'), 'UserDashboardFunctionsPage');
-const UserDashboardSettingsPage = lazyPage(() => import('@/pages/UserDashboardSettingsPage'), 'UserDashboardSettingsPage');
+const UserDashboardSettingsPage = lazyPage(() => import('@/pages/UserDashboardSettingsPage'), 'UserDashboardSettingsPage') as React.ComponentType<{ initialTab?: string }>;
 const VerifyPage = lazyPage(() => import('@/pages/VerifyPage'), 'VerifyPage');
 const WalletPage = lazyPage(() => import('@/pages/WalletPage'), 'WalletPage');
 const AdaptiveUXPage = lazyPage(() => import('@/pages/AdaptiveUXPage'), 'AdaptiveUXPage');

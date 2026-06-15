@@ -354,7 +354,7 @@ export function ProvidersPage() {
       <ConnectDialog
         provider={provider}
         accent={accent}
-        onConnect={async (pid, key) => handleConnect(pid, key)}
+        onConnect={async (pid, key) => (await handleConnect(pid, key)) ?? { success: false }}
       />
     );
   };
@@ -644,7 +644,7 @@ export function ProvidersPage() {
                     isDefault={defaultProviderId === provider.id}
                     onSetDefault={connected ? () => handleSetDefault(provider.id) : undefined}
                     onDisconnect={() => openDisconnectConfirm(provider.id)}
-                    onConnect={async (pid, key) => handleConnect(pid, key)}
+                    onConnect={async (pid, key) => { await handleConnect(pid, key); }}
                     onTestConnection={
                       connected ? () => handleTestConnection(provider.id) : undefined
                     }

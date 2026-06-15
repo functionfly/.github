@@ -30,8 +30,8 @@ export function StudioTopbar({
   const { user } = useAuthStore()
   
   // Get studio context for command palette
-  let setCommandPaletteOpen = useCallback(() => {}, [])
-  let setImmersiveMode = (v: boolean) => {}
+  let setCommandPaletteOpen = useCallback((_v: boolean) => {}, [])
+  let setImmersiveMode = useCallback((_v: boolean) => {}, [])
   
   try {
     const ctx = useStudioContext()

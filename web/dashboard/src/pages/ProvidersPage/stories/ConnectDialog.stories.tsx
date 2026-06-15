@@ -47,6 +47,7 @@ const InteractiveConnect = ({ providerId }: { providerId: string }) => {
           onConnect={async () => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
             setIsOpen(false);
+            return { success: true };
           }}
         />
       )}
@@ -77,6 +78,7 @@ export const AllProviders: RenderStory = {
             accent={providerAccents[provider.id]}
             onConnect={async () => {
               await new Promise((resolve) => setTimeout(resolve, 500));
+              return { success: true };
             }}
           />
         </div>

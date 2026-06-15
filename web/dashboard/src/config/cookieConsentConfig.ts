@@ -144,7 +144,7 @@ export const cookieConsentConfig: CookieConsentConfig = {
     },
     preferencesModal: {
       layout: 'box',
-      position: 'center',
+      position: 'right',
       equalWeightButtons: true,
       flipButtons: false,
     },

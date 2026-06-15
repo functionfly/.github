@@ -232,18 +232,23 @@ export class TokenVault {
     }
 
     const salt = VaultCrypto.generateSalt();
-    const iv = VaultCrypto.generateIV();
+    const ivSource = VaultCrypto.generateIV();
+    const ivBuffer = new ArrayBuffer(ivSource.byteLength);
+    new Uint8Array(ivBuffer).set(ivSource);
+    const iv = new Uint8Array(ivBuffer);
 
     // Import key for this specific encryption operation with salt
     const derivedKey = await this.deriveKeyWithSalt(this.encryptionKey, salt);
     
     const encoder = new TextEncoder();
     const plaintextData = encoder.encode(plaintext);
+    const plaintextBuffer = new ArrayBuffer(plaintextData.byteLength);
+    new Uint8Array(plaintextBuffer).set(plaintextData);
 
     const encryptedBuffer = await crypto.subtle.encrypt(
       { name: 'AES-GCM', iv },
       derivedKey,
-      plaintextData
+      plaintextBuffer
     );
 
     const encryptedBytes = new Uint8Array(encryptedBuffer);
@@ -269,7 +274,10 @@ export class TokenVault {
     }
 
     const salt = this.base64ToUint8Array(entry.salt);
-    const iv = this.base64ToUint8Array(entry.iv);
+    const ivSource = this.base64ToUint8Array(entry.iv);
+    const ivBuffer = new ArrayBuffer(ivSource.byteLength);
+    new Uint8Array(ivBuffer).set(ivSource);
+    const iv = new Uint8Array(ivBuffer);
     const ciphertext = this.base64ToUint8Array(entry.ciphertext);
     const tag = this.base64ToUint8Array(entry.tag);
 
@@ -279,11 +287,13 @@ export class TokenVault {
     const combined = new Uint8Array(ciphertext.length + tag.length);
     combined.set(ciphertext, 0);
     combined.set(tag, ciphertext.length);
+    const combinedBuffer = new ArrayBuffer(combined.byteLength);
+    new Uint8Array(combinedBuffer).set(combined);
 
     const decryptedBuffer = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv },
       derivedKey,
-      combined
+      combinedBuffer
     );
 
     const decoder = new TextDecoder();

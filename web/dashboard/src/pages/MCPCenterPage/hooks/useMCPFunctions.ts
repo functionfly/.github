@@ -25,7 +25,7 @@ export function useMCPFunctions(
   const mcpFunctions: MCPFunction[] = useMemo(() => {
     if (!data?.functions) return [];
 
-    return data.functions.map((fn) => ({
+    return (data.functions as any[]).map((fn) => ({
       id: fn.id,
       author: fn.author,
       name: fn.name,

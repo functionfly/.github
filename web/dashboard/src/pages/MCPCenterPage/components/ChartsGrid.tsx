@@ -104,8 +104,8 @@ export function ChartsGrid({ analytics, isLoading }: ChartsGridProps) {
                 label: `${d.author}/${d.name}`,
                 value: d.calls,
               }))}
-              layout="horizontal"
-              colors={['var(--brand-500)']}
+              series={[{ key: 'value', name: 'Calls', color: 'var(--brand-500)' }]}
+              horizontal
             />
           </div>
         </CardContent>
@@ -123,8 +123,9 @@ export function ChartsGrid({ analytics, isLoading }: ChartsGridProps) {
                 label: d.transport,
                 value: d.count,
               }))}
-              layout="vertical"
-              colors={['var(--brand-500)', 'var(--amber-500)']}
+              series={[
+                { key: 'value', name: 'Count', color: 'var(--brand-500)' },
+              ]}
             />
           </div>
         </CardContent>

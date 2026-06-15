@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import type { OnMount, OnChange } from '@monaco-editor/react';
+import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
 
 const MonacoEditor = lazy(() => import('@monaco-editor/react').then(m => ({ default: m.default })));
 
@@ -9,6 +9,7 @@ interface LazyMonacoEditorProps {
   value?: string;
   onChange?: OnChange;
   onMount?: OnMount;
+  beforeMount?: BeforeMount;
   theme?: string;
   options?: Record<string, unknown>;
   loading?: React.ReactNode;
@@ -38,6 +39,7 @@ export function LazyMonacoEditor({
   value,
   onChange,
   onMount,
+  beforeMount,
   theme = 'vs-dark',
   options,
   loading,
@@ -50,6 +52,7 @@ export function LazyMonacoEditor({
         value={value}
         onChange={onChange}
         onMount={onMount}
+        beforeMount={beforeMount}
         theme={theme}
         options={options}
         loading={loading || <LoadingFallback height={height} />}

@@ -11,6 +11,7 @@ import { initSentry } from './sentry';
 enableMapSet();
 
 // Use bundled monaco-editor (same origin) instead of CDN loader.js — matches CSP script-src 'self'.
+// @ts-expect-error - monaco-editor and @monaco-editor/react have versioned type peers
 loader.config({ monaco });
 
 initSentry();

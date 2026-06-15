@@ -322,7 +322,7 @@ async function studioFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'X-Environment': environment,
-    ...options?.headers,
+    ...(options?.headers as Record<string, string> | undefined),
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

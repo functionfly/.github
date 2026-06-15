@@ -18,6 +18,12 @@ interface SearchResult {
   recent?: boolean;
 }
 
+export interface UniversalSearchEngineProps {
+  onClose?: () => void;
+  extraResults?: SearchResult[];
+  onResultSelect?: (result: SearchResult) => void;
+}
+
 interface SearchCategory {
   id: string;
   name: string;
@@ -46,7 +52,11 @@ const mockResults: SearchResult[] = [
 
 const recentSearches = ["customer churn", "GitHub integration", "theme settings", "HTTP request"];
 
-export function UniversalSearchEngine() {
+export function UniversalSearchEngine({
+  onClose: _onClose,
+  extraResults: _extraResults,
+  onResultSelect: _onResultSelect,
+}: UniversalSearchEngineProps = {}) {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [showRecents, setShowRecents] = useState(true);

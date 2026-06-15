@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/authStore';
+import type { User } from '@/types';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { Globe, Play, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -68,7 +69,7 @@ export function AccountSettingsTab() {
 
       await usersApi.updateMe(payload);
       const me = await usersApi.getMe();
-      useAuthStore.setState({ user: { ...me, isOnline: true } });
+      useAuthStore.setState({ user: { ...me, isOnline: true } as User });
       toast.success('Profile updated successfully');
 
       if (!isDobLocked && dateOfBirth) {

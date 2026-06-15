@@ -13,6 +13,8 @@ export interface ExecutableMessageProps {
   message: ConversationMessage;
   isOwn?: boolean;
   authorDisplayName?: string;
+  authorAvatarUrl?: string;
+  authorInitials?: string;
   className?: string;
   username?: string;
   currentUserId?: string;
