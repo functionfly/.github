@@ -119,7 +119,7 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 	h.writeJSON(w, http.StatusOK, storage.DeployKeyListResponse{
 		DeployKeys: responseList,
-		TotalCount: total,
+		TotalCount: int(total),
 		Page:       page,
 		PageSize:   pageSize,
 	})

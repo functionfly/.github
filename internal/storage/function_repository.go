@@ -519,10 +519,6 @@ func (r *FunctionRepository) DeleteFunctionLogsOlderThan(ctx context.Context, cu
 }
 
 // UsageByDay is a single day's usage count for dashboard
-type UsageByDay struct {
-	Time  string `json:"time"` // date as YYYY-MM-DD or formatted for display
-	Value int64  `json:"value"`
-}
 
 // GetUsageByDay returns daily log counts for the tenant's functions (last N days).
 func (r *FunctionRepository) GetUsageByDay(ctx context.Context, tenantID uuid.UUID, days int) ([]UsageByDay, error) {
@@ -551,27 +547,14 @@ func (r *FunctionRepository) GetUsageByDay(ctx context.Context, tenantID uuid.UU
 		if err := rows.Scan(&day, &count); err != nil {
 			return nil, fmt.Errorf("scan usage row: %w", err)
 		}
-		result = append(result, UsageByDay{Time: day.Format("2006-01-02"), Value: count})
+		result = append(result, UsageByDay{Time: day.Format("2006-01-02"), Value: int(count)})
 	}
 	return result, rows.Err()
 }
 
 // DashboardMetrics holds aggregated metrics for the dashboard (tenant-scoped).
-type DashboardMetrics struct {
-	RequestsThisMonth int64     `json:"requests_this_month"`
-	RequestsPrevMonth int64     `json:"requests_prev_month"`
-	AvgLatencyMs      *float64  `json:"avg_latency_ms,omitempty"`
-	UptimePct         *float64  `json:"uptime_pct,omitempty"`         // last 7 days success rate
-	UptimePrevPct     *float64  `json:"uptime_prev_pct,omitempty"`    // previous 7 days for comparison
-	UptimeSparkline   []float64 `json:"uptime_sparkline,omitempty"`   // 7 daily success rates (newest last)
-	RequestsSparkline []int64   `json:"requests_sparkline,omitempty"` // last 7 days daily counts (newest last)
-}
 
 // ExecutionRateByHour is one hour's execution count for dashboard
-type ExecutionRateByHour struct {
-	Time string `json:"time"`
-	Rate int64  `json:"rate"`
-}
 
 // GetExecutionRateByHour returns hourly log counts for the tenant's functions (last N hours).
 func (r *FunctionRepository) GetExecutionRateByHour(ctx context.Context, tenantID uuid.UUID, hours int) ([]ExecutionRateByHour, error) {
@@ -602,22 +585,13 @@ func (r *FunctionRepository) GetExecutionRateByHour(ctx context.Context, tenantI
 		}
 		result = append(result, ExecutionRateByHour{
 			Time: hour.Format("15:04"),
-			Rate: count,
+			Rate: int(count),
 		})
 	}
 	return result, rows.Err()
 }
 
 // DashboardActivityItem represents one item in the dashboard activity feed (log or deployment).
-type DashboardActivityItem struct {
-	ID           string    `json:"id"`
-	Type         string    `json:"type"` // "deployment", "success", "error", "info", "invocation", "timeout"
-	Title        string    `json:"title"`
-	Description  string    `json:"description,omitempty"`
-	Timestamp    time.Time `json:"timestamp"`
-	FunctionID   string    `json:"function_id,omitempty"`
-	FunctionName string    `json:"function_name,omitempty"`
-}
 
 // GetRecentActivityForTenant returns merged recent deployments and logs for the tenant, sorted by time desc.
 func (r *FunctionRepository) GetRecentActivityForTenant(ctx context.Context, tenantID uuid.UUID, limit int) ([]DashboardActivityItem, error) {
@@ -643,6 +617,7 @@ func (r *FunctionRepository) GetRecentActivityForTenant(ctx context.Context, ten
 	for deployRows.Next() {
 		var id, fnID, fnName, status string
 		var ts time.Time
+		idUUID, _ := uuid.Parse(id)
 		if err := deployRows.Scan(&id, &fnID, &fnName, &status, &ts); err != nil {
 			return nil, fmt.Errorf("scan deployment row: %w", err)
 		}
@@ -653,7 +628,7 @@ func (r *FunctionRepository) GetRecentActivityForTenant(ctx context.Context, ten
 			title = "Deployment failed"
 		}
 		items = append(items, DashboardActivityItem{
-			ID:           id,
+			ID:           idUUID,
 			Type:         mapDeploymentStatusToActivityType(status),
 			Title:        title,
 			Timestamp:    ts,
@@ -687,6 +662,7 @@ func (r *FunctionRepository) GetRecentActivityForTenant(ctx context.Context, ten
 		if err := logRows.Scan(&id, &fnID, &fnName, &level, &message, &ts); err != nil {
 			return nil, fmt.Errorf("scan log row: %w", err)
 		}
+		idUUID := parseUUID(id)
 		fnIDStr := ""
 		if fnID != nil {
 			fnIDStr = fnID.String()
@@ -696,7 +672,7 @@ func (r *FunctionRepository) GetRecentActivityForTenant(ctx context.Context, ten
 			fnNameStr = *fnName
 		}
 		items = append(items, DashboardActivityItem{
-			ID:           id,
+			ID:           idUUID,
 			Type:         mapLogLevelToActivityType(level),
 			Title:        message,
 			Description:  message,
@@ -956,4 +932,9 @@ func sortDashboardActivitiesByTime(items []DashboardActivityItem, limit int) []D
 		return items[:limit]
 	}
 	return items
+}
+
+func parseUUID(s string) uuid.UUID {
+	id, _ := uuid.Parse(s)
+	return id
 }

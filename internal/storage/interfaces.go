@@ -43,6 +43,7 @@ type (
 	Backend                           = types.Backend
 	BackendStatus                     = types.BackendStatus
 	BillingIntegrationSync            = types.BillingIntegrationSync
+	BillingSystemType                 = types.BillingSystemType
 	BlogDailyAnalytics                = types.BlogDailyAnalytics
 	BlogAnalyticsSummary              = types.BlogAnalyticsSummary
 	BlogAuthor                        = types.BlogAuthor
@@ -69,6 +70,9 @@ type (
 	DashboardActivityItem             = types.DashboardActivityItem
 	DashboardMetrics                  = types.DashboardMetrics
 	DeploymentArtifact                = types.DeploymentArtifact
+	DeployKeyCreateRequest            = types.DeployKeyCreateRequest
+	DeployKeyListResponse             = types.DeployKeyListResponse
+	DeployKeyResponse                 = types.DeployKeyResponse
 	EmailEvent                        = types.EmailEvent
 	ExecutionRateByHour               = types.ExecutionRateByHour
 	ExecutionRetentionSettings        = types.ExecutionRetentionSettings
@@ -76,16 +80,28 @@ type (
 	FailedPaymentMetrics              = types.FailedPaymentMetrics
 	FinancialReport                   = types.FinancialReport
 	FunctionUsageRollup               = types.FunctionUsageRollup
+	FunctionWebhookCreateRequest      = types.FunctionWebhookCreateRequest
+	FunctionWebhookDeliveryListResponse = types.FunctionWebhookDeliveryListResponse
+	FunctionWebhookDeliveryResponse   = types.FunctionWebhookDeliveryResponse
+	FunctionWebhookListResponse       = types.FunctionWebhookListResponse
+	FunctionWebhookResponse           = types.FunctionWebhookResponse
+	FunctionWebhookTestRequest        = types.FunctionWebhookTestRequest
+	FunctionWebhookUpdateRequest      = types.FunctionWebhookUpdateRequest
 	GradingConfig                     = types.GradingConfig
 	HealthCheck                       = types.HealthCheck
 	Invoice                           = types.Invoice
 	JSONMap                           = types.JSONMap
 	LTVMetrics                        = types.LTVMetrics
+	LinkConnectorRequest              = types.LinkConnectorRequest
 	LoginAttempt                      = types.LoginAttempt
 	MRRCohortData                     = types.MRRCohortData
 	MRRMetrics                        = types.MRRMetrics
 	MagicLink                         = types.MagicLink
+	MemoryStats                       = types.MemoryStats
 	NewsletterCampaign                = types.NewsletterCampaign
+	ScheduleConfig                    = types.ScheduleConfig
+	SyncTriggerResponse               = types.SyncTriggerResponse
+	TransformRule                     = types.TransformRule
 	NewsletterCampaignEmail           = types.NewsletterCampaignEmail
 	NewsletterSubscriber              = types.NewsletterSubscriber
 	OAuthState                        = types.OAuthState
@@ -207,6 +223,7 @@ type (
 	TeamCostBreakdown = types.TeamCostBreakdown
 	BrainSignal = types.BrainSignal
 	BudgetAlert = types.BudgetAlert
+	SignalFilter = types.SignalFilter
 	SignalListParams = types.SignalListParams
 	BrainComposer = types.BrainComposer
 	BrainFeedbackRequest = types.BrainFeedbackRequest
@@ -1087,4 +1104,52 @@ const (
 	RecognitionMethodPointInTime = "point_in_time"
 	RecognitionMethodOverTime     = "over_time"
 	ContractAssetType             = "contract_asset"
+)
+
+const (
+	BillingSystemQuickBooks = types.BillingSystemQuickBooks
+	BillingSystemXero       = types.BillingSystemXero
+
+	MFAModeOptional = types.MFAModeOptional
+	MFAModeRequired = types.MFAModeRequired
+	MFAModeEnforced = types.MFAModeEnforced
+
+	SSOProviderNone = types.SSOProviderNone
+	SSOProviderSAML = types.SSOProviderSAML
+	SSOProviderOIDC = types.SSOProviderOIDC
+
+	RoleTeamOwner  = types.RoleTeamOwner
+	RoleTeamAdmin  = types.RoleTeamAdmin
+	RoleTeamMember = types.RoleTeamMember
+	RoleTeamViewer = types.RoleTeamViewer
+
+	CertCredentialStatusActive    = types.CertCredentialStatusActive
+	CertCredentialStatusExpired   = types.CertCredentialStatusExpired
+	CertCredentialStatusRevoked   = types.CertCredentialStatusRevoked
+	CertCredentialStatusSuspended = types.CertCredentialStatusSuspended
+
+	CertExamStatusDraft     = types.CertExamStatusDraft
+	CertExamStatusScheduled = types.CertExamStatusScheduled
+	CertExamStatusSubmitted = types.CertExamStatusSubmitted
+	CertExamStatusGrading   = types.CertExamStatusGrading
+
+	ReferralStatusPending   = types.ReferralStatusPending
+	ReferralStatusConverted = types.ReferralStatusConverted
+	ReferralStatusQualified = types.ReferralStatusQualified
+	ReferralStatusCanceled  = types.ReferralStatusCanceled
+
+	CommissionStatusPending  = types.CommissionStatusPending
+	CommissionStatusApproved = types.CommissionStatusApproved
+
+	StripeSyncStatusPending   = types.StripeSyncStatusPending
+	StripeSyncStatusIgnored   = types.StripeSyncStatusIgnored
+
+	MembershipStatusActive    = types.MembershipStatusActive
+	MembershipStatusSuspended = types.MembershipStatusSuspended
+	MembershipStatusInvited   = types.MembershipStatusInvited
+)
+
+var (
+	IsValidOAuthProvider = types.IsValidOAuthProvider
+	IsValidRole          = types.IsValidRole
 )

@@ -739,6 +739,36 @@ const (
 	RoleTeamViewer  = "team_viewer"
 )
 
+// Certification credential lifecycle status
+const (
+	CertCredentialStatusActive    = "active"
+	CertCredentialStatusExpired   = "expired"
+	CertCredentialStatusRevoked   = "revoked"
+	CertCredentialStatusSuspended = "suspended"
+)
+
+// Certification exam lifecycle status
+const (
+	CertExamStatusDraft      = "draft"
+	CertExamStatusScheduled  = "scheduled"
+	CertExamStatusSubmitted  = "submitted"
+	CertExamStatusGrading    = "grading"
+)
+
+// Affiliate referral lifecycle status
+const (
+	ReferralStatusPending   = "pending"
+	ReferralStatusConverted = "converted"
+	ReferralStatusQualified = "qualified"
+	ReferralStatusCanceled  = "canceled"
+)
+
+// Affiliate commission lifecycle status
+const (
+	CommissionStatusPending  = "pending"
+	CommissionStatusApproved = "approved"
+)
+
 func ValidRoles() []string {
 	return []string{RoleTeamOwner, RoleTeamAdmin, RoleTeamMember, RoleTeamViewer}
 }
@@ -2394,7 +2424,8 @@ type FunctionFollow struct {
 	CreatedAt            time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt            time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 
-	User *User `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	User     *User     `json:"user,omitempty" gorm:"foreignKey:UserID"`
+	Function *Function `json:"function,omitempty" gorm:"foreignKey:FunctionID"`
 }
 
 // FunctionFavorite represents a user's favorite function
@@ -2736,6 +2767,14 @@ const (
 	ExportStatusCompleted  UsageExportStatus = "completed"
 	ExportStatusFailed     UsageExportStatus = "failed"
 	ExportStatusExpired    UsageExportStatus = "expired"
+)
+
+// BillingSystemType represents supported external billing system types.
+type BillingSystemType string
+
+const (
+	BillingSystemQuickBooks BillingSystemType = "quickbooks"
+	BillingSystemXero       BillingSystemType = "xero"
 )
 
 // ExternalBillingSystem represents a configured external billing integration

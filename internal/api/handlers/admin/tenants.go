@@ -436,7 +436,7 @@ func (h *Handler) HandleTenantMetrics(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to get execution rate for tenant metrics")
 	}
 
-	executions24h := int64(0)
+	executions24h := 0
 	for _, h := range execRate24h {
 		executions24h += h.Rate
 	}

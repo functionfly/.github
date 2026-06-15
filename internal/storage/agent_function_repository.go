@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -341,40 +340,6 @@ type AgentExecutionStats struct {
 	AvgDurationMs       float64 `json:"avg_duration_ms"`
 }
 
-// ToDefinition converts an AgentFunction to API response format
-func (af *AgentFunction) ToDefinition() *AgentFunctionDefinition {
-	if af.Function == nil {
-		return nil
-	}
-
-	var pricing PricingModel
-	if af.PricingModel != nil {
-		json.Unmarshal(af.PricingModel, &pricing)
-	}
-
-	version := ""
-	if af.Function.LatestVersion.Valid {
-		version = af.Function.LatestVersion.String
-	}
-
-	description := ""
-	if af.Function.Description.Valid {
-		description = af.Function.Description.String
-	}
-
-	return &AgentFunctionDefinition{
-		Author:        af.Function.Author,
-		Name:          af.Function.Name,
-		Version:       version,
-		Description:   description,
-		Category:      string(af.Category),
-		InputSchema:   af.InputSchema,
-		OutputSchema:  af.OutputSchema,
-		Pricing:       pricing,
-		Capabilities:  af.Capabilities,
-		IsVerified:    af.IsVerified,
-		IsExclusive:   af.IsExclusive,
-		MaxConcurrency: af.MaxConcurrency,
-		RateLimitRPM:  af.RateLimitRPM,
-	}
-}
+// ToDefinition is defined in internal/types/models_migrated.go (it is a method
+// on the canonical types.AgentFunction, which is re-exported from the storage
+// package as `AgentFunction` via the type alias in interfaces.go).

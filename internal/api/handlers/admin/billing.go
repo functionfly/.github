@@ -1107,7 +1107,7 @@ func (h *Handler) HandleListCreditNotes(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if status := r.URL.Query().Get("status"); status != "" {
-		filter.Status = status
+		filter.Status = &status
 	}
 	if startDateStr := r.URL.Query().Get("start_date"); startDateStr != "" {
 		if startDate, err := time.Parse(time.RFC3339, startDateStr); err == nil {

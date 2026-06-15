@@ -395,11 +395,3 @@ func (r *UsageAlertRepository) GetCurrentPeriodUsage(ctx context.Context, tenant
 }
 
 // UsageSummary provides a summary of tenant usage
-type UsageSummary struct {
-	TenantID        uuid.UUID
-	PeriodStart     time.Time
-	PeriodEnd       time.Time
-	TotalExecutions int
-	TotalComputeMs  int
-	EstimatedCost   int // in cents
-}

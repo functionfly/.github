@@ -6,24 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 )
 
 // AggregatedBillingUsage represents aggregated billing usage data
-type AggregatedBillingUsage struct {
-	TenantID       uuid.UUID
-	FunctionID     uuid.UUID
-	FunctionName   string
-	Author         string
-	TotalCalls     int64
-	SuccessCalls   int64
-	ErrorCalls     int64
-	CachedCalls    int64
-	TotalDuration  int64
-	AvgDuration    int64
-	TotalCPUTimeMs int64
-	TotalMemoryMB  int64
-}
 
 // AggregateExecutionsForBilling aggregates function executions for billing over a time period
 func (r *BillingRepository) AggregateExecutionsForBilling(ctx context.Context, start, end time.Time) ([]*AggregatedBillingUsage, error) {

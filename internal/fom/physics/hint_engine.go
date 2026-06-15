@@ -53,13 +53,13 @@ type Goal struct {
 	GoalType string `json:"goal_type"`
 }
 
-func (h *HintEngine) ResolveHint(goal *Goal, context *ExecutionContext) ([]string, error) {
-	hints, err := h.repo.ListWorkflowHints(context, goal.GoalType)
+func (h *HintEngine) ResolveHint(goal *Goal, execCtx *ExecutionContext) ([]string, error) {
+	hints, err := h.repo.ListWorkflowHints(context.Background(), goal.GoalType)
 	if err != nil {
 		return nil, err
 	}
 
-	matching := h.filterByContext(hints, context)
+	matching := h.filterByContext(hints, execCtx)
 
 	sort.Slice(matching, func(i, j int) bool {
 		return h.scoreHint(matching[i]) > h.scoreHint(matching[j])

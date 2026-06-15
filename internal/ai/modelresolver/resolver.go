@@ -53,7 +53,7 @@ func (r *Resolver) Resolve(
 	}
 
 	if prefs.AllowUserOverrides {
-		settings, err := r.repo.GetUserSettings(userID)
+		settings, err := r.repo.GetUserSettings(ctx, userID)
 		if err == nil {
 			if sel := getUserOverride(settings, string(feature)); sel != nil && sel.Provider != "" && sel.ModelID != "" {
 				if isEnabledModel(prefs.EnabledModels, sel) {

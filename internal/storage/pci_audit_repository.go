@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"github.com/functionfly/functionfly/internal/types"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -639,3 +640,21 @@ func scanPCIAuditEventRows(rows *sql.Rows) ([]PCIAuditEvent, error) {
 
 	return events, rows.Err()
 }
+
+// PCI constant aliases from the types package.
+const PCIAuditChargebackReceived = types.PCIAuditChargebackReceived
+const PCIAuditPaymentInitiated = types.PCIAuditPaymentInitiated
+const PCIAuditPaymentFailed = types.PCIAuditPaymentFailed
+const PCIAuditKeyCreated = types.PCIAuditKeyCreated
+const PCIAuditKeyRotated = types.PCIAuditKeyRotated
+const PCISeverityCritical = types.PCISeverityCritical
+const PCIAuditCardDataRead = types.PCIAuditCardDataRead
+const PCIAuditKeyRetired = types.PCIAuditKeyRetired
+const PCIAuditKeyAccessed = types.PCIAuditKeyAccessed
+const PCIAuditKeyBackupRestored = types.PCIAuditKeyBackupRestored
+const PCIAuditPaymentProcessed = types.PCIAuditPaymentProcessed
+const PCISeverityEmergency = types.PCISeverityEmergency
+const PCISeverityInfo = types.PCISeverityInfo
+const PCIAuditRefundProcessed = types.PCIAuditRefundProcessed
+const PCISeverityWarning = types.PCISeverityWarning
+const PCIAuditKeyBackupCreated = types.PCIAuditKeyBackupCreated

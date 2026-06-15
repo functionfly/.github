@@ -85,7 +85,7 @@ func (c *Collector) backgroundFlush() {
 		select {
 		case <-ticker.C:
 			if err := c.Flush(context.Background()); err != nil {
-				log.Error("FOM flush error", "error", err)
+				log.Printf("FOM flush error: %v", err)
 			}
 		case <-c.stopCh:
 			return
@@ -96,7 +96,7 @@ func (c *Collector) backgroundFlush() {
 func (c *Collector) Stop() {
 	close(c.stopCh)
 	if err := c.Flush(context.Background()); err != nil {
-		log.Error("FOM final flush error", "error", err)
+		log.Printf("FOM final flush error: %v", err)
 	}
 }
 
@@ -110,7 +110,7 @@ func (c *Collector) Flush(ctx context.Context) error {
 
 	for _, record := range c.buffer {
 		if err := c.writeRecord(ctx, record); err != nil {
-			log.Error("FOM write error", "error", err, "goal_id", record.GoalID)
+			log.Printf("FOM write error: %v (goal_id=%s)", err, record.GoalID)
 		}
 	}
 	c.buffer = c.buffer[:0]
@@ -240,19 +240,15 @@ func (c *Collector) CollectExecution(ctx context.Context, record *FOMRecord) err
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	select {
-	case c.buffer <- record:
-		if len(c.buffer) >= c.bufferSize {
-			go func() {
-				flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-				defer cancel()
-				c.Flush(flushCtx)
-			}()
-		}
-		return nil
-	default:
-		return c.writeRecord(ctx, record)
+	c.buffer = append(c.buffer, record)
+	if len(c.buffer) >= c.bufferSize {
+		go func() {
+			flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			c.Flush(flushCtx)
+		}()
 	}
+	return nil
 }
 
 func (c *Collector) CollectGoal(ctx context.Context, goal *Goal) error {

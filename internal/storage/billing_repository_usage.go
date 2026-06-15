@@ -61,13 +61,6 @@ func (r *BillingRepository) GetUsageByTenant(ctx context.Context, tenantID uuid.
 }
 
 // FunctionUsageRollup represents usage aggregated by function
-type FunctionUsageRollup struct {
-	FunctionID       uuid.UUID `json:"function_id"`
-	FunctionName     string    `json:"function_name"`
-	TotalExecutions  int64     `json:"total_executions"`
-	TotalDurationMs  int64     `json:"total_duration_ms"`
-	TotalCostCents   int64     `json:"total_cost_cents"`
-}
 
 // GetUsageByTenantByFunction returns usage aggregated by function for a tenant within a time range
 func (r *BillingRepository) GetUsageByTenantByFunction(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*FunctionUsageRollup, error) {

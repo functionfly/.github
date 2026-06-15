@@ -1,6 +1,7 @@
 package storage
 
 import (
+
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/functionfly/functionfly/internal/types"
 )
 
 // CertificationRepository handles certification-related database operations
@@ -1797,3 +1799,12 @@ func (r *CertificationRepository) ResetUserTierExamAttempts(ctx context.Context,
 	}
 	return nil
 }
+
+// Status constant aliases from the types package.
+const CertExamStatusAbandoned = types.CertExamStatusAbandoned
+const CertExamStatusPendingPayment = types.CertExamStatusPendingPayment
+const CertExamStatusPassed = types.CertExamStatusPassed
+const CertExamStatusExpired = types.CertExamStatusExpired
+const CertGradingStatusProcessing = types.CertGradingStatusProcessing
+const CertExamStatusFailed = types.CertExamStatusFailed
+const CertExamStatusInProgress = types.CertExamStatusInProgress

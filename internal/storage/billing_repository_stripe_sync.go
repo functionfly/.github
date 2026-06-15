@@ -1,6 +1,7 @@
 package storage
 
 import (
+
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
+	"github.com/functionfly/functionfly/internal/types"
 )
 
 // CreateStripeSyncEvent creates a record of a Stripe webhook event
@@ -383,3 +385,7 @@ func (r *BillingRepository) GetPaymentMethodByStripeID(ctx context.Context, stri
 	pm.BillingDetails = json.RawMessage(billingDetails)
 	return pm, nil
 }
+
+// Status constant aliases from the types package.
+const StripeSyncStatusFailed = types.StripeSyncStatusFailed
+const StripeSyncStatusProcessed = types.StripeSyncStatusProcessed

@@ -102,7 +102,7 @@ done:
 }
 
 func backfillFunction(ctx context.Context, svc *recommendations.Service, registryRepo *registry.RegistryRepository, fnID uuid.UUID, dryRun bool) error {
-	fn, err := registryRepo.GetFunctionByID(fnID)
+	fn, err := registryRepo.GetFunctionByID(ctx, fnID)
 	if err != nil {
 		return fmt.Errorf("get function: %w", err)
 	}

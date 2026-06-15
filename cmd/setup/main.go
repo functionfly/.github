@@ -66,7 +66,7 @@ func main() {
 	}
 
 	// Get or create admin user (idempotent)
-	user, err := repo.GetUserByEmail(adminEmail)
+	user, err := repo.GetUserByEmail(ctx, adminEmail)
 	if err == nil {
 		// User exists: ensure username and tenant plan
 		_, err = repo.UpdateUser(ctx, user.ID, map[string]interface{}{"username": adminUsername})

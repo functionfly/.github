@@ -46,7 +46,7 @@ func NewServiceWithRoot(repo *registry.RegistryRepository, baseURL, repoRoot str
 // GenerateForVersion creates and persists a README for a specific function version.
 // If the version already has a non-empty readme, it is skipped unless force=true.
 func (s *Service) GenerateForVersion(ctx context.Context, functionID uuid.UUID, version string, force bool) (string, error) {
-	fn, err := s.repo.GetFunctionByID(functionID)
+	fn, err := s.repo.GetFunctionByID(ctx, functionID)
 	if err != nil {
 		return "", fmt.Errorf("get function: %w", err)
 	}
@@ -61,7 +61,7 @@ func (s *Service) GenerateForVersion(ctx context.Context, functionID uuid.UUID, 
 		return fnVersion.Readme.String, nil
 	}
 
-	meta, err := s.buildMeta(fn, fnVersion)
+	meta, err := s.buildMeta(ctx, fn, fnVersion)
 	if err != nil {
 		return "", fmt.Errorf("build meta: %w", err)
 	}
@@ -149,7 +149,7 @@ func (s *Service) GetProjectContext() ProjectContext {
 	return GenerateProjectContext(s.repoRoot)
 }
 
-func (s *Service) buildMeta(fn *registry.RegistryFunction, fnVersion *registry.RegistryFunctionVersion) (FunctionMeta, error) {
+func (s *Service) buildMeta(ctx context.Context, fn *registry.RegistryFunction, fnVersion *registry.RegistryFunctionVersion) (FunctionMeta, error) {
 	meta := FunctionMeta{
 		Author:        fn.Author,
 		Name:          fn.Name,
@@ -208,7 +208,7 @@ func (s *Service) buildMeta(fn *registry.RegistryFunction, fnVersion *registry.R
 	}
 
 	// Rating / trust score
-	rating, _ := s.repo.GetRatingByFunctionID(fn.ID)
+	rating, _ := s.repo.GetRatingByFunctionID(ctx, fn.ID)
 	if rating != nil {
 		score := rating.TrustScore
 		if score > 0 && score <= 1 {

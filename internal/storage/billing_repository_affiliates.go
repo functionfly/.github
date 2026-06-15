@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/types"
 	"github.com/google/uuid"
 )
 
@@ -403,3 +404,6 @@ func (r *BillingRepository) CalculateCommission(ctx context.Context, commissionT
 	commissionCents = int64(commissionUSD * 100)
 	return commissionCents, commissionUSD
 }
+// Status constant aliases from the types package.
+const CommissionStatusCanceled = types.CommissionStatusCanceled
+const CommissionStatusPaid = types.CommissionStatusPaid

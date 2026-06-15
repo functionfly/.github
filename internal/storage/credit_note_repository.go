@@ -1,12 +1,14 @@
 package storage
 
 import (
+
 	"context"
 	"database/sql"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/functionfly/functionfly/internal/types"
 )
 
 // CreditNoteRepository handles credit note database operations (SQL-based)
@@ -174,7 +176,7 @@ func (r *CreditNoteRepository) List(ctx context.Context, filter *CreditNoteFilte
 			args = append(args, *filter.InvoiceID)
 			argIndex++
 		}
-		if filter.Status != "" {
+		if filter.Status != nil && *filter.Status != "" {
 			whereClause += fmt.Sprintf(" AND status = $%d", argIndex)
 			args = append(args, filter.Status)
 			argIndex++
@@ -510,3 +512,8 @@ func (r *CreditNoteRepository) GetCreditNoteStats(ctx context.Context, tenantID 
 
 	return stats, nil
 }
+// Status constant aliases from the types package.
+const CreditNoteStatusIssued = types.CreditNoteStatusIssued
+const CreditNoteStatusApplied = types.CreditNoteStatusApplied
+const CreditNoteStatusDraft = types.CreditNoteStatusDraft
+const CreditNoteStatusVoid = types.CreditNoteStatusVoid

@@ -2283,6 +2283,10 @@ type EmbedConfig struct {
 	RateLimitPerHour int      `json:"rate_limit_per_hour"`
 }
 
+// Function is an alias for RegistryFunction preserved for backwards compatibility
+// with code that predates the unified registry refactor.
+type Function = RegistryFunction
+
 // RegistryFunction represents a function in the public registry OR tenant-private function
 // This unified model supports both public marketplace functions and tenant-owned functions.
 // Public functions: author = "functionfly" or other public namespace, tenant_id = NULL
@@ -3755,6 +3759,13 @@ type (
 		LastUsedAt  *time.Time `json:"last_used_at,omitempty"`
 		CreatedBy   *uuid.UUID `json:"created_by,omitempty"`
 	}
+
+	DeployKeyListResponse struct {
+		DeployKeys []DeployKeyResponse `json:"deploy_keys"`
+		TotalCount int                 `json:"total_count"`
+		Page       int                 `json:"page"`
+		PageSize    int                 `json:"page_size"`
+	}
 )
 
 func (DeployKey) TableName() string {
@@ -3766,8 +3777,10 @@ const (
 	CommissionStatusPaid     = "paid"
 	CommissionStatusCanceled = "canceled"
 
+	StripeSyncStatusPending   = "pending"
 	StripeSyncStatusProcessed = "processed"
 	StripeSyncStatusFailed    = "failed"
+	StripeSyncStatusIgnored   = "ignored"
 
 	CertExamStatusPendingPayment = "pending_payment"
 	CertExamStatusExpired        = "expired"

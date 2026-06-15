@@ -365,7 +365,7 @@ func (r *FollowRepository) GetUserFunctionFollows(ctx context.Context, userID uu
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan user function follow: %w", err)
 		}
-		follow.Function = function
+// follow.Function = function (field removed during refactor)
 		follows = append(follows, follow)
 	}
 
