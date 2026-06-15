@@ -100,7 +100,7 @@ export function CodePasteWorkspace({
     clearAnalysis,
   } = useCodeAnalyzer();
 
-  const { status: importStatus, importFunctions, reset: resetImport } = useFunctionImport();
+  const { status: importStatus, importFunctions, createdFunctions, reset: resetImport } = useFunctionImport();
 
   const {
     selectedIds,
