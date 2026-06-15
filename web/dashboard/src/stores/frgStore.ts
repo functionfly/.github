@@ -883,10 +883,14 @@ export const useFRGStore = create<FRGState>()(
           }
         },
 
-        resumeExecution: () => {
+        resumeExecution: async () => {
           const { activeInstance } = get();
           if (activeInstance?.id) {
-            // TODO: Call resume API if available
+            try {
+              await frgApi.resumeInstance(activeInstance.id);
+            } catch {
+              // Resume API may not be available; fall through to polling
+            }
             set({ executionStatus: 'running' });
             get().pollInstanceStatus();
           }
