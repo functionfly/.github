@@ -13,6 +13,8 @@
     "generate-robots": "generate-robotstxt",
     "seo": "npm run generate-robots && npm run generate-sitemap",
     "lint": "eslint .",
+    "typecheck": "rm -f node_modules/.tmp/tsconfig.app.tsbuildinfo node_modules/.tmp/tsconfig.node.tsbuildinfo 2>/dev/null; tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
+    "typecheck:clean": "rm -rf node_modules/.tmp && tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.node.json --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "test": "vitest",
