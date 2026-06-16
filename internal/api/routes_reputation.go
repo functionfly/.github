@@ -6,8 +6,8 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/reputation"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/logging"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 )
 
 // registerReputationRoutes wires all reputation API routes
@@ -16,7 +16,7 @@ func registerReputationRoutes(
 	api *mux.Router,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
-	reputationHandler := reputation.NewHandler(s.postgresDB, logrus.New())
+	reputationHandler := reputation.NewHandler(s.postgresDB, logging.Logger())
 
 	// Adapter: authMiddleware.RequireAuth is func(HandlerFunc) HandlerFunc,
 	// but mux.Router.Use expects func(http.Handler) http.Handler.

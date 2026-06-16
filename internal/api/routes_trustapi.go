@@ -6,10 +6,10 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
+	"github.com/functionfly/functionfly/internal/logging"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 )
 
 // trustAPIServerInterface defines the methods needed from Server for Trust API routes
@@ -40,18 +40,18 @@ func registerTrustAPIRoutes(
 	// Initialize webhook repository and service
 	webhookRepo := trustapirepo.NewWebhookRepository(s.postgresDB.GORM)
 	webhookService := trustapirepo.NewWebhookService(webhookRepo)
-	webhookService.SetLogger(logrus.New())
+	webhookService.SetLogger(logging.Logger())
 
 	// Initialize handlers
 	trustHandler := trustapi.NewHandler(apikeyRepo, trustRepo, registryRepo)
 	webhookHandler := trustapi.NewWebhookHandler(webhookRepo)
-	webhookHandler.SetLogger(logrus.New())
+	webhookHandler.SetLogger(logging.Logger())
 
 	// Initialize extended handler with revocation and webhook capabilities
 	extendedHandler := trustapi.NewExtendedHandler(apikeyRepo, trustRepo, registryRepo, revocationRepo, webhookService)
 
 	// Initialize streaming handler
-	trustStreamer := trustapi.NewTrustScoreStreamer(registryRepo, logrus.New())
+	trustStreamer := trustapi.NewTrustScoreStreamer(registryRepo, logging.Logger())
 	go trustStreamer.Run()
 
 	// Initialize middleware with both repos (apikey for auth, trust for partner/rate-limit data)

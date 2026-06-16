@@ -12,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/frg"
 	frgapigen "github.com/functionfly/functionfly/internal/frg/api"
 	"github.com/functionfly/functionfly/internal/frg/trigger"
+	"github.com/functionfly/functionfly/internal/logging"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
@@ -40,7 +41,7 @@ func registerFRGRoutes(
 
 	// Run FRG migrations before accessing the database
 	if err := frgRepo.AutoMigrate(context.Background()); err != nil {
-		logrus.WithError(err).Error("FRG: failed to run migrations; graph tables may be missing")
+		logging.Logger().WithError(err).Error("FRG: failed to run migrations; graph tables may be missing")
 		// Continue anyway - tables may already exist
 	}
 
@@ -50,7 +51,7 @@ func registerFRGRoutes(
 	// Load DRE configuration from environment (optional - FXCERTs will be unsigned if not configured)
 	dreNodeKey, dreNodeID, dreRegion, err := dre.LoadNodeKeyFromEnv()
 	if err != nil {
-		logrus.WithError(err).Warn("FRG DRE: failed to load node key from env; FXCERTs will be unsigned")
+		logging.Logger().WithError(err).Warn("FRG DRE: failed to load node key from env; FXCERTs will be unsigned")
 	}
 	drePlatformKey, _ := dre.LoadPlatformKeyFromEnv()
 
@@ -58,34 +59,34 @@ func registerFRGRoutes(
 	var eventBus frg.EventStream
 	natsStream, err := frg.TryCreateNATSEventStream()
 	if err != nil {
-		logrus.WithError(err).Warn("NATS unavailable, using in-memory event stream")
+		logging.Logger().WithError(err).Warn("NATS unavailable, using in-memory event stream")
 	}
 	if natsStream != nil {
 		eventBus = natsStream
-		logrus.Info("NATS event stream active")
+		logging.Logger().Info("NATS event stream active")
 	} else {
 		eventBus = frg.NewInMemoryEventStream()
-		logrus.Info("In-memory event stream initialized")
+		logging.Logger().Info("In-memory event stream initialized")
 	}
 
 	// Start NATS runtime subscriber (listens for runtime registrations,
 	// heartbeats, and execution results from Prism/SAR/Kotlin runtimes)
 	_ = frg.TryCreateRuntimeSubscriber(frg.RuntimeEventHandlers{
 		OnRegistration: func(reg frg.RuntimeRegistration) {
-			logrus.WithFields(logrus.Fields{
+			logging.Logger().WithFields(logrus.Fields{
 				"cell_id": reg.CellID,
 				"name":    reg.Name,
 			}).Info("Runtime registered via NATS")
 		},
 		OnHeartbeat: func(hb frg.RuntimeHeartbeat) {
-			logrus.WithFields(logrus.Fields{
+			logging.Logger().WithFields(logrus.Fields{
 				"cell_id":           hb.CellID,
 				"status":            hb.Status,
 				"active_executions": hb.ActiveExecutions,
 			}).Debug("Runtime heartbeat via NATS")
 		},
 		OnExecutionResult: func(result frg.RuntimeExecutionResult) {
-			logrus.WithFields(logrus.Fields{
+			logging.Logger().WithFields(logrus.Fields{
 				"execution_id": result.ExecutionID,
 				"cell_id":      result.CellID,
 				"status":       result.Status,
@@ -107,7 +108,7 @@ func registerFRGRoutes(
 		drePlatformKey,
 	)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to initialize FRG execution engine")
+		logging.Logger().WithError(err).Error("Failed to initialize FRG execution engine")
 		return
 	}
 
@@ -117,7 +118,7 @@ func registerFRGRoutes(
 
 	// Load existing triggers on startup
 	if err := triggerRouter.StartTriggerLoader(context.Background()); err != nil {
-		logrus.WithError(err).Warn("Failed to load graph triggers on startup")
+		logging.Logger().WithError(err).Warn("Failed to load graph triggers on startup")
 	}
 
 	// Initialize handler
@@ -182,7 +183,7 @@ func registerFRGRoutes(
 
 	// Register dynamic routes for all published graphs
 	if err := autoGenAPIHandler.RouteRegistrar(api); err != nil {
-		logrus.WithError(err).Warn("Failed to register some auto-generated API routes")
+		logging.Logger().WithError(err).Warn("Failed to register some auto-generated API routes")
 	}
 }
 
@@ -205,7 +206,7 @@ func registerFRGRoutesOnRoot(
 
 	// Run FRG migrations before accessing the database
 	if err := frgRepo.AutoMigrate(context.Background()); err != nil {
-		logrus.WithError(err).Error("FRG: failed to run migrations; graph tables may be missing")
+		logging.Logger().WithError(err).Error("FRG: failed to run migrations; graph tables may be missing")
 	}
 
 	// Get graph service from existing agent package
@@ -214,7 +215,7 @@ func registerFRGRoutesOnRoot(
 	// Load DRE configuration
 	dreNodeKey, dreNodeID, dreRegion, err := dre.LoadNodeKeyFromEnv()
 	if err != nil {
-		logrus.WithError(err).Warn("FRG DRE: failed to load node key from env; FXCERTs will be unsigned")
+		logging.Logger().WithError(err).Warn("FRG DRE: failed to load node key from env; FXCERTs will be unsigned")
 	}
 	drePlatformKey, _ := dre.LoadPlatformKeyFromEnv()
 
@@ -222,7 +223,7 @@ func registerFRGRoutesOnRoot(
 	var eventBus frg.EventStream
 	natsStream2, err := frg.TryCreateNATSEventStream()
 	if err != nil {
-		logrus.WithError(err).Warn("NATS unavailable (root routes), using in-memory event stream")
+		logging.Logger().WithError(err).Warn("NATS unavailable (root routes), using in-memory event stream")
 	}
 	if natsStream2 != nil {
 		eventBus = natsStream2
@@ -244,7 +245,7 @@ func registerFRGRoutesOnRoot(
 		drePlatformKey,
 	)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to initialize FRG execution engine")
+		logging.Logger().WithError(err).Error("Failed to initialize FRG execution engine")
 		return
 	}
 
@@ -304,6 +305,6 @@ func registerFRGRoutesOnRoot(
 		"/api/graphs",
 	)
 	if err := autoGenAPIHandler.RouteRegistrar(root); err != nil {
-		logrus.WithError(err).Warn("Failed to register some auto-generated API routes")
+		logging.Logger().WithError(err).Warn("Failed to register some auto-generated API routes")
 	}
 }

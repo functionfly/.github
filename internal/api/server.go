@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -35,6 +36,7 @@ import (
 	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
+	"github.com/functionfly/functionfly/internal/logging"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/provisioning"
@@ -58,6 +60,12 @@ type Server struct {
 	// Database
 	postgresDB *storage.PostgresDB
 
+	// Logger is the server's structured logger (initialized in NewServer).
+	// Routes, handlers, and background workers should use this rather than the
+	// package-level logrus.* helpers, so log output flows through the configured
+	// format/level and is shared across the process.
+	logger *logrus.Logger
+
 	// Repository (unified interface)
 	repo storage.Repository
 
@@ -77,6 +85,13 @@ type Server struct {
 	upstashRedis        *cache.UpstashRedisClient
 	httpServer          *http.Server
 	shutdownTimeout     time.Duration
+
+	// Server lifecycle context - cancelled on shutdown to signal background workers
+	serverCtx    context.Context
+	serverCancel context.CancelFunc
+
+	// WaitGroup for tracking background worker goroutines (pointer to avoid copy)
+	wg *sync.WaitGroup
 
 	// Notification service
 	notificationSvc       *notification.Service
@@ -164,9 +179,11 @@ type Server struct {
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
-	// Centralized environment validation — catches missing required vars early
+	// Centralized environment validation — captures missing required vars early.
+	// We use the singleton logger so this Fatal output is formatted like the rest
+	// of the process, and so test code that imports this package can stub it.
 	if err := config.ValidateEnv(); err != nil {
-		logrus.Fatal(err)
+		logging.Logger().Fatal(err)
 	}
 
 	// SECURITY: Block DEVELOPMENT=true on machines whose hostname looks like a deployed server.
@@ -176,19 +193,19 @@ func NewServer(db *storage.PostgresDB) *Server {
 		isLocalhost := strings.HasPrefix(hostname, "localhost") || strings.HasPrefix(hostname, "127.0.0.1") || strings.Contains(hostname, ".local")
 		allowNonlocal := os.Getenv("DEVELOPMENT_ALLOW_NONLOCAL_HOST") == "true"
 		if !isLocalhost && !allowNonlocal {
-			logrus.Fatal("FATAL: DEVELOPMENT=true is set but this machine's hostname is not localhost-like (" + hostname + "). " +
+			logging.Logger().Fatal("FATAL: DEVELOPMENT=true is set but this machine's hostname is not localhost-like (" + hostname + "). " +
 				"For a normal dev workstation (e.g. WSL), set DEVELOPMENT_ALLOW_NONLOCAL_HOST=true or unset DEVELOPMENT. " +
 				"Never set DEVELOPMENT=true in real production.")
 		}
-		logrus.Warn("WARNING: DEVELOPMENT mode is enabled. Do not use in production.")
+		logging.Logger().Warn("WARNING: DEVELOPMENT mode is enabled. Do not use in production.")
 	}
 
 	// Use PostgreSQL as the database backend
 	repo := db.Repository()
-	logrus.Info("Using PostgreSQL as database backend")
+	logging.Logger().Info("Using PostgreSQL as database backend")
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		logrus.Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
+		logging.Logger().Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
 	}
 
 	// Initialize adapters
@@ -206,14 +223,14 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// Initialize Redis client for caching and artifact store
 	redisClient, err := initializeRedisClient()
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to initialize Redis client, some features may not work")
+		logging.Logger().WithError(err).Warn("Failed to initialize Redis client, some features may not work")
 		redisClient = nil
 	}
 
 	// Initialize Upstash Redis client (used by CSRF and other middleware when Upstash is configured)
 	upstashRedis, err := initializeUpstashRedis()
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to initialize Upstash Redis client, CSRF and other features may not work")
+		logging.Logger().WithError(err).Warn("Failed to initialize Upstash Redis client, CSRF and other features may not work")
 		upstashRedis = nil
 	}
 
@@ -221,13 +238,13 @@ func NewServer(db *storage.PostgresDB) *Server {
 	// wrap the standard Redis client for CSRF and other middleware that requires Upstash interface
 	if upstashRedis == nil && redisClient != nil {
 		upstashRedis = cache.NewUpstashRedisClientFromStandardRedis(redisClient)
-		logrus.Info("Using standard Redis client for CSRF and middleware (Upstash not configured)")
+		logging.Logger().Info("Using standard Redis client for CSRF and middleware (Upstash not configured)")
 	}
 
 	// Initialize artifact store (Redis for production, fallback to memory for development)
 	artifactStore, err := initializeArtifactStore()
 	if err != nil {
-		logrus.WithError(err).Warn("Failed to initialize Redis artifact store, falling back to memory store")
+		logging.Logger().WithError(err).Warn("Failed to initialize Redis artifact store, falling back to memory store")
 		artifactStore = deployment.NewMemoryArtifactStore()
 	}
 
@@ -260,14 +277,14 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Validate email service configuration at startup
 	if err := emailSvc.ValidateConfiguration(); err != nil {
-		logrus.WithError(err).Warn("Email service validation failed - magic links and other emails may not send")
+		logging.Logger().WithError(err).Warn("Email service validation failed - magic links and other emails may not send")
 	} else {
-		logrus.Info("Email service configuration validated successfully")
+		logging.Logger().Info("Email service configuration validated successfully")
 	}
 
 	authSvc, err := auth.NewAuthService(repo, jwtSecret)
 	if err != nil {
-		logrus.Fatal("Failed to initialize auth service: ", err)
+		logging.Logger().Fatal("Failed to initialize auth service: ", err)
 	}
 	authSvc.SetEmailService(emailSvc)
 	// Notification service is set below after it is created
@@ -281,7 +298,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 	tenantDBConfig := storage.LoadTenantDatabaseConfig()
 	dbProvisioner, err := storage.NewTenantDBProvisioner(tenantDBConfig, db)
 	if err != nil {
-		logrus.WithError(err).Warn("TenantDBProvisioner: failed to initialize, bundle provisioning may not work")
+		logging.Logger().WithError(err).Warn("TenantDBProvisioner: failed to initialize, bundle provisioning may not work")
 		dbProvisioner = nil
 	}
 	bundleProvisioner := provisioning.NewBundleProvisioner(db.DB, repo, dbProvisioner, emailSvc)
@@ -299,7 +316,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 	}
 
 	storageService := services.NewStorageService(baseURL)
-	logrus.Info("Storage service initialized (backend from env: local, s3, or r2)")
+	logging.Logger().Info("Storage service initialized (backend from env: local, s3, or r2)")
 
 	// Initialize session cleanup service
 	sessionCleanup := storage.NewSessionCleanupService(repo)
@@ -345,7 +362,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		if r2Backend, err := statefabricrepo.NewR2StorageBackend(); err == nil {
 			stateFabricCleanup = statefabricrepo.NewCleanupServiceWithR2(db.GORM, r2Backend, stateFabricCleanupConfig)
 		} else {
-			logrus.WithError(err).Warn("Failed to initialize R2 backend for state fabric cleanup")
+			logging.Logger().WithError(err).Warn("Failed to initialize R2 backend for state fabric cleanup")
 			stateFabricCleanup = statefabricrepo.NewCleanupService(db.GORM, stateFabricCleanupConfig)
 		}
 	} else {
@@ -374,7 +391,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// Initialize notification repository and service
 	notificationRepo := notification.NewPostgresRepository(db.DB)
-	notificationSvc := notification.NewService(notificationRepo, db, emailSvc, logrus.New())
+	notificationSvc := notification.NewService(notificationRepo, db, emailSvc, logging.Logger())
 	authSvc.SetNotificationService(notificationSvc)
 
 	// Initialize recommendations service
@@ -409,11 +426,16 @@ func NewServer(db *storage.PostgresDB) *Server {
 	trustBillingRepo := trustapirepo.NewBillingRepository(db.GORM)
 	trustBillingService := trustapi.NewBillingService(trustBillingRepo, usageReportingRepo)
 
+	// Create server context and WaitGroup for background workers
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	var serverWg sync.WaitGroup
+
 	// Start dunning background processors
-	startDunningProcessors(dunningManager)
+	startDunningProcessors(serverCtx, &serverWg, dunningManager)
 
 	s := &Server{
 		postgresDB:             db,
+		logger:                 logging.Logger(),
 		repo:                   repo,
 		router:                 router,
 		authSvc:                authSvc,
@@ -433,6 +455,9 @@ func NewServer(db *storage.PostgresDB) *Server {
 		redisClient:            redisClient,
 		upstashRedis:           upstashRedis,
 		shutdownTimeout:        shutdownTimeout,
+		serverCtx:              serverCtx,
+		serverCancel:           serverCancel,
+		wg:                     &serverWg,
 		notificationSvc:        notificationSvc,
 		notificationRepo:       notificationRepo,
 		notificationPool:       nil,
@@ -575,11 +600,11 @@ func runFunctionLogRetention(ctx context.Context, db *storage.PostgresDB, interv
 			cutoff := time.Now().UTC().Add(-retention)
 			n, err := db.DeleteFunctionLogsOlderThan(ctx, cutoff)
 			if err != nil {
-				logrus.WithError(err).Warn("Function log retention cleanup failed")
+				logging.Logger().WithError(err).Warn("Function log retention cleanup failed")
 				continue
 			}
 			if n > 0 {
-				logrus.WithFields(logrus.Fields{
+				logging.Logger().WithFields(logrus.Fields{
 					"deleted_rows":   n,
 					"cutoff_utc":     cutoff.Format(time.RFC3339),
 					"retention_days": retentionDays,
@@ -599,7 +624,7 @@ func runVaultTokenCleanup(ctx context.Context, repo *vaultstorage.Repository, in
 			return
 		case <-ticker.C:
 			if err := repo.CleanupExpiredTokens(ctx, olderThan); err != nil {
-				logrus.WithError(err).Warn("Vault token cleanup failed")
+				logging.Logger().WithError(err).Warn("Vault token cleanup failed")
 			}
 		}
 	}
@@ -613,37 +638,38 @@ func (s *Server) ListenAndServe(addr string) error {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	// Ensure server context is cancelled on function exit (shutdown)
+	defer s.serverCancel()
+
 	// Start HTTP listener first so Fly.io (and health checks) see the app listening immediately.
 	// Background services are started after so a slow init does not delay the port binding.
 	go func() {
-		logrus.WithField("addr", addr).Info("API server listening")
+		logging.Logger().WithField("addr", addr).Info("API server listening")
 		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logrus.WithError(err).Fatal("Server failed to start")
+			logging.Logger().WithError(err).Fatal("Server failed to start")
 		}
 	}()
 
 	// Start session cleanup routine (runs every hour)
-	s.sessionCleanup.StartCleanupRoutine(time.Hour)
+	s.sessionCleanup.StartCleanupRoutine(s.serverCtx, time.Hour)
 
 	// Start OAuth state cleanup routine (runs every 6 hours)
-	s.oauthStateCleanup.StartCleanupRoutine(6 * time.Hour)
+	s.oauthStateCleanup.StartCleanupRoutine(s.serverCtx, 6*time.Hour)
 
 	// Start login attempt cleanup routine (runs daily, keeps 30 days of history)
-	s.loginAttemptCleanup.StartCleanupRoutine(context.Background(), 24*time.Hour, 30*24*time.Hour)
+	s.loginAttemptCleanup.StartCleanupRoutine(s.serverCtx, 24*time.Hour, 30*24*time.Hour)
 
 	// Start auth event cleanup routine (runs daily, keeps 90 days of history for security/compliance)
-	s.authEventCleanup.StartCleanupRoutine(context.Background(), 24*time.Hour, 90*24*time.Hour)
+	s.authEventCleanup.StartCleanupRoutine(s.serverCtx, 24*time.Hour, 90*24*time.Hour)
 
 	// Start execution log cleanup routine (configurable retention, default daily)
 	if s.executionLogCleanup != nil {
-		cleanupCtx := context.Background()
-		go s.executionLogCleanup.StartCleanupRoutine(cleanupCtx)
-		logrus.Info("Execution log cleanup routine started")
+		go s.executionLogCleanup.StartCleanupRoutine(s.serverCtx)
+		logging.Logger().Info("Execution log cleanup routine started")
 	}
 
 	// Start local runtime cleanup routine (runs every 5 minutes)
-	ctx := context.Background()
-	go s.monitoringSvc.StartLocalRuntimeCleanup(ctx, 5*time.Minute, 10*time.Minute)
+	go s.monitoringSvc.StartLocalRuntimeCleanup(s.serverCtx, 5*time.Minute, 10*time.Minute)
 
 	// Start health monitor for backend health checks and circuit breaker (MVP gap fix)
 	s.healthMonitor.Start()
@@ -652,48 +678,48 @@ func (s *Server) ListenAndServe(addr string) error {
 	s.monitoringSvc.StartUptimeUpdater()
 
 	// Start notification service
-	s.notificationSvc.Start(ctx)
-	logrus.Info("Notification service started")
+	s.notificationSvc.Start(s.serverCtx)
+	logging.Logger().Info("Notification service started")
 
 	// Start notification WebSocket hub and PostgreSQL LISTEN subscription
 	if s.notificationWSHandler != nil {
 		s.notificationWSHandler.RunHub()
 		if s.notificationPool != nil {
-			s.notificationWSHandler.RunNotificationSubscription(ctx, s.notificationPool)
+			s.notificationWSHandler.RunNotificationSubscription(s.serverCtx, s.notificationPool)
 		}
-		logrus.Info("Notification WebSocket hub and LISTEN subscription started")
+		logging.Logger().Info("Notification WebSocket hub and LISTEN subscription started")
 	} else {
-		logrus.Warn("Notification WebSocket handler not initialized – skipping hub start")
+		logging.Logger().Warn("Notification WebSocket handler not initialized – skipping hub start")
 	}
 
 	// Start deferred billing checker for Backend-in-a-Box founder mode
 	if s.deferredBillingChecker != nil {
 		s.deferredBillingChecker.Start()
-		logrus.Info("Deferred billing checker started")
+		logging.Logger().Info("Deferred billing checker started")
 	}
 
 	// Start trigger engine for state changes
 	if s.triggerEngine != nil {
-		s.triggerEngine.Start(ctx)
-		logrus.Info("Trigger engine started")
+		s.triggerEngine.Start(s.serverCtx)
+		logging.Logger().Info("Trigger engine started")
 	}
 
 	// Start state cleanup routine for TTL-based cleanup (runs every hour)
 	if s.stateCleanup != nil {
-		go s.stateCleanup.StartCleanupRoutine(ctx)
-		logrus.Info("State cleanup routine started")
+		go s.stateCleanup.StartCleanupRoutine(s.serverCtx)
+		logging.Logger().Info("State cleanup routine started")
 	}
 
 	// Start state fabric TTL cleanup routine for expired snapshots (runs every hour)
 	if s.stateFabricCleanup != nil {
-		go s.stateFabricCleanup.StartCleanupRoutine(ctx)
-		logrus.Info("State fabric TTL cleanup routine started")
+		go s.stateFabricCleanup.StartCleanupRoutine(s.serverCtx)
+		logging.Logger().Info("State fabric TTL cleanup routine started")
 	}
 
 	// Start vault expired-token cleanup (runs daily; prunes tokens expired/revoked > 30 days ago)
 	if s.vaultRepo != nil {
-		go runVaultTokenCleanup(ctx, s.vaultRepo, 24*time.Hour, 30*24*time.Hour)
-		logrus.Info("Vault token cleanup routine started")
+		go runVaultTokenCleanup(s.serverCtx, s.vaultRepo, 24*time.Hour, 30*24*time.Hour)
+		logging.Logger().Info("Vault token cleanup routine started")
 
 		// Phase 1.3: secret expiration sweeper (every 15m by default; honors
 		// VAULT_EXPIRATION_SWEEP_INTERVAL if set). It also expires stale
@@ -708,10 +734,10 @@ func (s *Server) ListenAndServe(addr string) error {
 			Interval:      sweeperInterval,
 			WarningWindow: 7 * 24 * time.Hour,
 			BatchSize:     200,
-			Logger:        logrus.New(),
+			Logger:        logging.Logger(),
 		})
-		go sweeper.Start(ctx)
-		logrus.WithField("interval", sweeperInterval.String()).Info("Vault expiration sweeper started")
+		go sweeper.Start(s.serverCtx)
+		logging.Logger().WithField("interval", sweeperInterval.String()).Info("Vault expiration sweeper started")
 
 		// Phase 2.2: dynamic-lease sweeper — drops DB users whose lease
 		// has expired. Interval is configurable via env var.
@@ -724,10 +750,10 @@ func (s *Server) ListenAndServe(addr string) error {
 		leaseSweeper := vaultstorage.NewDynamicLeaseSweeper(s.vaultRepo, vaultstorage.DynamicLeaseSweeperConfig{
 			Interval:  leaseInterval,
 			BatchSize: 100,
-			Logger:    logrus.New(),
+			Logger:    logging.Logger(),
 		})
-		go leaseSweeper.Start(ctx)
-		logrus.WithField("interval", leaseInterval.String()).Info("Vault dynamic-lease sweeper started")
+		go leaseSweeper.Start(s.serverCtx)
+		logging.Logger().WithField("interval", leaseInterval.String()).Info("Vault dynamic-lease sweeper started")
 
 		// Phase 5.3: leader election. When running multiple API
 		// instances, only the leader runs the background sweepers
@@ -742,15 +768,15 @@ func (s *Server) ListenAndServe(addr string) error {
 				TTL:             30 * time.Second,
 				RenewInterval:   10 * time.Second,
 				AcquireInterval: 5 * time.Second,
-				Logger:          logrus.New(),
+				Logger:          logging.Logger(),
 			})
 			// Wrap the sweepers in leader-gated funcs so only the
 			// elected instance runs them.
-			go vaultstorage.RunLeaderGatedWorkers(ctx, elector, logrus.New(),
+			go vaultstorage.RunLeaderGatedWorkers(s.serverCtx, elector, logging.Logger(),
 				func(ctx context.Context) { sweeper.Start(ctx) },
 				func(ctx context.Context) { leaseSweeper.Start(ctx) },
 			)
-			logrus.WithField("namespace", leaderNS).Info("Vault leader election started")
+			logging.Logger().WithField("namespace", leaderNS).Info("Vault leader election started")
 		}
 	}
 
@@ -768,41 +794,41 @@ func (s *Server) ListenAndServe(addr string) error {
 		}
 	}
 	if retentionDays > 0 {
-		go runFunctionLogRetention(ctx, s.postgresDB, cleanupInterval, retentionDays)
-		logrus.WithFields(logrus.Fields{
+		go runFunctionLogRetention(s.serverCtx, s.postgresDB, cleanupInterval, retentionDays)
+		logging.Logger().WithFields(logrus.Fields{
 			"retention_days": retentionDays,
 			"interval":       cleanupInterval.String(),
 		}).Info("Function log retention cleanup started")
 	} else {
-		logrus.Info("Function log retention cleanup disabled (FUNCTION_LOG_RETENTION_DAYS=0)")
+		logging.Logger().Info("Function log retention cleanup disabled (FUNCTION_LOG_RETENTION_DAYS=0)")
 	}
 
 	// Start usage metrics aggregation service
 	if s.usageMetricsAgg != nil && s.usageMetricsAgg.IsEnabled() {
-		s.usageMetricsAgg.StartAggregationRoutine(ctx)
-		logrus.Info("Usage metrics aggregation service started")
+		s.usageMetricsAgg.StartAggregationRoutine(s.serverCtx)
+		logging.Logger().Info("Usage metrics aggregation service started")
 	}
 
 	// Start state usage aggregator for billing/quota integration
 	if s.stateUsageAggregator != nil && s.stateUsageAggregator.IsEnabled() {
-		s.stateUsageAggregator.Start(ctx)
-		logrus.Info("State usage aggregator started")
+		s.stateUsageAggregator.Start(s.serverCtx)
+		logging.Logger().Info("State usage aggregator started")
 	}
 
 	// Start unified analytics sync job (Phase 3: rollups from source tables)
 	if s.unifiedSyncJob != nil {
-		s.unifiedSyncJob.Start(ctx)
-		logrus.Info("Unified analytics sync job started")
+		s.unifiedSyncJob.Start(s.serverCtx)
+		logging.Logger().Info("Unified analytics sync job started")
 	}
 
 	// Wait for interrupt signal
 	<-done
-	logrus.Info("Server is shutting down...")
+	logging.Logger().Info("Server is shutting down...")
 
 	// On second signal, force exit immediately (in case graceful shutdown hangs)
 	go func() {
 		<-done
-		logrus.Warn("Second interrupt received, forcing immediate shutdown")
+		logging.Logger().Warn("Second interrupt received, forcing immediate shutdown")
 		os.Exit(1)
 	}()
 
@@ -812,7 +838,7 @@ func (s *Server) ListenAndServe(addr string) error {
 	// Stop trigger engine
 	if s.triggerEngine != nil {
 		s.triggerEngine.Stop()
-		logrus.Info("Trigger engine stopped")
+		logging.Logger().Info("Trigger engine stopped")
 	}
 
 	// Create shutdown context with configured timeout
@@ -821,11 +847,11 @@ func (s *Server) ListenAndServe(addr string) error {
 
 	// Gracefully shutdown the server
 	if err := s.Shutdown(ctx); err != nil {
-		logrus.WithError(err).Error("Server forced to shutdown")
+		logging.Logger().WithError(err).Error("Server forced to shutdown")
 		return err
 	}
 
-	logrus.Info("Server exited")
+	logging.Logger().Info("Server exited")
 	return nil
 }
 
@@ -834,85 +860,97 @@ func (s *Server) Shutdown(ctx context.Context) error {
 		return nil // Server not started
 	}
 
+	// Cancel server context to signal all background workers to stop
+	if s.serverCancel != nil {
+		s.serverCancel()
+		logging.Logger().Info("Server context cancelled, background workers will stop")
+	}
+
+	// Wait for all background worker goroutines to complete
+	if s.wg != nil {
+		s.wg.Wait()
+		logging.Logger().Info("All background workers have stopped")
+	}
+
 	// Stop health monitor
 	s.healthMonitor.Stop()
 
 	// Stop notification service
 	if s.notificationSvc != nil {
 		s.notificationSvc.Stop()
-		logrus.Info("Notification service stopped")
+		logging.Logger().Info("Notification service stopped")
 	}
 
 	// Stop WebSocket hub (must be before pool close to unblock LISTEN subscription)
 	if s.notificationWSHandler != nil {
 		s.notificationWSHandler.StopHub()
-		logrus.Info("WebSocket hub stopped")
+		logging.Logger().Info("WebSocket hub stopped")
 	}
 
 	// Close the notification LISTEN pool
 	if s.notificationPool != nil {
 		s.notificationPool.Close()
-		logrus.Info("Notification LISTEN pool closed")
+		logging.Logger().Info("Notification LISTEN pool closed")
 	}
 
 	// Stop usage metrics aggregation service
 	if s.usageMetricsAgg != nil {
 		s.usageMetricsAgg.Stop()
-		logrus.Info("Usage metrics aggregation service stopped")
+		logging.Logger().Info("Usage metrics aggregation service stopped")
 	}
 
 	// Stop state usage aggregator
 	if s.stateUsageAggregator != nil {
 		s.stateUsageAggregator.Stop()
-		logrus.Info("State usage aggregator stopped")
+		logging.Logger().Info("State usage aggregator stopped")
 	}
 
 	// Stop unified analytics sync job
 	if s.unifiedSyncJob != nil {
 		s.unifiedSyncJob.Stop()
-		logrus.Info("Unified analytics sync job stopped")
+		logging.Logger().Info("Unified analytics sync job stopped")
 	}
 
 	// Stop cleanup services
 	if s.sessionCleanup != nil {
 		s.sessionCleanup.Stop()
-		logrus.Info("Session cleanup service stopped")
+		logging.Logger().Info("Session cleanup service stopped")
 	}
 	if s.oauthStateCleanup != nil {
 		s.oauthStateCleanup.Stop()
-		logrus.Info("OAuth state cleanup service stopped")
+		logging.Logger().Info("OAuth state cleanup service stopped")
 	}
 	if s.loginAttemptCleanup != nil {
 		s.loginAttemptCleanup.Stop()
-		logrus.Info("Login attempt cleanup service stopped")
+		logging.Logger().Info("Login attempt cleanup service stopped")
 	}
 	if s.authEventCleanup != nil {
 		s.authEventCleanup.Stop()
-		logrus.Info("Auth event cleanup service stopped")
+		logging.Logger().Info("Auth event cleanup service stopped")
 	}
 	if s.dunningManager != nil {
 		s.dunningManager.Stop()
-		logrus.Info("Dunning manager stopped")
+		logging.Logger().Info("Dunning manager stopped")
 	}
 	if s.billingSyncJob != nil {
 		s.billingSyncJob.Stop()
-		logrus.Info("Billing sync job stopped")
+		logging.Logger().Info("Billing sync job stopped")
 	}
 	if s.exportScheduler != nil {
 		s.exportScheduler.Stop()
-		logrus.Info("Export scheduler stopped")
+		logging.Logger().Info("Export scheduler stopped")
 	}
 	if s.consciousnessCleanupScheduler != nil {
 		s.consciousnessCleanupScheduler.Stop()
-		logrus.Info("Consciousness cleanup scheduler stopped")
+		logging.Logger().Info("Consciousness cleanup scheduler stopped")
 	}
 	if s.consciousnessScheduler != nil {
 		s.consciousnessScheduler.Stop()
-		logrus.Info("Consciousness scheduler stopped")
+		logging.Logger().Info("Consciousness scheduler stopped")
 	}
 	if s.consciousnessRetryScheduler != nil {
 		s.consciousnessRetryScheduler.Stop()
-		logrus.Info("Consciousness retry scheduler stopped")
+		logging.Logger().Info("Consciousness retry scheduler stopped")
 	}
 
 	// Shutdown the HTTP server gracefully
@@ -936,6 +974,15 @@ func (s *Server) GetNotificationService() *notification.Service {
 // GetNotificationRepository returns the notification repository
 func (s *Server) GetNotificationRepository() notification.Repository {
 	return s.notificationRepo
+}
+
+// Context returns the server lifecycle context for background workers.
+// This context is cancelled when the server shuts down.
+func (s *Server) Context() context.Context {
+	if s.serverCtx == nil {
+		return context.Background()
+	}
+	return s.serverCtx
 }
 
 // redisTLSConfig returns a *tls.Config if the address is an Upstash host (requires TLS).
@@ -985,7 +1032,7 @@ func initializeArtifactStore() (deployment.ArtifactStore, error) {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	logrus.WithFields(logrus.Fields{
+	logging.Logger().WithFields(logrus.Fields{
 		"addr": redisAddr,
 		"db":   redisDB,
 		"ttl":  artifactTTL.String(),
@@ -1001,7 +1048,7 @@ func initializeRedisClient() (*redis.Client, error) {
 	upstashToken := os.Getenv("UPSTASH_REDIS_REST_TOKEN")
 
 	if upstashURL != "" && upstashToken != "" {
-		logrus.Info("Using Upstash Redis REST API for caching (go-redis client not needed)")
+		logging.Logger().Info("Using Upstash Redis REST API for caching (go-redis client not needed)")
 		return nil, nil
 	}
 
@@ -1035,7 +1082,7 @@ func initializeRedisClient() (*redis.Client, error) {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	logrus.WithFields(logrus.Fields{
+	logging.Logger().WithFields(logrus.Fields{
 		"addr": redisAddr,
 		"db":   redisDB,
 	}).Info("Initialized Redis client for caching")
@@ -1070,7 +1117,7 @@ func initializeUpstashRedis() (*cache.UpstashRedisClient, error) {
 		return nil, fmt.Errorf("failed to connect to Upstash Redis: %w", err)
 	}
 
-	logrus.Info("Initialized Upstash Redis client")
+	logging.Logger().Info("Initialized Upstash Redis client")
 	return client, nil
 }
 
@@ -1081,7 +1128,7 @@ func (s *Server) serveSPAIndex(w http.ResponseWriter, r *http.Request) {
 
 	// Check if file exists
 	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-		logrus.WithError(err).Error("SPA index.html not found")
+		logging.Logger().WithError(err).Error("SPA index.html not found")
 		http.Error(w, "SPA not available", http.StatusNotFound)
 		return
 	}
@@ -1092,50 +1139,57 @@ func (s *Server) serveSPAIndex(w http.ResponseWriter, r *http.Request) {
 
 // startDunningProcessors starts background goroutines for dunning management
 // These processors handle scheduled payment retries and grace period expirations
-func startDunningProcessors(dunningManager *billingpkg.DunningManager) {
+func startDunningProcessors(ctx context.Context, wg *sync.WaitGroup, dunningManager *billingpkg.DunningManager) {
 	// Retry processor - runs every hour to process scheduled retries
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		ticker := time.NewTicker(1 * time.Hour)
 		defer ticker.Stop()
 
 		for {
 			select {
-			case <-ticker.C:
-				ctx := context.Background()
-				if err := dunningManager.ProcessScheduledRetries(ctx); err != nil {
-					logrus.WithError(err).Error("Failed to process scheduled payment retries")
-				}
-			case <-dunningManager.StopChan():
-				logrus.Info("Dunning retry processor stopping")
+			case <-ctx.Done():
+				logging.Logger().Info("Dunning retry processor stopping due to context cancellation")
 				return
+			case <-dunningManager.StopChan():
+				logging.Logger().Info("Dunning retry processor stopping")
+				return
+			case <-ticker.C:
+				if err := dunningManager.ProcessScheduledRetries(ctx); err != nil {
+					logging.Logger().WithError(err).Error("Failed to process scheduled payment retries")
+				}
 			}
 		}
 	}()
 
 	// Grace period expiration processor - runs daily to check for expired grace periods
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
 
 		// Run immediately on startup
-		ctx := context.Background()
 		if err := dunningManager.ProcessGracePeriodExpirations(ctx); err != nil {
-			logrus.WithError(err).Error("Failed to process grace period expirations")
+			logging.Logger().WithError(err).Error("Failed to process grace period expirations")
 		}
 
 		for {
 			select {
-			case <-ticker.C:
-				ctx := context.Background()
-				if err := dunningManager.ProcessGracePeriodExpirations(ctx); err != nil {
-					logrus.WithError(err).Error("Failed to process grace period expirations")
-				}
-			case <-dunningManager.StopChan():
-				logrus.Info("Dunning grace period processor stopping")
+			case <-ctx.Done():
+				logging.Logger().Info("Dunning grace period processor stopping due to context cancellation")
 				return
+			case <-dunningManager.StopChan():
+				logging.Logger().Info("Dunning grace period processor stopping")
+				return
+			case <-ticker.C:
+				if err := dunningManager.ProcessGracePeriodExpirations(ctx); err != nil {
+					logging.Logger().WithError(err).Error("Failed to process grace period expirations")
+				}
 			}
 		}
 	}()
 
-	logrus.Info("Dunning processors started (retry: 1h, grace expiration: 24h)")
+	logging.Logger().Info("Dunning processors started (retry: 1h, grace expiration: 24h)")
 }

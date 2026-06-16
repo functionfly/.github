@@ -13,6 +13,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/webhooks"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/logging"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
@@ -20,7 +21,6 @@ import (
 	"github.com/functionfly/functionfly/internal/wallet"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 )
 
 // registerPublicWebhookRoutes registers public webhook endpoints (Paperclip, Stripe).
@@ -34,7 +34,7 @@ func registerPublicWebhookRoutes(
 	billingOperationalRepo *storage.BillingOperationalRepository,
 ) {
 	// ── Paperclip (public webhook) ────────────────────────────────────────────
-	paperclipAdapter := papercliphandler.NewAdapter(logrus.New())
+	paperclipAdapter := papercliphandler.NewAdapter(logging.Logger())
 	papercliphandler.RegisterRoutes(api, paperclipAdapter)
 
 	// ── Stripe Webhook (public — no auth) ─────────────────────────────────────
@@ -192,9 +192,9 @@ func registerAgentRoutes(
 	if s.browserSvc != nil {
 		browserHandler := browserhandler.NewHandler(s.browserSvc)
 		browserHandler.RegisterRoutes(protected)
-		logrus.Info("Browser routes registered successfully")
+		logging.Logger().Info("Browser routes registered successfully")
 	} else {
-		logrus.Warn("Browser service is nil - browser routes NOT registered")
+		logging.Logger().Warn("Browser service is nil - browser routes NOT registered")
 	}
 
 	// ── Executable Conversations ──────────────────────────────────────────────
@@ -204,7 +204,7 @@ func registerAgentRoutes(
 		registryRepo,
 		s.notificationSvc,
 		s.repo,
-		logrus.New(),
+		logging.Logger(),
 	)
 
 	// Wire up team memory extraction webhook for conversation resolution
@@ -221,7 +221,7 @@ func registerAgentRoutes(
 	}
 
 	// Initialize conversations WebSocket hub for real-time messaging
-	convWSHub := conversationshandler.NewConversationWebSocketHub(logrus.New())
+	convWSHub := conversationshandler.NewConversationWebSocketHub(logging.Logger())
 	go convWSHub.Run()
 	convHandler.SetWebSocketHub(convWSHub)
 	conversationshandler.RegisterConversationWSRoute(api, convWSHub)

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/functionfly/functionfly/internal/agent/actuator"
 	"github.com/functionfly/functionfly/internal/agent/autonomy"
 	"github.com/functionfly/functionfly/internal/agent/categorization"
@@ -46,15 +45,15 @@ import (
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
-	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
-	consciousnesshandler "github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	connectorhandler "github.com/functionfly/functionfly/internal/api/handlers/connectors"
+	consciousnesshandler "github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
 	"github.com/functionfly/functionfly/internal/api/handlers/demo"
 	"github.com/functionfly/functionfly/internal/api/handlers/deploykeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
+	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
 	enterprisePkg "github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
@@ -78,6 +77,7 @@ import (
 	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
 	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
+	"github.com/functionfly/functionfly/internal/api/handlers/schedule"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/simulation"
 	"github.com/functionfly/functionfly/internal/api/handlers/state"
@@ -99,30 +99,33 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
 	"github.com/functionfly/functionfly/internal/currency"
+	"github.com/functionfly/functionfly/internal/dna"
+	"github.com/functionfly/functionfly/internal/logging"
 	"github.com/functionfly/functionfly/internal/manifest"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
 	paymentPkg "github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/privacy"
 	"github.com/functionfly/functionfly/internal/provisioning"
-	"github.com/functionfly/functionfly/internal/api/handlers/schedule"
 	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
+	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
 	timemachine "github.com/functionfly/functionfly/internal/storage/timemachine"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
 	decisionsrepo "github.com/functionfly/functionfly/internal/storage/trustapi/decisions"
-	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
-	"github.com/functionfly/functionfly/internal/dna"
 	vaultstorage "github.com/functionfly/functionfly/internal/storage/vault"
 	vaultquota "github.com/functionfly/functionfly/internal/storage/vault/quota"
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/functionfly/functionfly/internal/wallet"
-	"github.com/functionfly/functionfly/internal/wasm"
+	statefabricadapter "github.com/functionfly/functionfly/internal/wasmpool/statefabric"
+	wasmpoolclient "github.com/functionfly/functionfly/internal/wasmpool/client"
+	wasmpool "github.com/functionfly/wasm"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -139,11 +142,11 @@ import (
 //  3. Calls to the focused register* helpers (one file per domain)
 func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Handler initialization ────────────────────────────────────────────────
-	authHandler := authHandlerPkg.NewHandler(s.authSvc)
+	authHandler := authHandlerPkg.NewHandler(s.authSvc, s.redisClient)
 	tenantAuthHandler := authHandlerPkg.NewTenantAuthHandler(s.repo)
 	usersHandler := usersHandlerPkg.NewHandler(s.repo, s.authSvc)
 	favoritesHandler := usersHandlerPkg.NewFavoritesHandler(s.repo)
-	presenceHandler := usersHandlerPkg.NewPresenceHandler(s.repo, s.authSvc, s.redisClient, logrus.New())
+	presenceHandler := usersHandlerPkg.NewPresenceHandler(s.repo, s.authSvc, s.redisClient, s.logger)
 	// ── Wallet Service Initialization ────────────────────────────────────────────
 	// Initialize the unified wallet system (replaces user_wallets and agent_billing_controls)
 	walletRepo := wallet.NewRepository(s.postgresDB.GORM)
@@ -192,7 +195,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	apiKeysHandler := apikeys.NewHandler(apikeyRepo)
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		logrus.Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
+		s.logger.Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
 	}
 	apiKeyAuthHandler := apikeys.NewAPIKeyAuthHandler(apikeyRepo, jwtSecret)
 
@@ -202,8 +205,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	notificationHandler := notificationHandlerPkg.NewHandler(s.notificationSvc, s.notificationRepo)
 	notificationWSHandler := notificationHandlerPkg.NewWebSocketHandler(
-		notificationHandlerPkg.NewWebSocketHub(logrus.New()),
-		logrus.New(),
+		notificationHandlerPkg.NewWebSocketHub(s.logger),
+		s.logger,
 	)
 	s.notificationWSHandler = notificationWSHandler
 
@@ -212,9 +215,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	connStr := storage.GetConnectionString()
 	if pool, err := pgxpool.New(context.Background(), connStr); err == nil {
 		s.notificationPool = pool
-		logrus.Info("Notification pgxpool created for LISTEN subscriptions")
+		s.logger.Info("Notification pgxpool created for LISTEN subscriptions")
 	} else {
-		logrus.WithError(err).Warn("Failed to create notification pgxpool – WebSocket push will rely on polling")
+		s.logger.WithError(err).Warn("Failed to create notification pgxpool – WebSocket push will rely on polling")
 	}
 
 	newsletterBaseURL := os.Getenv("BASE_URL")
@@ -233,17 +236,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	githubRepo := storage.NewGitHubRepository(s.postgresDB.DB)
 	githubVaultKey := os.Getenv("GITHUB_VAULT_KEY")
 	if githubVaultKey == "" {
-		if os.Getenv("DEVELOPMENT") == "true" {
-			githubVaultKey = "default-dev-key-must-be-32-bytes!"
-		} else {
-			logrus.Fatal("FATAL: GITHUB_VAULT_KEY environment variable is required in production")
-		}
+		s.logger.Fatal("FATAL: GITHUB_VAULT_KEY environment variable is required")
 	}
 	githubBaseURL := os.Getenv("FRONTEND_URL")
 	if githubBaseURL == "" {
 		githubBaseURL = "http://localhost:3000"
 	}
-	githubHandler := githubhandler.NewHandler(s.repo, githubRepo, nil, logrus.New(), githubVaultKey, githubBaseURL)
+	githubHandler := githubhandler.NewHandler(s.repo, githubRepo, nil, s.logger, githubVaultKey, githubBaseURL)
 	githubHandler.SetAuthService(s.authSvc)
 
 	// ── Real-time Usage Tracking ─────────────────────────────────────────────
@@ -255,8 +254,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		services.DefaultRealtimeUsageConfig(),
 	)
 	// Start the background sync job to periodically sync counters to the database
-	realtimeUsageTracker.Start(context.Background())
-	logrus.Info("Real-time usage tracker initialized with background sync")
+	realtimeUsageTracker.Start(s.Context())
+	s.logger.Info("Real-time usage tracker initialized with background sync")
 
 	// Initialize quota middleware for synchronous quota enforcement
 	quotaMiddleware := middleware.NewQuotaMiddleware(realtimeUsageTracker, s.repo, &middleware.QuotaMiddlewareConfig{
@@ -283,15 +282,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize billing sync job for external billing integrations
 	billingRepo := storage.NewBillingRepository(s.postgresDB)
 	s.billingSyncJob = billing.NewBillingSyncJob(exportRepo, billingRepo)
-	s.billingSyncJob.Start(context.Background())
-	logrus.Info("Billing sync job initialized")
+	s.billingSyncJob.Start(s.Context())
+	s.logger.Info("Billing sync job initialized")
 
 	externalBillingHandler := billinghandler.NewExternalBillingHandler(exportRepo, s.repo, s.billingSyncJob)
 
 	// Initialize export scheduler for automated exports
 	s.exportScheduler = services.NewExportScheduler(exportRepo, exportService)
 	s.exportScheduler.Start()
-	logrus.Info("Export scheduler initialized")
+	s.logger.Info("Export scheduler initialized")
 
 	// Initialize usage alert repository and forecast/alerter services
 	alertRepo := storage.NewUsageAlertRepository(s.postgresDB.DB)
@@ -304,7 +303,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	cacheConfiguration := cache.LoadCacheConfiguration()
 	if err := cacheConfiguration.Validate(); err != nil {
-		logrus.WithError(err).Error("Invalid cache configuration, disabling all caching features")
+		s.logger.WithError(err).Error("Invalid cache configuration, disabling all caching features")
 		cacheConfiguration.DiskEnabled = false
 		cacheConfiguration.RedisEnabled = false
 		cacheConfiguration.CDNEnabled = false
@@ -322,7 +321,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	cacheService, err := cache.NewCacheService(s.postgresDB.GORM, s.redisClient, cacheConfiguration.ToCacheConfig())
 	if err != nil {
-		logrus.WithError(err).Error("Failed to initialize cache service, attempting fallback configuration")
+		s.logger.WithError(err).Error("Failed to initialize cache service, attempting fallback configuration")
 		fallbackConfig := &cache.CacheConfig{
 			MaxMemoryMB:      100,
 			EnableDiskCache:  false,
@@ -333,16 +332,17 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		}
 		cacheService, err = cache.NewCacheService(s.postgresDB.GORM, s.redisClient, fallbackConfig)
 		if err != nil {
-			logrus.WithError(err).Error("Failed to initialize fallback cache service")
-			panic("Failed to initialize cache service even with fallback configuration: " + err.Error())
+			s.logger.WithError(err).Error("Failed to initialize fallback cache service, running without cache")
+			cacheService = nil
+		} else {
+			s.logger.Warn("Cache service initialized with fallback in-memory-only configuration")
 		}
-		logrus.Warn("Cache service initialized with fallback in-memory-only configuration")
 	}
 
 	cdnService := cache.NewCDNService(cacheConfiguration.ToCDNConfig())
 
 	var registryCache *cache.RegistryRedisCache
-	if cacheConfiguration.RedisEnabled && s.redisClient != nil {
+	if cacheConfiguration.RedisEnabled && s.redisClient != nil && cacheService != nil {
 		registryCache = cacheService.GetRegistryCache()
 	}
 	registryRepo := registry.NewRegistryRepository(s.postgresDB.GORM, registryCache)
@@ -358,7 +358,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize the persistent SandboxClient daemon for function execution.
 	// This replaces per-request process spawning with a single long-lived runtime.
 	if err := registryexecution.InitSandboxClient(); err != nil {
-		logrus.WithError(err).Warn("Failed to init SandboxClient daemon, falling back to per-request executor")
+		s.logger.WithError(err).Warn("Failed to init SandboxClient daemon, falling back to per-request executor")
 	}
 
 	edgeCache := cache.NewEdgeCacheService(
@@ -378,7 +378,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	privacyRepo := privacy.NewRepository(s.postgresDB)
 	privacySalt := os.Getenv("PRIVACY_SALT")
 	if privacySalt == "" {
-		logrus.Fatal("FATAL: PRIVACY_SALT environment variable is required. Refusing to start with predictable salt.")
+		s.logger.Fatal("FATAL: PRIVACY_SALT environment variable is required. Refusing to start with predictable salt.")
 	}
 	privacyService := privacy.NewService(privacyRepo, privacySalt)
 	registryHandler.SetPrivacyService(privacyService)
@@ -409,13 +409,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	}
 	cpythonPath := "runtimes/cpython-wasi/python.wasm"
 	cpythonLibPath := "runtimes/cpython-wasi/lib"
-	var wasmPool *wasm.InstancePool
+	var wasmPool *wasmpool.InstancePool
 
 	if _, err := os.Stat(micropythonPath); err == nil {
-		factory := func() (*wasm.PythonRuntime, error) {
-			rt, err := wasm.NewPythonRuntime(micropythonPath, nil, nil, nil)
+		factory := func() (*wasmpool.PythonRuntime, error) {
+			rt, err := wasmpool.NewPythonRuntime(micropythonPath, nil, nil, nil)
 			if err != nil {
-				logrus.WithError(err).Warn("Failed to create PythonRuntime (CGO disabled?)")
+				s.logger.WithError(err).Warn("Failed to create PythonRuntime (CGO disabled?)")
 				return nil, err
 			}
 			return rt, nil
@@ -427,20 +427,17 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			}
 		}
 		// InitPoolsWithConfig will log a warning if CGO is disabled but won't fail
-		wasm.InitPoolsWithConfig(factory, poolSize, 30*time.Minute)
-		wasmPool = wasm.PerTenantPools
+	wasmpool.InitPoolsWithConfig(factory, poolSize, 30*time.Minute)
+	wasmPool = wasmpool.PerTenantPools
 		if wasmPool != nil {
-			logrus.WithField("pool_size", poolSize).Info("WASM instance pool initialized")
+			s.logger.WithField("pool_size", poolSize).Info("WASM instance pool initialized")
 		} else {
-			logrus.Warn("WASM pool is nil (CGO disabled) - Python execution will use external service")
+			s.logger.Warn("WASM pool is nil (CGO disabled) - Python execution will use external service")
 		}
 	} else {
-		logrus.WithField("path", micropythonPath).Warn("MicroPython WASM not found, skipping instance pool")
+		s.logger.WithField("path", micropythonPath).Warn("MicroPython WASM not found, skipping instance pool")
 	}
 
-	// RuntimeRouter: selects engine by runtime + tier, with fallback to legacy sandbox.
-	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath)
-	registryHandler.SetRuntimeRouter(runtimeRouter)
 	// ---------------------------------------------------------------------------
 	// ---------------------------------------------------------------------------
 
@@ -471,9 +468,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize DevOps schema on startup
 	go func() {
 		if err := studioDevOpsRepo.InitSchema(context.Background()); err != nil {
-			logrus.WithError(err).Error("failed to initialize devops schema")
+			s.logger.WithError(err).Error("failed to initialize devops schema")
 		} else {
-			logrus.Info("studio devops schema initialized")
+			s.logger.Info("studio devops schema initialized")
 		}
 	}()
 	pluginRepo := storage.NewPluginRepository(s.postgresDB.DB)
@@ -493,14 +490,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	functionExecutor := staterepo.NewFunctionTriggerExecutor(
 		os.Getenv("FUNCTION_EXECUTION_URL"),
 		os.Getenv("FUNCTION_API_KEY"),
-		logrus.New(),
+		s.logger,
 	)
 
 	// Create webhook executor for external HTTP triggers
-	webhookExecutor := staterepo.NewWebhookTriggerExecutor(logrus.New())
+	webhookExecutor := staterepo.NewWebhookTriggerExecutor(s.logger)
 
 	// Combine into multi-executor that handles both types
-	triggerExecutor := staterepo.NewMultiExecutor(functionExecutor, webhookExecutor, logrus.New())
+	triggerExecutor := staterepo.NewMultiExecutor(functionExecutor, webhookExecutor, s.logger)
 
 	triggerEngineConfig := staterepo.DefaultTriggerEngineConfig()
 	if envEnabled := os.Getenv("TRIGGER_ENGINE_ENABLED"); envEnabled != "" {
@@ -520,7 +517,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		s.postgresDB.GORM,
 		triggerEngineConfig,
 		triggerExecutor,
-		logrus.New(),
+		s.logger,
 	)
 	s.triggerEngine = triggerEngine
 
@@ -546,21 +543,41 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.stateFabricRepo = stateFabricRepo
 	stateFabricHandler := statefabric.NewHandlerWithCleanup(stateFabricRepo, sfAddonRepo, s.stateFabricCleanup)
 
+	// Build the RuntimeRouter now that stateFabricRepo is available.
+	// The adapter wraps the concrete *statefabric.Repository to satisfy
+	// wasmpool.StateFabricRepo (the minimal interface the wasm module needs).
+	var stateFabricWasmRepo wasmpool.StateFabricRepo
+	stateFabricWasmRepo = statefabricadapter.NewAdapter(stateFabricRepo)
+
+	// wasmpool SDK manager: routes between External and Local pool. With
+	// ExternalPercent=0 (the default), every request goes to Local via
+	// the SDK's LocalPoolClient, which is byte-identical to the previous
+	// direct pool.Get/Put usage. Set WASM_POOL_EXTERNAL_PERCENT > 0 to
+	// route a percentage of traffic to the external wasm-pool-service.
+	wmgr, err := wasmpoolclient.NewManagerFromConfig(wasmPool)
+	if err != nil {
+		log.WithError(err).Fatal("build wasmpool manager")
+	}
+	defer wmgr.Close()
+
+	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath, stateFabricWasmRepo, wmgr)
+	registryHandler.SetRuntimeRouter(runtimeRouter)
+
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
 	s.vaultRepo = vaultRepo
 	vaultQuotaStore := vaultstorage.NewQuotaStore(vaultRepo)
 	vaultQuotaEnforcer := vaultquota.NewEnforcer(vaultQuotaStore)
-	vaultHandler := vault.NewHandler(vaultRepo, logrus.New(), vaultQuotaEnforcer)
+	vaultHandler := vault.NewHandler(vaultRepo, s.logger, vaultQuotaEnforcer)
 
 	// Brain + Connector handlers
 	connectorRepo := storage.NewConnectorRepository(s.postgresDB.DB)
 	brainRepo := storage.NewBrainRepository(s.postgresDB.DB, s.redisClient)
-	connectorHandler := connectorhandler.NewHandler(connectorRepo, brainRepo, nil, logrus.New())
-	brainHandler := brainhandler.NewHandler(brainRepo, logrus.New())
+	connectorHandler := connectorhandler.NewHandler(connectorRepo, brainRepo, nil, s.logger)
+	brainHandler := brainhandler.NewHandler(brainRepo, s.logger)
 
 	// Support handler initialization
 	supportRepo := support.NewPostgresRepository(s.postgresDB.DB)
-	supportLogger := logrus.New()
+	supportLogger := s.logger
 
 	// Initialize AI client for support
 	aiSupportConfig := &support.AIChatClientConfig{
@@ -593,16 +610,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		aiChatBaseURL = "http://localhost:18081"
 	}
 	aiChatAPIKey := os.Getenv("AI_SERVICE_API_KEY")
-	chatAIClient := chat.NewAIServiceClient(aiChatBaseURL, aiChatAPIKey, logrus.New())
-	chatConnectorRegistry := chat.NewConnectorRegistry(logrus.New())
-	chatService := chat.NewService(chatRepo, chatAIClient, chatConnectorRegistry, logrus.New())
-	chatWSHub := chat.NewWebSocketHub(chatService, chatRepo, chatAIClient, logrus.New())
+	chatAIClient := chat.NewAIServiceClient(aiChatBaseURL, aiChatAPIKey, s.logger)
+	chatConnectorRegistry := chat.NewConnectorRegistry(s.logger)
+	chatService := chat.NewService(chatRepo, chatAIClient, chatConnectorRegistry, s.logger)
+	chatWSHub := chat.NewWebSocketHub(chatService, chatRepo, chatAIClient, s.logger)
 	go chatWSHub.Run()
-	chatHandler := chat.NewHandler(chatRepo, chatService, chatWSHub, logrus.New())
-	chatConnectorHandler := chat.NewConnectorHandler(chatRepo, chatConnectorRegistry, logrus.New())
+	chatHandler := chat.NewHandler(chatRepo, chatService, chatWSHub, s.logger)
+	chatConnectorHandler := chat.NewConnectorHandler(chatRepo, chatConnectorRegistry, s.logger)
 
 	// Consciousness handler initialization
-	consciousnessHandler := consciousnesshandler.NewHandler(s.postgresDB.DB, s.repo, logrus.New())
+	consciousnessHandler := consciousnesshandler.NewHandler(s.postgresDB.DB, s.repo, s.logger)
 
 	aepHandler := agenthandler.NewHandler(s.postgresDB.GORM, s.redisClient, registryRepo, s.repo, s.notificationSvc)
 
@@ -639,7 +656,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	var githubScanner discovery.Source
 	if os.Getenv("GITHUB_TOKEN") != "" && (os.Getenv("GITHUB_OWNER") == "" || os.Getenv("GITHUB_REPO") == "") {
 		// Global search mode: token provided but no specific repo
-		logrus.Info("GitHub scanner: using global search mode (no specific repo configured)")
+		s.logger.Info("GitHub scanner: using global search mode (no specific repo configured)")
 		githubScanner = discovery.NewGitHubGlobalScanner(os.Getenv("GITHUB_TOKEN"), nil, 100)
 	} else {
 		// Specific repo mode (or no token - will return empty)
@@ -663,11 +680,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	var factorySandbox agenttesting.SandboxExecutor
 	secureSandbox, err := secureSandbox.NewSecureSandboxExecutor()
 	if err != nil {
-		logrus.WithError(err).Warn("failed to create secure sandbox, falling back to heuristic")
+		s.logger.WithError(err).Warn("failed to create secure sandbox, falling back to heuristic")
 		factorySandbox = nil
 	} else {
 		factorySandbox = secureSandbox
-		logrus.Infof("secure sandbox executor initialized (gVisor available: %v)", secureSandbox.IsGvisorAvailable())
+		s.logger.Infof("secure sandbox executor initialized (gVisor available: %v)", secureSandbox.IsGvisorAvailable())
 	}
 
 	factoryTesting := agenttesting.NewService(s.postgresDB.GORM, factorySandbox, nil)
@@ -676,10 +693,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	loadedFactoryConfig, err := factoryService.GetConfig(context.Background())
 	if err != nil {
-		logrus.WithError(err).Warn("failed to load factory config from database, using defaults")
+		s.logger.WithError(err).Warn("failed to load factory config from database, using defaults")
 	} else {
 		factoryConfig = loadedFactoryConfig
-		logrus.Info("loaded factory config from database")
+		s.logger.Info("loaded factory config from database")
 	}
 
 	factoryDiscoveryWithThreshold := discovery.NewServiceWithThreshold(s.postgresDB.GORM, factoryConfig.MinimumQualityScore, factorySources...)
@@ -691,16 +708,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		Timezone: factoryConfig.ScheduleTimezone,
 	}
 	if err := factoryPipelineScheduler.Start(context.Background(), scheduleConfig); err != nil {
-		logrus.WithError(err).Error("failed to start factory pipeline scheduler")
+		s.logger.WithError(err).Error("failed to start factory pipeline scheduler")
 	} else if factoryConfig.ScheduleEnabled {
-		logrus.Infof("factory pipeline scheduler started with cron: %s", factoryConfig.ScheduleCron)
+		s.logger.Infof("factory pipeline scheduler started with cron: %s", factoryConfig.ScheduleCron)
 	}
 
 	factoryService.UpdateDiscoveryService(factoryDiscoveryWithThreshold)
 
 	functionScheduler := scheduler.NewFunctionScheduler(s.repo)
-	if err := functionScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start function scheduler")
+	if err := functionScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start function scheduler")
 	}
 	scheduleHandler := schedule.NewHandler(functionScheduler, s.repo)
 
@@ -723,12 +740,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 	swarmControllerHandler := agenthandler.NewSwarmControllerHandler(platformController, metricsCollector, workerService)
 	if err := platformController.Initialize(context.Background()); err != nil {
-		logrus.WithError(err).Warn("failed to initialize platform controller")
+		s.logger.WithError(err).Warn("failed to initialize platform controller")
 	}
 
 	unfairAdvantageEngine := swarm.NewUnfairAdvantageEngine(s.postgresDB.GORM, platformController, metricsCollector)
 	if err := unfairAdvantageEngine.Initialize(context.Background()); err != nil {
-		logrus.WithError(err).Warn("failed to initialize unfair advantage engine")
+		s.logger.WithError(err).Warn("failed to initialize unfair advantage engine")
 	}
 	unfairAdvantageHandler := agenthandler.NewUnfairAdvantageHandler(unfairAdvantageEngine)
 
@@ -744,13 +761,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		Timezone: "UTC",
 	}
 	if err := unfairAdvantageScheduler.Start(context.Background(), unfairAdvantageSchedulerConfig); err != nil {
-		logrus.WithError(err).Error("failed to start unfair advantage scheduler")
+		s.logger.WithError(err).Error("failed to start unfair advantage scheduler")
 	} else if unfairAdvantageSchedulerEnabled {
-		logrus.Infof("unfair advantage scheduler started with cron: %s", unfairAdvantageSchedulerCron)
+		s.logger.Infof("unfair advantage scheduler started with cron: %s", unfairAdvantageSchedulerCron)
 	}
 
-	if err := workerService.Start(context.Background()); err != nil {
-		logrus.WithError(err).Warn("failed to start swarm worker service")
+	if err := workerService.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Warn("failed to start swarm worker service")
 	}
 
 	// Trust Score Scheduler - hourly trust score recalculation
@@ -765,9 +782,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		Cron:    trustScoreCron,
 	}
 	if err := trustScoreScheduler.Start(context.Background(), trustScoreConfig); err != nil {
-		logrus.WithError(err).Error("failed to start trust score scheduler")
+		s.logger.WithError(err).Error("failed to start trust score scheduler")
 	} else if trustScoreEnabled {
-		logrus.Infof("trust score scheduler started with cron: %s", trustScoreCron)
+		s.logger.Infof("trust score scheduler started with cron: %s", trustScoreCron)
 	}
 
 	// Expired Evaluation Scheduler - cleans up old cached trust policy evaluations
@@ -787,10 +804,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	expiredEvalScheduler.CronExpression = expiredEvalCron
 	expiredEvalScheduler.Enabled = expiredEvalEnabled
 	expiredEvalScheduler.MaxAge = time.Duration(expiredEvalMaxAgeHours) * time.Hour
-	if err := expiredEvalScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start expired evaluation scheduler")
+	if err := expiredEvalScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start expired evaluation scheduler")
 	} else if expiredEvalEnabled {
-		logrus.Infof("expired evaluation scheduler started with cron: %s, max_age: %dh", expiredEvalCron, expiredEvalMaxAgeHours)
+		s.logger.Infof("expired evaluation scheduler started with cron: %s, max_age: %dh", expiredEvalCron, expiredEvalMaxAgeHours)
 	}
 
 	// Subscription Sync Scheduler - syncs Stripe subscription status periodically
@@ -805,9 +822,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	}
 	if subscriptionSyncEnabled {
 		if err := subscriptionSyncScheduler.Start(context.Background(), subscriptionSyncConfig); err != nil {
-			logrus.WithError(err).Error("failed to start subscription sync scheduler")
+			s.logger.WithError(err).Error("failed to start subscription sync scheduler")
 		} else {
-			logrus.Infof("subscription sync scheduler started with cron: %s", subscriptionSyncCron)
+			s.logger.Infof("subscription sync scheduler started with cron: %s", subscriptionSyncCron)
 		}
 	}
 
@@ -823,16 +840,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	}
 	if upcomingRenewalEnabled {
 		if err := upcomingRenewalScheduler.Start(context.Background(), upcomingRenewalConfig); err != nil {
-			logrus.WithError(err).Error("failed to start upcoming renewal scheduler")
+			s.logger.WithError(err).Error("failed to start upcoming renewal scheduler")
 		} else {
-			logrus.Infof("upcoming renewal scheduler started with cron: %s", upcomingRenewalCron)
+			s.logger.Infof("upcoming renewal scheduler started with cron: %s", upcomingRenewalCron)
 		}
 	}
 
 	// Exchange Rate Scheduler - syncs exchange rates from external providers
 	exchangeRateScheduler := currency.NewExchangeRateScheduler(s.repo, s.redisClient)
-	if err := exchangeRateScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start exchange rate scheduler")
+	if err := exchangeRateScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start exchange rate scheduler")
 	}
 
 	experimentService := factorysvc.NewExperimentService(s.postgresDB.GORM)
@@ -930,6 +947,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.Use(middleware.TracingMiddleware)
 	s.router.Use(maintenanceMiddleware.CheckMaintenanceMode)
 	s.router.Use(middleware.EnvironmentMiddleware)
+	s.router.Use(middleware.BodySizeLimitMiddleware(1 << 20)) // 1MB default
 
 	s.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(advancedSecurityMiddleware.CORSMiddleware(http.HandlerFunc(next.ServeHTTP)))
@@ -967,7 +985,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			return http.HandlerFunc(advancedSecurityMiddleware.SecurityHeaders(http.HandlerFunc(next.ServeHTTP)))
 		})
 		// Log warning about missing security middleware in development
-		logrus.Warn("SECURITY WARNING: Running in DEVELOPMENT mode without PRODUCTION_ENV=true. Advanced security middleware (DDoS protection, geo-blocking, rate limiting, input validation) is DISABLED. This is NOT safe for production!")
+		s.logger.Warn("SECURITY WARNING: Running in DEVELOPMENT mode without PRODUCTION_ENV=true. Advanced security middleware (DDoS protection, geo-blocking, rate limiting, input validation) is DISABLED. This is NOT safe for production!")
 	}
 
 	s.router.Use(monitoringPkg.HTTPMetricsMiddleware)
@@ -995,7 +1013,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	csrfMiddleware := middleware.NewCSRFMiddleware(s.upstashRedis, s.authSvc)
 
 	// Status WebSocket hub — must be wired before route registration
-	statusWSHub := statushandler.NewStatusWebSocketHub(statusHandlerInst, logrus.New())
+	statusWSHub := statushandler.NewStatusWebSocketHub(statusHandlerInst, s.logger)
 	go statusWSHub.Run()
 	statusHandlerInst.SetStatusHub(statusWSHub)
 
@@ -1032,7 +1050,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		ethSvc := drehandler.NewEthereumAnchoringService()
 		ethSvc.SetSigningKey(signingKey)
 		anchoringService = ethSvc
-		logrus.Info("DRE anchoring service initialized (blockchain anchoring enabled)")
+		s.logger.Info("DRE anchoring service initialized (blockchain anchoring enabled)")
 	}
 
 	registerPublicWebhookRoutes(
@@ -1071,7 +1089,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 
 	if err := platformController.Initialize(context.Background()); err != nil {
-		logrus.WithError(err).Warn("failed to initialize platform controller")
+		s.logger.WithError(err).Warn("failed to initialize platform controller")
 	}
 
 	registerPlatformRoutes(
@@ -1189,13 +1207,13 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	certHandler.RegisterRoutes(api, authMiddleware)
 
 	s.certExamExpiryScheduler = scheduler.NewCertExamExpiryScheduler(certRepo)
-	if err := s.certExamExpiryScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start cert exam expiry scheduler")
+	if err := s.certExamExpiryScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start cert exam expiry scheduler")
 	}
 
 	s.certCredExpiryScheduler = scheduler.NewCertCredentialExpiryScheduler(certRepo)
-	if err := s.certCredExpiryScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start cert credential expiry scheduler")
+	if err := s.certCredExpiryScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start cert credential expiry scheduler")
 	}
 
 	// Consciousness scheduler for periodic awareness analysis
@@ -1205,49 +1223,49 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	if consciousnessSchedulerCron == "" {
 		consciousnessSchedulerCron = "*/30 * * * *" // Default: every 30 minutes
 	}
-	if err := s.consciousnessScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start consciousness scheduler")
+	if err := s.consciousnessScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start consciousness scheduler")
 	} else if consciousnessSchedulerEnabled {
-		logrus.Infof("consciousness scheduler started with cron: %s", consciousnessSchedulerCron)
+		s.logger.Infof("consciousness scheduler started with cron: %s", consciousnessSchedulerCron)
 	}
 
 	// Consciousness data retention cleanup scheduler
 	s.consciousnessCleanupScheduler = scheduler.NewCleanupScheduler(s.postgresDB.DB)
-	if err := s.consciousnessCleanupScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start consciousness cleanup scheduler")
+	if err := s.consciousnessCleanupScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start consciousness cleanup scheduler")
 	} else {
-		logrus.Info("Consciousness data retention cleanup scheduler started")
+		s.logger.Info("Consciousness data retention cleanup scheduler started")
 	}
 
 	// Consciousness delivery retry scheduler
-	s.consciousnessRetryScheduler = scheduler.NewRetryScheduler(s.postgresDB.DB, logrus.New())
-	if err := s.consciousnessRetryScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start consciousness retry scheduler")
+	s.consciousnessRetryScheduler = scheduler.NewRetryScheduler(s.postgresDB.DB, s.logger)
+	if err := s.consciousnessRetryScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start consciousness retry scheduler")
 	} else {
-		logrus.Info("Consciousness delivery retry scheduler started")
+		s.logger.Info("Consciousness delivery retry scheduler started")
 	}
 
 	{
 		gradingWorker := certification.NewGradingWorker(certRepo)
-		go gradingWorker.Start(context.Background())
-		logrus.Info("Cert grading worker started")
+		go gradingWorker.Start(s.Context())
+		s.logger.Info("Cert grading worker started")
 	}
 
 	// ── DNA Service and Schedulers ─────────────────────────────────────────────
 	s.dnaRepo = dnaStorage.NewRepository(s.postgresDB.DB)
 	s.dnaService = dna.NewService(s.dnaRepo, logrus.StandardLogger())
-	s.dnaService.SetServerContext(context.Background())
+	s.dnaService.SetServerContext(s.Context())
 
 	// DNA partition scheduler for monthly partition maintenance
 	s.dnaPartitionScheduler = scheduler.NewDNAPartitionScheduler(s.dnaRepo)
-	if err := s.dnaPartitionScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start DNA partition scheduler")
+	if err := s.dnaPartitionScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start DNA partition scheduler")
 	}
 
 	// DNA insights scheduler for daily aggregation
 	s.dnaInsightsScheduler = scheduler.NewDNAInsightsScheduler(s.dnaRepo)
-	if err := s.dnaInsightsScheduler.Start(context.Background()); err != nil {
-		logrus.WithError(err).Error("failed to start DNA insights scheduler")
+	if err := s.dnaInsightsScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start DNA insights scheduler")
 	}
 
 	// DNA handler
@@ -1256,12 +1274,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Register DNA routes
 	registerDNARoutes(s, api, protected, authMiddleware, s.dnaHandler)
 
-
 	// Payout scheduler for auto-payouts
 	payoutSchedulerConfig := scheduler.EnvPayoutScheduleConfig()
 	payoutScheduler := scheduler.NewPayoutScheduler(payoutServiceExtended)
 	if err := payoutScheduler.Start(context.Background(), payoutSchedulerConfig); err != nil {
-		logrus.WithError(err).Error("failed to start payout scheduler")
+		s.logger.WithError(err).Error("failed to start payout scheduler")
 	}
 
 	// Wire payout service to Stripe webhook handler (registered later in registerAgentRoutes)
@@ -1384,10 +1401,10 @@ func initializeGenerationServiceWithCache(db *gorm.DB, redisClient *redis.Client
 	var codeGen generation.CodeGenerator
 
 	if useRedisCache && redisClient != nil {
-		logrus.Info("Initializing generation service with Redis-backed cache")
+		logging.Logger().Info("Initializing generation service with Redis-backed cache")
 		codeGen = generation.NewOpenRouterClientWithRedis(apiKey, nil, redisClient, true, nil)
 	} else {
-		logrus.Info("Initializing generation service with in-memory cache")
+		logging.Logger().Info("Initializing generation service with in-memory cache")
 		codeGen = generation.NewOpenRouterClient(apiKey, nil, nil, nil)
 	}
 

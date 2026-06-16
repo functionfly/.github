@@ -17,7 +17,6 @@ import (
 	gatewayreceipt "github.com/functionfly/functionfly/internal/gateway/receipt"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
-	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -43,7 +42,7 @@ func (s *Server) registerA2ARoutes(
 ) {
 	// Only register A2A routes if the feature is enabled.
 	if os.Getenv("A2A_ENABLED") == "false" {
-		logrus.Info("A2A routes disabled via A2A_ENABLED=false")
+		s.logger.Info("A2A routes disabled via A2A_ENABLED=false")
 		return
 	}
 
@@ -61,20 +60,20 @@ func (s *Server) registerA2ARoutes(
 	emitterCfg := gatewayreceipt.EmitterConfig{
 		Signer: signingKey,
 	}
-	emitter := gatewayreceipt.NewEmitter(registryRepo, emitterCfg, logrus.New())
+	emitter := gatewayreceipt.NewEmitter(registryRepo, emitterCfg, s.logger)
 
 	// Initialize GatewayCore.
 	core := gateway.NewCore(gateway.Deps{
 		Auth:    nil, // Auth is handled by middleware
 		Emitter: emitter,
-		Logger:  logrus.New(),
+		Logger:  s.logger,
 	})
 
 	// Initialize A2A task engine.
-	engine := a2a.NewTaskEngine(taskStore, logrus.New())
+	engine := a2a.NewTaskEngine(taskStore, s.logger)
 
 	// Initialize A2A handler.
-	a2aHandler := a2a.NewHandler(core, engine, cardRepo, logrus.New())
+	a2aHandler := a2a.NewHandler(core, engine, cardRepo, s.logger)
 
 	// ── Well-known endpoints ────────────────────────────────────────────────
 
@@ -116,7 +115,7 @@ func (s *Server) registerA2ARoutes(
 	// POST /v1/a2a/tasks/{task_id}/subscribe — SSE stream for task updates.
 	api.Handle("/a2a/tasks/{task_id}/subscribe", a2aBearerAuth(http.HandlerFunc(a2aHandler.SubscribeSSE))).Methods("POST", "OPTIONS")
 
-	logrus.Info("A2A routes registered")
+	s.logger.Info("A2A routes registered")
 }
 
 // registerExtendedWellKnown extends /.well-known/functionfly.json with the
