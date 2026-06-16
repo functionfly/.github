@@ -2,9 +2,7 @@ package functionfly
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -17,28 +15,24 @@ import (
 )
 
 const (
-	ProviderName   = "functionfly-edge"
+	ProviderName     = "functionfly-edge"
 	WASMProviderName = "functionfly-wasm"
-	RequestTimeout = 30 * time.Second
-	HealthPath     = "/healthz"
-	// AppNameMaxLen and allowed pattern to prevent path traversal and injection
-	AppNameMaxLen     = 128
+	RequestTimeout   = 30 * time.Second
+	HealthPath       = "/healthz"
+	AppNameMaxLen    = 128
 	appNamePatternStr = `^[a-zA-Z0-9][a-zA-Z0-9_-]*$`
 )
 
 var appNameRegex = regexp.MustCompile(appNamePatternStr)
 
-// FunctionFlyAdapter implements ProviderAdapter and DeploymentAdapter for FunctionFly Edge.
-// Edge is a zero-deployment provider: functions are served from the edge URL; deploy only validates and returns the URL.
-// For WASM runtime, it pushes the WASM artifact to the WASM edge service.
 type FunctionFlyAdapter struct {
-	signer *signing.RequestSigner
-	client *http.Client
-	// wasmClient is used for WASM deployments (nil means use default client)
-	wasmClient *http.Client
+	signer           *signing.RequestSigner
+	client           *http.Client
+	deploymentClient EdgeDeploymentClientInterface
+	edgeURL          string
+	apiKey           string
 }
 
-// NewFunctionFlyAdapter creates a new FunctionFly Edge adapter with default HTTP client.
 func NewFunctionFlyAdapter() *FunctionFlyAdapter {
 	transport := &http.Transport{
 		MaxIdleConns:        10,
@@ -52,7 +46,6 @@ func NewFunctionFlyAdapter() *FunctionFlyAdapter {
 	})
 }
 
-// NewFunctionFlyAdapterWithClient creates a new FunctionFly Edge adapter with a custom HTTP client (e.g. for tests or custom TLS).
 func NewFunctionFlyAdapterWithClient(client *http.Client) *FunctionFlyAdapter {
 	if client == nil {
 		client = &http.Client{Timeout: RequestTimeout}
@@ -63,9 +56,24 @@ func NewFunctionFlyAdapterWithClient(client *http.Client) *FunctionFlyAdapter {
 	}
 }
 
+func NewFunctionFlyAdapterWithDeploymentClient(edgeURL, apiKey string) *FunctionFlyAdapter {
+	adapter := &FunctionFlyAdapter{
+		signer:           &signing.RequestSigner{},
+		client:           &http.Client{Timeout: RequestTimeout},
+		deploymentClient: NewDeploymentClient(edgeURL, apiKey),
+		edgeURL:          edgeURL,
+		apiKey:          apiKey,
+	}
+	return adapter
+}
+
+func (a *FunctionFlyAdapter) WithDeploymentClient(client EdgeDeploymentClientInterface) *FunctionFlyAdapter {
+	a.deploymentClient = client
+	return a
+}
+
 func (a *FunctionFlyAdapter) GetName() string { return ProviderName }
 
-// ValidateConfig validates region and edge URL. URL must be HTTPS and a valid base URL.
 func (a *FunctionFlyAdapter) ValidateConfig(region, rawURL string) error {
 	if rawURL == "" {
 		return fmt.Errorf("URL is required for %s provider", ProviderName)
@@ -98,7 +106,6 @@ func (a *FunctionFlyAdapter) GetRegions() []string {
 	return []string{"eu-central-1", "us-east-1"}
 }
 
-// HealthCheck performs an HTTP GET to backend.URL/healthz with signed request, respects context and reports latency.
 func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.Backend) (*common.HealthCheckResult, error) {
 	if backend == nil {
 		return &common.HealthCheckResult{
@@ -129,7 +136,6 @@ func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.B
 		}, nil
 	}
 
-	// Retry logic for transient connection errors (EOF, connection reset)
 	var resp *http.Response
 	var doErr error
 	var latencyMs int
@@ -140,14 +146,11 @@ func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.B
 		if doErr == nil {
 			break
 		}
-		// Retry on EOF or connection reset errors
 		errStr := doErr.Error()
 		if attempt == 0 && (strings.Contains(errStr, "EOF") || strings.Contains(errStr, "connection reset") || strings.Contains(errStr, "broken pipe")) {
 			time.Sleep(100 * time.Millisecond)
-			// Recreate request for retry (body is nil for GET, so safe to reuse)
 			newReq, newReqErr := http.NewRequestWithContext(ctx, http.MethodGet, healthURL, nil)
 			if newReqErr != nil {
-				// If we can't create a new request, return the original error
 				doErr = newReqErr
 				break
 			}
@@ -170,7 +173,8 @@ func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.B
 			ErrorMessage: fmt.Sprintf("health check failed: %v", doErr),
 		}, nil
 	}
-	defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
+
 	result := &common.HealthCheckResult{
 		OK:         resp.StatusCode == http.StatusOK,
 		StatusCode: resp.StatusCode,
@@ -186,7 +190,6 @@ func (a *FunctionFlyAdapter) HealthCheck(ctx context.Context, backend *storage.B
 	return result, nil
 }
 
-// SignRequest signs the request with the backend's shared secret (HMAC-SHA256). Safe if backend is nil.
 func (a *FunctionFlyAdapter) SignRequest(req *http.Request, backend *storage.Backend, timestamp time.Time) error {
 	secret := ""
 	if backend != nil {
@@ -197,7 +200,6 @@ func (a *FunctionFlyAdapter) SignRequest(req *http.Request, backend *storage.Bac
 
 func (a *FunctionFlyAdapter) GetRequestTimeout() time.Duration { return RequestTimeout }
 
-// validateAppName returns an error if name is invalid (injection or path traversal risk).
 func validateAppName(name string) error {
 	if name == "" {
 		return fmt.Errorf("app name is required")
@@ -211,7 +213,6 @@ func validateAppName(name string) error {
 	return nil
 }
 
-// baseURLFromSpec returns the edge base URL from provider config or default.
 func baseURLFromSpec(spec *common.DeploymentSpec) string {
 	if spec != nil && spec.ProviderConfig != nil {
 		if u, ok := spec.ProviderConfig["url"].(string); ok && u != "" {
@@ -221,88 +222,52 @@ func baseURLFromSpec(spec *common.DeploymentSpec) string {
 	return "https://edge.functionfly.com"
 }
 
-// wasmURLFromSpec returns the WASM edge service URL from provider config or default.
 func wasmURLFromSpec(spec *common.DeploymentSpec) string {
 	if spec != nil && spec.ProviderConfig != nil {
 		if u, ok := spec.ProviderConfig["wasm_url"].(string); ok && u != "" {
 			return strings.TrimSuffix(u, "/")
 		}
 	}
-	return "http://localhost:8080" // Default to local for development
+	return "http://localhost:8080"
 }
 
-// deployWASM pushes the WASM artifact to the WASM edge service.
-func (a *FunctionFlyAdapter) deployWASM(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
-	wasmURL := wasmURLFromSpec(spec)
-
-	// Prepare the WASM artifact (base64 encoded)
-	artifact := spec.Artifact
-	if len(artifact) == 0 {
-		return &common.DeploymentResult{
-			Status:  common.DeploymentStatusFailed,
-			Message: "WASM artifact is required for WASM runtime",
-		}, nil
+func apiKeyFromSpec(spec *common.DeploymentSpec) string {
+	if spec != nil && spec.ProviderConfig != nil {
+		if key, ok := spec.ProviderConfig["api_key"].(string); ok && key != "" {
+			return key
+		}
 	}
-
-	// Create deployment request to WASM edge service
-	deployURL := fmt.Sprintf("%s/deploy/%s", wasmURL, spec.AppName)
-
-	// Wrap the WASM bytes in JSON with base64 encoding
-	encoded := base64.StdEncoding.EncodeToString(artifact)
-	payload := fmt.Sprintf(`{"wasm":"%s"}`, encoded)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, deployURL, strings.NewReader(payload))
-	if err != nil {
-		return &common.DeploymentResult{
-			Status:  common.DeploymentStatusFailed,
-			Message: fmt.Sprintf("failed to create WASM deployment request: %v", err),
-		}, nil
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	// Use WASM client or default client
-	client := a.wasmClient
-	if client == nil {
-		client = a.client
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return &common.DeploymentResult{
-			Status:  common.DeploymentStatusFailed,
-			Message: fmt.Sprintf("failed to deploy WASM function: %v", err),
-		}, nil
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return &common.DeploymentResult{
-			Status:  common.DeploymentStatusFailed,
-			Message: fmt.Sprintf("WASM deployment failed: %s", string(body)),
-		}, nil
-	}
-
-	// Return successful deployment
-	deploymentURL := fmt.Sprintf("%s/%s", wasmURL, spec.AppName)
-	return &common.DeploymentResult{
-		Status:        common.DeploymentStatusSuccess,
-		Message:       "WASM function deployed successfully",
-		DeploymentURL: deploymentURL,
-		DeploymentID:  spec.AppName,
-		Metadata: map[string]interface{}{
-			"provider": WASMProviderName,
-			"runtime":  string(common.RuntimeWASM),
-			"endpoint": deploymentURL,
-			"deployed": true,
-		},
-	}, nil
+	return ""
 }
 
-// Deploy validates the spec and returns the deployment URL.
-// For WASM runtime, the artifact is pushed to the WASM edge service.
-// For other runtimes, FunctionFly Edge is zero-deploy; no artifact is pushed.
+func (a *FunctionFlyAdapter) getDeploymentClient(spec *common.DeploymentSpec) EdgeDeploymentClientInterface {
+	if a.deploymentClient != nil {
+		return a.deploymentClient
+	}
+	edgeURL := baseURLFromSpec(spec)
+	apiKey := apiKeyFromSpec(spec)
+	return NewDeploymentClient(edgeURL, apiKey)
+}
+
+func (a *FunctionFlyAdapter) getClientFromProviderConfig(providerConfig map[string]interface{}) EdgeDeploymentClientInterface {
+	if a.deploymentClient != nil {
+		return a.deploymentClient
+	}
+	edgeURL := "https://edge.functionfly.com"
+	if providerConfig != nil {
+		if u, ok := providerConfig["url"].(string); ok && u != "" {
+			edgeURL = strings.TrimSuffix(u, "/")
+		}
+	}
+	apiKey := ""
+	if providerConfig != nil {
+		if key, ok := providerConfig["api_key"].(string); ok && key != "" {
+			apiKey = key
+		}
+	}
+	return NewDeploymentClient(edgeURL, apiKey)
+}
+
 func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
 	if spec == nil {
 		return &common.DeploymentResult{
@@ -317,57 +282,231 @@ func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.Deployment
 		}, nil
 	}
 
-	// Handle WASM runtime - deploy the artifact to WASM edge service
 	if spec.Runtime == common.RuntimeWASM || spec.Runtime == common.RuntimeRust {
 		return a.deployWASM(ctx, spec)
 	}
 
-	// Default: zero-deploy edge proxy
-	base := baseURLFromSpec(spec)
-	// Build URL safely: base is already validated or default; AppName is validated
-	deploymentURL := base + "/" + spec.AppName
+	client := a.getDeploymentClient(spec)
+
+	result, err := client.RegisterFunction(ctx, spec)
+	if err != nil {
+		base := baseURLFromSpec(spec)
+		deploymentURL := base + "/" + spec.AppName
+		return &common.DeploymentResult{
+			Status:        common.DeploymentStatusSuccess,
+			Message:       fmt.Sprintf("Function registered (API unavailable: %v), accessible via edge", err),
+			DeploymentURL: deploymentURL,
+			DeploymentID:  spec.AppName,
+			Metadata: map[string]interface{}{
+				"provider":   ProviderName,
+				"endpoint":   deploymentURL,
+				"registered": false,
+				"error":     err.Error(),
+			},
+		}, nil
+	}
+
+	deploymentURL := result.DeploymentURL
+	if deploymentURL == "" {
+		deploymentURL = baseURLFromSpec(spec) + "/" + spec.AppName
+	}
+
 	return &common.DeploymentResult{
-		Status:        common.DeploymentStatusSuccess,
-		Message:       "Function available via FunctionFly Edge",
+		DeploymentID:  result.DeploymentID,
+		Status:        result.Status,
+		Message:       result.Message,
 		DeploymentURL: deploymentURL,
-		DeploymentID:  spec.AppName,
 		Metadata: map[string]interface{}{
-			"provider": ProviderName,
-			"endpoint": deploymentURL,
-			"noDeploy": true,
+			"provider":   ProviderName,
+			"endpoint":   deploymentURL,
+			"registered": true,
 		},
 	}, nil
 }
 
-// SetEnv is a no-op for FunctionFly Edge; env is managed by the orchestrator/vault at invoke time.
-func (a *FunctionFlyAdapter) SetEnv(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, envVars, secrets map[string]string) error {
-	return nil
-}
+func (a *FunctionFlyAdapter) deployWASM(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	wasmURL := wasmURLFromSpec(spec)
 
-// BindRoutes is a no-op for FunctionFly Edge; routing is by path prefix on the edge.
-func (a *FunctionFlyAdapter) BindRoutes(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, routes []common.RouteBinding) error {
-	return nil
-}
+	artifact := spec.Artifact
+	if len(artifact) == 0 {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "WASM artifact is required for WASM runtime",
+		}, nil
+	}
 
-// GetDeploymentStatus validates the deployment ID format.
-// For FunctionFly Edge, deployment is instant so any valid app-name deploymentID succeeds.
-func (a *FunctionFlyAdapter) GetDeploymentStatus(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) (common.DeploymentStatus, error) {
-	if deploymentID == "" {
-		return common.DeploymentStatusFailed, fmt.Errorf("deployment ID is required")
+	var wasmClient EdgeDeploymentClientInterface
+	if a.deploymentClient != nil {
+		wasmClient = a.deploymentClient
+	} else {
+		wasmClient = &DeploymentClient{
+			httpClient: &http.Client{Timeout: 60 * time.Second},
+			edgeURL:    wasmURL,
+			apiKey:     apiKeyFromSpec(spec),
+		}
 	}
-	if len(deploymentID) > AppNameMaxLen {
-		return common.DeploymentStatusFailed, fmt.Errorf("deployment ID exceeds maximum length of %d", AppNameMaxLen)
-	}
-	if !appNameRegex.MatchString(deploymentID) {
-		return common.DeploymentStatusFailed, fmt.Errorf("deployment ID contains invalid characters (must match %s)", appNamePatternStr)
-	}
-	return common.DeploymentStatusSuccess, nil
-}
 
-// Rollback is a no-op; FunctionFly Edge applies updates instantly.
-func (a *FunctionFlyAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	result, err := wasmClient.RegisterFunction(ctx, spec)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("WASM deployment failed: %v", err),
+		}, nil
+	}
+
+	deploymentURL := wasmURL + "/" + spec.AppName
+	if result.DeploymentURL != "" {
+		deploymentURL = result.DeploymentURL
+	}
+
 	return &common.DeploymentResult{
-		Status:  common.DeploymentStatusSuccess,
-		Message: "No rollback needed — FunctionFly Edge provides instant updates",
+		Status:        result.Status,
+		Message:       result.Message,
+		DeploymentURL: deploymentURL,
+		DeploymentID:  spec.AppName,
+		Metadata: map[string]interface{}{
+			"provider": WASMProviderName,
+			"runtime":  string(common.RuntimeWASM),
+			"endpoint": deploymentURL,
+		},
 	}, nil
+}
+
+func (a *FunctionFlyAdapter) SetEnv(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, envVars, secrets map[string]string) error {
+	if err := validateAppName(deploymentID); err != nil {
+		return err
+	}
+
+	client := a.getClientFromProviderConfig(providerConfig)
+
+	if err := client.SetEnvironment(ctx, deploymentID, envVars, secrets); err != nil {
+		return fmt.Errorf("failed to set environment variables: %w", err)
+	}
+
+	return nil
+}
+
+func (a *FunctionFlyAdapter) BindRoutes(ctx context.Context, deploymentID string, providerConfig map[string]interface{}, routes []common.RouteBinding) error {
+	if err := validateAppName(deploymentID); err != nil {
+		return err
+	}
+
+	if len(routes) == 0 {
+		return nil
+	}
+
+	client := a.getClientFromProviderConfig(providerConfig)
+
+	if err := client.BindRoutes(ctx, deploymentID, routes); err != nil {
+		return fmt.Errorf("failed to bind routes: %w", err)
+	}
+
+	return nil
+}
+
+func (a *FunctionFlyAdapter) GetDeploymentStatus(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) (common.DeploymentStatus, error) {
+	if err := validateAppName(deploymentID); err != nil {
+		return common.DeploymentStatusFailed, err
+	}
+
+	client := a.getClientFromProviderConfig(providerConfig)
+
+	status, err := client.GetFunctionStatus(ctx, deploymentID)
+	if err != nil {
+		return common.DeploymentStatusFailed, fmt.Errorf("status check failed: %w", err)
+	}
+
+	if !status.Exists {
+		return common.DeploymentStatusFailed, fmt.Errorf("function not found: %s", deploymentID)
+	}
+
+	return status.Status, nil
+}
+
+func (a *FunctionFlyAdapter) Rollback(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
+	if spec == nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: "deployment spec is required for rollback",
+		}, nil
+	}
+
+	if err := validateAppName(spec.AppName); err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: err.Error(),
+		}, nil
+	}
+
+	client := a.getDeploymentClient(spec)
+
+	currentStatus, err := client.GetFunctionStatus(ctx, spec.AppName)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("failed to get current status: %v", err),
+		}, nil
+	}
+
+	if !currentStatus.Exists {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("function %s not found, cannot rollback", spec.AppName),
+		}, nil
+	}
+
+	if spec.Version != "" && currentStatus.Version == spec.Version {
+		return &common.DeploymentResult{
+			Status:        common.DeploymentStatusSuccess,
+			Message:       fmt.Sprintf("function %s is already at version %s", spec.AppName, spec.Version),
+			DeploymentURL: baseURLFromSpec(spec) + "/" + spec.AppName,
+			Metadata: map[string]interface{}{
+				"no_change": true,
+				"version":   spec.Version,
+			},
+		}, nil
+	}
+
+	result, err := client.RegisterFunction(ctx, spec)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("rollback failed: %v", err),
+		}, nil
+	}
+
+	return &common.DeploymentResult{
+		DeploymentID:  result.DeploymentID,
+		Status:        result.Status,
+		Message:      fmt.Sprintf("Rollback to %s: %s", spec.Version, result.Message),
+		DeploymentURL: result.DeploymentURL,
+	}, nil
+}
+
+func (a *FunctionFlyAdapter) Delete(ctx context.Context, deploymentID string, providerConfig map[string]interface{}) error {
+	if err := validateAppName(deploymentID); err != nil {
+		return err
+	}
+
+	edgeURL := "https://edge.functionfly.com"
+	if providerConfig != nil {
+		if u, ok := providerConfig["url"].(string); ok && u != "" {
+			edgeURL = strings.TrimSuffix(u, "/")
+		}
+	}
+
+	apiKey := ""
+	if providerConfig != nil {
+		if key, ok := providerConfig["api_key"].(string); ok && key != "" {
+			apiKey = key
+		}
+	}
+
+	client := NewDeploymentClient(edgeURL, apiKey)
+
+	if err := client.DeleteFunction(ctx, deploymentID); err != nil {
+		return fmt.Errorf("failed to delete function: %w", err)
+	}
+
+	return nil
 }

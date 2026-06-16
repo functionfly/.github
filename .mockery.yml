@@ -1,6 +1,6 @@
 all: false
-dir: internal/storage
-filename: mock_Repository.go
+dir: "{{.InterfaceDir}}"
+filename: "mock_{{.InterfaceName}}.go"
 force-file-write: true
 formatter: goimports
 formatter-options:
@@ -25,3 +25,6 @@ packages:
   github.com/functionfly/functionfly/internal/storage:
     interfaces:
       Repository: {}
+  github.com/functionfly/functionfly/internal/adapters/functionfly:
+    interfaces:
+      EdgeDeploymentClientInterface: {}
