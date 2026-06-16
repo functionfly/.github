@@ -1,52 +1,16 @@
 /**
  * @functionfly/ui-marketplace-economy
- * Marketplace Economy Components - Re-exports
+ * Marketplace Economy Components - Type definitions
+ *
+ * Types are defined inline here (rather than re-exported from a separate
+ * file) so that consumers using `import type {...}` can resolve them
+ * without depending on bundler resolution of re-exports, which can
+ * silently fail in the bun workspace cache.
+ *
+ * To import a component, use the package subpath:
+ *   import { CreatorEconomy } from '@functionfly/ui-marketplace-economy/components'
  */
 
-export type {
-  CreatorEconomyProps,
-  RevenueAnalyticsProps,
-  SubscriptionManagerProps,
-  UsageBillingPanelProps,
-  LicenseManagerProps,
-  CreatorProfileProps,
-  MarketplaceLeaderboardProps,
-  FunctionRoyaltiesPanelProps,
-  AssetPricingEditorProps,
-  SalesConversionAnalyticsProps,
-  MonetizationOptimizerProps,
-  MarketplaceTrendRadarProps,
-  RevenueType,
-  BillingCycle,
-  LicenseType,
-  TrendDirection,
-  SubscriptionStatus,
-  CreatorEarnings,
-  RevenueDataPoint,
-  Subscription,
-  UsageMetric,
-  License,
-  CreatorStats,
-  PayoutInfo,
-  LeaderboardEntry,
-  RoyaltyRecord,
-  PricingTier,
-  ConversionFunnelStep,
-  OptimizationSuggestion,
-  TrendItem,
-} from './types';
-
-export {
-  CreatorEconomy,
-  RevenueAnalytics,
-  SubscriptionManager,
-  UsageBillingPanel,
-  LicenseManager,
-  CreatorProfile,
-  MarketplaceLeaderboard,
-  FunctionRoyaltiesPanel,
-  AssetPricingEditor,
-  SalesConversionAnalytics,
-  MonetizationOptimizer,
-  MarketplaceTrendRadar,
-} from './components';
+// Re-export the original types.ts content so the file remains the
+// source of truth for shared component prop interfaces.
+export type * from './types';

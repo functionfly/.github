@@ -3,6 +3,355 @@
  * Marketplace Economy Components - Creator payouts, licensing, royalties, and billing
  */
 
+// ============================================================================
+// Shared Types
+// ============================================================================
+
+export type LicenseType = 'open' | 'restricted' | 'commercial';
+export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'canceled' | 'trialing';
+export type TrendDirection = 'up' | 'down' | 'flat';
+export type BillingCycle = 'monthly' | 'yearly' | 'weekly' | 'daily';
+
+export interface CreatorEarnings {
+  creatorId: string;
+  totalRevenue: number;
+  pendingPayout: number;
+  availableBalance: number;
+  currency: string;
+  subscriptionRevenue: number;
+  oneTimeRevenue: number;
+  royaltyRevenue: number;
+  monthlyTrend: number;
+}
+
+export interface RevenueDataPoint {
+  date: string;
+  timestamp: number;
+  revenue: number;
+}
+
+export interface CreatorStats {
+  totalRevenue: number;
+  pendingPayout: number;
+  totalSubscribers: number;
+  totalFunctions: number;
+  totalSales: number;
+  averageRating: number;
+  totalReviews: number;
+  functionsPublished: number;
+  currency: string;
+}
+
+export interface PayoutInfo {
+  method: 'stripe' | 'paypal' | 'crypto' | 'bank';
+  payoutMethod?: 'stripe' | 'paypal' | 'crypto' | 'bank';
+  currency?: string;
+  minimumPayout?: number;
+  lastPayoutAt?: string;
+  nextPayoutAt?: string;
+  nextPayoutAmount?: number;
+  nextPayoutDate?: string;
+}
+
+export interface RoyaltyRecord {
+  id?: string;
+  functionId: string;
+  functionName: string;
+  licensee?: string;
+  licenseType?: LicenseType;
+  royaltyPercentage?: number;
+  saleAmount?: number;
+  saleDate?: string;
+  paidOut?: boolean;
+  period: string;
+  calls: number;
+  earnings: number;
+  royaltyAmount?: number;
+  paid: boolean;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  creatorId: string;
+  creatorName: string;
+  functionName?: string;
+  functionId?: string;
+  rating?: number;
+  sales?: number;
+  revenue: number;
+  trend: TrendDirection;
+}
+
+export interface License {
+  id: string;
+  key: string;
+  type: LicenseType;
+  functionId: string;
+  functionName?: string;
+  purchaserName?: string;
+  maxActivations?: number;
+  activationCount?: number;
+  expiresAt?: string;
+  issuedAt?: string;
+  revoked?: boolean;
+}
+
+export interface TrendItem {
+  id?: string;
+  name?: string;
+  searchVolume?: number;
+  avgPrice?: number;
+  momentum?: number;
+  relatedFunctions?: string[];
+  category: string;
+  score: number;
+  direction: TrendDirection;
+  change: number;
+}
+
+export interface ConversionFunnelStep {
+  stage: string;
+  count: number;
+  conversionRate: number;
+  dropOffRate: number;
+}
+
+export interface OptimizationSuggestion {
+  id: string;
+  title: string;
+  type?: string;
+  description: string;
+  impact: 'low' | 'medium' | 'high';
+  estimatedRevenueLift: number;
+  potentialImpact?: number;
+  effort?: 'low' | 'medium' | 'high';
+  priority: 'high' | 'medium' | 'low';
+  actionable?: boolean;
+}
+
+export interface PricingTier {
+  id: string;
+  name: string;
+  features?: string[];
+  price: number;
+  model: 'per_call' | 'subscription' | 'usage';
+  currency: string;
+  popular?: boolean;
+}
+
+export interface CreatorEconomyProps {
+  earnings: {
+    totalRevenue: number;
+    pendingPayout: number;
+    currency: string;
+    availableBalance: number;
+    subscriptionRevenue: number;
+    oneTimeRevenue: number;
+    royaltyRevenue: number;
+  };
+  monthlyTrend: number;
+  activeSubscribers: number;
+  topFunctionId?: string;
+  onViewDetails?: () => void;
+  className?: string;
+}
+
+export interface RevenueAnalyticsProps {
+  data: Array<{ date: string; timestamp: number; revenue: number }>;
+  totalRevenue: number;
+  period: '7d' | '30d' | '90d' | '1y';
+  onPeriodChange?: (period: '7d' | '30d' | '90d' | '1y') => void;
+  onDataPointSelect?: (point: { date: string; timestamp: number; revenue: number }) => void;
+  className?: string;
+}
+
+export interface SubscriptionManagerProps {
+  subscriptions: Array<{
+    id: string;
+    name: string;
+    customerName?: string;
+    plan: string;
+    status: SubscriptionStatus;
+    renewsAt: string;
+    currentPeriodEnd: string;
+    amount: number;
+    currency: string;
+    billingCycle: 'monthly' | 'yearly' | 'weekly';
+  }>;
+  activeCount: number;
+  cancelledCount: number;
+  pastDueCount: number;
+  onSubscriptionSelect?: (id: string) => void;
+  onUpdate?: (id: string) => void;
+  onCancel?: (id: string) => void;
+  className?: string;
+}
+
+export interface UsageBillingPanelProps {
+  records: Array<{ id: string; functionId: string; calls: number; cost: number; period: string }>;
+  metrics: Array<{ name: string; label: string; value: number; used: number; limit: number; cost: number; unit?: string }>;
+  totalCost: number;
+  billingCycle: 'monthly' | 'yearly' | 'weekly';
+  currency?: string;
+  onExport?: () => void;
+  onUpgradeClick?: () => void;
+  className?: string;
+}
+
+export interface LicenseManagerProps {
+  licenses: Array<{
+    id: string;
+    key: string;
+    type: LicenseType;
+    functionId: string;
+    functionName?: string;
+    purchaserName?: string;
+    maxActivations?: number;
+    activationCount?: number;
+    expiresAt?: string;
+    issuedAt?: string;
+    revoked?: boolean;
+  }>;
+  totalActive: number;
+  totalRevoked: number;
+  onCreate?: (data: { functionId: string; type: LicenseType }) => void;
+  onRevoke?: (id: string) => void;
+  onLicenseSelect?: (id: string) => void;
+  onLicenseRevoke?: (id: string) => void;
+  onLicenseGenerate?: () => void;
+  className?: string;
+}
+
+export interface CreatorProfileProps {
+  creatorId: string;
+  creatorName: string;
+  creatorAvatar?: string;
+  creator: { id: string; name: string; avatar?: string; bio?: string; joinedAt: string };
+  stats: {
+    totalRevenue: number;
+    pendingPayout: number;
+    totalSubscribers: number;
+    totalFunctions: number;
+    totalSales: number;
+    averageRating: number;
+    totalReviews: number;
+    functionsPublished: number;
+    currency: string;
+  };
+  payoutInfo: {
+    method: 'stripe' | 'paypal' | 'crypto' | 'bank';
+    payoutMethod?: 'stripe' | 'paypal' | 'crypto' | 'bank';
+    currency?: string;
+    minimumPayout?: number;
+    lastPayoutAt?: string;
+    nextPayoutAt?: string;
+    nextPayoutAmount?: number;
+    nextPayoutDate?: string;
+  };
+  earnings: { totalRevenue: number; pendingPayout: number; currency: string };
+  topFunctions: Array<{ id: string; name: string; revenue: number }>;
+  onEdit?: () => void;
+  className?: string;
+}
+
+export interface MarketplaceLeaderboardProps {
+  entries: Array<{
+    rank: number;
+    creatorId: string;
+    creatorName: string;
+    functionName?: string;
+    functionId?: string;
+    rating?: number;
+    sales?: number;
+    revenue: number;
+    trend: TrendDirection;
+  }>;
+  category: 'all' | 'top_sellers' | 'rising' | 'new' | 'creators' | 'functions';
+  timeRange: '7d' | '30d' | '90d' | '1y';
+  currency?: string;
+  onEntrySelect?: (creatorId: string) => void;
+  className?: string;
+}
+
+export interface FunctionRoyaltiesPanelProps {
+  royalties: Array<{
+    id?: string;
+    functionId: string;
+    functionName: string;
+    licensee?: string;
+    licenseType?: LicenseType;
+    royaltyPercentage?: number;
+    saleAmount?: number;
+    saleDate?: string;
+    paidOut?: boolean;
+    period: string;
+    calls: number;
+    earnings: number;
+    royaltyAmount?: number;
+    paid: boolean;
+  }>;
+  totalEarned: number;
+  totalPending: number;
+  currency?: string;
+  onRequestPayout?: () => void;
+  onRoyaltySelect?: (royaltyId: string) => void;
+  onClaimPending?: () => void;
+  className?: string;
+}
+
+export interface AssetPricingEditorProps {
+  functionId: string;
+  functionName: string;
+  currentPrice: number;
+  currentPricing: Array<{
+    id: string;
+    name: string;
+    features?: string[];
+    price: number;
+    model: 'per_call' | 'subscription' | 'usage';
+    currency: string;
+    popular?: boolean;
+  }>;
+  pricingModel: 'per_call' | 'subscription' | 'usage';
+  onSave?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onPriceUpdate?: (tierId: string, price: number) => void;
+  className?: string;
+}
+
+export interface SalesConversionAnalyticsProps {
+  funnel?: Array<{ stage: string; count: number; conversionRate: number }>;
+  funnelSteps: Array<{ stage: string; count: number; conversionRate: number; dropOffRate: number }>;
+  totalVisitors: number;
+  totalPurchases: number;
+  overallConversionRate: number;
+  averageOrderValue: number;
+  period: string;
+  className?: string;
+}
+
+export interface MonetizationOptimizerProps {
+  suggestions: Array<{ id: string; title: string; type?: string; description: string; impact: 'low' | 'medium' | 'high'; estimatedRevenueLift: number; potentialImpact?: number; effort?: 'low' | 'medium' | 'high'; priority: 'high' | 'medium' | 'low'; actionable?: boolean }>;
+  currentRevenue: number;
+  projectedRevenue: number;
+  onApply?: (id: string) => void;
+  onSuggestionApply?: (id: string) => void;
+  onDismiss?: (id: string) => void;
+  onSuggestionDismiss?: (id: string) => void;
+  className?: string;
+}
+
+export interface MarketplaceTrendRadarProps {
+  trends?: Array<{ id?: string; name?: string; searchVolume?: number; avgPrice?: number; momentum?: number; relatedFunctions?: string[]; category: string; score: number; direction: TrendDirection; change: number }>;
+  categories: Array<{ id?: string; name?: string; searchVolume?: number; avgPrice?: number; momentum?: number; category: string; score: number; direction: TrendDirection; change: number }>;
+  timeRange: '7d' | '30d' | '90d' | '1y';
+  period: string;
+  selectedCategory?: string;
+  onCategorySelect?: (category: string) => void;
+  onTrendSelect?: (trendId: string) => void;
+  onCategoryChange?: (category: string) => void;
+  className?: string;
+}
+
 import React, { useState, useMemo } from 'react';
 import { cn } from '@functionfly/ui-core';
 import {
@@ -324,7 +673,7 @@ export const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({
           return (
             <div
               key={sub.id}
-              onClick={() => onSubscriptionSelect?.(sub)}
+              onClick={() => onSubscriptionSelect?.(sub.id)}
               className="p-4 border-b border-aviation-border-panel cursor-pointer hover:bg-aviation-bg-secondary transition-colors"
             >
               <div className="flex items-center justify-between mb-2">
@@ -670,7 +1019,7 @@ export const MarketplaceLeaderboard: React.FC<MarketplaceLeaderboardProps> = ({
         {entries.map(entry => (
           <div
             key={entry.rank}
-            onClick={() => onEntrySelect?.(entry)}
+            onClick={() => onEntrySelect?.(entry.creatorId)}
             className="p-4 border-b border-aviation-border-panel cursor-pointer hover:bg-aviation-bg-secondary transition-colors"
           >
             <div className="flex items-center gap-3">
@@ -765,7 +1114,7 @@ export const FunctionRoyaltiesPanel: React.FC<FunctionRoyaltiesPanelProps> = ({
         {royalties.map(royalty => (
           <div
             key={royalty.id}
-            onClick={() => onRoyaltySelect?.(royalty)}
+            onClick={() => onRoyaltySelect?.(royalty.id || royalty.functionId)}
             className="p-4 border-b border-aviation-border-panel cursor-pointer hover:bg-aviation-bg-secondary transition-colors"
           >
             <div className="flex items-center justify-between mb-2">
@@ -856,7 +1205,7 @@ export const AssetPricingEditor: React.FC<AssetPricingEditorProps> = ({
 
       <div className="px-4 py-3 border-t border-aviation-border-panel flex gap-2">
         <button
-          onClick={() => onPriceUpdate?.(currentPricing)}
+          onClick={() => onPriceUpdate?.('reset', 0)}
           className="flex-1 px-4 py-2 bg-aviation-bg-instrument hover:bg-aviation-bg-secondary text-aviation-text-primary rounded-lg transition-colors text-sm"
         >
           Reset
@@ -1052,7 +1401,7 @@ export const MonetizationOptimizer: React.FC<MonetizationOptimizerProps> = ({
                 </div>
                 {suggestion.actionable && (
                   <button
-                    onClick={() => onSuggestionApply?.(suggestion)}
+                    onClick={() => onSuggestionApply?.(suggestion.id)}
                     className="px-3 py-1 bg-aviation-cyan/20 text-aviation-cyan text-xs rounded hover:bg-aviation-cyan/30 transition-colors"
                   >
                     Apply
@@ -1164,7 +1513,7 @@ export const MarketplaceTrendRadar: React.FC<MarketplaceTrendRadarProps> = ({
             return (
               <div
                 key={trend.id}
-                onClick={() => onTrendSelect?.(trend)}
+                onClick={() => onTrendSelect?.(trend.id || trend.category)}
                 onMouseEnter={() => setHoveredTrend(trend.id)}
                 onMouseLeave={() => setHoveredTrend(null)}
                 className={cn(
