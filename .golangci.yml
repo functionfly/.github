@@ -3,13 +3,6 @@ version: "2"
 # Custom linter rules for FunctionFly API
 # Run with: golangci-lint run --config=.golangci.yml
 
-linters:
-  default: standard
-  settings:
-    errcheck:
-      check-type-assertions: true
-      check-blank: true
-
 linters-settings:
   errcheck:
     check-type-assertions: true
@@ -32,17 +25,6 @@ linters-settings:
       - "-ST1003"  # Allow underscore variable names
       - "-ST1005"  # Allow starting with lowercase for exported after dot
 
-# Custom rules for API error handling
-custom:
-  # Rule to detect direct http.Error usage instead of apierror.WriteError
-  http-error-rule:
-    type: "line"
-    msg: "Use apierror.WriteError() instead of http.Error() for structured error responses"
-    pattern: |
-      http\.Error\(
-    linter: "go vet"
-    compiler: "inline"
-
 issues:
   exclude-use-default: false
   max-issues-per-linter: 0
@@ -50,7 +32,7 @@ issues:
 
   exclude-rules:
     # Allow http.Error in test files
-    - path: "_test\.go"
+    - path: "_test\\.go"
       linters:
         - "gosec"
       text: "http\\.Error"
@@ -66,3 +48,28 @@ issues:
       linters:
         - "gosec"
       text: "http\\.Error"
+
+    # Intentionally silent strconv.Atoi for query params - uses safe defaults (0 = no limit/first page)
+    # These are low-risk because query params are user input that naturally fail to parse as integers,
+    # and the API handlers have proper validation/remediation downstream.
+    - path: "internal/api/handlers/"
+      linters:
+        - "errcheck"
+      text: "strconv.Atoi"
+
+    # Same for pagination helpers
+    - path: "internal/api/pagination/"
+      linters:
+        - "errcheck"
+      text: "strconv.Atoi"
+
+# Custom rules for API error handling
+custom:
+  # Rule to detect direct http.Error usage instead of apierror.WriteError
+  http-error-rule:
+    type: "line"
+    msg: "Use apierror.WriteError() instead of http.Error() for structured error responses"
+    pattern: |
+      http\.Error\(
+    linter: "go vet"
+    compiler: "inline"

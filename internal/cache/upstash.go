@@ -50,7 +50,13 @@ func NewUpstashConfig() *UpstashConfig {
 	}
 
 	// DB number (for compatibility, not used by Upstash)
-	config.DB, _ = strconv.Atoi(os.Getenv("REDIS_DB"))
+	if dbStr := os.Getenv("REDIS_DB"); dbStr != "" {
+		if db, err := strconv.Atoi(dbStr); err == nil {
+			config.DB = db
+		} else {
+			logrus.WithField("REDIS_DB", dbStr).Warn("Invalid REDIS_DB value, using 0")
+		}
+	}
 
 	return config
 }
