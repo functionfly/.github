@@ -11,6 +11,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+
+	httpclient "github.com/functionfly/functionfly/internal/http"
 )
 
 // MetricsCollector defines the interface for collecting metrics
@@ -35,7 +37,7 @@ type HTTPClient interface {
 func NewPrometheusMetricsCollector(prometheusURL string) *PrometheusMetricsCollector {
 	return &PrometheusMetricsCollector{
 		prometheusURL: prometheusURL,
-		httpClient:    &realHTTPClient{},
+		httpClient:    newRealHTTPClient(),
 	}
 }
 
@@ -118,10 +120,18 @@ type promQueryResponse struct {
 }
 
 // realHTTPClient implements HTTPClient using net/http
-type realHTTPClient struct{}
+type realHTTPClient struct {
+	client *http.Client
+}
+
+func newRealHTTPClient() *realHTTPClient {
+	return &realHTTPClient{
+		client: httpclient.NewDefaultClient(),
+	}
+}
 
 func (c *realHTTPClient) Do(req *http.Request) (*http.Response, error) {
-	return http.DefaultClient.Do(req)
+	return c.client.Do(req)
 }
 
 // DegradationMetrics holds metrics for auto degradation monitoring

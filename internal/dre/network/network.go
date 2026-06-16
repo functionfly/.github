@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"os"
 	"sync"
+
+	httpclient "github.com/functionfly/functionfly/internal/http"
 )
 
 // Mode represents the network mode for the capsule.
@@ -108,7 +110,7 @@ func doHTTPRequest(url string, requestBody []byte) ([]byte, error) {
 	if len(requestBody) > 0 {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpclient.NewDefaultClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

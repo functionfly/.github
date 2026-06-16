@@ -18,6 +18,7 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/frg"
+	httpclient "github.com/functionfly/functionfly/internal/http"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -1153,7 +1154,7 @@ func (h *Handler) GenerateFunction(w http.ResponseWriter, r *http.Request) {
 	// Use internal AI service endpoint that bypasses auth
 	httpReq.Header.Set("X-API-Key", os.Getenv("AI_SERVICE_API_KEY"))
 
-	resp, err := http.DefaultClient.Do(httpReq)
+	resp, err := httpclient.NewAIClient().Do(httpReq)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to call AI generation service")
 		respondError(w, http.StatusServiceUnavailable, "AI generation service unavailable")

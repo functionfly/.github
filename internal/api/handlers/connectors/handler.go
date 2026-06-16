@@ -17,6 +17,7 @@ import (
 	"github.com/functionfly/functionfly/internal/crypto"
 	connectorEngine "github.com/functionfly/functionfly/internal/agent/connectors"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	httpclient "github.com/functionfly/functionfly/internal/http"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -653,7 +654,7 @@ func (h *Handler) exchangeNotionToken(ctx context.Context, code, redirectURI str
 	req.Header.Set("Authorization", "Basic "+auth)
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpclient.NewShortTimeoutClient().Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("Notion token request failed: %w", err)
 	}

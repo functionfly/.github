@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/apierror"
+	httpclient "github.com/functionfly/functionfly/internal/http"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -761,7 +763,7 @@ func (h *Handler) HandleCreateAdminCategory(w http.ResponseWriter, r *http.Reque
 		logrus.WithError(err).Error("Failed to create blog category")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
-		_ = json.NewEncoder(w).Encode(map[string]string{
+		apierror.EncodeJSON(w,map[string]string{
 			"error":  "Failed to create blog category",
 			"detail": err.Error(),
 		})
@@ -1003,7 +1005,7 @@ func callOpenRouter(ctx context.Context, prompt string, maxTokens int) (string, 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpclient.NewAIClient().Do(req)
 	if err != nil {
 		return "", err
 	}

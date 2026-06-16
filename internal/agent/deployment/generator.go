@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	httpclient "github.com/functionfly/functionfly/internal/http"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -317,7 +318,7 @@ func (g *Generator) generateWithLLM(ctx context.Context, req *GenerationRequest)
 	reqHTTP.Header.Set("Content-Type", "application/json")
 	reqHTTP.Header.Set("Authorization", "Bearer "+g.openRouterAPI)
 
-	resp, err := http.DefaultClient.Do(reqHTTP)
+	resp, err := httpclient.NewAIClient().Do(reqHTTP)
 	if err != nil {
 		return "", "", fmt.Errorf("OpenRouter request failed: %w", err)
 	}

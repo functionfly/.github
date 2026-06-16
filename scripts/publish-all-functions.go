@@ -17,6 +17,8 @@ const (
 	Author = "functionfly"
 )
 
+var defaultHTTPClient = &http.Client{Timeout: 30 * time.Second}
+
 func getRequiredEnv(key string) string {
 	val := os.Getenv(key)
 	if val == "" {
@@ -76,7 +78,7 @@ func login() (string, error) {
 	body, _ := json.Marshal(map[string]string{"email": email, "password": password})
 	req, _ := http.NewRequest("POST", APIURL+"/auth/login", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := defaultHTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +112,7 @@ func publish(token string, name string, manifestJSON string, sourceCode string, 
 	httpReq, _ := http.NewRequest("POST", APIURL+"/v1/functions/publish", bytes.NewReader(reqJSON))
 	httpReq.Header.Set("Authorization", "Bearer "+token)
 	httpReq.Header.Set("Content-Type", "application/json")
-	resp, err := http.DefaultClient.Do(httpReq)
+	resp, err := defaultHTTPClient.Do(httpReq)
 	if err != nil {
 		return err
 	}

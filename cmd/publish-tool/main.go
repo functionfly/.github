@@ -9,7 +9,10 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
+
+var defaultHTTPClient = &http.Client{Timeout: 30 * time.Second}
 
 func main() {
 	// Generate token using scripts/generate_token.go
@@ -112,7 +115,7 @@ def handler(event):
 	httpReq.Header.Set("Authorization", "Bearer "+token)
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := http.DefaultClient.Do(httpReq)
+	resp, err := defaultHTTPClient.Do(httpReq)
 	if err != nil {
 		fmt.Printf("Error publishing: %v\n", err)
 		os.Exit(1)

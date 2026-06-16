@@ -11,6 +11,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/cache"
+	httpclient "github.com/functionfly/functionfly/internal/http"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -721,7 +722,7 @@ func (h *RegistryHandler) HandleGenerateRegistryDescription(w http.ResponseWrite
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpclient.NewAIClient().Do(req)
 	if err != nil {
 		logrus.WithError(err).Error("Open Router request failed")
 		apierror.WriteError(w, apierror.NewInternal("Open Router request failed"))
