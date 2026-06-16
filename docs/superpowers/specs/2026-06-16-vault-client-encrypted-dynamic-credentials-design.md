@@ -62,9 +62,9 @@ The minted lease password becomes **client-generated** so the server never sees 
 - **The server sees the target admin password in memory for ~10s during each issuance.** The client decrypts locally, submits over TLS, server uses once, zeroizes, returns the lease. This is the well-bounded residual that every comparable system (HashiCorp Vault database engine, AWS RDS IAM, Akeyless dynamic secrets) accepts. Mitigations:
   - Short request timeout (existing dynamic-cred handlers use 30s; tighten to 15s for client-mode generate).
   - Explicit `zeroize` of the in-memory password bytes after use.
-  - Audit row recorded with `client_unwrap_target_id` and IP, but **no** password material.
-  - No disk persistence (request body is not written to any log; the gin/chi default access log is configured to omit request bodies for these routes).
-  - Rate limiting per `(user, target, IP)` (10/minute, see §10).
+  - Audit row recorded with `target_id` (under the `operation: client_wrap_issue` metadata key) and IP, but **no** password material, no DEK, no wrapped blob, no IV, no salt, no auth tag.
+  - No disk persistence (request body is not written to any log; the chi default access log is configured to omit request bodies for these routes).
+  - Rate limiting per `(user, target, IP)` (10/minute, see §16).
 - **The user loses their vault passphrase AND has no escrow → they lose all client-mode dynamic targets AND all client-mode static secrets.** Same risk as today for static secrets. Escrow (`SupportsVaultEscrow`, Enterprise/Agent Enterprise) recovers both.
 - **The minted lease password lives only on the client** (browser/agent memory) and the customer DB. If the client loses it, the lease is effectively dead — the DB user exists but nobody has the password. This is the same shape as today; we don't change the lifecycle.
 
@@ -106,7 +106,7 @@ Replayed requests cannot succeed because:
 - The minted lease username is unique per request (`vault_p_<random>`, see `internal/storage/vault/dynamic_service.go:241-256`).
 - Even if an attacker replays the same `(target_id, admin_password, ttl)` triple, they would re-`CREATE USER` with a fresh random username, minting a new lease — the previous lease is unaffected.
 
-We add **per-`(user, target, IP)` rate limiting** (10 requests/minute) to bound the issuance rate and detect anomalies. See §10.
+We add **per-`(user, target, IP)` rate limiting** (10 requests/minute) to bound the issuance rate and detect anomalies. See §16.
 
 ---
 
@@ -295,12 +295,14 @@ A new migration `migrations/20260616220000_vault_client_encrypted_dynamic_creds.
 | `POST` | `/keys/wrapped-dek` | Create or rotate the current user's wrapped DEK. Body: `{wrapped_dek, iv, tag, salt, key_version, kdf_params}`. Server stores opaquely. | JWT + MFA if `EnforceForAPI` |
 | `POST` | `/keys/wrapped-dek/rotate` | Rotate the DEK (generate a new DEK, re-wrap all `encryption_mode='client'` rows for this user). Admin can also call this on behalf of a target user. | JWT + MFA + `dynamic_credentials:client_manage_keys` |
 | `POST` | `/keys/share` | Admin re-wraps the per-tenant DEK for a target user. Body: `{target_user_id, wrapped_dek, dek_iv, dek_auth_tag, dek_salt, key_version, kdf_params}`. | JWT + MFA + `rbac:manage` (or built-in admin) |
-| `POST` | `/keys/cross-tenant-wrap` | Admin re-wraps a target's admin password under a different tenant's DEK. Body: `{target_id, target_tenant_wrapped_admin_password, dest_tenant_dek_id}`. Returns the re-wrapped admin password blob. | JWT + MFA + `shares:manage` |
 | `GET` | `/dynamic-secret-targets/{id}/wrapped` | Return the wrapped admin password ciphertext (no plaintext). Client uses this to unwrap locally. | JWT + `dynamic_credentials:read` + MFA |
 | `POST` | `/dynamic-tokens` | Mint a `dynamic_wrapped_access_tokens` row. Body: `{credential_id, name, scopes, expires_in_hours, ip_policy?}`. Response: `{id, token (raw, shown once), expires_at, ...}`. | JWT + `dynamic_credentials:token_mint` + MFA |
 | `GET` | `/dynamic-tokens` | List tokens (hash-only, like static-secret `AccessToken`). | JWT + `audit:read` |
 | `DELETE` | `/dynamic-tokens/{id}` | Revoke. | JWT + `dynamic_credentials:token_mint` + MFA |
 | `GET` | `/dynamic-tokens/{id}/usage` | Usage stats (last_used_at, use_count). | JWT + `audit:read` |
+| `POST` | `/dynamic-secret-targets/{id}/shares` | **Reserved for v2.** Endpoint stub returns `501 Not Implemented` until asymmetric keys land. | JWT + MFA + `shares:manage` |
+| `GET` | `/dynamic-secret-targets/{id}/shares` | **Reserved for v2.** Returns `[]` in v1. | JWT + MFA + `audit:read` |
+| `DELETE` | `/dynamic-target-shares/{id}` | **Reserved for v2.** Returns `404` in v1. | JWT + MFA + `shares:manage` |
 
 ### Modified endpoints
 
@@ -374,17 +376,17 @@ Wrapped around every new and modified dynamic-credential route, mirroring the ex
 1. User clicks "Generate" on a dynamic credential template.
 2. Client calls `GET /v1/vault/dynamic-secret-targets/{id}/wrapped` to fetch the wrapped admin password.
 3. Client decrypts admin password locally: `admin_pw = AES-GCM-decrypt(wrapped, DEK, aad="client-wrap:‹tenantID›:‹targetID›")`. AEAD tag mismatch → throws, audit row `AuditActionClientUnwrapFailed`, returns "Invalid target: corruption detected" to the user.
-4. Client generates new DB user password: 24 chars from the 56-char alphabet (`crypto.getRandomValues`).
+4. Client generates **both** the new DB username and the new DB password. Username: per-backend prefix (`vault_p_` for postgres, `vault_m_` for MySQL) + 16 random lowercase-alphanum chars. Password: 24 chars from the 56-char alphabet (`crypto.getRandomValues`), ~140 bits of entropy. The client is the **only** entity that ever sees the password in plaintext — the server sees it only inside the SQL `CREATE USER` statement, after which it is zeroized.
 5. Client POSTs to `/generate`:
    ```json
    {
-     "target_admin_password": "<plaintext, single-use>",
+     "target_admin_password": "<plaintext, sent over TLS>",
      "new_db_username": "vault_p_<random>",
-     "new_db_password": "<plaintext, single-use>",
+     "new_db_password": "<plaintext, sent over TLS>",
      "ttl_seconds": 3600
    }
    ```
-6. Server authenticates via JWT, validates inputs, opens a `*sql.DB` connection to the customer DB using the provided admin password, runs `CREATE USER ... WITH PASSWORD ...` and `GRANT ... TO ...` in a transaction, closes the connection, **explicitly zeroizes the in-memory copy** of `target_admin_password` and `new_db_password`, and creates a `DynamicCredentialLease` row.
+6. Server authenticates via JWT, validates inputs, opens a `*sql.DB` connection to the customer DB using the provided admin password, runs `CREATE USER ... WITH PASSWORD ...` and `GRANT ... TO ...` in a transaction, closes the connection, **explicitly zeroizes the in-memory copy** of `target_admin_password` and `new_db_password` (Go: `for i := range pw { pw[i] = 0 }`), and creates a `DynamicCredentialLease` row. The "single-use" property is a **contract**, not a server-side enforcement — the server cannot enforce it because the password never has a server-side identity (no nonce, no counter). The contract is documented in the API reference and enforced by the rate limiter (§16).
 7. Server returns the lease:
    ```json
    {
@@ -653,28 +655,37 @@ The existing `SIEMDispatcher` is built (`internal/api/handlers/vault/handler.go:
 
 ## Sharing / Collaboration
 
-### Cross-tenant target shares
+### Cross-tenant target shares — **deferred to v2**
 
-Use the `dynamic_target_shares` table. The share flow:
+A cross-tenant share requires the source admin to produce a ciphertext decryptable by a different tenant's user. The fundamental constraint is:
 
-1. Source tenant admin: dashboard → target → "Share with tenant" → enter destination tenant ID + permissions.
-2. Source admin's client fetches the destination tenant's per-user wrapped DEK (admin must be a member of both tenants, or use a server-side `cross-tenant-wrap` endpoint that re-wraps without the server seeing the DEK).
-3. Source admin's client re-wraps the target's admin password under the destination tenant's DEK. **Server proxies the re-wrap and never sees the plaintext.**
-4. Server creates a `dynamic_target_shares` row + a "shadow" target row in the destination tenant (or a `shared_target_id` pointer).
-5. Destination tenant users can now issue leases on the shared target by unwrapping the re-wrapped admin password with their DEK.
+- A ciphertext encrypted to DEK A can only be decrypted by holders of DEK A.
+- To share with a different tenant, the source admin needs either:
+  - **(a)** The destination user's DEK plaintext — **breaks zero-knowledge**, not acceptable.
+  - **(b)** The destination user's public key (asymmetric encryption) — not in v1; reserved via `vault_user_keys` table.
+  - **(c)** A server-side **envelope re-encryption** primitive (server holds a per-row re-encryption key, a la HashiCorp Vault transit) — **breaks the trust model** by introducing a server-held key that can unwrap.
+  - **(d)** Out-of-band: the destination user manually re-enters the admin password after the source admin shares it via a side channel — operationally infeasible.
 
-**Key property:** shares are *target-level*, not *lease-level*. The grantee can generate new leases on the target; the grantee cannot see existing leases of the source tenant. Matches the principle of least privilege.
+**v1 ships no working cross-tenant share endpoint.** The `dynamic_target_shares` table is created in v1 as a no-op stub (so v2 is purely additive), and the share endpoints return `501`/`[]`/`404` as listed in §7. v2 will introduce per-user X25519 public keys and re-enable these endpoints with the asymmetric flow (option b).
 
-### Same-tenant DEK sharing (multi-user)
+**v1 principle for v1.5 / v2:** when asymmetric keys are introduced, the source admin encrypts the admin password to the destination user's **public key** (no shared secret needed). The destination user decrypts with their private key (held in OS keychain, never leaves the client). This is the only cross-tenant flow that preserves the zero-knowledge trust model.
 
-1. Source user: dashboard → settings → "Share vault access with user" → enter target user.
-2. Source user's client re-wraps the per-tenant DEK under the target user's KEK (uses `/v1/vault/keys/share`).
-3. Server creates a new `vault_tenant_keys` row for the target user.
-4. Target user can now unwrap the DEK and use all client-mode targets + static secrets in the tenant.
+### Same-tenant DEK sharing (multi-user) — v1
+
+This is the **only** sharing flow in v1. The admin re-wraps the per-tenant DEK for a new user in the same tenant — no cross-tenant trust boundary.
+
+**v1 flow:**
+1. Source user: dashboard → settings → "Share vault access with user" → enter target user ID.
+2. Source user's client derives a KEK from their own vault passphrase, unwraps the per-tenant DEK, and re-wraps it under the target user's KEK.
+3. Source user's client POSTs the re-wrapped DEK to `/v1/vault/keys/share` with `{target_user_id, wrapped_dek, dek_iv, dek_auth_tag, dek_salt, key_version, kdf_params}`.
+4. Server creates a new `vault_tenant_keys` row for the target user.
+5. Target user can now unwrap the DEK (using their own vault passphrase) and use all client-mode targets + static secrets in the tenant.
+
+**Key property:** shares are *DEK-level*, not *lease-level*. The grantee gets the same access as the grantor (per the RBAC engine's permission checks downstream). v2 will add per-lease sharing on top.
 
 ### Plan gating
 
-Both flows are gated by `SupportsVaultShares(plan)` (Enterprise/Agent Enterprise). Free/Pro tenants can still have multiple users — but they all derive the DEK from their own passphrase, and the admin must re-wrap for new members. The "share" UX is Enterprise-only for clarity.
+Same-tenant DEK sharing is gated by `SupportsVaultRBAC(plan)` (Enterprise/Agent Enterprise, per the existing RBAC-engine wiring). Free/Pro tenants can still have multiple users — but they all derive the DEK from their own passphrase, and the admin must re-wrap for new members via the same `/keys/share` endpoint. The "share" UX is Enterprise-only for clarity (RBAC enforcement is what gates it, not plan name).
 
 ---
 
@@ -811,13 +822,17 @@ A dedicated suite that verifies:
 
 ### Rollback
 
-If v1 ships and a critical issue is discovered, the rollback is straightforward:
+If v1 ships and a critical issue is discovered, the rollback is designed to **preserve the trust model** (no server-held key that can unwrap):
 
-1. Feature flag `vault.client_encryption.enabled=false` disables new `client`-mode target creation.
-2. Existing `client`-mode targets continue to work (the new flow is self-contained).
-3. If the new flow is itself broken: feature flag `vault.client_encryption.issuance_enabled=false` reverts issuance to server-side (requires the user to re-enter the admin password, but the wrapper DEK can be unwrapped by the server using a **newly-introduced** `vault_server_recovery_key` env var that is generated only as a rollback mechanism — see `internal/crypto/server_recovery.go`).
+1. **Feature flag `vault.client_encryption.enabled=false`** disables creation of new `client`-mode targets. New targets default to `server` mode (the legacy behavior, which is unaffected by this change).
+2. **Feature flag `vault.client_encryption.issuance_enabled=false`** disables issuance/renewal/revocation for `client`-mode targets. Existing `client`-mode targets become **read-only** — the dashboard shows "Issuance is temporarily disabled. Please contact support." and the API returns `503 Service Unavailable` with `Retry-After`.
+3. **Recovery path:** users with an active `client`-mode target that they need to recover can:
+   - Re-enter the admin password in the dashboard → the client re-wraps and replaces the wrapped blob (no server-side decryption needed).
+   - Use the existing escrow flow (if enabled) → the user recovers the DEK, re-wraps the target, and the target is back online.
+   - Delete the target and recreate it in `server` mode (requires the user to re-enter the admin password, which they presumably know if they could re-encrypt it under the new DEK in the first place).
+4. **No `vault_server_recovery_key` is introduced.** A server-held key that can unwrap client-encrypted targets would defeat the entire purpose of this design and is not an acceptable escape hatch. The recovery paths above are the only paths; if they fail, the target must be deleted and recreated.
 
-The `vault_server_recovery_key` is **not** generated by default. It is generated by an explicit operator command (`make gen-recovery-key`) and stored in a separate secrets manager. It is never read by the application code unless the feature flag `vault.client_encryption.issuance_enabled=false` is set AND an emergency override is granted. This is the explicit, auditable emergency escape hatch.
+This is the **correct** behavior for a zero-knowledge system: if the client is broken, the data is unrecoverable. The design accepts this and structures the rollout (Phases 1-3, internal → beta → GA) to discover any bugs before they affect real customers.
 
 ---
 
