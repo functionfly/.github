@@ -31,12 +31,15 @@ func stripeKey() string {
 // ChargeResult holds the result of a successful charge (e.g. PaymentIntent ID for idempotency).
 type ChargeResult struct {
 	PaymentIntentID string
+	IdempotencyKey  string
 }
 
 // Charge charges the given payment method the specified amount in USD.
 // amountUSD is in dollars (e.g. 10.50); it is converted to cents for Stripe.
 // Metadata is attached to the PaymentIntent for reference (e.g. agent_id, tenant_id).
-func Charge(ctx context.Context, paymentMethodID string, amountUSD float64, metadata map[string]string) (*ChargeResult, error) {
+// IdempotencyKey is recommended for production use to prevent duplicate charges.
+// The Stripe SDK automatically retries on network errors with the same idempotency key.
+func Charge(ctx context.Context, paymentMethodID string, amountUSD float64, metadata map[string]string, idempotencyKey string) (*ChargeResult, error) {
 	if stripeKey() == "" {
 		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
 	}
@@ -63,6 +66,12 @@ func Charge(ctx context.Context, paymentMethodID string, amountUSD float64, meta
 	}
 	params.SetStripeAccount("") // use default account
 
+	// Apply idempotency key if provided to prevent duplicate charges
+	// Stripe ignores duplicate requests within 24 hours and returns the original result
+	if idempotencyKey != "" {
+		params.Params.IdempotencyKey = stripe.String(idempotencyKey)
+	}
+
 	pi, err := paymentintent.New(params)
 	if err != nil {
 		return nil, fmt.Errorf("stripe payment failed: %w", err)
@@ -70,7 +79,7 @@ func Charge(ctx context.Context, paymentMethodID string, amountUSD float64, meta
 
 	switch pi.Status {
 	case stripe.PaymentIntentStatusSucceeded, stripe.PaymentIntentStatusRequiresCapture:
-		return &ChargeResult{PaymentIntentID: pi.ID}, nil
+		return &ChargeResult{PaymentIntentID: pi.ID, IdempotencyKey: idempotencyKey}, nil
 	case stripe.PaymentIntentStatusRequiresAction:
 		return nil, fmt.Errorf("payment requires additional authentication (e.g. 3D Secure)")
 	case stripe.PaymentIntentStatusRequiresPaymentMethod:

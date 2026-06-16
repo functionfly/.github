@@ -129,6 +129,11 @@ func ValidateEnv() error {
 		}
 	}
 
+	// Run production-specific validation (includes Stripe webhook secret check)
+	if err := ValidateProductionEnv(); err != nil {
+		return err
+	}
+
 	logrus.Info("Environment validation passed")
 	return nil
 }

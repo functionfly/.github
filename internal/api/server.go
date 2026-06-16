@@ -200,6 +200,12 @@ func NewServer(db *storage.PostgresDB) *Server {
 		logging.Logger().Warn("WARNING: DEVELOPMENT mode is enabled. Do not use in production.")
 	}
 
+	// SECURITY: Validate production security configuration including Stripe webhook secret
+	// This will fail startup in production if critical security vars are missing
+	if err := wallet.ProductionSecurityValidation(); err != nil {
+		logging.Logger().Fatal("FATAL: Production security validation failed: ", err)
+	}
+
 	// Use PostgreSQL as the database backend
 	repo := db.Repository()
 	logging.Logger().Info("Using PostgreSQL as database backend")
