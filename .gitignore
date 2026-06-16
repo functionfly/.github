@@ -230,8 +230,16 @@ web/docs/dist/
 .kilo/plans/
 .kilo/worktrees/
 .kilo/package-lock.json
+.kilo/agent-manager.json
+.kilo/agent-manager.json.*.tmp
 .kilocode/
 .kilocode/package-lock.json
+
+# JS/TS lockfiles (managed by package managers but not committed)
+bun.lock
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # OpenCode state
 .opencode/
