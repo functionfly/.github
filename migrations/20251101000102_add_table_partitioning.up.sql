@@ -1,5 +1,9 @@
--- Table partitioning migration temporarily disabled due to constraint conflicts
--- This migration will be re-enabled after resolving the unique constraint issue
--- For now, just add a comment to indicate this migration is pending
-
--- TODO: Fix partitioning migration - unique constraint issue with partitioned tables
+-- Table partitioning was implemented in 20260419140100_fixed_native_partitioning.up.sql
+-- which creates _partitioned variants of high-volume tables with composite primary
+-- keys that include the partition key (required by PostgreSQL for partitioned tables).
+--
+-- PostgreSQL unique/PRIMARY KEY constraint rule: any unique constraint on a
+-- partitioned table MUST include the partition key column(s). The solution is
+-- to use composite keys like PRIMARY KEY (id, timestamp) instead of PRIMARY KEY (id).
+--
+-- This migration is a no-op since partitioning was handled in the later migration.

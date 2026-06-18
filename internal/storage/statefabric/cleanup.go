@@ -197,10 +197,70 @@ func (s *CleanupService) runCleanup() {
 
 	s.logger.Debug("Running state fabric TTL cleanup")
 
+	fabricsDeleted := s.cleanupExpiredFabrics(ctx)
+	s.logger.WithFields(logrus.Fields{
+		"expiredFabricsDeleted": fabricsDeleted,
+	}).Info("Cleaned up expired state fabrics")
+
 	snapshotsDeleted := s.cleanupExpiredSnapshots(ctx)
 	s.logger.WithFields(logrus.Fields{
 		"expiredSnapshotsDeleted": snapshotsDeleted,
 	}).Info("Cleaned up expired state fabric snapshots")
+}
+
+// cleanupExpiredFabrics deletes state fabrics that have exceeded their TTL
+func (s *CleanupService) cleanupExpiredFabrics(ctx context.Context) int64 {
+	var totalDeleted int64 = 0
+
+	for {
+		// Find fabrics where TTL has expired
+		// TTL of 0 means no expiration
+		// A fabric expires if: NOW() > updated_at + (ttl_days * INTERVAL '1 day')
+		var expiredIDs []uuid.UUID
+		err := s.db.WithContext(ctx).
+			Model(&StateFabric{}).
+			Where("ttl_days > 0 AND updated_at < NOW() - (ttl_days * INTERVAL '1 day')").
+			Limit(s.config.BatchSize).
+			Pluck("id", &expiredIDs).Error
+
+		if err != nil {
+			s.logger.WithError(err).Error("Failed to query expired state fabrics")
+			break
+		}
+
+		if len(expiredIDs) == 0 {
+			break
+		}
+
+		// Delete related data first (cascade)
+		// Delete fabric stores
+		s.db.WithContext(ctx).Where("fabric_id IN ?", expiredIDs).Delete(&StateFabricStore{})
+		// Delete fabric pipelines
+		s.db.WithContext(ctx).Where("fabric_id IN ?", expiredIDs).Delete(&StateFabricPipeline{})
+		// Delete fabric replays
+		s.db.WithContext(ctx).Where("fabric_id IN ?", expiredIDs).Delete(&StateFabricReplay{})
+		// Delete fabric snapshots
+		s.db.WithContext(ctx).Where("fabric_id IN ?", expiredIDs).Delete(&StateFabricSnapshot{})
+
+		// Delete fabrics
+		result := s.db.WithContext(ctx).
+			Where("id IN ?", expiredIDs).
+			Delete(&StateFabric{})
+
+		if result.Error != nil {
+			s.logger.WithError(result.Error).Error("Failed to delete expired state fabrics")
+			break
+		}
+
+		deleted := result.RowsAffected
+		totalDeleted += deleted
+
+		if deleted < int64(s.config.BatchSize) {
+			break
+		}
+	}
+
+	return totalDeleted
 }
 
 // cleanupExpiredSnapshots deletes state fabric snapshots that have expired

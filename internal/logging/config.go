@@ -149,6 +149,13 @@ func AuditLogger(action, resource, userID string) *logrus.Entry {
 	})
 }
 
+// Logger returns the package-level default logger. It is a thin wrapper
+// around logrus.StandardLogger() so call sites can write logging.Logger()
+// without importing logrus directly.
+func Logger() *logrus.Logger {
+	return logrus.StandardLogger()
+}
+
 func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value

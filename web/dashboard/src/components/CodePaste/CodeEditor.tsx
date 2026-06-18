@@ -36,10 +36,10 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
-  const handleEditorDidMount: OnMount = (editor, monaco) => {
-    editorRef.current = editor;
+  const handleEditorDidMount: OnMount = (ed, monaco) => {
+    editorRef.current = ed as unknown as editor.IStandaloneCodeEditor;
 
-    editor.updateOptions({
+    ed.updateOptions({
       wordWrap: 'on',
       minimap: { enabled: true },
       scrollBeyondLastLine: false,

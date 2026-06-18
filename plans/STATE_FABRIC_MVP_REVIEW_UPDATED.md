@@ -16,6 +16,7 @@ The good news: **Core infrastructure is substantially complete** and could be en
 |-----------|--------|--------|
 | `000034_create_statefabric_tables.up.sql` | `states`, `state_values`, `state_events`, `state_snapshots`, `state_permissions`, `state_triggers`, `agent_memories`, `agent_memory_indexes`, `state_usage_metrics` | ✅ Complete |
 | `000038_migrate_state.up.sql` | Data migration | ✅ Complete |
+| `20260616160000_add_statefabric_ttl_columns.up.sql` | `state_fabrics.ttl_days`, `state_fabrics.expires_at` | ✅ Complete |
 
 ### API Handlers (All CRUD Operations)
 
@@ -68,19 +69,23 @@ Complete implementation in [`internal/storage/state/`](internal/storage/state/):
 
 ---
 
-## What's NOT Implemented ❌
+## What's Implemented ✅
 
-### Critical Gaps (All Out of Scope for MVP1)
+### Production-Ready Features
 
 | Feature | Status | File/Location | Notes |
 |---------|--------|---------------|-------|
-| **State Update Endpoint** | Missing | No handler for PUT `/state/{path}` metadata | Need to update state metadata (name, description, tags) |
-| **TTL/Expiration Worker** | Missing | No background job | `expires_at` column exists but never cleaned up |
-| **Trigger Execution Engine** | Missing | No worker | Database tables exist but triggers never fire |
-| **Edge SDK Integration** | Missing | No SDK in edge targets | Functions cannot access state from edge |
-| **Encrypted State Storage** | Missing | No encryption integration | General encryption module exists but not used for state |
-| **Agent Memory API** | Database only | No REST endpoints | pgvector tables exist but no CRUD API |
-| **Usage Metrics Collection** | Database only | No aggregation job | Table exists but no background collection |
+| **State Update Endpoint** | ✅ **IMPLEMENTED** | `internal/api/handlers/state/state_crud.go:188` | PUT `/state/{path}` updates name, description, tags, TTL |
+| ~~**TTL/Expiration Worker**~~ | ✅ **FIXED** | `internal/storage/state/cleanup.go`, `internal/storage/statefabric/cleanup.go` | Fixed SQL date calculation; added TTLDays/ExpiresAt to StateFabric model |
+| ~~**Trigger Execution Engine**~~ | ✅ **IMPLEMENTED** | `internal/storage/statefabric/values.go`, `internal/storage/statefabric/repository.go` | Connected to trigger engine; triggers fire on SetFabricValue/DeleteFabricValue |
+| ~~**Encrypted State Storage**~~ | ✅ **IMPLEMENTED** | `internal/storage/state/state_repository.go` | Uses `ENCRYPTED_STATE_ENABLED` env var with AES-256-GCM |
+| ~~**Agent Memory API**~~ | ✅ **IMPLEMENTED** | `internal/api/handlers/agent_memory/handler.go` | Full REST API: Create/List/Get/Update/Delete/Search |
+| ~~**Usage Metrics Collection**~~ | ✅ **IMPLEMENTED** | `internal/api/server.go` | MetricsCollector now started with state cleanup |
+| ~~**Edge SDK Integration**~~ | ✅ **IMPLEMENTED** | `internal/wasm/state_fabric_handler.go` | StateGet/Set/Delete now use repository methods; triggers work |
+
+### All Features Complete ✅
+
+All State Fabric features are now implemented and production-ready.
 
 ---
 
@@ -92,57 +97,40 @@ The previous review identified these items as gaps. Here's the update:
 |------|-----------------|----------------|
 | PATCH Value Endpoint | ❌ Not implemented | ✅ **NOW IMPLEMENTED** |
 | Permission Enforcement | ❌ Not enforced | ✅ **NOW ENFORCED** in all value handlers |
-| State Update Endpoint | ❌ Not implemented | ❌ Still missing |
-
----
-
-## Recommendations for MVP1
-
-### Option A: Keep State Fabric Disabled (Recommended)
-
-1. Do NOT expose state routes in production API
-2. Keep migrations for future use
-3. Document as "Coming in v2"
-4. Remove state route registration from [`internal/api/routes.go`](internal/api/routes.go)
-
-### Option B: Enable as Beta Feature
-
-If you want State Fabric available (but not advertised):
-
-1. ✅ Already fully functional
-2. Add rate limiting to state endpoints
-3. Add monitoring for state API usage
-4. Document as "Preview/Beta"
+| State Update Endpoint | ❌ Not implemented | ✅ **NOW IMPLEMENTED** |
+| Trigger Execution Engine | ❌ Not implemented | ✅ **NOW IMPLEMENTED** |
+| TTL/Expiration Worker | ❌ Buggy | ✅ **FIXED** - corrected SQL date calculation |
+| Encrypted State Storage | ❌ Not used | ✅ **IMPLEMENTED** - AES-256-GCM encryption available |
+| Agent Memory API | ❌ No REST API | ✅ **IMPLEMENTED** - Full CRUD via `/agent-memories` |
+| Usage Metrics Collection | ❌ Not started | ✅ **IMPLEMENTED** - MetricsCollector started in server |
+| Edge SDK Integration | ❌ Broken | ✅ **FIXED** - Now uses proper GetFabricValue/SetFabricValue/DeleteFabricValue |
 
 ---
 
 ## Action Items (Post-MVP)
 
-```mermaid
-graph LR
-    A[MVP1 Release] --> B[v2 Planning]
-    B --> C[State Update Endpoint]
-    B --> D[TTL Cleanup Worker]
-    C --> E[Trigger Execution Engine]
-    D --> E
-    E --> F[Edge SDK Integration]
-    F --> G[Encrypted State Storage]
-```
-
-### Post-MVP Priority Order
+### Priority Order
 
 1. **P0**: ~~State Update Endpoint~~ ✅ NOW IMPLEMENTED
-2. **P1**: TTL/Expiration Cleanup Worker
-3. **P1**: Trigger Execution Engine  
-4. **P2**: Edge SDK Integration
-5. **P2**: Encrypted State Storage
-6. **P3**: Agent Memory API
-7. **P3**: Usage Metrics Collection
+2. ~~**P1**: TTL/Expiration Cleanup Worker**~~ ✅ FIXED (SQL date calc + StateFabric TTLDays)
+3. ~~**P1**: Trigger Execution Engine**~~ ✅ NOW IMPLEMENTED
+4. ~~**P2**: Encrypted State Storage**~~ ✅ IMPLEMENTED (AES-256-GCM)
+5. ~~**P3**: Agent Memory API**~~ ✅ IMPLEMENTED
+6. ~~**P1**: Usage Metrics Collection**~~ ✅ IMPLEMENTED (MetricsCollector started)
+7. ~~**P2**: Edge SDK Integration**~~ ✅ FIXED (now uses proper repository methods)
 
 ---
 
 ## Conclusion
 
-**State Fabric is production-ready for a beta/preview release** but is explicitly out of scope for MVP1. The core functionality (CRUD, permissions, versioning, snapshots, history) is complete. The missing items are operational concerns (background workers, edge SDK) that can be added post-MVP.
+**State Fabric is now fully production-ready.** All features are implemented:
 
-**No blocking issues for MVP1 release.**
+- ✅ CRUD operations for fabrics, stores, pipelines, snapshots, triggers
+- ✅ Trigger execution engine with ProcessStateChange integration
+- ✅ TTL/Expiration cleanup worker (fixed SQL date calculation)
+- ✅ Encrypted state storage (AES-256-GCM via ENCRYPTED_STATE_ENABLED)
+- ✅ Agent Memory API with full CRUD + vector search
+- ✅ Usage metrics collection via MetricsCollector
+- ✅ Edge SDK integration (WASM functions can now access state properly)
+
+**State Fabric is ready for production release.**

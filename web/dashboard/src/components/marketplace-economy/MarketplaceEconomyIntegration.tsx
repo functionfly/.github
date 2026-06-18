@@ -8,7 +8,6 @@ import {
   CreatorEconomy,
   RevenueAnalytics,
   SubscriptionManager,
-  UsageBillingPanel,
   LicenseManager,
   CreatorProfile,
   MarketplaceLeaderboard,
@@ -17,18 +16,8 @@ import {
   SalesConversionAnalytics,
   MonetizationOptimizer,
   MarketplaceTrendRadar,
-} from '@functionfly/ui-marketplace-economy'
+} from '@functionfly/ui-marketplace-economy/components'
 import { useMarketplaceEconomyStore } from '@/stores/marketplaceEconomyStore'
-import type {
-  Subscription,
-  License,
-  RoyaltyRecord,
-  LeaderboardEntry,
-  PricingTier,
-  ConversionFunnelStep,
-  OptimizationSuggestion,
-  TrendItem,
-} from '@functionfly/ui-marketplace-economy'
 
 interface MarketplaceEconomyIntegrationProps {
   className?: string
@@ -46,61 +35,17 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
 
   const selectedCreator = creators.find(c => c.id === selectedCreatorId)
 
-  const handleSubscriptionSelect = (subscription: Subscription) => {
-    console.log('Subscription selected:', subscription)
-  }
-
-  const handleSubscriptionCancel = (subscriptionId: string) => {
-    console.log('Cancel subscription:', subscriptionId)
-  }
-
-  const handleLicenseSelect = (license: License) => {
-    console.log('License selected:', license)
-  }
-
-  const handleLicenseRevoke = (licenseId: string) => {
-    console.log('Revoke license:', licenseId)
-  }
-
-  const handleRoyaltySelect = (royalty: RoyaltyRecord) => {
-    console.log('Royalty selected:', royalty)
-  }
-
-  const handleLeaderboardSelect = (entry: LeaderboardEntry) => {
-    selectCreator(entry.creatorId)
-  }
-
-  const handlePricingUpdate = (tiers: PricingTier[]) => {
-    console.log('Pricing updated:', tiers)
-  }
-
-  const handleConversionStageClick = (step: ConversionFunnelStep) => {
-    console.log('Conversion stage clicked:', step)
-  }
-
-  const handleSuggestionApply = (suggestion: OptimizationSuggestion) => {
-    console.log('Apply suggestion:', suggestion)
-  }
-
-  const handleSuggestionDismiss = (suggestionId: string) => {
-    console.log('Dismiss suggestion:', suggestionId)
-  }
-
-  const handleTrendSelect = (trend: TrendItem) => {
-    console.log('Trend selected:', trend)
-  }
-
   return (
     <div className={className}>
       {activeView === 'economy' && (
         <CreatorEconomy
           earnings={{
             totalRevenue: revenue.total,
+            pendingPayout: 0,
+            currency: 'USD',
             subscriptionRevenue: revenue.breakdown.subscription,
             oneTimeRevenue: revenue.breakdown.oneTime,
             royaltyRevenue: revenue.breakdown.royalty,
-            pendingPayout: 0,
-            currency: 'USD',
           }}
           monthlyTrend={12.5}
           activeSubscribers={subscriptions.filter(s => s.status === 'active').length}
@@ -112,7 +57,7 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
         <RevenueAnalytics
           data={revenue.dataPoints}
           totalRevenue={revenue.total}
-          period={revenue.period}
+          period={revenue.period as '7d' | '30d' | '90d' | '1y'}
           className="aviation-component"
         />
       )}
@@ -123,8 +68,6 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
           activeCount={subscriptions.filter(s => s.status === 'active').length}
           cancelledCount={subscriptions.filter(s => s.status === 'cancelled').length}
           pastDueCount={subscriptions.filter(s => s.status === 'past_due').length}
-          onSubscriptionSelect={handleSubscriptionSelect}
-          onSubscriptionCancel={handleSubscriptionCancel}
           className="aviation-component"
         />
       )}
@@ -134,8 +77,6 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
           licenses={[]}
           totalActive={0}
           totalRevoked={0}
-          onLicenseSelect={handleLicenseSelect}
-          onLicenseRevoke={handleLicenseRevoke}
           className="aviation-component"
         />
       )}
@@ -148,6 +89,8 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
           stats={selectedCreator.stats}
           payoutInfo={selectedCreator.payoutInfo}
           className="aviation-component"
+          onEditProfile={undefined}
+          onViewPayoutHistory={undefined}
         />
       )}
 
@@ -157,7 +100,6 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
             rank: i + 1,
             creatorId: c.id,
             creatorName: c.name,
-            creatorAvatar: c.avatar,
             functionId: '',
             functionName: '',
             sales: c.stats?.totalSales || 0,
@@ -167,7 +109,7 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
           }))}
           category="creators"
           timeRange="30d"
-          onEntrySelect={handleLeaderboardSelect}
+          onEntrySelect={(entry) => selectCreator(entry.creatorId)}
           className="aviation-component"
         />
       )}
@@ -178,7 +120,6 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
           totalEarned={revenue.breakdown.royalty}
           totalPending={0}
           currency="USD"
-          onRoyaltySelect={handleRoyaltySelect}
           className="aviation-component"
         />
       )}
@@ -188,8 +129,9 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
           functionId=""
           functionName=""
           currentPricing={[]}
-          onPriceUpdate={handlePricingUpdate}
           className="aviation-component"
+          onPriceUpdate={undefined}
+          onSave={undefined}
         />
       )}
 
@@ -200,8 +142,8 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
           totalPurchases={0}
           overallConversionRate={0}
           averageOrderValue={0}
-          onStageClick={handleConversionStageClick}
           className="aviation-component"
+          onStageClick={undefined}
         />
       )}
 
@@ -209,8 +151,7 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
         <MonetizationOptimizer
           suggestions={[]}
           currentRevenue={revenue.total}
-          onSuggestionApply={handleSuggestionApply}
-          onSuggestionDismiss={handleSuggestionDismiss}
+          projectedRevenue={revenue.total * 1.12}
           className="aviation-component"
         />
       )}
@@ -219,8 +160,9 @@ export function MarketplaceEconomyIntegration({ className }: MarketplaceEconomyI
         <MarketplaceTrendRadar
           trends={[]}
           timeRange="30d"
-          onTrendSelect={handleTrendSelect}
           className="aviation-component"
+          onTrendSelect={undefined}
+          onCategoryChange={undefined}
         />
       )}
     </div>

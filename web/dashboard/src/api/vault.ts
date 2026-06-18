@@ -8,9 +8,41 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+export interface WrappedTargetResponse {
+  wrapped_admin_password: string;
+  wrap_iv: string;
+  wrap_auth_tag: string;
+  target_id: string;
+  created_at: string;
+}
+
+export interface DynamicCredentialResponse {
+  username: string;
+  password: string;
+  lease_id: string;
+  host: string;
+  port: number;
+  database: string;
+  expires_at: string;
+}
+
+export interface WrappedDEKResponse {
+  tenant_id: string;
+  user_id: string;
+  wrapped_dek: string;
+  dek_iv: string;
+  dek_auth_tag: string;
+  dek_salt: string;
+  key_version: number;
+  kdf_params: Record<string, unknown>;
+  created_at: string;
+  rotated_at?: string | null;
+}
 import { useCallback } from "react";
 import { apiClient } from "@/api/client";
 import { VaultCrypto } from "@/utils/vault-crypto";
+import { tokenVault } from "@/utils/token-vault";
 import type {
   AssignRoleRequest,
   AccessToken,
@@ -415,6 +447,13 @@ export function useUnassignRole() {
 // Phase 4.2: Audit export + SIEM
 // ============================================================================
 
+async function getAuthToken(): Promise<string> {
+  await tokenVault.initialize();
+  const token = await tokenVault.getAccessToken();
+  if (token) return token;
+  return localStorage.getItem('ff-access-token') || '';
+}
+
 export function useExportAudit() {
   return useMutation({
     mutationFn: async ({
@@ -437,8 +476,9 @@ export function useExportAudit() {
       if (secretId) params.set("secret_id", secretId);
       if (action) params.set("action", action);
       const url = `/v1/vault/audit/export?${params.toString()}`;
+      const token = await getAuthToken();
       const response = await fetch(apiClient.getBaseUrl() + url, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("ff-access-token") ?? ""}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -661,8 +701,8 @@ export const vaultApi = {
    * The passphrase is NEVER sent to the server.
    */
   decryptSecret: async (id: string, passphrase: string) => {
-    const secret = await unwrap(apiClient.get(`/v1/vault/secrets/${id}`));
-    const encryptedData = VaultCrypto.fromPayload(secret.encrypted_data);
+    const secret = (await unwrap(apiClient.get(`/v1/vault/secrets/${id}`))) as { encrypted_data: string };
+    const encryptedData = VaultCrypto.fromPayload(JSON.parse(secret.encrypted_data));
     const plaintext = await VaultCrypto.decryptWithPassphrase(encryptedData, passphrase);
     return { value: plaintext };
   },
@@ -702,5 +742,68 @@ export const vaultApi = {
       criticality: string;
     }> }>(
       apiClient.get(`/v1/vault/secrets/${secretId}/dependencies`)
+    ),
+
+  // Dynamic credential methods
+  getWrappedTarget: (targetId: string) =>
+    unwrap<WrappedTargetResponse>(
+      apiClient.get(`/v1/vault/dynamic-credentials/targets/${targetId}/wrapped`)
+    ),
+
+  generateDynamicCredential: (
+    credentialId: string,
+    body: {
+      ttl_seconds: number;
+      target_admin_password?: string;
+      new_db_username?: string;
+      new_db_password?: string;
+    }
+  ) =>
+    unwrap<DynamicCredentialResponse>(
+      apiClient.post(`/v1/vault/dynamic-credentials/targets/${credentialId}/generate`, body)
+    ),
+
+  revokeLease: (leaseId: string, body: { target_admin_password: string }) =>
+    unwrap<{ revoked: boolean }>(
+      apiClient.post(`/v1/vault/dynamic-credentials/leases/${leaseId}/revoke`, body)
+    ),
+
+  renewLease: (
+    leaseId: string,
+    body: { ttl_seconds: number; target_admin_password: string }
+  ) =>
+    unwrap<{ lease_id: string; expires_at: string }>(
+      apiClient.post(`/v1/vault/dynamic-credentials/leases/${leaseId}/renew`, body)
+    ),
+
+  // DEK (Data Encryption Key) methods (tenant-scoped)
+  getWrappedDEK: () =>
+    unwrap<WrappedDEKResponse | null>(
+      apiClient.get(`/v1/vault/deks`)
+    ),
+
+  upsertWrappedDEK: (body: {
+    wrapped_dek: string;
+    dek_iv: string;
+    dek_auth_tag: string;
+    dek_salt: string;
+    key_version: number;
+    kdf_params?: Record<string, unknown>;
+  }) =>
+    unwrap<{ resource_id: string; updated_at: string }>(
+      apiClient.put(`/v1/vault/deks`, body)
+    ),
+
+  // Tenant key sharing
+  shareDEK: (body: {
+    target_user_id: string;
+    wrapped_dek: string;
+    dek_iv: string;
+    dek_auth_tag: string;
+    dek_salt: string;
+    key_version: number;
+  }) =>
+    unwrap<{ resource_id: string; target_tenant_id: string; shared_at: string }>(
+      apiClient.post(`/v1/vault/deks/share`, body)
     ),
 };

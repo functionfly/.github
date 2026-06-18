@@ -1037,9 +1037,10 @@ func MaxStateFabricsPerPlan(plan string) int {
 	}
 }
 
-// PlanHasStateFabricFeature returns true if the plan includes the State Fabric feature
+// PlanHasStateFabricFeature returns true if the plan includes the State Fabric feature.
+// A plan has the feature if it is explicitly enabled (max > 0) or unlimited (max < 0).
 func PlanHasStateFabricFeature(plan string) bool {
-	return MaxStateFabricsPerPlan(plan) > 0
+	return MaxStateFabricsPerPlan(plan) != 0
 }
 
 // ============================================================================

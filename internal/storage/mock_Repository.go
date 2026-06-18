@@ -235,8 +235,8 @@ func (_c *MockRepository_AddFavorite_Call) Run(run func(ctx context.Context, use
 	return _c
 }
 
-func (_c *MockRepository_AddFavorite_Call) Return(functionFavorite *FunctionFavorite, err error) *MockRepository_AddFavorite_Call {
-	_c.Call.Return(functionFavorite, err)
+func (_c *MockRepository_AddFavorite_Call) Return(v *FunctionFavorite, err error) *MockRepository_AddFavorite_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -492,8 +492,8 @@ func (_c *MockRepository_AggregateExecutionsForBilling_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_AggregateExecutionsForBilling_Call) Return(aggregatedBillingUsages []*AggregatedBillingUsage, err error) *MockRepository_AggregateExecutionsForBilling_Call {
-	_c.Call.Return(aggregatedBillingUsages, err)
+func (_c *MockRepository_AggregateExecutionsForBilling_Call) Return(vs []*AggregatedBillingUsage, err error) *MockRepository_AggregateExecutionsForBilling_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -623,8 +623,8 @@ func (_c *MockRepository_ApproveMemoryExtraction_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ApproveMemoryExtraction_Call) Return(teamMemory *TeamMemory, err error) *MockRepository_ApproveMemoryExtraction_Call {
-	_c.Call.Return(teamMemory, err)
+func (_c *MockRepository_ApproveMemoryExtraction_Call) Return(v *TeamMemory, err error) *MockRepository_ApproveMemoryExtraction_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -2253,8 +2253,8 @@ func (_c *MockRepository_CreateAffiliateCode_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_CreateAffiliateCode_Call) Return(affiliateCode *AffiliateCode, err error) *MockRepository_CreateAffiliateCode_Call {
-	_c.Call.Return(affiliateCode, err)
+func (_c *MockRepository_CreateAffiliateCode_Call) Return(v *AffiliateCode, err error) *MockRepository_CreateAffiliateCode_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -2321,8 +2321,8 @@ func (_c *MockRepository_CreateAffiliateCommission_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_CreateAffiliateCommission_Call) Return(affiliateCommission *AffiliateCommission, err error) *MockRepository_CreateAffiliateCommission_Call {
-	_c.Call.Return(affiliateCommission, err)
+func (_c *MockRepository_CreateAffiliateCommission_Call) Return(v *AffiliateCommission, err error) *MockRepository_CreateAffiliateCommission_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -2389,8 +2389,8 @@ func (_c *MockRepository_CreateAffiliateReferral_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_CreateAffiliateReferral_Call) Return(affiliateReferral *AffiliateReferral, err error) *MockRepository_CreateAffiliateReferral_Call {
-	_c.Call.Return(affiliateReferral, err)
+func (_c *MockRepository_CreateAffiliateReferral_Call) Return(v *AffiliateReferral, err error) *MockRepository_CreateAffiliateReferral_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -2583,8 +2583,8 @@ func (_c *MockRepository_CreateApp_Call) Run(run func(ctx context.Context, name 
 	return _c
 }
 
-func (_c *MockRepository_CreateApp_Call) Return(app *App, err error) *MockRepository_CreateApp_Call {
-	_c.Call.Return(app, err)
+func (_c *MockRepository_CreateApp_Call) Return(v *App, err error) *MockRepository_CreateApp_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -2795,8 +2795,8 @@ func (_c *MockRepository_CreateBackend_Call) Run(run func(ctx context.Context, a
 	return _c
 }
 
-func (_c *MockRepository_CreateBackend_Call) Return(backend *Backend, err error) *MockRepository_CreateBackend_Call {
-	_c.Call.Return(backend, err)
+func (_c *MockRepository_CreateBackend_Call) Return(v *Backend, err error) *MockRepository_CreateBackend_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -2920,8 +2920,8 @@ func (_c *MockRepository_CreateBlogAuthor_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_CreateBlogAuthor_Call) Return(blogAuthor *BlogAuthor, err error) *MockRepository_CreateBlogAuthor_Call {
-	_c.Call.Return(blogAuthor, err)
+func (_c *MockRepository_CreateBlogAuthor_Call) Return(v *BlogAuthor, err error) *MockRepository_CreateBlogAuthor_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -2988,8 +2988,8 @@ func (_c *MockRepository_CreateBlogCategory_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_CreateBlogCategory_Call) Return(blogCategory *BlogCategory, err error) *MockRepository_CreateBlogCategory_Call {
-	_c.Call.Return(blogCategory, err)
+func (_c *MockRepository_CreateBlogCategory_Call) Return(v *BlogCategory, err error) *MockRepository_CreateBlogCategory_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3056,8 +3056,8 @@ func (_c *MockRepository_CreateBlogPost_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_CreateBlogPost_Call) Return(blogPost *BlogPost, err error) *MockRepository_CreateBlogPost_Call {
-	_c.Call.Return(blogPost, err)
+func (_c *MockRepository_CreateBlogPost_Call) Return(v *BlogPost, err error) *MockRepository_CreateBlogPost_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3181,8 +3181,8 @@ func (_c *MockRepository_CreateChangelogChange_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_CreateChangelogChange_Call) Return(changelogChange *ChangelogChange, err error) *MockRepository_CreateChangelogChange_Call {
-	_c.Call.Return(changelogChange, err)
+func (_c *MockRepository_CreateChangelogChange_Call) Return(v *ChangelogChange, err error) *MockRepository_CreateChangelogChange_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3249,8 +3249,8 @@ func (_c *MockRepository_CreateChangelogEntry_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_CreateChangelogEntry_Call) Return(changelogEntry *ChangelogEntry, err error) *MockRepository_CreateChangelogEntry_Call {
-	_c.Call.Return(changelogEntry, err)
+func (_c *MockRepository_CreateChangelogEntry_Call) Return(v *ChangelogEntry, err error) *MockRepository_CreateChangelogEntry_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3317,8 +3317,8 @@ func (_c *MockRepository_CreateCoupon_Call) Run(run func(ctx context.Context, co
 	return _c
 }
 
-func (_c *MockRepository_CreateCoupon_Call) Return(coupon1 *Coupon, err error) *MockRepository_CreateCoupon_Call {
-	_c.Call.Return(coupon1, err)
+func (_c *MockRepository_CreateCoupon_Call) Return(v *Coupon, err error) *MockRepository_CreateCoupon_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3385,8 +3385,8 @@ func (_c *MockRepository_CreateCreditNote_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_CreateCreditNote_Call) Return(creditNote1 *CreditNote, err error) *MockRepository_CreateCreditNote_Call {
-	_c.Call.Return(creditNote1, err)
+func (_c *MockRepository_CreateCreditNote_Call) Return(v *CreditNote, err error) *MockRepository_CreateCreditNote_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3510,8 +3510,8 @@ func (_c *MockRepository_CreateDashboardConfig_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_CreateDashboardConfig_Call) Return(dashboardConfig *DashboardConfig, err error) *MockRepository_CreateDashboardConfig_Call {
-	_c.Call.Return(dashboardConfig, err)
+func (_c *MockRepository_CreateDashboardConfig_Call) Return(v *DashboardConfig, err error) *MockRepository_CreateDashboardConfig_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3608,8 +3608,8 @@ func (_c *MockRepository_CreateDeployment_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_CreateDeployment_Call) Return(deployment *Deployment, err error) *MockRepository_CreateDeployment_Call {
-	_c.Call.Return(deployment, err)
+func (_c *MockRepository_CreateDeployment_Call) Return(v *Deployment, err error) *MockRepository_CreateDeployment_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3865,8 +3865,8 @@ func (_c *MockRepository_CreateEncryptedTeamMemory_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_CreateEncryptedTeamMemory_Call) Return(teamMemory *TeamMemory, err error) *MockRepository_CreateEncryptedTeamMemory_Call {
-	_c.Call.Return(teamMemory, err)
+func (_c *MockRepository_CreateEncryptedTeamMemory_Call) Return(v *TeamMemory, err error) *MockRepository_CreateEncryptedTeamMemory_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -3990,8 +3990,8 @@ func (_c *MockRepository_CreateFeedback_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_CreateFeedback_Call) Return(feedback1 *Feedback, err error) *MockRepository_CreateFeedback_Call {
-	_c.Call.Return(feedback1, err)
+func (_c *MockRepository_CreateFeedback_Call) Return(v *Feedback, err error) *MockRepository_CreateFeedback_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4058,8 +4058,8 @@ func (_c *MockRepository_CreateFeedbackAttachment_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_CreateFeedbackAttachment_Call) Return(feedbackAttachment *FeedbackAttachment, err error) *MockRepository_CreateFeedbackAttachment_Call {
-	_c.Call.Return(feedbackAttachment, err)
+func (_c *MockRepository_CreateFeedbackAttachment_Call) Return(v *FeedbackAttachment, err error) *MockRepository_CreateFeedbackAttachment_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4183,8 +4183,8 @@ func (_c *MockRepository_CreateFunction_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_CreateFunction_Call) Return(functionConfig *FunctionConfig, err error) *MockRepository_CreateFunction_Call {
-	_c.Call.Return(functionConfig, err)
+func (_c *MockRepository_CreateFunction_Call) Return(v *FunctionConfig, err error) *MockRepository_CreateFunction_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4251,8 +4251,8 @@ func (_c *MockRepository_CreateFunctionDeployment_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_CreateFunctionDeployment_Call) Return(functionDeployment *FunctionDeployment, err error) *MockRepository_CreateFunctionDeployment_Call {
-	_c.Call.Return(functionDeployment, err)
+func (_c *MockRepository_CreateFunctionDeployment_Call) Return(v *FunctionDeployment, err error) *MockRepository_CreateFunctionDeployment_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4433,8 +4433,8 @@ func (_c *MockRepository_CreateIncident_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_CreateIncident_Call) Return(incident1 *Incident, err error) *MockRepository_CreateIncident_Call {
-	_c.Call.Return(incident1, err)
+func (_c *MockRepository_CreateIncident_Call) Return(v *Incident, err error) *MockRepository_CreateIncident_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4558,8 +4558,8 @@ func (_c *MockRepository_CreateInvoice_Call) Run(run func(ctx context.Context, i
 	return _c
 }
 
-func (_c *MockRepository_CreateInvoice_Call) Return(invoice1 *Invoice, err error) *MockRepository_CreateInvoice_Call {
-	_c.Call.Return(invoice1, err)
+func (_c *MockRepository_CreateInvoice_Call) Return(v *Invoice, err error) *MockRepository_CreateInvoice_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4650,8 +4650,8 @@ func (_c *MockRepository_CreateLoginAttempt_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_CreateLoginAttempt_Call) Return(loginAttempt *LoginAttempt, err error) *MockRepository_CreateLoginAttempt_Call {
-	_c.Call.Return(loginAttempt, err)
+func (_c *MockRepository_CreateLoginAttempt_Call) Return(v *LoginAttempt, err error) *MockRepository_CreateLoginAttempt_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4754,8 +4754,8 @@ func (_c *MockRepository_CreateMagicLink_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_CreateMagicLink_Call) Return(magicLink *MagicLink, err error) *MockRepository_CreateMagicLink_Call {
-	_c.Call.Return(magicLink, err)
+func (_c *MockRepository_CreateMagicLink_Call) Return(v *MagicLink, err error) *MockRepository_CreateMagicLink_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -4879,8 +4879,8 @@ func (_c *MockRepository_CreateMemoryExtraction_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_CreateMemoryExtraction_Call) Return(memoryExtraction *MemoryExtraction, err error) *MockRepository_CreateMemoryExtraction_Call {
-	_c.Call.Return(memoryExtraction, err)
+func (_c *MockRepository_CreateMemoryExtraction_Call) Return(v *MemoryExtraction, err error) *MockRepository_CreateMemoryExtraction_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -5004,8 +5004,8 @@ func (_c *MockRepository_CreateNewsletterCampaign_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_CreateNewsletterCampaign_Call) Return(newsletterCampaign *NewsletterCampaign, err error) *MockRepository_CreateNewsletterCampaign_Call {
-	_c.Call.Return(newsletterCampaign, err)
+func (_c *MockRepository_CreateNewsletterCampaign_Call) Return(v *NewsletterCampaign, err error) *MockRepository_CreateNewsletterCampaign_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -5153,8 +5153,8 @@ func (_c *MockRepository_CreateNewsletterSubscriber_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_CreateNewsletterSubscriber_Call) Return(newsletterSubscriber *NewsletterSubscriber, err error) *MockRepository_CreateNewsletterSubscriber_Call {
-	_c.Call.Return(newsletterSubscriber, err)
+func (_c *MockRepository_CreateNewsletterSubscriber_Call) Return(v *NewsletterSubscriber, err error) *MockRepository_CreateNewsletterSubscriber_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -5503,8 +5503,8 @@ func (_c *MockRepository_CreatePendingNewsletterSubscriber_Call) Run(run func(ct
 	return _c
 }
 
-func (_c *MockRepository_CreatePendingNewsletterSubscriber_Call) Return(newsletterSubscriber *NewsletterSubscriber, err error) *MockRepository_CreatePendingNewsletterSubscriber_Call {
-	_c.Call.Return(newsletterSubscriber, err)
+func (_c *MockRepository_CreatePendingNewsletterSubscriber_Call) Return(v *NewsletterSubscriber, err error) *MockRepository_CreatePendingNewsletterSubscriber_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -5685,8 +5685,8 @@ func (_c *MockRepository_CreatePricingBundle_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_CreatePricingBundle_Call) Return(pricingBundle *PricingBundle, err error) *MockRepository_CreatePricingBundle_Call {
-	_c.Call.Return(pricingBundle, err)
+func (_c *MockRepository_CreatePricingBundle_Call) Return(v *PricingBundle, err error) *MockRepository_CreatePricingBundle_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -5753,8 +5753,8 @@ func (_c *MockRepository_CreatePricingTier_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_CreatePricingTier_Call) Return(pricingTier *PricingTier, err error) *MockRepository_CreatePricingTier_Call {
-	_c.Call.Return(pricingTier, err)
+func (_c *MockRepository_CreatePricingTier_Call) Return(v *PricingTier, err error) *MockRepository_CreatePricingTier_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -5959,8 +5959,8 @@ func (_c *MockRepository_CreateRefreshToken_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_CreateRefreshToken_Call) Return(refreshToken *RefreshToken, err error) *MockRepository_CreateRefreshToken_Call {
-	_c.Call.Return(refreshToken, err)
+func (_c *MockRepository_CreateRefreshToken_Call) Return(v *RefreshToken, err error) *MockRepository_CreateRefreshToken_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -6027,8 +6027,8 @@ func (_c *MockRepository_CreateSecurityScan_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_CreateSecurityScan_Call) Return(securityScan *SecurityScan, err error) *MockRepository_CreateSecurityScan_Call {
-	_c.Call.Return(securityScan, err)
+func (_c *MockRepository_CreateSecurityScan_Call) Return(v *SecurityScan, err error) *MockRepository_CreateSecurityScan_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -6119,8 +6119,8 @@ func (_c *MockRepository_CreateSession_Call) Run(run func(ctx context.Context, u
 	return _c
 }
 
-func (_c *MockRepository_CreateSession_Call) Return(session *Session, err error) *MockRepository_CreateSession_Call {
-	_c.Call.Return(session, err)
+func (_c *MockRepository_CreateSession_Call) Return(v *Session, err error) *MockRepository_CreateSession_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -6279,8 +6279,8 @@ func (_c *MockRepository_CreateStripeSyncEvent_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_CreateStripeSyncEvent_Call) Return(stripeSyncEvent *StripeSyncEvent, err error) *MockRepository_CreateStripeSyncEvent_Call {
-	_c.Call.Return(stripeSyncEvent, err)
+func (_c *MockRepository_CreateStripeSyncEvent_Call) Return(v *StripeSyncEvent, err error) *MockRepository_CreateStripeSyncEvent_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -6347,8 +6347,8 @@ func (_c *MockRepository_CreateSubscription_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_CreateSubscription_Call) Return(subscription *Subscription, err error) *MockRepository_CreateSubscription_Call {
-	_c.Call.Return(subscription, err)
+func (_c *MockRepository_CreateSubscription_Call) Return(v *Subscription, err error) *MockRepository_CreateSubscription_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -6523,8 +6523,8 @@ func (_c *MockRepository_CreateTeamMemory_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_CreateTeamMemory_Call) Return(teamMemory *TeamMemory, err error) *MockRepository_CreateTeamMemory_Call {
-	_c.Call.Return(teamMemory, err)
+func (_c *MockRepository_CreateTeamMemory_Call) Return(v *TeamMemory, err error) *MockRepository_CreateTeamMemory_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -6591,8 +6591,8 @@ func (_c *MockRepository_CreateTenant_Call) Run(run func(ctx context.Context, na
 	return _c
 }
 
-func (_c *MockRepository_CreateTenant_Call) Return(tenant *Tenant, err error) *MockRepository_CreateTenant_Call {
-	_c.Call.Return(tenant, err)
+func (_c *MockRepository_CreateTenant_Call) Return(v *Tenant, err error) *MockRepository_CreateTenant_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -6956,8 +6956,8 @@ func (_c *MockRepository_CreateUser_Call) Run(run func(ctx context.Context, emai
 	return _c
 }
 
-func (_c *MockRepository_CreateUser_Call) Return(user *User, err error) *MockRepository_CreateUser_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_CreateUser_Call) Return(v *User, err error) *MockRepository_CreateUser_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -7081,8 +7081,8 @@ func (_c *MockRepository_CreateUserWithRole_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_CreateUserWithRole_Call) Return(user1 *User, err error) *MockRepository_CreateUserWithRole_Call {
-	_c.Call.Return(user1, err)
+func (_c *MockRepository_CreateUserWithRole_Call) Return(v *User, err error) *MockRepository_CreateUserWithRole_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -7173,8 +7173,8 @@ func (_c *MockRepository_CreateUserWithSocialAuth_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_CreateUserWithSocialAuth_Call) Return(user *User, err error) *MockRepository_CreateUserWithSocialAuth_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_CreateUserWithSocialAuth_Call) Return(v *User, err error) *MockRepository_CreateUserWithSocialAuth_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -7298,8 +7298,8 @@ func (_c *MockRepository_CreateVulnerability_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_CreateVulnerability_Call) Return(vulnerability *Vulnerability, err error) *MockRepository_CreateVulnerability_Call {
-	_c.Call.Return(vulnerability, err)
+func (_c *MockRepository_CreateVulnerability_Call) Return(v *Vulnerability, err error) *MockRepository_CreateVulnerability_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -7402,8 +7402,8 @@ func (_c *MockRepository_CreateWaitlistEntry_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_CreateWaitlistEntry_Call) Return(waitlistEntry *WaitlistEntry, err error) *MockRepository_CreateWaitlistEntry_Call {
-	_c.Call.Return(waitlistEntry, err)
+func (_c *MockRepository_CreateWaitlistEntry_Call) Return(v *WaitlistEntry, err error) *MockRepository_CreateWaitlistEntry_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -10518,8 +10518,8 @@ func (_c *MockRepository_FollowFunction_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_FollowFunction_Call) Return(functionFollow *FunctionFollow, err error) *MockRepository_FollowFunction_Call {
-	_c.Call.Return(functionFollow, err)
+func (_c *MockRepository_FollowFunction_Call) Return(v *FunctionFollow, err error) *MockRepository_FollowFunction_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -10616,8 +10616,8 @@ func (_c *MockRepository_FollowUser_Call) Run(run func(ctx context.Context, foll
 	return _c
 }
 
-func (_c *MockRepository_FollowUser_Call) Return(userFollow *UserFollow, err error) *MockRepository_FollowUser_Call {
-	_c.Call.Return(userFollow, err)
+func (_c *MockRepository_FollowUser_Call) Return(v *UserFollow, err error) *MockRepository_FollowUser_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -10684,8 +10684,8 @@ func (_c *MockRepository_GetAchievementBySlug_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetAchievementBySlug_Call) Return(achievement *Achievement, err error) *MockRepository_GetAchievementBySlug_Call {
-	_c.Call.Return(achievement, err)
+func (_c *MockRepository_GetAchievementBySlug_Call) Return(v *Achievement, err error) *MockRepository_GetAchievementBySlug_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -10752,8 +10752,8 @@ func (_c *MockRepository_GetActiveDeploymentForFunction_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *MockRepository_GetActiveDeploymentForFunction_Call) Return(functionDeployment *FunctionDeployment, err error) *MockRepository_GetActiveDeploymentForFunction_Call {
-	_c.Call.Return(functionDeployment, err)
+func (_c *MockRepository_GetActiveDeploymentForFunction_Call) Return(v *FunctionDeployment, err error) *MockRepository_GetActiveDeploymentForFunction_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -10820,8 +10820,8 @@ func (_c *MockRepository_GetActiveEmailWorkflowConfigsByTenant_Call) Run(run fun
 	return _c
 }
 
-func (_c *MockRepository_GetActiveEmailWorkflowConfigsByTenant_Call) Return(emailWorkflowConfigs []EmailWorkflowConfig, err error) *MockRepository_GetActiveEmailWorkflowConfigsByTenant_Call {
-	_c.Call.Return(emailWorkflowConfigs, err)
+func (_c *MockRepository_GetActiveEmailWorkflowConfigsByTenant_Call) Return(vs []EmailWorkflowConfig, err error) *MockRepository_GetActiveEmailWorkflowConfigsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -10894,8 +10894,8 @@ func (_c *MockRepository_GetActiveFounderMode_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetActiveFounderMode_Call) Return(founderModeRegistration *FounderModeRegistration, err error) *MockRepository_GetActiveFounderMode_Call {
-	_c.Call.Return(founderModeRegistration, err)
+func (_c *MockRepository_GetActiveFounderMode_Call) Return(v *FounderModeRegistration, err error) *MockRepository_GetActiveFounderMode_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -10956,8 +10956,8 @@ func (_c *MockRepository_GetActiveNewsletterSubscribers_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *MockRepository_GetActiveNewsletterSubscribers_Call) Return(newsletterSubscribers []NewsletterSubscriber, err error) *MockRepository_GetActiveNewsletterSubscribers_Call {
-	_c.Call.Return(newsletterSubscribers, err)
+func (_c *MockRepository_GetActiveNewsletterSubscribers_Call) Return(vs []NewsletterSubscriber, err error) *MockRepository_GetActiveNewsletterSubscribers_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -11024,8 +11024,8 @@ func (_c *MockRepository_GetAffiliateCodeByCode_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetAffiliateCodeByCode_Call) Return(affiliateCode *AffiliateCode, err error) *MockRepository_GetAffiliateCodeByCode_Call {
-	_c.Call.Return(affiliateCode, err)
+func (_c *MockRepository_GetAffiliateCodeByCode_Call) Return(v *AffiliateCode, err error) *MockRepository_GetAffiliateCodeByCode_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11092,8 +11092,8 @@ func (_c *MockRepository_GetAffiliateCodeByID_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetAffiliateCodeByID_Call) Return(affiliateCode *AffiliateCode, err error) *MockRepository_GetAffiliateCodeByID_Call {
-	_c.Call.Return(affiliateCode, err)
+func (_c *MockRepository_GetAffiliateCodeByID_Call) Return(v *AffiliateCode, err error) *MockRepository_GetAffiliateCodeByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11160,8 +11160,8 @@ func (_c *MockRepository_GetAffiliateCommissionByID_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetAffiliateCommissionByID_Call) Return(affiliateCommission *AffiliateCommission, err error) *MockRepository_GetAffiliateCommissionByID_Call {
-	_c.Call.Return(affiliateCommission, err)
+func (_c *MockRepository_GetAffiliateCommissionByID_Call) Return(v *AffiliateCommission, err error) *MockRepository_GetAffiliateCommissionByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11228,8 +11228,8 @@ func (_c *MockRepository_GetAffiliateReferralByID_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetAffiliateReferralByID_Call) Return(affiliateReferral *AffiliateReferral, err error) *MockRepository_GetAffiliateReferralByID_Call {
-	_c.Call.Return(affiliateReferral, err)
+func (_c *MockRepository_GetAffiliateReferralByID_Call) Return(v *AffiliateReferral, err error) *MockRepository_GetAffiliateReferralByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11296,8 +11296,8 @@ func (_c *MockRepository_GetAffiliateReferralByTenant_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_GetAffiliateReferralByTenant_Call) Return(affiliateReferral *AffiliateReferral, err error) *MockRepository_GetAffiliateReferralByTenant_Call {
-	_c.Call.Return(affiliateReferral, err)
+func (_c *MockRepository_GetAffiliateReferralByTenant_Call) Return(v *AffiliateReferral, err error) *MockRepository_GetAffiliateReferralByTenant_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11364,8 +11364,8 @@ func (_c *MockRepository_GetAgentSubscriptionByAgentID_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_GetAgentSubscriptionByAgentID_Call) Return(agentSubscription *AgentSubscription, err error) *MockRepository_GetAgentSubscriptionByAgentID_Call {
-	_c.Call.Return(agentSubscription, err)
+func (_c *MockRepository_GetAgentSubscriptionByAgentID_Call) Return(v *AgentSubscription, err error) *MockRepository_GetAgentSubscriptionByAgentID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11432,8 +11432,8 @@ func (_c *MockRepository_GetAgentSubscriptionsByTenant_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_GetAgentSubscriptionsByTenant_Call) Return(agentSubscriptions []*AgentSubscription, err error) *MockRepository_GetAgentSubscriptionsByTenant_Call {
-	_c.Call.Return(agentSubscriptions, err)
+func (_c *MockRepository_GetAgentSubscriptionsByTenant_Call) Return(vs []*AgentSubscription, err error) *MockRepository_GetAgentSubscriptionsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -11500,8 +11500,8 @@ func (_c *MockRepository_GetAgentTierPricingBySlug_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetAgentTierPricingBySlug_Call) Return(agentTierPricing *AgentTierPricing, err error) *MockRepository_GetAgentTierPricingBySlug_Call {
-	_c.Call.Return(agentTierPricing, err)
+func (_c *MockRepository_GetAgentTierPricingBySlug_Call) Return(v *AgentTierPricing, err error) *MockRepository_GetAgentTierPricingBySlug_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11574,8 +11574,8 @@ func (_c *MockRepository_GetAgentTierPricingForRegion_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_GetAgentTierPricingForRegion_Call) Return(agentTierPricing *AgentTierPricing, err error) *MockRepository_GetAgentTierPricingForRegion_Call {
-	_c.Call.Return(agentTierPricing, err)
+func (_c *MockRepository_GetAgentTierPricingForRegion_Call) Return(v *AgentTierPricing, err error) *MockRepository_GetAgentTierPricingForRegion_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -11660,8 +11660,8 @@ func (_c *MockRepository_GetAgentUsageByAgentID_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetAgentUsageByAgentID_Call) Return(agentUsages []*AgentUsage, err error) *MockRepository_GetAgentUsageByAgentID_Call {
-	_c.Call.Return(agentUsages, err)
+func (_c *MockRepository_GetAgentUsageByAgentID_Call) Return(vs []*AgentUsage, err error) *MockRepository_GetAgentUsageByAgentID_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -11892,8 +11892,8 @@ func (_c *MockRepository_GetAlertHistoryByTenant_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetAlertHistoryByTenant_Call) Return(usageAlertHistorys []*UsageAlertHistory, err error) *MockRepository_GetAlertHistoryByTenant_Call {
-	_c.Call.Return(usageAlertHistorys, err)
+func (_c *MockRepository_GetAlertHistoryByTenant_Call) Return(vs []*UsageAlertHistory, err error) *MockRepository_GetAlertHistoryByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -11954,8 +11954,8 @@ func (_c *MockRepository_GetAllEnabledBackends_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetAllEnabledBackends_Call) Return(backends []*Backend, err error) *MockRepository_GetAllEnabledBackends_Call {
-	_c.Call.Return(backends, err)
+func (_c *MockRepository_GetAllEnabledBackends_Call) Return(vs []*Backend, err error) *MockRepository_GetAllEnabledBackends_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -12028,8 +12028,8 @@ func (_c *MockRepository_GetAllTenantsCostSummary_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetAllTenantsCostSummary_Call) Return(tenantCostSummarys []*TenantCostSummary, err error) *MockRepository_GetAllTenantsCostSummary_Call {
-	_c.Call.Return(tenantCostSummarys, err)
+func (_c *MockRepository_GetAllTenantsCostSummary_Call) Return(vs []*TenantCostSummary, err error) *MockRepository_GetAllTenantsCostSummary_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -12096,8 +12096,8 @@ func (_c *MockRepository_GetAppByID_Call) Run(run func(ctx context.Context, id u
 	return _c
 }
 
-func (_c *MockRepository_GetAppByID_Call) Return(app *App, err error) *MockRepository_GetAppByID_Call {
-	_c.Call.Return(app, err)
+func (_c *MockRepository_GetAppByID_Call) Return(v *App, err error) *MockRepository_GetAppByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12164,8 +12164,8 @@ func (_c *MockRepository_GetAppBySlug_Call) Run(run func(ctx context.Context, sl
 	return _c
 }
 
-func (_c *MockRepository_GetAppBySlug_Call) Return(app *App, err error) *MockRepository_GetAppBySlug_Call {
-	_c.Call.Return(app, err)
+func (_c *MockRepository_GetAppBySlug_Call) Return(v *App, err error) *MockRepository_GetAppBySlug_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12238,8 +12238,8 @@ func (_c *MockRepository_GetAppBySlugAndTenant_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetAppBySlugAndTenant_Call) Return(app *App, err error) *MockRepository_GetAppBySlugAndTenant_Call {
-	_c.Call.Return(app, err)
+func (_c *MockRepository_GetAppBySlugAndTenant_Call) Return(v *App, err error) *MockRepository_GetAppBySlugAndTenant_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12306,8 +12306,8 @@ func (_c *MockRepository_GetAuditEventByID_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetAuditEventByID_Call) Return(auditEvent *AuditEvent, err error) *MockRepository_GetAuditEventByID_Call {
-	_c.Call.Return(auditEvent, err)
+func (_c *MockRepository_GetAuditEventByID_Call) Return(v *AuditEvent, err error) *MockRepository_GetAuditEventByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12386,8 +12386,8 @@ func (_c *MockRepository_GetAuthAuditLogsByUser_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetAuthAuditLogsByUser_Call) Return(tenantAuthAuditLogs []*TenantAuthAuditLog, err error) *MockRepository_GetAuthAuditLogsByUser_Call {
-	_c.Call.Return(tenantAuthAuditLogs, err)
+func (_c *MockRepository_GetAuthAuditLogsByUser_Call) Return(vs []*TenantAuthAuditLog, err error) *MockRepository_GetAuthAuditLogsByUser_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -12466,8 +12466,8 @@ func (_c *MockRepository_GetAuthEventsByType_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetAuthEventsByType_Call) Return(authEvents []*AuthEvent, err error) *MockRepository_GetAuthEventsByType_Call {
-	_c.Call.Return(authEvents, err)
+func (_c *MockRepository_GetAuthEventsByType_Call) Return(vs []*AuthEvent, err error) *MockRepository_GetAuthEventsByType_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -12546,8 +12546,8 @@ func (_c *MockRepository_GetAuthEventsForUser_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetAuthEventsForUser_Call) Return(authEvents []*AuthEvent, err error) *MockRepository_GetAuthEventsForUser_Call {
-	_c.Call.Return(authEvents, err)
+func (_c *MockRepository_GetAuthEventsForUser_Call) Return(vs []*AuthEvent, err error) *MockRepository_GetAuthEventsForUser_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -12614,8 +12614,8 @@ func (_c *MockRepository_GetAuthSettings_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetAuthSettings_Call) Return(tenantAuthSettings *TenantAuthSettings, err error) *MockRepository_GetAuthSettings_Call {
-	_c.Call.Return(tenantAuthSettings, err)
+func (_c *MockRepository_GetAuthSettings_Call) Return(v *TenantAuthSettings, err error) *MockRepository_GetAuthSettings_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12682,8 +12682,8 @@ func (_c *MockRepository_GetBackendByID_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_GetBackendByID_Call) Return(backend *Backend, err error) *MockRepository_GetBackendByID_Call {
-	_c.Call.Return(backend, err)
+func (_c *MockRepository_GetBackendByID_Call) Return(v *Backend, err error) *MockRepository_GetBackendByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12750,8 +12750,8 @@ func (_c *MockRepository_GetBackendStatusByAppID_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetBackendStatusByAppID_Call) Return(backendStatuss []*BackendStatus, err error) *MockRepository_GetBackendStatusByAppID_Call {
-	_c.Call.Return(backendStatuss, err)
+func (_c *MockRepository_GetBackendStatusByAppID_Call) Return(vs []*BackendStatus, err error) *MockRepository_GetBackendStatusByAppID_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -12818,8 +12818,8 @@ func (_c *MockRepository_GetBillingIntegrationSync_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetBillingIntegrationSync_Call) Return(billingIntegrationSync *BillingIntegrationSync, err error) *MockRepository_GetBillingIntegrationSync_Call {
-	_c.Call.Return(billingIntegrationSync, err)
+func (_c *MockRepository_GetBillingIntegrationSync_Call) Return(v *BillingIntegrationSync, err error) *MockRepository_GetBillingIntegrationSync_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12886,8 +12886,8 @@ func (_c *MockRepository_GetBlogAuthorByID_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetBlogAuthorByID_Call) Return(blogAuthor *BlogAuthor, err error) *MockRepository_GetBlogAuthorByID_Call {
-	_c.Call.Return(blogAuthor, err)
+func (_c *MockRepository_GetBlogAuthorByID_Call) Return(v *BlogAuthor, err error) *MockRepository_GetBlogAuthorByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -12954,8 +12954,8 @@ func (_c *MockRepository_GetBlogAuthorBySlug_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetBlogAuthorBySlug_Call) Return(blogAuthor *BlogAuthor, err error) *MockRepository_GetBlogAuthorBySlug_Call {
-	_c.Call.Return(blogAuthor, err)
+func (_c *MockRepository_GetBlogAuthorBySlug_Call) Return(v *BlogAuthor, err error) *MockRepository_GetBlogAuthorBySlug_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13022,8 +13022,8 @@ func (_c *MockRepository_GetBlogCategoryByID_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetBlogCategoryByID_Call) Return(blogCategory *BlogCategory, err error) *MockRepository_GetBlogCategoryByID_Call {
-	_c.Call.Return(blogCategory, err)
+func (_c *MockRepository_GetBlogCategoryByID_Call) Return(v *BlogCategory, err error) *MockRepository_GetBlogCategoryByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13090,8 +13090,8 @@ func (_c *MockRepository_GetBlogCategoryBySlug_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetBlogCategoryBySlug_Call) Return(blogCategory *BlogCategory, err error) *MockRepository_GetBlogCategoryBySlug_Call {
-	_c.Call.Return(blogCategory, err)
+func (_c *MockRepository_GetBlogCategoryBySlug_Call) Return(v *BlogCategory, err error) *MockRepository_GetBlogCategoryBySlug_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13158,8 +13158,8 @@ func (_c *MockRepository_GetBlogPostByID_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetBlogPostByID_Call) Return(blogPost *BlogPost, err error) *MockRepository_GetBlogPostByID_Call {
-	_c.Call.Return(blogPost, err)
+func (_c *MockRepository_GetBlogPostByID_Call) Return(v *BlogPost, err error) *MockRepository_GetBlogPostByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13226,8 +13226,8 @@ func (_c *MockRepository_GetBlogPostBySlug_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetBlogPostBySlug_Call) Return(blogPost *BlogPost, err error) *MockRepository_GetBlogPostBySlug_Call {
-	_c.Call.Return(blogPost, err)
+func (_c *MockRepository_GetBlogPostBySlug_Call) Return(v *BlogPost, err error) *MockRepository_GetBlogPostBySlug_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13288,8 +13288,8 @@ func (_c *MockRepository_GetBlogSettings_Call) Run(run func(ctx context.Context)
 	return _c
 }
 
-func (_c *MockRepository_GetBlogSettings_Call) Return(blogSettings *BlogSettings, err error) *MockRepository_GetBlogSettings_Call {
-	_c.Call.Return(blogSettings, err)
+func (_c *MockRepository_GetBlogSettings_Call) Return(v *BlogSettings, err error) *MockRepository_GetBlogSettings_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13356,8 +13356,8 @@ func (_c *MockRepository_GetBundleSubscriptionByStripeID_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *MockRepository_GetBundleSubscriptionByStripeID_Call) Return(bundleSubscription *BundleSubscription, err error) *MockRepository_GetBundleSubscriptionByStripeID_Call {
-	_c.Call.Return(bundleSubscription, err)
+func (_c *MockRepository_GetBundleSubscriptionByStripeID_Call) Return(v *BundleSubscription, err error) *MockRepository_GetBundleSubscriptionByStripeID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13424,8 +13424,8 @@ func (_c *MockRepository_GetBundleSubscriptionByTenant_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_GetBundleSubscriptionByTenant_Call) Return(bundleSubscription *BundleSubscription, err error) *MockRepository_GetBundleSubscriptionByTenant_Call {
-	_c.Call.Return(bundleSubscription, err)
+func (_c *MockRepository_GetBundleSubscriptionByTenant_Call) Return(v *BundleSubscription, err error) *MockRepository_GetBundleSubscriptionByTenant_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13492,8 +13492,8 @@ func (_c *MockRepository_GetChangelogEntryByID_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetChangelogEntryByID_Call) Return(changelogEntry *ChangelogEntry, err error) *MockRepository_GetChangelogEntryByID_Call {
-	_c.Call.Return(changelogEntry, err)
+func (_c *MockRepository_GetChangelogEntryByID_Call) Return(v *ChangelogEntry, err error) *MockRepository_GetChangelogEntryByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13560,8 +13560,8 @@ func (_c *MockRepository_GetChangelogEntryByVersion_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetChangelogEntryByVersion_Call) Return(changelogEntry *ChangelogEntry, err error) *MockRepository_GetChangelogEntryByVersion_Call {
-	_c.Call.Return(changelogEntry, err)
+func (_c *MockRepository_GetChangelogEntryByVersion_Call) Return(v *ChangelogEntry, err error) *MockRepository_GetChangelogEntryByVersion_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13628,8 +13628,8 @@ func (_c *MockRepository_GetCircuitState_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetCircuitState_Call) Return(circuitState *CircuitState, err error) *MockRepository_GetCircuitState_Call {
-	_c.Call.Return(circuitState, err)
+func (_c *MockRepository_GetCircuitState_Call) Return(v *CircuitState, err error) *MockRepository_GetCircuitState_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -13708,8 +13708,8 @@ func (_c *MockRepository_GetCostAllocationByFunction_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_GetCostAllocationByFunction_Call) Return(costAllocationSummarys []*CostAllocationSummary, err error) *MockRepository_GetCostAllocationByFunction_Call {
-	_c.Call.Return(costAllocationSummarys, err)
+func (_c *MockRepository_GetCostAllocationByFunction_Call) Return(vs []*CostAllocationSummary, err error) *MockRepository_GetCostAllocationByFunction_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -13788,8 +13788,8 @@ func (_c *MockRepository_GetCostAllocationByRegion_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetCostAllocationByRegion_Call) Return(stringToCostAllocationSummary map[string]*CostAllocationSummary, err error) *MockRepository_GetCostAllocationByRegion_Call {
-	_c.Call.Return(stringToCostAllocationSummary, err)
+func (_c *MockRepository_GetCostAllocationByRegion_Call) Return(stringToV map[string]*CostAllocationSummary, err error) *MockRepository_GetCostAllocationByRegion_Call {
+	_c.Call.Return(stringToV, err)
 	return _c
 }
 
@@ -13868,8 +13868,8 @@ func (_c *MockRepository_GetCostAllocationDailyBreakdown_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *MockRepository_GetCostAllocationDailyBreakdown_Call) Return(dailyCostBreakdowns []*DailyCostBreakdown, err error) *MockRepository_GetCostAllocationDailyBreakdown_Call {
-	_c.Call.Return(dailyCostBreakdowns, err)
+func (_c *MockRepository_GetCostAllocationDailyBreakdown_Call) Return(vs []*DailyCostBreakdown, err error) *MockRepository_GetCostAllocationDailyBreakdown_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -13954,8 +13954,8 @@ func (_c *MockRepository_GetCostAllocationEntries_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetCostAllocationEntries_Call) Return(costAllocationEntrys []*CostAllocationEntry, n int, err error) *MockRepository_GetCostAllocationEntries_Call {
-	_c.Call.Return(costAllocationEntrys, n, err)
+func (_c *MockRepository_GetCostAllocationEntries_Call) Return(vs []*CostAllocationEntry, n int, err error) *MockRepository_GetCostAllocationEntries_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -14028,8 +14028,8 @@ func (_c *MockRepository_GetCostAllocationReport_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetCostAllocationReport_Call) Return(costAllocationReport *CostAllocationReport, err error) *MockRepository_GetCostAllocationReport_Call {
-	_c.Call.Return(costAllocationReport, err)
+func (_c *MockRepository_GetCostAllocationReport_Call) Return(v *CostAllocationReport, err error) *MockRepository_GetCostAllocationReport_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14096,8 +14096,8 @@ func (_c *MockRepository_GetCouponByCode_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetCouponByCode_Call) Return(coupon *Coupon, err error) *MockRepository_GetCouponByCode_Call {
-	_c.Call.Return(coupon, err)
+func (_c *MockRepository_GetCouponByCode_Call) Return(v *Coupon, err error) *MockRepository_GetCouponByCode_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14164,8 +14164,8 @@ func (_c *MockRepository_GetCreditNoteByID_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetCreditNoteByID_Call) Return(creditNote *CreditNote, err error) *MockRepository_GetCreditNoteByID_Call {
-	_c.Call.Return(creditNote, err)
+func (_c *MockRepository_GetCreditNoteByID_Call) Return(v *CreditNote, err error) *MockRepository_GetCreditNoteByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14232,8 +14232,8 @@ func (_c *MockRepository_GetCreditNoteByReferenceNumber_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *MockRepository_GetCreditNoteByReferenceNumber_Call) Return(creditNote *CreditNote, err error) *MockRepository_GetCreditNoteByReferenceNumber_Call {
-	_c.Call.Return(creditNote, err)
+func (_c *MockRepository_GetCreditNoteByReferenceNumber_Call) Return(v *CreditNote, err error) *MockRepository_GetCreditNoteByReferenceNumber_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14300,8 +14300,8 @@ func (_c *MockRepository_GetCreditNoteLineItems_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetCreditNoteLineItems_Call) Return(creditNoteLineItems []*CreditNoteLineItem, err error) *MockRepository_GetCreditNoteLineItems_Call {
-	_c.Call.Return(creditNoteLineItems, err)
+func (_c *MockRepository_GetCreditNoteLineItems_Call) Return(vs []*CreditNoteLineItem, err error) *MockRepository_GetCreditNoteLineItems_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -14368,8 +14368,8 @@ func (_c *MockRepository_GetCreditNoteStats_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetCreditNoteStats_Call) Return(creditNoteStats *CreditNoteStats, err error) *MockRepository_GetCreditNoteStats_Call {
-	_c.Call.Return(creditNoteStats, err)
+func (_c *MockRepository_GetCreditNoteStats_Call) Return(v *CreditNoteStats, err error) *MockRepository_GetCreditNoteStats_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14436,8 +14436,8 @@ func (_c *MockRepository_GetCreditNoteWithRelations_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetCreditNoteWithRelations_Call) Return(creditNote *CreditNote, err error) *MockRepository_GetCreditNoteWithRelations_Call {
-	_c.Call.Return(creditNote, err)
+func (_c *MockRepository_GetCreditNoteWithRelations_Call) Return(v *CreditNote, err error) *MockRepository_GetCreditNoteWithRelations_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14516,8 +14516,8 @@ func (_c *MockRepository_GetCurrencyExchangeRate_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetCurrencyExchangeRate_Call) Return(currencyExchangeRate *CurrencyExchangeRate, err error) *MockRepository_GetCurrencyExchangeRate_Call {
-	_c.Call.Return(currencyExchangeRate, err)
+func (_c *MockRepository_GetCurrencyExchangeRate_Call) Return(v *CurrencyExchangeRate, err error) *MockRepository_GetCurrencyExchangeRate_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14596,8 +14596,8 @@ func (_c *MockRepository_GetCurrentPeriodUsage_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetCurrentPeriodUsage_Call) Return(usageSummary *UsageSummary, err error) *MockRepository_GetCurrentPeriodUsage_Call {
-	_c.Call.Return(usageSummary, err)
+func (_c *MockRepository_GetCurrentPeriodUsage_Call) Return(v *UsageSummary, err error) *MockRepository_GetCurrentPeriodUsage_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14670,8 +14670,8 @@ func (_c *MockRepository_GetDailySpendHistory_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetDailySpendHistory_Call) Return(dailyUsagePoints []*DailyUsagePoint, err error) *MockRepository_GetDailySpendHistory_Call {
-	_c.Call.Return(dailyUsagePoints, err)
+func (_c *MockRepository_GetDailySpendHistory_Call) Return(vs []*DailyUsagePoint, err error) *MockRepository_GetDailySpendHistory_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -14750,8 +14750,8 @@ func (_c *MockRepository_GetDailyUsageHistory_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetDailyUsageHistory_Call) Return(dailyUsagePoints []*DailyUsagePoint, err error) *MockRepository_GetDailyUsageHistory_Call {
-	_c.Call.Return(dailyUsagePoints, err)
+func (_c *MockRepository_GetDailyUsageHistory_Call) Return(vs []*DailyUsagePoint, err error) *MockRepository_GetDailyUsageHistory_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -14818,8 +14818,8 @@ func (_c *MockRepository_GetDashboardConfigByID_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetDashboardConfigByID_Call) Return(dashboardConfig *DashboardConfig, err error) *MockRepository_GetDashboardConfigByID_Call {
-	_c.Call.Return(dashboardConfig, err)
+func (_c *MockRepository_GetDashboardConfigByID_Call) Return(v *DashboardConfig, err error) *MockRepository_GetDashboardConfigByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -14886,8 +14886,8 @@ func (_c *MockRepository_GetDashboardConfigsByTenant_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_GetDashboardConfigsByTenant_Call) Return(dashboardConfigs []*DashboardConfig, err error) *MockRepository_GetDashboardConfigsByTenant_Call {
-	_c.Call.Return(dashboardConfigs, err)
+func (_c *MockRepository_GetDashboardConfigsByTenant_Call) Return(vs []*DashboardConfig, err error) *MockRepository_GetDashboardConfigsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -14954,8 +14954,8 @@ func (_c *MockRepository_GetDashboardConfigsByUser_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetDashboardConfigsByUser_Call) Return(dashboardConfigs []*DashboardConfig, err error) *MockRepository_GetDashboardConfigsByUser_Call {
-	_c.Call.Return(dashboardConfigs, err)
+func (_c *MockRepository_GetDashboardConfigsByUser_Call) Return(vs []*DashboardConfig, err error) *MockRepository_GetDashboardConfigsByUser_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15022,8 +15022,8 @@ func (_c *MockRepository_GetDashboardMetrics_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetDashboardMetrics_Call) Return(dashboardMetrics *DashboardMetrics, err error) *MockRepository_GetDashboardMetrics_Call {
-	_c.Call.Return(dashboardMetrics, err)
+func (_c *MockRepository_GetDashboardMetrics_Call) Return(v *DashboardMetrics, err error) *MockRepository_GetDashboardMetrics_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -15152,8 +15152,8 @@ func (_c *MockRepository_GetDeferredBillingConfig_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetDeferredBillingConfig_Call) Return(deferredBillingConfig *DeferredBillingConfig, err error) *MockRepository_GetDeferredBillingConfig_Call {
-	_c.Call.Return(deferredBillingConfig, err)
+func (_c *MockRepository_GetDeferredBillingConfig_Call) Return(v *DeferredBillingConfig, err error) *MockRepository_GetDeferredBillingConfig_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -15220,8 +15220,8 @@ func (_c *MockRepository_GetDeploymentArtifact_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetDeploymentArtifact_Call) Return(deploymentArtifact *DeploymentArtifact, err error) *MockRepository_GetDeploymentArtifact_Call {
-	_c.Call.Return(deploymentArtifact, err)
+func (_c *MockRepository_GetDeploymentArtifact_Call) Return(v *DeploymentArtifact, err error) *MockRepository_GetDeploymentArtifact_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -15288,8 +15288,8 @@ func (_c *MockRepository_GetDeploymentByID_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetDeploymentByID_Call) Return(deployment *Deployment, err error) *MockRepository_GetDeploymentByID_Call {
-	_c.Call.Return(deployment, err)
+func (_c *MockRepository_GetDeploymentByID_Call) Return(v *Deployment, err error) *MockRepository_GetDeploymentByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -15436,8 +15436,8 @@ func (_c *MockRepository_GetEmailEvents_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_GetEmailEvents_Call) Return(emailEvents []*EmailEvent, err error) *MockRepository_GetEmailEvents_Call {
-	_c.Call.Return(emailEvents, err)
+func (_c *MockRepository_GetEmailEvents_Call) Return(vs []*EmailEvent, err error) *MockRepository_GetEmailEvents_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15504,8 +15504,8 @@ func (_c *MockRepository_GetEmailWorkflowConfigByID_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetEmailWorkflowConfigByID_Call) Return(emailWorkflowConfig *EmailWorkflowConfig, err error) *MockRepository_GetEmailWorkflowConfigByID_Call {
-	_c.Call.Return(emailWorkflowConfig, err)
+func (_c *MockRepository_GetEmailWorkflowConfigByID_Call) Return(v *EmailWorkflowConfig, err error) *MockRepository_GetEmailWorkflowConfigByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -15578,8 +15578,8 @@ func (_c *MockRepository_GetEmailWorkflowConfigsByBundle_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *MockRepository_GetEmailWorkflowConfigsByBundle_Call) Return(emailWorkflowConfigs []EmailWorkflowConfig, err error) *MockRepository_GetEmailWorkflowConfigsByBundle_Call {
-	_c.Call.Return(emailWorkflowConfigs, err)
+func (_c *MockRepository_GetEmailWorkflowConfigsByBundle_Call) Return(vs []EmailWorkflowConfig, err error) *MockRepository_GetEmailWorkflowConfigsByBundle_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15646,8 +15646,8 @@ func (_c *MockRepository_GetEmailWorkflowConfigsByTenant_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *MockRepository_GetEmailWorkflowConfigsByTenant_Call) Return(emailWorkflowConfigs []EmailWorkflowConfig, err error) *MockRepository_GetEmailWorkflowConfigsByTenant_Call {
-	_c.Call.Return(emailWorkflowConfigs, err)
+func (_c *MockRepository_GetEmailWorkflowConfigsByTenant_Call) Return(vs []EmailWorkflowConfig, err error) *MockRepository_GetEmailWorkflowConfigsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15720,8 +15720,8 @@ func (_c *MockRepository_GetEmailWorkflowExecutionsByTenant_Call) Run(run func(c
 	return _c
 }
 
-func (_c *MockRepository_GetEmailWorkflowExecutionsByTenant_Call) Return(emailWorkflowExecutions []EmailWorkflowExecution, err error) *MockRepository_GetEmailWorkflowExecutionsByTenant_Call {
-	_c.Call.Return(emailWorkflowExecutions, err)
+func (_c *MockRepository_GetEmailWorkflowExecutionsByTenant_Call) Return(vs []EmailWorkflowExecution, err error) *MockRepository_GetEmailWorkflowExecutionsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15794,8 +15794,8 @@ func (_c *MockRepository_GetEmailWorkflowExecutionsByWorkflow_Call) Run(run func
 	return _c
 }
 
-func (_c *MockRepository_GetEmailWorkflowExecutionsByWorkflow_Call) Return(emailWorkflowExecutions []EmailWorkflowExecution, err error) *MockRepository_GetEmailWorkflowExecutionsByWorkflow_Call {
-	_c.Call.Return(emailWorkflowExecutions, err)
+func (_c *MockRepository_GetEmailWorkflowExecutionsByWorkflow_Call) Return(vs []EmailWorkflowExecution, err error) *MockRepository_GetEmailWorkflowExecutionsByWorkflow_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15862,8 +15862,8 @@ func (_c *MockRepository_GetEnabledOAuthProviders_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetEnabledOAuthProviders_Call) Return(tenantOAuthProviders []*TenantOAuthProvider, err error) *MockRepository_GetEnabledOAuthProviders_Call {
-	_c.Call.Return(tenantOAuthProviders, err)
+func (_c *MockRepository_GetEnabledOAuthProviders_Call) Return(vs []*TenantOAuthProvider, err error) *MockRepository_GetEnabledOAuthProviders_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15936,8 +15936,8 @@ func (_c *MockRepository_GetExecutionRateByHour_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetExecutionRateByHour_Call) Return(executionRateByHours []ExecutionRateByHour, err error) *MockRepository_GetExecutionRateByHour_Call {
-	_c.Call.Return(executionRateByHours, err)
+func (_c *MockRepository_GetExecutionRateByHour_Call) Return(vs []ExecutionRateByHour, err error) *MockRepository_GetExecutionRateByHour_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -15998,8 +15998,8 @@ func (_c *MockRepository_GetExecutionRetentionSettings_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_GetExecutionRetentionSettings_Call) Return(executionRetentionSettings *ExecutionRetentionSettings, err error) *MockRepository_GetExecutionRetentionSettings_Call {
-	_c.Call.Return(executionRetentionSettings, err)
+func (_c *MockRepository_GetExecutionRetentionSettings_Call) Return(v *ExecutionRetentionSettings, err error) *MockRepository_GetExecutionRetentionSettings_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -16128,8 +16128,8 @@ func (_c *MockRepository_GetExternalBillingSystem_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetExternalBillingSystem_Call) Return(externalBillingSystem *ExternalBillingSystem, err error) *MockRepository_GetExternalBillingSystem_Call {
-	_c.Call.Return(externalBillingSystem, err)
+func (_c *MockRepository_GetExternalBillingSystem_Call) Return(v *ExternalBillingSystem, err error) *MockRepository_GetExternalBillingSystem_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -16202,8 +16202,8 @@ func (_c *MockRepository_GetFavoriteByFunction_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetFavoriteByFunction_Call) Return(functionFavorite *FunctionFavorite, err error) *MockRepository_GetFavoriteByFunction_Call {
-	_c.Call.Return(functionFavorite, err)
+func (_c *MockRepository_GetFavoriteByFunction_Call) Return(v *FunctionFavorite, err error) *MockRepository_GetFavoriteByFunction_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -16398,8 +16398,8 @@ func (_c *MockRepository_GetFeedbackAttachmentByID_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetFeedbackAttachmentByID_Call) Return(feedbackAttachment *FeedbackAttachment, err error) *MockRepository_GetFeedbackAttachmentByID_Call {
-	_c.Call.Return(feedbackAttachment, err)
+func (_c *MockRepository_GetFeedbackAttachmentByID_Call) Return(v *FeedbackAttachment, err error) *MockRepository_GetFeedbackAttachmentByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -16466,8 +16466,8 @@ func (_c *MockRepository_GetFeedbackAttachments_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetFeedbackAttachments_Call) Return(feedbackAttachments []FeedbackAttachment, err error) *MockRepository_GetFeedbackAttachments_Call {
-	_c.Call.Return(feedbackAttachments, err)
+func (_c *MockRepository_GetFeedbackAttachments_Call) Return(vs []FeedbackAttachment, err error) *MockRepository_GetFeedbackAttachments_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -16534,8 +16534,8 @@ func (_c *MockRepository_GetFeedbackByID_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetFeedbackByID_Call) Return(feedback *Feedback, err error) *MockRepository_GetFeedbackByID_Call {
-	_c.Call.Return(feedback, err)
+func (_c *MockRepository_GetFeedbackByID_Call) Return(v *Feedback, err error) *MockRepository_GetFeedbackByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -16620,8 +16620,8 @@ func (_c *MockRepository_GetFeedbackByUser_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetFeedbackByUser_Call) Return(feedbacks []Feedback, err error) *MockRepository_GetFeedbackByUser_Call {
-	_c.Call.Return(feedbacks, err)
+func (_c *MockRepository_GetFeedbackByUser_Call) Return(vs []Feedback, err error) *MockRepository_GetFeedbackByUser_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -16756,8 +16756,8 @@ func (_c *MockRepository_GetFunctionByAppIDAndName_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionByAppIDAndName_Call) Return(functionConfig *FunctionConfig, err error) *MockRepository_GetFunctionByAppIDAndName_Call {
-	_c.Call.Return(functionConfig, err)
+func (_c *MockRepository_GetFunctionByAppIDAndName_Call) Return(v *FunctionConfig, err error) *MockRepository_GetFunctionByAppIDAndName_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -16824,8 +16824,8 @@ func (_c *MockRepository_GetFunctionByID_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionByID_Call) Return(functionConfig *FunctionConfig, err error) *MockRepository_GetFunctionByID_Call {
-	_c.Call.Return(functionConfig, err)
+func (_c *MockRepository_GetFunctionByID_Call) Return(v *FunctionConfig, err error) *MockRepository_GetFunctionByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -16892,8 +16892,8 @@ func (_c *MockRepository_GetFunctionDeploymentByID_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionDeploymentByID_Call) Return(functionDeployment *FunctionDeployment, err error) *MockRepository_GetFunctionDeploymentByID_Call {
-	_c.Call.Return(functionDeployment, err)
+func (_c *MockRepository_GetFunctionDeploymentByID_Call) Return(v *FunctionDeployment, err error) *MockRepository_GetFunctionDeploymentByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17044,8 +17044,8 @@ func (_c *MockRepository_GetFunctionFollowers_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionFollowers_Call) Return(functionFollows []*FunctionFollow, n int, err error) *MockRepository_GetFunctionFollowers_Call {
-	_c.Call.Return(functionFollows, n, err)
+func (_c *MockRepository_GetFunctionFollowers_Call) Return(vs []*FunctionFollow, n int, err error) *MockRepository_GetFunctionFollowers_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -17136,8 +17136,8 @@ func (_c *MockRepository_GetFunctionLogs_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionLogs_Call) Return(functionLogs []*FunctionLog, err error) *MockRepository_GetFunctionLogs_Call {
-	_c.Call.Return(functionLogs, err)
+func (_c *MockRepository_GetFunctionLogs_Call) Return(vs []*FunctionLog, err error) *MockRepository_GetFunctionLogs_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -17204,8 +17204,8 @@ func (_c *MockRepository_GetFunctionVerificationPaymentByCheckoutSessionID_Call)
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionVerificationPaymentByCheckoutSessionID_Call) Return(functionVerificationPayment *FunctionVerificationPayment, err error) *MockRepository_GetFunctionVerificationPaymentByCheckoutSessionID_Call {
-	_c.Call.Return(functionVerificationPayment, err)
+func (_c *MockRepository_GetFunctionVerificationPaymentByCheckoutSessionID_Call) Return(v *FunctionVerificationPayment, err error) *MockRepository_GetFunctionVerificationPaymentByCheckoutSessionID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17272,8 +17272,8 @@ func (_c *MockRepository_GetFunctionVerificationPaymentByID_Call) Run(run func(c
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionVerificationPaymentByID_Call) Return(functionVerificationPayment *FunctionVerificationPayment, err error) *MockRepository_GetFunctionVerificationPaymentByID_Call {
-	_c.Call.Return(functionVerificationPayment, err)
+func (_c *MockRepository_GetFunctionVerificationPaymentByID_Call) Return(v *FunctionVerificationPayment, err error) *MockRepository_GetFunctionVerificationPaymentByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17352,8 +17352,8 @@ func (_c *MockRepository_GetFunctionVerificationPaymentsByTenant_Call) Run(run f
 	return _c
 }
 
-func (_c *MockRepository_GetFunctionVerificationPaymentsByTenant_Call) Return(functionVerificationPayments []*FunctionVerificationPayment, err error) *MockRepository_GetFunctionVerificationPaymentsByTenant_Call {
-	_c.Call.Return(functionVerificationPayments, err)
+func (_c *MockRepository_GetFunctionVerificationPaymentsByTenant_Call) Return(vs []*FunctionVerificationPayment, err error) *MockRepository_GetFunctionVerificationPaymentsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -17420,8 +17420,8 @@ func (_c *MockRepository_GetIncidentByID_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetIncidentByID_Call) Return(incident *Incident, err error) *MockRepository_GetIncidentByID_Call {
-	_c.Call.Return(incident, err)
+func (_c *MockRepository_GetIncidentByID_Call) Return(v *Incident, err error) *MockRepository_GetIncidentByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17488,8 +17488,8 @@ func (_c *MockRepository_GetInviteCode_Call) Run(run func(ctx context.Context, c
 	return _c
 }
 
-func (_c *MockRepository_GetInviteCode_Call) Return(tenantInviteCode *TenantInviteCode, err error) *MockRepository_GetInviteCode_Call {
-	_c.Call.Return(tenantInviteCode, err)
+func (_c *MockRepository_GetInviteCode_Call) Return(v *TenantInviteCode, err error) *MockRepository_GetInviteCode_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17562,8 +17562,8 @@ func (_c *MockRepository_GetInviteCodeByEmail_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetInviteCodeByEmail_Call) Return(tenantInviteCode *TenantInviteCode, err error) *MockRepository_GetInviteCodeByEmail_Call {
-	_c.Call.Return(tenantInviteCode, err)
+func (_c *MockRepository_GetInviteCodeByEmail_Call) Return(v *TenantInviteCode, err error) *MockRepository_GetInviteCodeByEmail_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17636,8 +17636,8 @@ func (_c *MockRepository_GetInviteCodesByTenant_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetInviteCodesByTenant_Call) Return(tenantInviteCodes []*TenantInviteCode, err error) *MockRepository_GetInviteCodesByTenant_Call {
-	_c.Call.Return(tenantInviteCodes, err)
+func (_c *MockRepository_GetInviteCodesByTenant_Call) Return(vs []*TenantInviteCode, err error) *MockRepository_GetInviteCodesByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -17704,8 +17704,8 @@ func (_c *MockRepository_GetInvoiceByID_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_GetInvoiceByID_Call) Return(invoice *Invoice, err error) *MockRepository_GetInvoiceByID_Call {
-	_c.Call.Return(invoice, err)
+func (_c *MockRepository_GetInvoiceByID_Call) Return(v *Invoice, err error) *MockRepository_GetInvoiceByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17784,8 +17784,8 @@ func (_c *MockRepository_GetInvoiceByPeriod_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetInvoiceByPeriod_Call) Return(invoice *Invoice, err error) *MockRepository_GetInvoiceByPeriod_Call {
-	_c.Call.Return(invoice, err)
+func (_c *MockRepository_GetInvoiceByPeriod_Call) Return(v *Invoice, err error) *MockRepository_GetInvoiceByPeriod_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -17972,8 +17972,8 @@ func (_c *MockRepository_GetLastUsernameChange_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetLastUsernameChange_Call) Return(usernameChangeHistory *UsernameChangeHistory, err error) *MockRepository_GetLastUsernameChange_Call {
-	_c.Call.Return(usernameChangeHistory, err)
+func (_c *MockRepository_GetLastUsernameChange_Call) Return(v *UsernameChangeHistory, err error) *MockRepository_GetLastUsernameChange_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18046,8 +18046,8 @@ func (_c *MockRepository_GetLatestForecast_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetLatestForecast_Call) Return(usageForecast *UsageForecast, err error) *MockRepository_GetLatestForecast_Call {
-	_c.Call.Return(usageForecast, err)
+func (_c *MockRepository_GetLatestForecast_Call) Return(v *UsageForecast, err error) *MockRepository_GetLatestForecast_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18114,8 +18114,8 @@ func (_c *MockRepository_GetLatestLocalRuntimeMetrics_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_GetLatestLocalRuntimeMetrics_Call) Return(localRuntimeMetric *LocalRuntimeMetric, err error) *MockRepository_GetLatestLocalRuntimeMetrics_Call {
-	_c.Call.Return(localRuntimeMetric, err)
+func (_c *MockRepository_GetLatestLocalRuntimeMetrics_Call) Return(v *LocalRuntimeMetric, err error) *MockRepository_GetLatestLocalRuntimeMetrics_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18188,8 +18188,8 @@ func (_c *MockRepository_GetLatestSuccessfulDeployment_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_GetLatestSuccessfulDeployment_Call) Return(deployment *Deployment, err error) *MockRepository_GetLatestSuccessfulDeployment_Call {
-	_c.Call.Return(deployment, err)
+func (_c *MockRepository_GetLatestSuccessfulDeployment_Call) Return(v *Deployment, err error) *MockRepository_GetLatestSuccessfulDeployment_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18256,8 +18256,8 @@ func (_c *MockRepository_GetLocalRuntimeByID_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetLocalRuntimeByID_Call) Return(localRuntimeInstance *LocalRuntimeInstance, err error) *MockRepository_GetLocalRuntimeByID_Call {
-	_c.Call.Return(localRuntimeInstance, err)
+func (_c *MockRepository_GetLocalRuntimeByID_Call) Return(v *LocalRuntimeInstance, err error) *MockRepository_GetLocalRuntimeByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18324,8 +18324,8 @@ func (_c *MockRepository_GetLocalRuntimeByRuntimeID_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetLocalRuntimeByRuntimeID_Call) Return(localRuntimeInstance *LocalRuntimeInstance, err error) *MockRepository_GetLocalRuntimeByRuntimeID_Call {
-	_c.Call.Return(localRuntimeInstance, err)
+func (_c *MockRepository_GetLocalRuntimeByRuntimeID_Call) Return(v *LocalRuntimeInstance, err error) *MockRepository_GetLocalRuntimeByRuntimeID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18392,8 +18392,8 @@ func (_c *MockRepository_GetLocalRuntimeHealth_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetLocalRuntimeHealth_Call) Return(localRuntimeHealth *LocalRuntimeHealth, err error) *MockRepository_GetLocalRuntimeHealth_Call {
-	_c.Call.Return(localRuntimeHealth, err)
+func (_c *MockRepository_GetLocalRuntimeHealth_Call) Return(v *LocalRuntimeHealth, err error) *MockRepository_GetLocalRuntimeHealth_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18472,8 +18472,8 @@ func (_c *MockRepository_GetLocalRuntimeMetrics_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetLocalRuntimeMetrics_Call) Return(localRuntimeMetrics []*LocalRuntimeMetric, err error) *MockRepository_GetLocalRuntimeMetrics_Call {
-	_c.Call.Return(localRuntimeMetrics, err)
+func (_c *MockRepository_GetLocalRuntimeMetrics_Call) Return(vs []*LocalRuntimeMetric, err error) *MockRepository_GetLocalRuntimeMetrics_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -18540,8 +18540,8 @@ func (_c *MockRepository_GetMagicLinkByToken_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetMagicLinkByToken_Call) Return(magicLink *MagicLink, err error) *MockRepository_GetMagicLinkByToken_Call {
-	_c.Call.Return(magicLink, err)
+func (_c *MockRepository_GetMagicLinkByToken_Call) Return(v *MagicLink, err error) *MockRepository_GetMagicLinkByToken_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18614,8 +18614,8 @@ func (_c *MockRepository_GetMembership_Call) Run(run func(ctx context.Context, t
 	return _c
 }
 
-func (_c *MockRepository_GetMembership_Call) Return(tenantMembership *TenantMembership, err error) *MockRepository_GetMembership_Call {
-	_c.Call.Return(tenantMembership, err)
+func (_c *MockRepository_GetMembership_Call) Return(v *TenantMembership, err error) *MockRepository_GetMembership_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18694,8 +18694,8 @@ func (_c *MockRepository_GetMemoryExtractionsByTeam_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetMemoryExtractionsByTeam_Call) Return(memoryExtractions []*MemoryExtraction, err error) *MockRepository_GetMemoryExtractionsByTeam_Call {
-	_c.Call.Return(memoryExtractions, err)
+func (_c *MockRepository_GetMemoryExtractionsByTeam_Call) Return(vs []*MemoryExtraction, err error) *MockRepository_GetMemoryExtractionsByTeam_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -18774,8 +18774,8 @@ func (_c *MockRepository_GetMemoryShareBetweenTeams_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetMemoryShareBetweenTeams_Call) Return(memoryShare *MemoryShare, err error) *MockRepository_GetMemoryShareBetweenTeams_Call {
-	_c.Call.Return(memoryShare, err)
+func (_c *MockRepository_GetMemoryShareBetweenTeams_Call) Return(v *MemoryShare, err error) *MockRepository_GetMemoryShareBetweenTeams_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18842,8 +18842,8 @@ func (_c *MockRepository_GetMemoryShareByID_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetMemoryShareByID_Call) Return(memoryShare *MemoryShare, err error) *MockRepository_GetMemoryShareByID_Call {
-	_c.Call.Return(memoryShare, err)
+func (_c *MockRepository_GetMemoryShareByID_Call) Return(v *MemoryShare, err error) *MockRepository_GetMemoryShareByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18910,8 +18910,8 @@ func (_c *MockRepository_GetNewsletterCampaignByID_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetNewsletterCampaignByID_Call) Return(newsletterCampaign *NewsletterCampaign, err error) *MockRepository_GetNewsletterCampaignByID_Call {
-	_c.Call.Return(newsletterCampaign, err)
+func (_c *MockRepository_GetNewsletterCampaignByID_Call) Return(v *NewsletterCampaign, err error) *MockRepository_GetNewsletterCampaignByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -18978,8 +18978,8 @@ func (_c *MockRepository_GetNewsletterCampaignEmailsByCampaign_Call) Run(run fun
 	return _c
 }
 
-func (_c *MockRepository_GetNewsletterCampaignEmailsByCampaign_Call) Return(newsletterCampaignEmails []NewsletterCampaignEmail, err error) *MockRepository_GetNewsletterCampaignEmailsByCampaign_Call {
-	_c.Call.Return(newsletterCampaignEmails, err)
+func (_c *MockRepository_GetNewsletterCampaignEmailsByCampaign_Call) Return(vs []NewsletterCampaignEmail, err error) *MockRepository_GetNewsletterCampaignEmailsByCampaign_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -19108,8 +19108,8 @@ func (_c *MockRepository_GetNewsletterSubscriberByEmail_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *MockRepository_GetNewsletterSubscriberByEmail_Call) Return(newsletterSubscriber *NewsletterSubscriber, err error) *MockRepository_GetNewsletterSubscriberByEmail_Call {
-	_c.Call.Return(newsletterSubscriber, err)
+func (_c *MockRepository_GetNewsletterSubscriberByEmail_Call) Return(v *NewsletterSubscriber, err error) *MockRepository_GetNewsletterSubscriberByEmail_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -19176,8 +19176,8 @@ func (_c *MockRepository_GetNewsletterSubscriberByID_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_GetNewsletterSubscriberByID_Call) Return(newsletterSubscriber *NewsletterSubscriber, err error) *MockRepository_GetNewsletterSubscriberByID_Call {
-	_c.Call.Return(newsletterSubscriber, err)
+func (_c *MockRepository_GetNewsletterSubscriberByID_Call) Return(v *NewsletterSubscriber, err error) *MockRepository_GetNewsletterSubscriberByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -19250,8 +19250,8 @@ func (_c *MockRepository_GetOAuthProvider_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_GetOAuthProvider_Call) Return(tenantOAuthProvider *TenantOAuthProvider, err error) *MockRepository_GetOAuthProvider_Call {
-	_c.Call.Return(tenantOAuthProvider, err)
+func (_c *MockRepository_GetOAuthProvider_Call) Return(v *TenantOAuthProvider, err error) *MockRepository_GetOAuthProvider_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -19312,8 +19312,8 @@ func (_c *MockRepository_GetOrCreateExecutionRetentionSettings_Call) Run(run fun
 	return _c
 }
 
-func (_c *MockRepository_GetOrCreateExecutionRetentionSettings_Call) Return(executionRetentionSettings *ExecutionRetentionSettings, err error) *MockRepository_GetOrCreateExecutionRetentionSettings_Call {
-	_c.Call.Return(executionRetentionSettings, err)
+func (_c *MockRepository_GetOrCreateExecutionRetentionSettings_Call) Return(v *ExecutionRetentionSettings, err error) *MockRepository_GetOrCreateExecutionRetentionSettings_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -19380,8 +19380,8 @@ func (_c *MockRepository_GetPaymentMethodByStripeID_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetPaymentMethodByStripeID_Call) Return(paymentMethodInfoExtended *PaymentMethodInfoExtended, err error) *MockRepository_GetPaymentMethodByStripeID_Call {
-	_c.Call.Return(paymentMethodInfoExtended, err)
+func (_c *MockRepository_GetPaymentMethodByStripeID_Call) Return(v *PaymentMethodInfoExtended, err error) *MockRepository_GetPaymentMethodByStripeID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -19454,8 +19454,8 @@ func (_c *MockRepository_GetPendingBounceReviews_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetPendingBounceReviews_Call) Return(emailEvents []*EmailEvent, err error) *MockRepository_GetPendingBounceReviews_Call {
-	_c.Call.Return(emailEvents, err)
+func (_c *MockRepository_GetPendingBounceReviews_Call) Return(vs []*EmailEvent, err error) *MockRepository_GetPendingBounceReviews_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -19522,8 +19522,8 @@ func (_c *MockRepository_GetPendingEmailWorkflowExecutions_Call) Run(run func(ct
 	return _c
 }
 
-func (_c *MockRepository_GetPendingEmailWorkflowExecutions_Call) Return(emailWorkflowExecutions []EmailWorkflowExecution, err error) *MockRepository_GetPendingEmailWorkflowExecutions_Call {
-	_c.Call.Return(emailWorkflowExecutions, err)
+func (_c *MockRepository_GetPendingEmailWorkflowExecutions_Call) Return(vs []EmailWorkflowExecution, err error) *MockRepository_GetPendingEmailWorkflowExecutions_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -19590,8 +19590,8 @@ func (_c *MockRepository_GetPendingScheduledConfigs_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetPendingScheduledConfigs_Call) Return(usageExportConfigurations []*UsageExportConfiguration, err error) *MockRepository_GetPendingScheduledConfigs_Call {
-	_c.Call.Return(usageExportConfigurations, err)
+func (_c *MockRepository_GetPendingScheduledConfigs_Call) Return(vs []*UsageExportConfiguration, err error) *MockRepository_GetPendingScheduledConfigs_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -19658,8 +19658,8 @@ func (_c *MockRepository_GetPendingUsernameChangeByCheckoutSession_Call) Run(run
 	return _c
 }
 
-func (_c *MockRepository_GetPendingUsernameChangeByCheckoutSession_Call) Return(pendingUsernameChange *PendingUsernameChange, err error) *MockRepository_GetPendingUsernameChangeByCheckoutSession_Call {
-	_c.Call.Return(pendingUsernameChange, err)
+func (_c *MockRepository_GetPendingUsernameChangeByCheckoutSession_Call) Return(v *PendingUsernameChange, err error) *MockRepository_GetPendingUsernameChangeByCheckoutSession_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -19726,8 +19726,8 @@ func (_c *MockRepository_GetPendingUsernameChangeByID_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_GetPendingUsernameChangeByID_Call) Return(pendingUsernameChange *PendingUsernameChange, err error) *MockRepository_GetPendingUsernameChangeByID_Call {
-	_c.Call.Return(pendingUsernameChange, err)
+func (_c *MockRepository_GetPendingUsernameChangeByID_Call) Return(v *PendingUsernameChange, err error) *MockRepository_GetPendingUsernameChangeByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -19800,8 +19800,8 @@ func (_c *MockRepository_GetPlatformFeesByPeriod_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetPlatformFeesByPeriod_Call) Return(platformFees []*PlatformFee, err error) *MockRepository_GetPlatformFeesByPeriod_Call {
-	_c.Call.Return(platformFees, err)
+func (_c *MockRepository_GetPlatformFeesByPeriod_Call) Return(vs []*PlatformFee, err error) *MockRepository_GetPlatformFeesByPeriod_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -19940,8 +19940,8 @@ func (_c *MockRepository_GetPricingBundleByID_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetPricingBundleByID_Call) Return(pricingBundle *PricingBundle, err error) *MockRepository_GetPricingBundleByID_Call {
-	_c.Call.Return(pricingBundle, err)
+func (_c *MockRepository_GetPricingBundleByID_Call) Return(v *PricingBundle, err error) *MockRepository_GetPricingBundleByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20008,8 +20008,8 @@ func (_c *MockRepository_GetPricingBundleBySlug_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetPricingBundleBySlug_Call) Return(pricingBundle *PricingBundle, err error) *MockRepository_GetPricingBundleBySlug_Call {
-	_c.Call.Return(pricingBundle, err)
+func (_c *MockRepository_GetPricingBundleBySlug_Call) Return(v *PricingBundle, err error) *MockRepository_GetPricingBundleBySlug_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20076,8 +20076,8 @@ func (_c *MockRepository_GetPricingBundleByStripePriceID_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *MockRepository_GetPricingBundleByStripePriceID_Call) Return(pricingBundle *PricingBundle, err error) *MockRepository_GetPricingBundleByStripePriceID_Call {
-	_c.Call.Return(pricingBundle, err)
+func (_c *MockRepository_GetPricingBundleByStripePriceID_Call) Return(v *PricingBundle, err error) *MockRepository_GetPricingBundleByStripePriceID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20144,8 +20144,8 @@ func (_c *MockRepository_GetPricingTierByID_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetPricingTierByID_Call) Return(pricingTier *PricingTier, err error) *MockRepository_GetPricingTierByID_Call {
-	_c.Call.Return(pricingTier, err)
+func (_c *MockRepository_GetPricingTierByID_Call) Return(v *PricingTier, err error) *MockRepository_GetPricingTierByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20212,8 +20212,8 @@ func (_c *MockRepository_GetPricingTierExtendedByID_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetPricingTierExtendedByID_Call) Return(pricingTierExtended *PricingTierExtended, err error) *MockRepository_GetPricingTierExtendedByID_Call {
-	_c.Call.Return(pricingTierExtended, err)
+func (_c *MockRepository_GetPricingTierExtendedByID_Call) Return(v *PricingTierExtended, err error) *MockRepository_GetPricingTierExtendedByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20280,8 +20280,8 @@ func (_c *MockRepository_GetProviderByID_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetProviderByID_Call) Return(provider *Provider, err error) *MockRepository_GetProviderByID_Call {
-	_c.Call.Return(provider, err)
+func (_c *MockRepository_GetProviderByID_Call) Return(v *Provider, err error) *MockRepository_GetProviderByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20354,8 +20354,8 @@ func (_c *MockRepository_GetProviderByUserAndType_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetProviderByUserAndType_Call) Return(provider *Provider, err error) *MockRepository_GetProviderByUserAndType_Call {
-	_c.Call.Return(provider, err)
+func (_c *MockRepository_GetProviderByUserAndType_Call) Return(v *Provider, err error) *MockRepository_GetProviderByUserAndType_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20422,8 +20422,8 @@ func (_c *MockRepository_GetProviderSettings_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetProviderSettings_Call) Return(providerSettings *ProviderSettings, err error) *MockRepository_GetProviderSettings_Call {
-	_c.Call.Return(providerSettings, err)
+func (_c *MockRepository_GetProviderSettings_Call) Return(v *ProviderSettings, err error) *MockRepository_GetProviderSettings_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -20490,8 +20490,8 @@ func (_c *MockRepository_GetProvidersByUser_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetProvidersByUser_Call) Return(providers []*Provider, err error) *MockRepository_GetProvidersByUser_Call {
-	_c.Call.Return(providers, err)
+func (_c *MockRepository_GetProvidersByUser_Call) Return(vs []*Provider, err error) *MockRepository_GetProvidersByUser_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -20564,8 +20564,8 @@ func (_c *MockRepository_GetPublisherEarningsByPeriod_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_GetPublisherEarningsByPeriod_Call) Return(publisherEarnings []*PublisherEarning, err error) *MockRepository_GetPublisherEarningsByPeriod_Call {
-	_c.Call.Return(publisherEarnings, err)
+func (_c *MockRepository_GetPublisherEarningsByPeriod_Call) Return(vs []*PublisherEarning, err error) *MockRepository_GetPublisherEarningsByPeriod_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -20644,8 +20644,8 @@ func (_c *MockRepository_GetPublisherEarningsByTenant_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_GetPublisherEarningsByTenant_Call) Return(publisherEarnings []*PublisherEarning, err error) *MockRepository_GetPublisherEarningsByTenant_Call {
-	_c.Call.Return(publisherEarnings, err)
+func (_c *MockRepository_GetPublisherEarningsByTenant_Call) Return(vs []*PublisherEarning, err error) *MockRepository_GetPublisherEarningsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -20796,8 +20796,8 @@ func (_c *MockRepository_GetRecentActivityForTenant_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetRecentActivityForTenant_Call) Return(dashboardActivityItems []DashboardActivityItem, err error) *MockRepository_GetRecentActivityForTenant_Call {
-	_c.Call.Return(dashboardActivityItems, err)
+func (_c *MockRepository_GetRecentActivityForTenant_Call) Return(vs []DashboardActivityItem, err error) *MockRepository_GetRecentActivityForTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -20870,8 +20870,8 @@ func (_c *MockRepository_GetRecentAuthEvents_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetRecentAuthEvents_Call) Return(authEvents []*AuthEvent, err error) *MockRepository_GetRecentAuthEvents_Call {
-	_c.Call.Return(authEvents, err)
+func (_c *MockRepository_GetRecentAuthEvents_Call) Return(vs []*AuthEvent, err error) *MockRepository_GetRecentAuthEvents_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -21016,8 +21016,8 @@ func (_c *MockRepository_GetRecentHealthChecks_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetRecentHealthChecks_Call) Return(healthChecks []*HealthCheck, err error) *MockRepository_GetRecentHealthChecks_Call {
-	_c.Call.Return(healthChecks, err)
+func (_c *MockRepository_GetRecentHealthChecks_Call) Return(vs []*HealthCheck, err error) *MockRepository_GetRecentHealthChecks_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -21090,8 +21090,8 @@ func (_c *MockRepository_GetRecentMagicLinksByEmail_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetRecentMagicLinksByEmail_Call) Return(magicLinks []*MagicLink, err error) *MockRepository_GetRecentMagicLinksByEmail_Call {
-	_c.Call.Return(magicLinks, err)
+func (_c *MockRepository_GetRecentMagicLinksByEmail_Call) Return(vs []*MagicLink, err error) *MockRepository_GetRecentMagicLinksByEmail_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -21164,8 +21164,8 @@ func (_c *MockRepository_GetRecentRoutingEvents_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetRecentRoutingEvents_Call) Return(routingEvents []*RoutingEvent, err error) *MockRepository_GetRecentRoutingEvents_Call {
-	_c.Call.Return(routingEvents, err)
+func (_c *MockRepository_GetRecentRoutingEvents_Call) Return(vs []*RoutingEvent, err error) *MockRepository_GetRecentRoutingEvents_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -21232,8 +21232,8 @@ func (_c *MockRepository_GetRefreshTokenByHash_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_GetRefreshTokenByHash_Call) Return(refreshToken *RefreshToken, err error) *MockRepository_GetRefreshTokenByHash_Call {
-	_c.Call.Return(refreshToken, err)
+func (_c *MockRepository_GetRefreshTokenByHash_Call) Return(v *RefreshToken, err error) *MockRepository_GetRefreshTokenByHash_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21306,8 +21306,8 @@ func (_c *MockRepository_GetResourcePermissions_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetResourcePermissions_Call) Return(teamPermissions []*TeamPermission, err error) *MockRepository_GetResourcePermissions_Call {
-	_c.Call.Return(teamPermissions, err)
+func (_c *MockRepository_GetResourcePermissions_Call) Return(vs []*TeamPermission, err error) *MockRepository_GetResourcePermissions_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -21374,8 +21374,8 @@ func (_c *MockRepository_GetSecurityScan_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetSecurityScan_Call) Return(securityScan *SecurityScan, err error) *MockRepository_GetSecurityScan_Call {
-	_c.Call.Return(securityScan, err)
+func (_c *MockRepository_GetSecurityScan_Call) Return(v *SecurityScan, err error) *MockRepository_GetSecurityScan_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21442,8 +21442,8 @@ func (_c *MockRepository_GetSessionByID_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_GetSessionByID_Call) Return(session *Session, err error) *MockRepository_GetSessionByID_Call {
-	_c.Call.Return(session, err)
+func (_c *MockRepository_GetSessionByID_Call) Return(v *Session, err error) *MockRepository_GetSessionByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21510,8 +21510,8 @@ func (_c *MockRepository_GetSessionByToken_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetSessionByToken_Call) Return(session *Session, err error) *MockRepository_GetSessionByToken_Call {
-	_c.Call.Return(session, err)
+func (_c *MockRepository_GetSessionByToken_Call) Return(v *Session, err error) *MockRepository_GetSessionByToken_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21584,8 +21584,8 @@ func (_c *MockRepository_GetSpendCapByTenant_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetSpendCapByTenant_Call) Return(spendCap *SpendCap, err error) *MockRepository_GetSpendCapByTenant_Call {
-	_c.Call.Return(spendCap, err)
+func (_c *MockRepository_GetSpendCapByTenant_Call) Return(v *SpendCap, err error) *MockRepository_GetSpendCapByTenant_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21652,8 +21652,8 @@ func (_c *MockRepository_GetStaleProviders_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetStaleProviders_Call) Return(providers []*Provider, err error) *MockRepository_GetStaleProviders_Call {
-	_c.Call.Return(providers, err)
+func (_c *MockRepository_GetStaleProviders_Call) Return(vs []*Provider, err error) *MockRepository_GetStaleProviders_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -21720,8 +21720,8 @@ func (_c *MockRepository_GetStripeSyncEventByEventID_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_GetStripeSyncEventByEventID_Call) Return(stripeSyncEvent *StripeSyncEvent, err error) *MockRepository_GetStripeSyncEventByEventID_Call {
-	_c.Call.Return(stripeSyncEvent, err)
+func (_c *MockRepository_GetStripeSyncEventByEventID_Call) Return(v *StripeSyncEvent, err error) *MockRepository_GetStripeSyncEventByEventID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21788,8 +21788,8 @@ func (_c *MockRepository_GetSubscriptionByID_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetSubscriptionByID_Call) Return(subscription *Subscription, err error) *MockRepository_GetSubscriptionByID_Call {
-	_c.Call.Return(subscription, err)
+func (_c *MockRepository_GetSubscriptionByID_Call) Return(v *Subscription, err error) *MockRepository_GetSubscriptionByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21856,8 +21856,8 @@ func (_c *MockRepository_GetSubscriptionByStripeID_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetSubscriptionByStripeID_Call) Return(subscription *Subscription, err error) *MockRepository_GetSubscriptionByStripeID_Call {
-	_c.Call.Return(subscription, err)
+func (_c *MockRepository_GetSubscriptionByStripeID_Call) Return(v *Subscription, err error) *MockRepository_GetSubscriptionByStripeID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21924,8 +21924,8 @@ func (_c *MockRepository_GetSubscriptionByTenantID_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetSubscriptionByTenantID_Call) Return(subscription *Subscription, err error) *MockRepository_GetSubscriptionByTenantID_Call {
-	_c.Call.Return(subscription, err)
+func (_c *MockRepository_GetSubscriptionByTenantID_Call) Return(v *Subscription, err error) *MockRepository_GetSubscriptionByTenantID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -21992,8 +21992,8 @@ func (_c *MockRepository_GetSupportedCurrency_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetSupportedCurrency_Call) Return(supportedCurrency *SupportedCurrency, err error) *MockRepository_GetSupportedCurrency_Call {
-	_c.Call.Return(supportedCurrency, err)
+func (_c *MockRepository_GetSupportedCurrency_Call) Return(v *SupportedCurrency, err error) *MockRepository_GetSupportedCurrency_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22060,8 +22060,8 @@ func (_c *MockRepository_GetTeamByID_Call) Run(run func(ctx context.Context, tea
 	return _c
 }
 
-func (_c *MockRepository_GetTeamByID_Call) Return(team *Team, err error) *MockRepository_GetTeamByID_Call {
-	_c.Call.Return(team, err)
+func (_c *MockRepository_GetTeamByID_Call) Return(v *Team, err error) *MockRepository_GetTeamByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22128,8 +22128,8 @@ func (_c *MockRepository_GetTeamByUserID_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetTeamByUserID_Call) Return(team *Team, err error) *MockRepository_GetTeamByUserID_Call {
-	_c.Call.Return(team, err)
+func (_c *MockRepository_GetTeamByUserID_Call) Return(v *Team, err error) *MockRepository_GetTeamByUserID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22196,8 +22196,8 @@ func (_c *MockRepository_GetTeamInviteByToken_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetTeamInviteByToken_Call) Return(teamInvite *TeamInvite, err error) *MockRepository_GetTeamInviteByToken_Call {
-	_c.Call.Return(teamInvite, err)
+func (_c *MockRepository_GetTeamInviteByToken_Call) Return(v *TeamInvite, err error) *MockRepository_GetTeamInviteByToken_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22264,8 +22264,8 @@ func (_c *MockRepository_GetTeamInvitesByTeam_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetTeamInvitesByTeam_Call) Return(teamInvites []*TeamInvite, err error) *MockRepository_GetTeamInvitesByTeam_Call {
-	_c.Call.Return(teamInvites, err)
+func (_c *MockRepository_GetTeamInvitesByTeam_Call) Return(vs []*TeamInvite, err error) *MockRepository_GetTeamInvitesByTeam_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -22338,8 +22338,8 @@ func (_c *MockRepository_GetTeamMembership_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetTeamMembership_Call) Return(teamMembership *TeamMembership, err error) *MockRepository_GetTeamMembership_Call {
-	_c.Call.Return(teamMembership, err)
+func (_c *MockRepository_GetTeamMembership_Call) Return(v *TeamMembership, err error) *MockRepository_GetTeamMembership_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22418,8 +22418,8 @@ func (_c *MockRepository_GetTeamMemoryByID_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetTeamMemoryByID_Call) Return(teamMemory *TeamMemory, err error) *MockRepository_GetTeamMemoryByID_Call {
-	_c.Call.Return(teamMemory, err)
+func (_c *MockRepository_GetTeamMemoryByID_Call) Return(v *TeamMemory, err error) *MockRepository_GetTeamMemoryByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22570,8 +22570,8 @@ func (_c *MockRepository_GetTeamPermissions_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetTeamPermissions_Call) Return(teamPermissions []*TeamPermission, err error) *MockRepository_GetTeamPermissions_Call {
-	_c.Call.Return(teamPermissions, err)
+func (_c *MockRepository_GetTeamPermissions_Call) Return(vs []*TeamPermission, err error) *MockRepository_GetTeamPermissions_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -22638,8 +22638,8 @@ func (_c *MockRepository_GetTeamsByTenantID_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetTeamsByTenantID_Call) Return(teams []*Team, err error) *MockRepository_GetTeamsByTenantID_Call {
-	_c.Call.Return(teams, err)
+func (_c *MockRepository_GetTeamsByTenantID_Call) Return(vs []*Team, err error) *MockRepository_GetTeamsByTenantID_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -22706,8 +22706,8 @@ func (_c *MockRepository_GetTenantByID_Call) Run(run func(ctx context.Context, t
 	return _c
 }
 
-func (_c *MockRepository_GetTenantByID_Call) Return(tenant *Tenant, err error) *MockRepository_GetTenantByID_Call {
-	_c.Call.Return(tenant, err)
+func (_c *MockRepository_GetTenantByID_Call) Return(v *Tenant, err error) *MockRepository_GetTenantByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22774,8 +22774,8 @@ func (_c *MockRepository_GetTenantByStripeCustomerID_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_GetTenantByStripeCustomerID_Call) Return(tenant *Tenant, err error) *MockRepository_GetTenantByStripeCustomerID_Call {
-	_c.Call.Return(tenant, err)
+func (_c *MockRepository_GetTenantByStripeCustomerID_Call) Return(v *Tenant, err error) *MockRepository_GetTenantByStripeCustomerID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22854,8 +22854,8 @@ func (_c *MockRepository_GetTenantCostSummary_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetTenantCostSummary_Call) Return(tenantCostSummary *TenantCostSummary, err error) *MockRepository_GetTenantCostSummary_Call {
-	_c.Call.Return(tenantCostSummary, err)
+func (_c *MockRepository_GetTenantCostSummary_Call) Return(v *TenantCostSummary, err error) *MockRepository_GetTenantCostSummary_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -22990,8 +22990,8 @@ func (_c *MockRepository_GetUsageAlertByID_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetUsageAlertByID_Call) Return(usageAlert *UsageAlert, err error) *MockRepository_GetUsageAlertByID_Call {
-	_c.Call.Return(usageAlert, err)
+func (_c *MockRepository_GetUsageAlertByID_Call) Return(v *UsageAlert, err error) *MockRepository_GetUsageAlertByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23064,8 +23064,8 @@ func (_c *MockRepository_GetUsageByDay_Call) Run(run func(ctx context.Context, t
 	return _c
 }
 
-func (_c *MockRepository_GetUsageByDay_Call) Return(usageByDays []UsageByDay, err error) *MockRepository_GetUsageByDay_Call {
-	_c.Call.Return(usageByDays, err)
+func (_c *MockRepository_GetUsageByDay_Call) Return(vs []UsageByDay, err error) *MockRepository_GetUsageByDay_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -23150,8 +23150,8 @@ func (_c *MockRepository_GetUsageByTenant_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_GetUsageByTenant_Call) Return(usageRollups []*UsageRollup, err error) *MockRepository_GetUsageByTenant_Call {
-	_c.Call.Return(usageRollups, err)
+func (_c *MockRepository_GetUsageByTenant_Call) Return(vs []*UsageRollup, err error) *MockRepository_GetUsageByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -23230,8 +23230,8 @@ func (_c *MockRepository_GetUsageByTenantByFunction_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetUsageByTenantByFunction_Call) Return(functionUsageRollups []*FunctionUsageRollup, err error) *MockRepository_GetUsageByTenantByFunction_Call {
-	_c.Call.Return(functionUsageRollups, err)
+func (_c *MockRepository_GetUsageByTenantByFunction_Call) Return(vs []*FunctionUsageRollup, err error) *MockRepository_GetUsageByTenantByFunction_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -23298,8 +23298,8 @@ func (_c *MockRepository_GetUsageExportConfiguration_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_GetUsageExportConfiguration_Call) Return(usageExportConfiguration *UsageExportConfiguration, err error) *MockRepository_GetUsageExportConfiguration_Call {
-	_c.Call.Return(usageExportConfiguration, err)
+func (_c *MockRepository_GetUsageExportConfiguration_Call) Return(v *UsageExportConfiguration, err error) *MockRepository_GetUsageExportConfiguration_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23366,8 +23366,8 @@ func (_c *MockRepository_GetUsageExportJob_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetUsageExportJob_Call) Return(usageExportJob *UsageExportJob, err error) *MockRepository_GetUsageExportJob_Call {
-	_c.Call.Return(usageExportJob, err)
+func (_c *MockRepository_GetUsageExportJob_Call) Return(v *UsageExportJob, err error) *MockRepository_GetUsageExportJob_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23434,8 +23434,8 @@ func (_c *MockRepository_GetUsageExportTemplate_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetUsageExportTemplate_Call) Return(usageExportTemplate *UsageExportTemplate, err error) *MockRepository_GetUsageExportTemplate_Call {
-	_c.Call.Return(usageExportTemplate, err)
+func (_c *MockRepository_GetUsageExportTemplate_Call) Return(v *UsageExportTemplate, err error) *MockRepository_GetUsageExportTemplate_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23502,8 +23502,8 @@ func (_c *MockRepository_GetUserAchievements_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_GetUserAchievements_Call) Return(userAchievements []*UserAchievement, err error) *MockRepository_GetUserAchievements_Call {
-	_c.Call.Return(userAchievements, err)
+func (_c *MockRepository_GetUserAchievements_Call) Return(vs []*UserAchievement, err error) *MockRepository_GetUserAchievements_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -23582,8 +23582,8 @@ func (_c *MockRepository_GetUserActivity_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_GetUserActivity_Call) Return(userActivitys []*UserActivity, err error) *MockRepository_GetUserActivity_Call {
-	_c.Call.Return(userActivitys, err)
+func (_c *MockRepository_GetUserActivity_Call) Return(vs []*UserActivity, err error) *MockRepository_GetUserActivity_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -23650,8 +23650,8 @@ func (_c *MockRepository_GetUserByEmail_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_GetUserByEmail_Call) Return(user *User, err error) *MockRepository_GetUserByEmail_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_GetUserByEmail_Call) Return(v *User, err error) *MockRepository_GetUserByEmail_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23718,8 +23718,8 @@ func (_c *MockRepository_GetUserByID_Call) Run(run func(ctx context.Context, use
 	return _c
 }
 
-func (_c *MockRepository_GetUserByID_Call) Return(user *User, err error) *MockRepository_GetUserByID_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_GetUserByID_Call) Return(v *User, err error) *MockRepository_GetUserByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23792,8 +23792,8 @@ func (_c *MockRepository_GetUserBySocialProvider_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetUserBySocialProvider_Call) Return(user *User, err error) *MockRepository_GetUserBySocialProvider_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_GetUserBySocialProvider_Call) Return(v *User, err error) *MockRepository_GetUserBySocialProvider_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23860,8 +23860,8 @@ func (_c *MockRepository_GetUserByUsername_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_GetUserByUsername_Call) Return(user *User, err error) *MockRepository_GetUserByUsername_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_GetUserByUsername_Call) Return(v *User, err error) *MockRepository_GetUserByUsername_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -23928,8 +23928,8 @@ func (_c *MockRepository_GetUserByVerificationToken_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_GetUserByVerificationToken_Call) Return(user *User, err error) *MockRepository_GetUserByVerificationToken_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_GetUserByVerificationToken_Call) Return(v *User, err error) *MockRepository_GetUserByVerificationToken_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -24224,8 +24224,8 @@ func (_c *MockRepository_GetUserFavorites_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_GetUserFavorites_Call) Return(functionFavorites []*FunctionFavorite, n int, err error) *MockRepository_GetUserFavorites_Call {
-	_c.Call.Return(functionFavorites, n, err)
+func (_c *MockRepository_GetUserFavorites_Call) Return(vs []*FunctionFavorite, n int, err error) *MockRepository_GetUserFavorites_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -24376,8 +24376,8 @@ func (_c *MockRepository_GetUserFollowers_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_GetUserFollowers_Call) Return(userFollows []*UserFollow, n int, err error) *MockRepository_GetUserFollowers_Call {
-	_c.Call.Return(userFollows, n, err)
+func (_c *MockRepository_GetUserFollowers_Call) Return(vs []*UserFollow, n int, err error) *MockRepository_GetUserFollowers_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -24462,8 +24462,8 @@ func (_c *MockRepository_GetUserFollowing_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_GetUserFollowing_Call) Return(userFollows []*UserFollow, n int, err error) *MockRepository_GetUserFollowing_Call {
-	_c.Call.Return(userFollows, n, err)
+func (_c *MockRepository_GetUserFollowing_Call) Return(vs []*UserFollow, n int, err error) *MockRepository_GetUserFollowing_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -24596,8 +24596,8 @@ func (_c *MockRepository_GetUserForPublicProfile_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetUserForPublicProfile_Call) Return(user *User, err error) *MockRepository_GetUserForPublicProfile_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_GetUserForPublicProfile_Call) Return(v *User, err error) *MockRepository_GetUserForPublicProfile_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -24682,8 +24682,8 @@ func (_c *MockRepository_GetUserFunctionFollows_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_GetUserFunctionFollows_Call) Return(functionFollows []*FunctionFollow, n int, err error) *MockRepository_GetUserFunctionFollows_Call {
-	_c.Call.Return(functionFollows, n, err)
+func (_c *MockRepository_GetUserFunctionFollows_Call) Return(vs []*FunctionFollow, n int, err error) *MockRepository_GetUserFunctionFollows_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -25170,8 +25170,8 @@ func (_c *MockRepository_GetUserSkills_Call) Run(run func(ctx context.Context, u
 	return _c
 }
 
-func (_c *MockRepository_GetUserSkills_Call) Return(userSkills []*UserSkill, err error) *MockRepository_GetUserSkills_Call {
-	_c.Call.Return(userSkills, err)
+func (_c *MockRepository_GetUserSkills_Call) Return(vs []*UserSkill, err error) *MockRepository_GetUserSkills_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -25238,8 +25238,8 @@ func (_c *MockRepository_GetUserTeams_Call) Run(run func(ctx context.Context, us
 	return _c
 }
 
-func (_c *MockRepository_GetUserTeams_Call) Return(teams []*Team, err error) *MockRepository_GetUserTeams_Call {
-	_c.Call.Return(teams, err)
+func (_c *MockRepository_GetUserTeams_Call) Return(vs []*Team, err error) *MockRepository_GetUserTeams_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -25442,8 +25442,8 @@ func (_c *MockRepository_GetUsernameChangeHistory_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_GetUsernameChangeHistory_Call) Return(usernameChangeHistorys []*UsernameChangeHistory, err error) *MockRepository_GetUsernameChangeHistory_Call {
-	_c.Call.Return(usernameChangeHistorys, err)
+func (_c *MockRepository_GetUsernameChangeHistory_Call) Return(vs []*UsernameChangeHistory, err error) *MockRepository_GetUsernameChangeHistory_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -25510,8 +25510,8 @@ func (_c *MockRepository_GetVerificationFeeByLevel_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_GetVerificationFeeByLevel_Call) Return(verificationFee *VerificationFee, err error) *MockRepository_GetVerificationFeeByLevel_Call {
-	_c.Call.Return(verificationFee, err)
+func (_c *MockRepository_GetVerificationFeeByLevel_Call) Return(v *VerificationFee, err error) *MockRepository_GetVerificationFeeByLevel_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -25578,8 +25578,8 @@ func (_c *MockRepository_GetVulnerabilities_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_GetVulnerabilities_Call) Return(vulnerabilitys []*Vulnerability, err error) *MockRepository_GetVulnerabilities_Call {
-	_c.Call.Return(vulnerabilitys, err)
+func (_c *MockRepository_GetVulnerabilities_Call) Return(vs []*Vulnerability, err error) *MockRepository_GetVulnerabilities_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -25646,8 +25646,8 @@ func (_c *MockRepository_GetVulnerabilityByID_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_GetVulnerabilityByID_Call) Return(vulnerability *Vulnerability, err error) *MockRepository_GetVulnerabilityByID_Call {
-	_c.Call.Return(vulnerability, err)
+func (_c *MockRepository_GetVulnerabilityByID_Call) Return(v *Vulnerability, err error) *MockRepository_GetVulnerabilityByID_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -25714,8 +25714,8 @@ func (_c *MockRepository_GetWaitlistEntryByEmail_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_GetWaitlistEntryByEmail_Call) Return(waitlistEntry *WaitlistEntry, err error) *MockRepository_GetWaitlistEntryByEmail_Call {
-	_c.Call.Return(waitlistEntry, err)
+func (_c *MockRepository_GetWaitlistEntryByEmail_Call) Return(v *WaitlistEntry, err error) *MockRepository_GetWaitlistEntryByEmail_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -25776,8 +25776,8 @@ func (_c *MockRepository_GetWaitlistStats_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_GetWaitlistStats_Call) Return(waitlistStats *WaitlistStats, err error) *MockRepository_GetWaitlistStats_Call {
-	_c.Call.Return(waitlistStats, err)
+func (_c *MockRepository_GetWaitlistStats_Call) Return(v *WaitlistStats, err error) *MockRepository_GetWaitlistStats_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -27197,8 +27197,8 @@ func (_c *MockRepository_ListAchievements_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_ListAchievements_Call) Return(achievements []*Achievement, err error) *MockRepository_ListAchievements_Call {
-	_c.Call.Return(achievements, err)
+func (_c *MockRepository_ListAchievements_Call) Return(vs []*Achievement, err error) *MockRepository_ListAchievements_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27265,8 +27265,8 @@ func (_c *MockRepository_ListActiveFounderModesByTenant_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *MockRepository_ListActiveFounderModesByTenant_Call) Return(founderModeRegistrations []*FounderModeRegistration, err error) *MockRepository_ListActiveFounderModesByTenant_Call {
-	_c.Call.Return(founderModeRegistrations, err)
+func (_c *MockRepository_ListActiveFounderModesByTenant_Call) Return(vs []*FounderModeRegistration, err error) *MockRepository_ListActiveFounderModesByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27327,8 +27327,8 @@ func (_c *MockRepository_ListActiveLocalRuntimes_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListActiveLocalRuntimes_Call) Return(localRuntimeInstances []*LocalRuntimeInstance, err error) *MockRepository_ListActiveLocalRuntimes_Call {
-	_c.Call.Return(localRuntimeInstances, err)
+func (_c *MockRepository_ListActiveLocalRuntimes_Call) Return(vs []*LocalRuntimeInstance, err error) *MockRepository_ListActiveLocalRuntimes_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27395,8 +27395,8 @@ func (_c *MockRepository_ListActiveUsersByTenant_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListActiveUsersByTenant_Call) Return(users []*User, err error) *MockRepository_ListActiveUsersByTenant_Call {
-	_c.Call.Return(users, err)
+func (_c *MockRepository_ListActiveUsersByTenant_Call) Return(vs []*User, err error) *MockRepository_ListActiveUsersByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27457,8 +27457,8 @@ func (_c *MockRepository_ListAffiliateCodes_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_ListAffiliateCodes_Call) Return(affiliateCodes []*AffiliateCode, err error) *MockRepository_ListAffiliateCodes_Call {
-	_c.Call.Return(affiliateCodes, err)
+func (_c *MockRepository_ListAffiliateCodes_Call) Return(vs []*AffiliateCode, err error) *MockRepository_ListAffiliateCodes_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27525,8 +27525,8 @@ func (_c *MockRepository_ListAffiliateCodesByPublisher_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_ListAffiliateCodesByPublisher_Call) Return(affiliateCodes []*AffiliateCode, err error) *MockRepository_ListAffiliateCodesByPublisher_Call {
-	_c.Call.Return(affiliateCodes, err)
+func (_c *MockRepository_ListAffiliateCodesByPublisher_Call) Return(vs []*AffiliateCode, err error) *MockRepository_ListAffiliateCodesByPublisher_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27593,8 +27593,8 @@ func (_c *MockRepository_ListAffiliateCommissionsByCode_Call) Run(run func(ctx c
 	return _c
 }
 
-func (_c *MockRepository_ListAffiliateCommissionsByCode_Call) Return(affiliateCommissions []*AffiliateCommission, err error) *MockRepository_ListAffiliateCommissionsByCode_Call {
-	_c.Call.Return(affiliateCommissions, err)
+func (_c *MockRepository_ListAffiliateCommissionsByCode_Call) Return(vs []*AffiliateCommission, err error) *MockRepository_ListAffiliateCommissionsByCode_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27661,8 +27661,8 @@ func (_c *MockRepository_ListAffiliateCommissionsByPublisher_Call) Run(run func(
 	return _c
 }
 
-func (_c *MockRepository_ListAffiliateCommissionsByPublisher_Call) Return(affiliateCommissions []*AffiliateCommission, err error) *MockRepository_ListAffiliateCommissionsByPublisher_Call {
-	_c.Call.Return(affiliateCommissions, err)
+func (_c *MockRepository_ListAffiliateCommissionsByPublisher_Call) Return(vs []*AffiliateCommission, err error) *MockRepository_ListAffiliateCommissionsByPublisher_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27729,8 +27729,8 @@ func (_c *MockRepository_ListAffiliateReferralsByCode_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_ListAffiliateReferralsByCode_Call) Return(affiliateReferrals []*AffiliateReferral, err error) *MockRepository_ListAffiliateReferralsByCode_Call {
-	_c.Call.Return(affiliateReferrals, err)
+func (_c *MockRepository_ListAffiliateReferralsByCode_Call) Return(vs []*AffiliateReferral, err error) *MockRepository_ListAffiliateReferralsByCode_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27797,8 +27797,8 @@ func (_c *MockRepository_ListAgentTierPricing_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_ListAgentTierPricing_Call) Return(agentTierPricings []*AgentTierPricing, err error) *MockRepository_ListAgentTierPricing_Call {
-	_c.Call.Return(agentTierPricings, err)
+func (_c *MockRepository_ListAgentTierPricing_Call) Return(vs []*AgentTierPricing, err error) *MockRepository_ListAgentTierPricing_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27859,8 +27859,8 @@ func (_c *MockRepository_ListAllActiveFounderModes_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_ListAllActiveFounderModes_Call) Return(founderModeRegistrations []*FounderModeRegistration, err error) *MockRepository_ListAllActiveFounderModes_Call {
-	_c.Call.Return(founderModeRegistrations, err)
+func (_c *MockRepository_ListAllActiveFounderModes_Call) Return(vs []*FounderModeRegistration, err error) *MockRepository_ListAllActiveFounderModes_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -27921,8 +27921,8 @@ func (_c *MockRepository_ListAllBackends_Call) Run(run func(ctx context.Context)
 	return _c
 }
 
-func (_c *MockRepository_ListAllBackends_Call) Return(backends []*Backend, err error) *MockRepository_ListAllBackends_Call {
-	_c.Call.Return(backends, err)
+func (_c *MockRepository_ListAllBackends_Call) Return(vs []*Backend, err error) *MockRepository_ListAllBackends_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28013,8 +28013,8 @@ func (_c *MockRepository_ListAllFunctions_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_ListAllFunctions_Call) Return(functionConfigs []*FunctionConfig, n int, err error) *MockRepository_ListAllFunctions_Call {
-	_c.Call.Return(functionConfigs, n, err)
+func (_c *MockRepository_ListAllFunctions_Call) Return(vs []*FunctionConfig, n int, err error) *MockRepository_ListAllFunctions_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -28087,8 +28087,8 @@ func (_c *MockRepository_ListAllInvoices_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_ListAllInvoices_Call) Return(invoices []*Invoice, err error) *MockRepository_ListAllInvoices_Call {
-	_c.Call.Return(invoices, err)
+func (_c *MockRepository_ListAllInvoices_Call) Return(vs []*Invoice, err error) *MockRepository_ListAllInvoices_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28149,8 +28149,8 @@ func (_c *MockRepository_ListAllProviders_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_ListAllProviders_Call) Return(providers []*Provider, err error) *MockRepository_ListAllProviders_Call {
-	_c.Call.Return(providers, err)
+func (_c *MockRepository_ListAllProviders_Call) Return(vs []*Provider, err error) *MockRepository_ListAllProviders_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28223,8 +28223,8 @@ func (_c *MockRepository_ListAllSubscriptions_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_ListAllSubscriptions_Call) Return(subscriptions []*Subscription, err error) *MockRepository_ListAllSubscriptions_Call {
-	_c.Call.Return(subscriptions, err)
+func (_c *MockRepository_ListAllSubscriptions_Call) Return(vs []*Subscription, err error) *MockRepository_ListAllSubscriptions_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28291,8 +28291,8 @@ func (_c *MockRepository_ListAppsByTenant_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_ListAppsByTenant_Call) Return(apps []*App, err error) *MockRepository_ListAppsByTenant_Call {
-	_c.Call.Return(apps, err)
+func (_c *MockRepository_ListAppsByTenant_Call) Return(vs []*App, err error) *MockRepository_ListAppsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28365,8 +28365,8 @@ func (_c *MockRepository_ListAuditEvents_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_ListAuditEvents_Call) Return(auditEvents []*AuditEvent, err error) *MockRepository_ListAuditEvents_Call {
-	_c.Call.Return(auditEvents, err)
+func (_c *MockRepository_ListAuditEvents_Call) Return(vs []*AuditEvent, err error) *MockRepository_ListAuditEvents_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28445,8 +28445,8 @@ func (_c *MockRepository_ListAuditEventsFiltered_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListAuditEventsFiltered_Call) Return(auditEvents []*AuditEvent, err error) *MockRepository_ListAuditEventsFiltered_Call {
-	_c.Call.Return(auditEvents, err)
+func (_c *MockRepository_ListAuditEventsFiltered_Call) Return(vs []*AuditEvent, err error) *MockRepository_ListAuditEventsFiltered_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28549,8 +28549,8 @@ func (_c *MockRepository_ListAuthAuditLogs_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_ListAuthAuditLogs_Call) Return(tenantAuthAuditLogs []*TenantAuthAuditLog, n int, err error) *MockRepository_ListAuthAuditLogs_Call {
-	_c.Call.Return(tenantAuthAuditLogs, n, err)
+func (_c *MockRepository_ListAuthAuditLogs_Call) Return(vs []*TenantAuthAuditLog, n int, err error) *MockRepository_ListAuthAuditLogs_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -28617,8 +28617,8 @@ func (_c *MockRepository_ListBackendsByAppID_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_ListBackendsByAppID_Call) Return(backends []*Backend, err error) *MockRepository_ListBackendsByAppID_Call {
-	_c.Call.Return(backends, err)
+func (_c *MockRepository_ListBackendsByAppID_Call) Return(vs []*Backend, err error) *MockRepository_ListBackendsByAppID_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28709,8 +28709,8 @@ func (_c *MockRepository_ListBillingIntegrationSyncs_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_ListBillingIntegrationSyncs_Call) Return(billingIntegrationSyncs []*BillingIntegrationSync, err error) *MockRepository_ListBillingIntegrationSyncs_Call {
-	_c.Call.Return(billingIntegrationSyncs, err)
+func (_c *MockRepository_ListBillingIntegrationSyncs_Call) Return(vs []*BillingIntegrationSync, err error) *MockRepository_ListBillingIntegrationSyncs_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28771,8 +28771,8 @@ func (_c *MockRepository_ListBlogAuthors_Call) Run(run func(ctx context.Context)
 	return _c
 }
 
-func (_c *MockRepository_ListBlogAuthors_Call) Return(blogAuthors []*BlogAuthor, err error) *MockRepository_ListBlogAuthors_Call {
-	_c.Call.Return(blogAuthors, err)
+func (_c *MockRepository_ListBlogAuthors_Call) Return(vs []*BlogAuthor, err error) *MockRepository_ListBlogAuthors_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28833,8 +28833,8 @@ func (_c *MockRepository_ListBlogCategories_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_ListBlogCategories_Call) Return(blogCategorys []*BlogCategory, err error) *MockRepository_ListBlogCategories_Call {
-	_c.Call.Return(blogCategorys, err)
+func (_c *MockRepository_ListBlogCategories_Call) Return(vs []*BlogCategory, err error) *MockRepository_ListBlogCategories_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28919,8 +28919,8 @@ func (_c *MockRepository_ListBlogPosts_Call) Run(run func(ctx context.Context, l
 	return _c
 }
 
-func (_c *MockRepository_ListBlogPosts_Call) Return(blogPosts []*BlogPost, err error) *MockRepository_ListBlogPosts_Call {
-	_c.Call.Return(blogPosts, err)
+func (_c *MockRepository_ListBlogPosts_Call) Return(vs []*BlogPost, err error) *MockRepository_ListBlogPosts_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -28987,8 +28987,8 @@ func (_c *MockRepository_ListBundleSubscriptionsByTenant_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *MockRepository_ListBundleSubscriptionsByTenant_Call) Return(bundleSubscriptions []*BundleSubscription, err error) *MockRepository_ListBundleSubscriptionsByTenant_Call {
-	_c.Call.Return(bundleSubscriptions, err)
+func (_c *MockRepository_ListBundleSubscriptionsByTenant_Call) Return(vs []*BundleSubscription, err error) *MockRepository_ListBundleSubscriptionsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29067,8 +29067,8 @@ func (_c *MockRepository_ListChangelogEntries_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_ListChangelogEntries_Call) Return(changelogEntrys []*ChangelogEntry, err error) *MockRepository_ListChangelogEntries_Call {
-	_c.Call.Return(changelogEntrys, err)
+func (_c *MockRepository_ListChangelogEntries_Call) Return(vs []*ChangelogEntry, err error) *MockRepository_ListChangelogEntries_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29129,8 +29129,8 @@ func (_c *MockRepository_ListCoupons_Call) Run(run func(ctx context.Context)) *M
 	return _c
 }
 
-func (_c *MockRepository_ListCoupons_Call) Return(coupons []*Coupon, err error) *MockRepository_ListCoupons_Call {
-	_c.Call.Return(coupons, err)
+func (_c *MockRepository_ListCoupons_Call) Return(vs []*Coupon, err error) *MockRepository_ListCoupons_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29215,8 +29215,8 @@ func (_c *MockRepository_ListCreditNotes_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_ListCreditNotes_Call) Return(creditNotes []*CreditNote, n int64, err error) *MockRepository_ListCreditNotes_Call {
-	_c.Call.Return(creditNotes, n, err)
+func (_c *MockRepository_ListCreditNotes_Call) Return(vs []*CreditNote, n int64, err error) *MockRepository_ListCreditNotes_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -29283,8 +29283,8 @@ func (_c *MockRepository_ListCreditNotesByInvoice_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_ListCreditNotesByInvoice_Call) Return(creditNotes []*CreditNote, err error) *MockRepository_ListCreditNotesByInvoice_Call {
-	_c.Call.Return(creditNotes, err)
+func (_c *MockRepository_ListCreditNotesByInvoice_Call) Return(vs []*CreditNote, err error) *MockRepository_ListCreditNotesByInvoice_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29369,8 +29369,8 @@ func (_c *MockRepository_ListCreditNotesByTenant_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListCreditNotesByTenant_Call) Return(creditNotes []*CreditNote, n int64, err error) *MockRepository_ListCreditNotesByTenant_Call {
-	_c.Call.Return(creditNotes, n, err)
+func (_c *MockRepository_ListCreditNotesByTenant_Call) Return(vs []*CreditNote, n int64, err error) *MockRepository_ListCreditNotesByTenant_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -29443,8 +29443,8 @@ func (_c *MockRepository_ListDeploymentsByAppID_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_ListDeploymentsByAppID_Call) Return(deployments []*Deployment, err error) *MockRepository_ListDeploymentsByAppID_Call {
-	_c.Call.Return(deployments, err)
+func (_c *MockRepository_ListDeploymentsByAppID_Call) Return(vs []*Deployment, err error) *MockRepository_ListDeploymentsByAppID_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29529,8 +29529,8 @@ func (_c *MockRepository_ListExternalBillingSystems_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_ListExternalBillingSystems_Call) Return(externalBillingSystems []*ExternalBillingSystem, err error) *MockRepository_ListExternalBillingSystems_Call {
-	_c.Call.Return(externalBillingSystems, err)
+func (_c *MockRepository_ListExternalBillingSystems_Call) Return(vs []*ExternalBillingSystem, err error) *MockRepository_ListExternalBillingSystems_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29591,8 +29591,8 @@ func (_c *MockRepository_ListFeatureMeasures_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_ListFeatureMeasures_Call) Return(featureMeasures []*FeatureMeasure, err error) *MockRepository_ListFeatureMeasures_Call {
-	_c.Call.Return(featureMeasures, err)
+func (_c *MockRepository_ListFeatureMeasures_Call) Return(vs []*FeatureMeasure, err error) *MockRepository_ListFeatureMeasures_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29677,8 +29677,8 @@ func (_c *MockRepository_ListFeedback_Call) Run(run func(ctx context.Context, li
 	return _c
 }
 
-func (_c *MockRepository_ListFeedback_Call) Return(feedbacks []Feedback, err error) *MockRepository_ListFeedback_Call {
-	_c.Call.Return(feedbacks, err)
+func (_c *MockRepository_ListFeedback_Call) Return(vs []Feedback, err error) *MockRepository_ListFeedback_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29745,8 +29745,8 @@ func (_c *MockRepository_ListFounderModesByTenant_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_ListFounderModesByTenant_Call) Return(founderModeRegistrations []*FounderModeRegistration, err error) *MockRepository_ListFounderModesByTenant_Call {
-	_c.Call.Return(founderModeRegistrations, err)
+func (_c *MockRepository_ListFounderModesByTenant_Call) Return(vs []*FounderModeRegistration, err error) *MockRepository_ListFounderModesByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29819,8 +29819,8 @@ func (_c *MockRepository_ListFunctionDeployments_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListFunctionDeployments_Call) Return(functionDeployments []*FunctionDeployment, err error) *MockRepository_ListFunctionDeployments_Call {
-	_c.Call.Return(functionDeployments, err)
+func (_c *MockRepository_ListFunctionDeployments_Call) Return(vs []*FunctionDeployment, err error) *MockRepository_ListFunctionDeployments_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29887,8 +29887,8 @@ func (_c *MockRepository_ListFunctionsByTenant_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_ListFunctionsByTenant_Call) Return(functionConfigs []*FunctionConfig, err error) *MockRepository_ListFunctionsByTenant_Call {
-	_c.Call.Return(functionConfigs, err)
+func (_c *MockRepository_ListFunctionsByTenant_Call) Return(vs []*FunctionConfig, err error) *MockRepository_ListFunctionsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -29967,8 +29967,8 @@ func (_c *MockRepository_ListIncidents_Call) Run(run func(ctx context.Context, l
 	return _c
 }
 
-func (_c *MockRepository_ListIncidents_Call) Return(incidents []*Incident, err error) *MockRepository_ListIncidents_Call {
-	_c.Call.Return(incidents, err)
+func (_c *MockRepository_ListIncidents_Call) Return(vs []*Incident, err error) *MockRepository_ListIncidents_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30041,8 +30041,8 @@ func (_c *MockRepository_ListIncidentsSince_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_ListIncidentsSince_Call) Return(incidents []*Incident, err error) *MockRepository_ListIncidentsSince_Call {
-	_c.Call.Return(incidents, err)
+func (_c *MockRepository_ListIncidentsSince_Call) Return(vs []*Incident, err error) *MockRepository_ListIncidentsSince_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30121,8 +30121,8 @@ func (_c *MockRepository_ListInvoicesByTenant_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_ListInvoicesByTenant_Call) Return(invoices []*Invoice, err error) *MockRepository_ListInvoicesByTenant_Call {
-	_c.Call.Return(invoices, err)
+func (_c *MockRepository_ListInvoicesByTenant_Call) Return(vs []*Invoice, err error) *MockRepository_ListInvoicesByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30189,8 +30189,8 @@ func (_c *MockRepository_ListMemberships_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_ListMemberships_Call) Return(tenantMemberships []*TenantMembership, err error) *MockRepository_ListMemberships_Call {
-	_c.Call.Return(tenantMemberships, err)
+func (_c *MockRepository_ListMemberships_Call) Return(vs []*TenantMembership, err error) *MockRepository_ListMemberships_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30263,8 +30263,8 @@ func (_c *MockRepository_ListMembershipsByRole_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_ListMembershipsByRole_Call) Return(tenantMemberships []*TenantMembership, err error) *MockRepository_ListMembershipsByRole_Call {
-	_c.Call.Return(tenantMemberships, err)
+func (_c *MockRepository_ListMembershipsByRole_Call) Return(vs []*TenantMembership, err error) *MockRepository_ListMembershipsByRole_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30337,8 +30337,8 @@ func (_c *MockRepository_ListMemorySharesByMemoryID_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_ListMemorySharesByMemoryID_Call) Return(memoryShares []*MemoryShare, err error) *MockRepository_ListMemorySharesByMemoryID_Call {
-	_c.Call.Return(memoryShares, err)
+func (_c *MockRepository_ListMemorySharesByMemoryID_Call) Return(vs []*MemoryShare, err error) *MockRepository_ListMemorySharesByMemoryID_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30423,8 +30423,8 @@ func (_c *MockRepository_ListMemorySharesBySourceTeam_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_ListMemorySharesBySourceTeam_Call) Return(memoryShares []*MemoryShare, err error) *MockRepository_ListMemorySharesBySourceTeam_Call {
-	_c.Call.Return(memoryShares, err)
+func (_c *MockRepository_ListMemorySharesBySourceTeam_Call) Return(vs []*MemoryShare, err error) *MockRepository_ListMemorySharesBySourceTeam_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30509,8 +30509,8 @@ func (_c *MockRepository_ListMemorySharesByTargetTeam_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_ListMemorySharesByTargetTeam_Call) Return(memoryShares []*MemoryShare, err error) *MockRepository_ListMemorySharesByTargetTeam_Call {
-	_c.Call.Return(memoryShares, err)
+func (_c *MockRepository_ListMemorySharesByTargetTeam_Call) Return(vs []*MemoryShare, err error) *MockRepository_ListMemorySharesByTargetTeam_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30595,8 +30595,8 @@ func (_c *MockRepository_ListNewsletterCampaigns_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListNewsletterCampaigns_Call) Return(newsletterCampaigns []NewsletterCampaign, n int64, err error) *MockRepository_ListNewsletterCampaigns_Call {
-	_c.Call.Return(newsletterCampaigns, n, err)
+func (_c *MockRepository_ListNewsletterCampaigns_Call) Return(vs []NewsletterCampaign, n int64, err error) *MockRepository_ListNewsletterCampaigns_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -30681,8 +30681,8 @@ func (_c *MockRepository_ListNewsletterSubscribers_Call) Run(run func(ctx contex
 	return _c
 }
 
-func (_c *MockRepository_ListNewsletterSubscribers_Call) Return(newsletterSubscribers []NewsletterSubscriber, n int64, err error) *MockRepository_ListNewsletterSubscribers_Call {
-	_c.Call.Return(newsletterSubscribers, n, err)
+func (_c *MockRepository_ListNewsletterSubscribers_Call) Return(vs []NewsletterSubscriber, n int64, err error) *MockRepository_ListNewsletterSubscribers_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -30749,8 +30749,8 @@ func (_c *MockRepository_ListOAuthProviders_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_ListOAuthProviders_Call) Return(tenantOAuthProviders []*TenantOAuthProvider, err error) *MockRepository_ListOAuthProviders_Call {
-	_c.Call.Return(tenantOAuthProviders, err)
+func (_c *MockRepository_ListOAuthProviders_Call) Return(vs []*TenantOAuthProvider, err error) *MockRepository_ListOAuthProviders_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30817,8 +30817,8 @@ func (_c *MockRepository_ListPendingStripeSyncEvents_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_ListPendingStripeSyncEvents_Call) Return(stripeSyncEvents []*StripeSyncEvent, err error) *MockRepository_ListPendingStripeSyncEvents_Call {
-	_c.Call.Return(stripeSyncEvents, err)
+func (_c *MockRepository_ListPendingStripeSyncEvents_Call) Return(vs []*StripeSyncEvent, err error) *MockRepository_ListPendingStripeSyncEvents_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30885,8 +30885,8 @@ func (_c *MockRepository_ListPendingUsernameChangesForUser_Call) Run(run func(ct
 	return _c
 }
 
-func (_c *MockRepository_ListPendingUsernameChangesForUser_Call) Return(pendingUsernameChanges []*PendingUsernameChange, err error) *MockRepository_ListPendingUsernameChangesForUser_Call {
-	_c.Call.Return(pendingUsernameChanges, err)
+func (_c *MockRepository_ListPendingUsernameChangesForUser_Call) Return(vs []*PendingUsernameChange, err error) *MockRepository_ListPendingUsernameChangesForUser_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -30953,8 +30953,8 @@ func (_c *MockRepository_ListPricingBundles_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_ListPricingBundles_Call) Return(pricingBundles []*PricingBundle, err error) *MockRepository_ListPricingBundles_Call {
-	_c.Call.Return(pricingBundles, err)
+func (_c *MockRepository_ListPricingBundles_Call) Return(vs []*PricingBundle, err error) *MockRepository_ListPricingBundles_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31015,8 +31015,8 @@ func (_c *MockRepository_ListPricingTiers_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_ListPricingTiers_Call) Return(pricingTiers []*PricingTier, err error) *MockRepository_ListPricingTiers_Call {
-	_c.Call.Return(pricingTiers, err)
+func (_c *MockRepository_ListPricingTiers_Call) Return(vs []*PricingTier, err error) *MockRepository_ListPricingTiers_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31077,8 +31077,8 @@ func (_c *MockRepository_ListPricingTiersExtended_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_ListPricingTiersExtended_Call) Return(pricingTierExtendeds []*PricingTierExtended, err error) *MockRepository_ListPricingTiersExtended_Call {
-	_c.Call.Return(pricingTierExtendeds, err)
+func (_c *MockRepository_ListPricingTiersExtended_Call) Return(vs []*PricingTierExtended, err error) *MockRepository_ListPricingTiersExtended_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31139,8 +31139,8 @@ func (_c *MockRepository_ListProviderSettings_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_ListProviderSettings_Call) Return(providerSettingss []*ProviderSettings, err error) *MockRepository_ListProviderSettings_Call {
-	_c.Call.Return(providerSettingss, err)
+func (_c *MockRepository_ListProviderSettings_Call) Return(vs []*ProviderSettings, err error) *MockRepository_ListProviderSettings_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31219,8 +31219,8 @@ func (_c *MockRepository_ListSecurityScans_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_ListSecurityScans_Call) Return(securityScans []*SecurityScan, err error) *MockRepository_ListSecurityScans_Call {
-	_c.Call.Return(securityScans, err)
+func (_c *MockRepository_ListSecurityScans_Call) Return(vs []*SecurityScan, err error) *MockRepository_ListSecurityScans_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31281,8 +31281,8 @@ func (_c *MockRepository_ListSignupInvitesAdmin_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_ListSignupInvitesAdmin_Call) Return(signupInviteCodeAdminLists []SignupInviteCodeAdminList, err error) *MockRepository_ListSignupInvitesAdmin_Call {
-	_c.Call.Return(signupInviteCodeAdminLists, err)
+func (_c *MockRepository_ListSignupInvitesAdmin_Call) Return(vs []SignupInviteCodeAdminList, err error) *MockRepository_ListSignupInvitesAdmin_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31343,8 +31343,8 @@ func (_c *MockRepository_ListSupportedCurrencies_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListSupportedCurrencies_Call) Return(supportedCurrencys []*SupportedCurrency, err error) *MockRepository_ListSupportedCurrencies_Call {
-	_c.Call.Return(supportedCurrencys, err)
+func (_c *MockRepository_ListSupportedCurrencies_Call) Return(vs []*SupportedCurrency, err error) *MockRepository_ListSupportedCurrencies_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31429,8 +31429,8 @@ func (_c *MockRepository_ListTeamMemories_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_ListTeamMemories_Call) Return(teamMemorys []*TeamMemory, n int64, err error) *MockRepository_ListTeamMemories_Call {
-	_c.Call.Return(teamMemorys, n, err)
+func (_c *MockRepository_ListTeamMemories_Call) Return(vs []*TeamMemory, n int64, err error) *MockRepository_ListTeamMemories_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -31521,8 +31521,8 @@ func (_c *MockRepository_ListTeamMemoriesByType_Call) Run(run func(ctx context.C
 	return _c
 }
 
-func (_c *MockRepository_ListTeamMemoriesByType_Call) Return(teamMemorys []*TeamMemory, err error) *MockRepository_ListTeamMemoriesByType_Call {
-	_c.Call.Return(teamMemorys, err)
+func (_c *MockRepository_ListTeamMemoriesByType_Call) Return(vs []*TeamMemory, err error) *MockRepository_ListTeamMemoriesByType_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31601,8 +31601,8 @@ func (_c *MockRepository_ListTenantSessions_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_ListTenantSessions_Call) Return(sessions []*Session, err error) *MockRepository_ListTenantSessions_Call {
-	_c.Call.Return(sessions, err)
+func (_c *MockRepository_ListTenantSessions_Call) Return(vs []*Session, err error) *MockRepository_ListTenantSessions_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31663,8 +31663,8 @@ func (_c *MockRepository_ListTenants_Call) Run(run func(ctx context.Context)) *M
 	return _c
 }
 
-func (_c *MockRepository_ListTenants_Call) Return(tenants []*Tenant, err error) *MockRepository_ListTenants_Call {
-	_c.Call.Return(tenants, err)
+func (_c *MockRepository_ListTenants_Call) Return(vs []*Tenant, err error) *MockRepository_ListTenants_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31725,8 +31725,8 @@ func (_c *MockRepository_ListTenantsWithStripeCustomerID_Call) Run(run func(ctx 
 	return _c
 }
 
-func (_c *MockRepository_ListTenantsWithStripeCustomerID_Call) Return(tenants []*Tenant, err error) *MockRepository_ListTenantsWithStripeCustomerID_Call {
-	_c.Call.Return(tenants, err)
+func (_c *MockRepository_ListTenantsWithStripeCustomerID_Call) Return(vs []*Tenant, err error) *MockRepository_ListTenantsWithStripeCustomerID_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31793,8 +31793,8 @@ func (_c *MockRepository_ListUsageAlertsByTenant_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_ListUsageAlertsByTenant_Call) Return(usageAlerts []*UsageAlert, err error) *MockRepository_ListUsageAlertsByTenant_Call {
-	_c.Call.Return(usageAlerts, err)
+func (_c *MockRepository_ListUsageAlertsByTenant_Call) Return(vs []*UsageAlert, err error) *MockRepository_ListUsageAlertsByTenant_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31873,8 +31873,8 @@ func (_c *MockRepository_ListUsageExportConfigurations_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_ListUsageExportConfigurations_Call) Return(usageExportConfigurations []*UsageExportConfiguration, err error) *MockRepository_ListUsageExportConfigurations_Call {
-	_c.Call.Return(usageExportConfigurations, err)
+func (_c *MockRepository_ListUsageExportConfigurations_Call) Return(vs []*UsageExportConfiguration, err error) *MockRepository_ListUsageExportConfigurations_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -31953,8 +31953,8 @@ func (_c *MockRepository_ListUsageExportJobs_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_ListUsageExportJobs_Call) Return(usageExportJobs []*UsageExportJob, err error) *MockRepository_ListUsageExportJobs_Call {
-	_c.Call.Return(usageExportJobs, err)
+func (_c *MockRepository_ListUsageExportJobs_Call) Return(vs []*UsageExportJob, err error) *MockRepository_ListUsageExportJobs_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -32021,8 +32021,8 @@ func (_c *MockRepository_ListUsageExportTemplates_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_ListUsageExportTemplates_Call) Return(usageExportTemplates []*UsageExportTemplate, err error) *MockRepository_ListUsageExportTemplates_Call {
-	_c.Call.Return(usageExportTemplates, err)
+func (_c *MockRepository_ListUsageExportTemplates_Call) Return(vs []*UsageExportTemplate, err error) *MockRepository_ListUsageExportTemplates_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -32157,8 +32157,8 @@ func (_c *MockRepository_ListUserRefreshTokens_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_ListUserRefreshTokens_Call) Return(refreshTokens []*RefreshToken, err error) *MockRepository_ListUserRefreshTokens_Call {
-	_c.Call.Return(refreshTokens, err)
+func (_c *MockRepository_ListUserRefreshTokens_Call) Return(vs []*RefreshToken, err error) *MockRepository_ListUserRefreshTokens_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -32225,8 +32225,8 @@ func (_c *MockRepository_ListUserSessions_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_ListUserSessions_Call) Return(sessions []*Session, err error) *MockRepository_ListUserSessions_Call {
-	_c.Call.Return(sessions, err)
+func (_c *MockRepository_ListUserSessions_Call) Return(vs []*Session, err error) *MockRepository_ListUserSessions_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -32287,8 +32287,8 @@ func (_c *MockRepository_ListUsers_Call) Run(run func(ctx context.Context)) *Moc
 	return _c
 }
 
-func (_c *MockRepository_ListUsers_Call) Return(users []*User, err error) *MockRepository_ListUsers_Call {
-	_c.Call.Return(users, err)
+func (_c *MockRepository_ListUsers_Call) Return(vs []*User, err error) *MockRepository_ListUsers_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -32349,8 +32349,8 @@ func (_c *MockRepository_ListVerificationFees_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_ListVerificationFees_Call) Return(verificationFees []*VerificationFee, err error) *MockRepository_ListVerificationFees_Call {
-	_c.Call.Return(verificationFees, err)
+func (_c *MockRepository_ListVerificationFees_Call) Return(vs []*VerificationFee, err error) *MockRepository_ListVerificationFees_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -32435,8 +32435,8 @@ func (_c *MockRepository_ListWaitlistEntries_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_ListWaitlistEntries_Call) Return(waitlistEntryAdminLists []WaitlistEntryAdminList, n int64, err error) *MockRepository_ListWaitlistEntries_Call {
-	_c.Call.Return(waitlistEntryAdminLists, n, err)
+func (_c *MockRepository_ListWaitlistEntries_Call) Return(vs []WaitlistEntryAdminList, n int64, err error) *MockRepository_ListWaitlistEntries_Call {
+	_c.Call.Return(vs, n, err)
 	return _c
 }
 
@@ -33079,8 +33079,8 @@ func (_c *MockRepository_PgWaitForNotification_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_PgWaitForNotification_Call) Return(pgNotification *PgNotification, err error) *MockRepository_PgWaitForNotification_Call {
-	_c.Call.Return(pgNotification, err)
+func (_c *MockRepository_PgWaitForNotification_Call) Return(v *PgNotification, err error) *MockRepository_PgWaitForNotification_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -33213,8 +33213,8 @@ func (_c *MockRepository_QueryActiveAlerts_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_QueryActiveAlerts_Call) Return(alerts []*Alert, err error) *MockRepository_QueryActiveAlerts_Call {
-	_c.Call.Return(alerts, err)
+func (_c *MockRepository_QueryActiveAlerts_Call) Return(vs []*Alert, err error) *MockRepository_QueryActiveAlerts_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -33293,8 +33293,8 @@ func (_c *MockRepository_QueryDatabaseMetrics_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_QueryDatabaseMetrics_Call) Return(databaseMetrics []*DatabaseMetric, err error) *MockRepository_QueryDatabaseMetrics_Call {
-	_c.Call.Return(databaseMetrics, err)
+func (_c *MockRepository_QueryDatabaseMetrics_Call) Return(vs []*DatabaseMetric, err error) *MockRepository_QueryDatabaseMetrics_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -33355,8 +33355,8 @@ func (_c *MockRepository_QueryLatestSystemHealthChecks_Call) Run(run func(ctx co
 	return _c
 }
 
-func (_c *MockRepository_QueryLatestSystemHealthChecks_Call) Return(stringToSystemHealthCheck map[string]*SystemHealthCheck, err error) *MockRepository_QueryLatestSystemHealthChecks_Call {
-	_c.Call.Return(stringToSystemHealthCheck, err)
+func (_c *MockRepository_QueryLatestSystemHealthChecks_Call) Return(stringToV map[string]*SystemHealthCheck, err error) *MockRepository_QueryLatestSystemHealthChecks_Call {
+	_c.Call.Return(stringToV, err)
 	return _c
 }
 
@@ -33441,8 +33441,8 @@ func (_c *MockRepository_QueryMonitoringEvents_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_QueryMonitoringEvents_Call) Return(monitoringEvents []*MonitoringEvent, err error) *MockRepository_QueryMonitoringEvents_Call {
-	_c.Call.Return(monitoringEvents, err)
+func (_c *MockRepository_QueryMonitoringEvents_Call) Return(vs []*MonitoringEvent, err error) *MockRepository_QueryMonitoringEvents_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -33527,8 +33527,8 @@ func (_c *MockRepository_QueryPerformanceMetrics_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_QueryPerformanceMetrics_Call) Return(performanceMetrics []*PerformanceMetric, err error) *MockRepository_QueryPerformanceMetrics_Call {
-	_c.Call.Return(performanceMetrics, err)
+func (_c *MockRepository_QueryPerformanceMetrics_Call) Return(vs []*PerformanceMetric, err error) *MockRepository_QueryPerformanceMetrics_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -33949,8 +33949,8 @@ func (_c *MockRepository_RedeemCoupon_Call) Run(run func(ctx context.Context, co
 	return _c
 }
 
-func (_c *MockRepository_RedeemCoupon_Call) Return(couponRedemption *CouponRedemption, err error) *MockRepository_RedeemCoupon_Call {
-	_c.Call.Return(couponRedemption, err)
+func (_c *MockRepository_RedeemCoupon_Call) Return(v *CouponRedemption, err error) *MockRepository_RedeemCoupon_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -34017,8 +34017,8 @@ func (_c *MockRepository_RegisterLocalRuntime_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_RegisterLocalRuntime_Call) Return(localRuntimeInstance *LocalRuntimeInstance, err error) *MockRepository_RegisterLocalRuntime_Call {
-	_c.Call.Return(localRuntimeInstance, err)
+func (_c *MockRepository_RegisterLocalRuntime_Call) Return(v *LocalRuntimeInstance, err error) *MockRepository_RegisterLocalRuntime_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -34519,8 +34519,8 @@ func (_c *MockRepository_ResetExecutionRetentionSettingsToDefaults_Call) Run(run
 	return _c
 }
 
-func (_c *MockRepository_ResetExecutionRetentionSettingsToDefaults_Call) Return(executionRetentionSettings *ExecutionRetentionSettings, err error) *MockRepository_ResetExecutionRetentionSettingsToDefaults_Call {
-	_c.Call.Return(executionRetentionSettings, err)
+func (_c *MockRepository_ResetExecutionRetentionSettingsToDefaults_Call) Return(v *ExecutionRetentionSettings, err error) *MockRepository_ResetExecutionRetentionSettingsToDefaults_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -34587,8 +34587,8 @@ func (_c *MockRepository_ResolveIncident_Call) Run(run func(ctx context.Context,
 	return _c
 }
 
-func (_c *MockRepository_ResolveIncident_Call) Return(incident *Incident, err error) *MockRepository_ResolveIncident_Call {
-	_c.Call.Return(incident, err)
+func (_c *MockRepository_ResolveIncident_Call) Return(v *Incident, err error) *MockRepository_ResolveIncident_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -34655,8 +34655,8 @@ func (_c *MockRepository_RetryFailedEmailWorkflowExecutions_Call) Run(run func(c
 	return _c
 }
 
-func (_c *MockRepository_RetryFailedEmailWorkflowExecutions_Call) Return(emailWorkflowExecutions []EmailWorkflowExecution, err error) *MockRepository_RetryFailedEmailWorkflowExecutions_Call {
-	_c.Call.Return(emailWorkflowExecutions, err)
+func (_c *MockRepository_RetryFailedEmailWorkflowExecutions_Call) Return(vs []EmailWorkflowExecution, err error) *MockRepository_RetryFailedEmailWorkflowExecutions_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -35152,8 +35152,8 @@ func (_c *MockRepository_SearchTeamMemories_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_SearchTeamMemories_Call) Return(teamMemorySearchResults []*TeamMemorySearchResult, err error) *MockRepository_SearchTeamMemories_Call {
-	_c.Call.Return(teamMemorySearchResults, err)
+func (_c *MockRepository_SearchTeamMemories_Call) Return(vs []*TeamMemorySearchResult, err error) *MockRepository_SearchTeamMemories_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -35238,8 +35238,8 @@ func (_c *MockRepository_SearchTeamMemoriesByVector_Call) Run(run func(ctx conte
 	return _c
 }
 
-func (_c *MockRepository_SearchTeamMemoriesByVector_Call) Return(teamMemorySearchResults []*TeamMemorySearchResult, err error) *MockRepository_SearchTeamMemoriesByVector_Call {
-	_c.Call.Return(teamMemorySearchResults, err)
+func (_c *MockRepository_SearchTeamMemoriesByVector_Call) Return(vs []*TeamMemorySearchResult, err error) *MockRepository_SearchTeamMemoriesByVector_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -35312,8 +35312,8 @@ func (_c *MockRepository_SearchUsersByUsernamePrefix_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockRepository_SearchUsersByUsernamePrefix_Call) Return(userSearchHits []UserSearchHit, err error) *MockRepository_SearchUsersByUsernamePrefix_Call {
-	_c.Call.Return(userSearchHits, err)
+func (_c *MockRepository_SearchUsersByUsernamePrefix_Call) Return(vs []UserSearchHit, err error) *MockRepository_SearchUsersByUsernamePrefix_Call {
+	_c.Call.Return(vs, err)
 	return _c
 }
 
@@ -35782,8 +35782,8 @@ func (_c *MockRepository_StoreDeploymentArtifact_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockRepository_StoreDeploymentArtifact_Call) Return(deploymentArtifact *DeploymentArtifact, err error) *MockRepository_StoreDeploymentArtifact_Call {
-	_c.Call.Return(deploymentArtifact, err)
+func (_c *MockRepository_StoreDeploymentArtifact_Call) Return(v *DeploymentArtifact, err error) *MockRepository_StoreDeploymentArtifact_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -36618,8 +36618,8 @@ func (_c *MockRepository_UpdateBlogAuthor_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_UpdateBlogAuthor_Call) Return(blogAuthor *BlogAuthor, err error) *MockRepository_UpdateBlogAuthor_Call {
-	_c.Call.Return(blogAuthor, err)
+func (_c *MockRepository_UpdateBlogAuthor_Call) Return(v *BlogAuthor, err error) *MockRepository_UpdateBlogAuthor_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -36692,8 +36692,8 @@ func (_c *MockRepository_UpdateBlogCategory_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_UpdateBlogCategory_Call) Return(blogCategory *BlogCategory, err error) *MockRepository_UpdateBlogCategory_Call {
-	_c.Call.Return(blogCategory, err)
+func (_c *MockRepository_UpdateBlogCategory_Call) Return(v *BlogCategory, err error) *MockRepository_UpdateBlogCategory_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -36766,8 +36766,8 @@ func (_c *MockRepository_UpdateBlogPost_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_UpdateBlogPost_Call) Return(blogPost *BlogPost, err error) *MockRepository_UpdateBlogPost_Call {
-	_c.Call.Return(blogPost, err)
+func (_c *MockRepository_UpdateBlogPost_Call) Return(v *BlogPost, err error) *MockRepository_UpdateBlogPost_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -36834,8 +36834,8 @@ func (_c *MockRepository_UpdateBlogSettings_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_UpdateBlogSettings_Call) Return(blogSettings *BlogSettings, err error) *MockRepository_UpdateBlogSettings_Call {
-	_c.Call.Return(blogSettings, err)
+func (_c *MockRepository_UpdateBlogSettings_Call) Return(v *BlogSettings, err error) *MockRepository_UpdateBlogSettings_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -37022,8 +37022,8 @@ func (_c *MockRepository_UpdateChangelogChange_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_UpdateChangelogChange_Call) Return(changelogChange *ChangelogChange, err error) *MockRepository_UpdateChangelogChange_Call {
-	_c.Call.Return(changelogChange, err)
+func (_c *MockRepository_UpdateChangelogChange_Call) Return(v *ChangelogChange, err error) *MockRepository_UpdateChangelogChange_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -37096,8 +37096,8 @@ func (_c *MockRepository_UpdateChangelogEntry_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockRepository_UpdateChangelogEntry_Call) Return(changelogEntry *ChangelogEntry, err error) *MockRepository_UpdateChangelogEntry_Call {
-	_c.Call.Return(changelogEntry, err)
+func (_c *MockRepository_UpdateChangelogEntry_Call) Return(v *ChangelogEntry, err error) *MockRepository_UpdateChangelogEntry_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -37410,8 +37410,8 @@ func (_c *MockRepository_UpdateDashboardConfig_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockRepository_UpdateDashboardConfig_Call) Return(dashboardConfig *DashboardConfig, err error) *MockRepository_UpdateDashboardConfig_Call {
-	_c.Call.Return(dashboardConfig, err)
+func (_c *MockRepository_UpdateDashboardConfig_Call) Return(v *DashboardConfig, err error) *MockRepository_UpdateDashboardConfig_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -37736,8 +37736,8 @@ func (_c *MockRepository_UpdateExecutionRetentionSettings_Call) Run(run func(ctx
 	return _c
 }
 
-func (_c *MockRepository_UpdateExecutionRetentionSettings_Call) Return(executionRetentionSettings *ExecutionRetentionSettings, err error) *MockRepository_UpdateExecutionRetentionSettings_Call {
-	_c.Call.Return(executionRetentionSettings, err)
+func (_c *MockRepository_UpdateExecutionRetentionSettings_Call) Return(v *ExecutionRetentionSettings, err error) *MockRepository_UpdateExecutionRetentionSettings_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -38194,8 +38194,8 @@ func (_c *MockRepository_UpdateFunction_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_UpdateFunction_Call) Return(functionConfig *FunctionConfig, err error) *MockRepository_UpdateFunction_Call {
-	_c.Call.Return(functionConfig, err)
+func (_c *MockRepository_UpdateFunction_Call) Return(v *FunctionConfig, err error) *MockRepository_UpdateFunction_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -38481,8 +38481,8 @@ func (_c *MockRepository_UpdateIncident_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_UpdateIncident_Call) Return(incident *Incident, err error) *MockRepository_UpdateIncident_Call {
-	_c.Call.Return(incident, err)
+func (_c *MockRepository_UpdateIncident_Call) Return(v *Incident, err error) *MockRepository_UpdateIncident_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -38555,8 +38555,8 @@ func (_c *MockRepository_UpdateInvoice_Call) Run(run func(ctx context.Context, i
 	return _c
 }
 
-func (_c *MockRepository_UpdateInvoice_Call) Return(invoice *Invoice, err error) *MockRepository_UpdateInvoice_Call {
-	_c.Call.Return(invoice, err)
+func (_c *MockRepository_UpdateInvoice_Call) Return(v *Invoice, err error) *MockRepository_UpdateInvoice_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -38761,8 +38761,8 @@ func (_c *MockRepository_UpdateMembership_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_UpdateMembership_Call) Return(tenantMembership *TenantMembership, err error) *MockRepository_UpdateMembership_Call {
-	_c.Call.Return(tenantMembership, err)
+func (_c *MockRepository_UpdateMembership_Call) Return(v *TenantMembership, err error) *MockRepository_UpdateMembership_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -38955,8 +38955,8 @@ func (_c *MockRepository_UpdateNewsletterCampaign_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockRepository_UpdateNewsletterCampaign_Call) Return(newsletterCampaign *NewsletterCampaign, err error) *MockRepository_UpdateNewsletterCampaign_Call {
-	_c.Call.Return(newsletterCampaign, err)
+func (_c *MockRepository_UpdateNewsletterCampaign_Call) Return(v *NewsletterCampaign, err error) *MockRepository_UpdateNewsletterCampaign_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -39104,8 +39104,8 @@ func (_c *MockRepository_UpdateOAuthProvider_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_UpdateOAuthProvider_Call) Return(tenantOAuthProvider *TenantOAuthProvider, err error) *MockRepository_UpdateOAuthProvider_Call {
-	_c.Call.Return(tenantOAuthProvider, err)
+func (_c *MockRepository_UpdateOAuthProvider_Call) Return(v *TenantOAuthProvider, err error) *MockRepository_UpdateOAuthProvider_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -39304,8 +39304,8 @@ func (_c *MockRepository_UpdatePricingTier_Call) Run(run func(ctx context.Contex
 	return _c
 }
 
-func (_c *MockRepository_UpdatePricingTier_Call) Return(pricingTier *PricingTier, err error) *MockRepository_UpdatePricingTier_Call {
-	_c.Call.Return(pricingTier, err)
+func (_c *MockRepository_UpdatePricingTier_Call) Return(v *PricingTier, err error) *MockRepository_UpdatePricingTier_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -39378,8 +39378,8 @@ func (_c *MockRepository_UpdateProvider_Call) Run(run func(ctx context.Context, 
 	return _c
 }
 
-func (_c *MockRepository_UpdateProvider_Call) Return(provider *Provider, err error) *MockRepository_UpdateProvider_Call {
-	_c.Call.Return(provider, err)
+func (_c *MockRepository_UpdateProvider_Call) Return(v *Provider, err error) *MockRepository_UpdateProvider_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -39572,8 +39572,8 @@ func (_c *MockRepository_UpdateSecurityScan_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_UpdateSecurityScan_Call) Return(securityScan *SecurityScan, err error) *MockRepository_UpdateSecurityScan_Call {
-	_c.Call.Return(securityScan, err)
+func (_c *MockRepository_UpdateSecurityScan_Call) Return(v *SecurityScan, err error) *MockRepository_UpdateSecurityScan_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -39835,8 +39835,8 @@ func (_c *MockRepository_UpdateSubscription_Call) Run(run func(ctx context.Conte
 	return _c
 }
 
-func (_c *MockRepository_UpdateSubscription_Call) Return(subscription *Subscription, err error) *MockRepository_UpdateSubscription_Call {
-	_c.Call.Return(subscription, err)
+func (_c *MockRepository_UpdateSubscription_Call) Return(v *Subscription, err error) *MockRepository_UpdateSubscription_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -39909,8 +39909,8 @@ func (_c *MockRepository_UpdateSubscriptionFromStripe_Call) Run(run func(ctx con
 	return _c
 }
 
-func (_c *MockRepository_UpdateSubscriptionFromStripe_Call) Return(subscription *Subscription, err error) *MockRepository_UpdateSubscriptionFromStripe_Call {
-	_c.Call.Return(subscription, err)
+func (_c *MockRepository_UpdateSubscriptionFromStripe_Call) Return(v *Subscription, err error) *MockRepository_UpdateSubscriptionFromStripe_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -40166,8 +40166,8 @@ func (_c *MockRepository_UpdateTeamMemory_Call) Run(run func(ctx context.Context
 	return _c
 }
 
-func (_c *MockRepository_UpdateTeamMemory_Call) Return(teamMemory *TeamMemory, err error) *MockRepository_UpdateTeamMemory_Call {
-	_c.Call.Return(teamMemory, err)
+func (_c *MockRepository_UpdateTeamMemory_Call) Return(v *TeamMemory, err error) *MockRepository_UpdateTeamMemory_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -40240,8 +40240,8 @@ func (_c *MockRepository_UpdateTenant_Call) Run(run func(ctx context.Context, te
 	return _c
 }
 
-func (_c *MockRepository_UpdateTenant_Call) Return(tenant *Tenant, err error) *MockRepository_UpdateTenant_Call {
-	_c.Call.Return(tenant, err)
+func (_c *MockRepository_UpdateTenant_Call) Return(v *Tenant, err error) *MockRepository_UpdateTenant_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -40743,8 +40743,8 @@ func (_c *MockRepository_UpdateUser_Call) Run(run func(ctx context.Context, user
 	return _c
 }
 
-func (_c *MockRepository_UpdateUser_Call) Return(user *User, err error) *MockRepository_UpdateUser_Call {
-	_c.Call.Return(user, err)
+func (_c *MockRepository_UpdateUser_Call) Return(v *User, err error) *MockRepository_UpdateUser_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 
@@ -41288,8 +41288,8 @@ func (_c *MockRepository_UpdateVulnerability_Call) Run(run func(ctx context.Cont
 	return _c
 }
 
-func (_c *MockRepository_UpdateVulnerability_Call) Return(vulnerability *Vulnerability, err error) *MockRepository_UpdateVulnerability_Call {
-	_c.Call.Return(vulnerability, err)
+func (_c *MockRepository_UpdateVulnerability_Call) Return(v *Vulnerability, err error) *MockRepository_UpdateVulnerability_Call {
+	_c.Call.Return(v, err)
 	return _c
 }
 

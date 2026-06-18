@@ -254,4 +254,140 @@ export class VaultCrypto {
       keyVersion: payload.key_version,
     };
   }
+
+  /**
+   * Generate a new random data encryption key (DEK) as a base64 string.
+   * Used for envelope encryption of tenant resources.
+   */
+  static generateDEK(): Uint8Array {
+    return crypto.getRandomValues(new Uint8Array(32));
+  }
+
+  /**
+   * Generate a secure random password for database credentials.
+   */
+  static generateDBPassword(length = 32): string {
+    const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+    const bytes = crypto.getRandomValues(new Uint8Array(length));
+    let password = "";
+    for (let i = 0; i < length; i++) {
+      password += charset[bytes[i] % charset.length];
+    }
+    return password;
+  }
+
+  /**
+   * Wrap (encrypt) a DEK with a KEK (key encryption key).
+   * Returns the wrapped DEK as a base64 string suitable for storage.
+   */
+  static async wrapDEK(dek: Uint8Array, passphrase: string): Promise<EncryptedData> {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = VaultCrypto.generateIV();
+    const kek = await VaultCrypto.deriveKey(passphrase, salt, 600_000);
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv: iv as unknown as ArrayBuffer },
+      kek,
+      dek as unknown as ArrayBuffer
+    );
+    const tagLength = 16;
+    const ctBytes = new Uint8Array(ciphertext);
+    const encBytes = ctBytes.slice(0, ctBytes.length - tagLength);
+    const tag = ctBytes.slice(ctBytes.length - tagLength);
+    return {
+      ciphertext: VaultCrypto.toBase64(encBytes),
+      iv: VaultCrypto.toBase64(iv),
+      salt: VaultCrypto.toBase64(salt),
+      tag: VaultCrypto.toBase64(tag),
+      keyVersion: 2,
+    };
+  }
+
+  /**
+   * Unwrap (decrypt) a wrapped DEK using a KEK.
+   * Returns the raw DEK as a base64 string.
+   */
+  static async unwrapDEK(wrappedData: EncryptedData, passphrase: string): Promise<Uint8Array> {
+    const salt = VaultCrypto.fromBase64(wrappedData.salt);
+    const iv = VaultCrypto.fromBase64(wrappedData.iv);
+    const tag = VaultCrypto.fromBase64(wrappedData.tag);
+    const kek = await VaultCrypto.deriveKey(passphrase, salt, 600_000);
+    const ctBytes = VaultCrypto.fromBase64(wrappedData.ciphertext);
+    const combined = new Uint8Array(ctBytes.length + tag.length);
+    combined.set(ctBytes, 0);
+    combined.set(tag, ctBytes.length);
+    const dekBytes = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv as unknown as ArrayBuffer },
+      kek,
+      combined as unknown as ArrayBuffer
+    );
+    return new Uint8Array(dekBytes);
+  }
+
+  /**
+   * Decrypt an admin password that was wrapped server-side.
+   * The server sends the wrapped ciphertext; we unwrap locally.
+   */
+  static async unwrapAdminPassword(
+    wrappedPayload: { ct: string; iv: string; tag: string },
+    kek: Uint8Array | CryptoKey
+  ): Promise<string> {
+    let cryptoKey: CryptoKey;
+    if (kek instanceof Uint8Array) {
+      cryptoKey = await crypto.subtle.importKey(
+        "raw",
+        kek as unknown as ArrayBuffer,
+        { name: "AES-GCM" },
+        false,
+        ["decrypt"]
+      );
+    } else {
+      cryptoKey = kek;
+    }
+    const ctBytes = VaultCrypto.fromBase64(wrappedPayload.ct);
+    const iv = VaultCrypto.fromBase64(wrappedPayload.iv);
+    const tag = VaultCrypto.fromBase64(wrappedPayload.tag);
+    const combined = new Uint8Array(ctBytes.length + tag.length);
+    combined.set(ctBytes, 0);
+    combined.set(tag, ctBytes.length);
+    const plaintext = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv as unknown as ArrayBuffer },
+      cryptoKey,
+      combined as unknown as ArrayBuffer
+    );
+    return new TextDecoder().decode(plaintext);
+  }
+
+  /**
+   * Generate a dynamic credential (client-side) by deriving a deterministic
+   * password from a base secret and a lease ID.
+   */
+  static async generateDynamicCredential(
+    baseSecret: string,
+    leaseId: string,
+    kek: CryptoKey
+  ): Promise<string> {
+    const combined = `${baseSecret}:${leaseId}`;
+    const keyMaterial = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(combined) as unknown as ArrayBuffer,
+      "PBKDF2",
+      false,
+      ["deriveBits"]
+    );
+    const salt = new TextEncoder().encode(`dyn-cred:${leaseId}`);
+    const bits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", salt: salt as unknown as ArrayBuffer, iterations: 100000, hash: "SHA-256" },
+      keyMaterial,
+      256
+    );
+    return VaultCrypto.toBase64(new Uint8Array(bits)).slice(0, 32);
+  }
+
+  static toBase64(bytes: Uint8Array): string {
+    return btoa(String.fromCharCode(...bytes));
+  }
+
+  static fromBase64(base64: string): Uint8Array {
+    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+  }
 }

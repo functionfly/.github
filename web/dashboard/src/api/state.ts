@@ -144,4 +144,46 @@ export const stateApi = {
       data
     );
   },
+
+  // Enable encryption
+  enableEncryption: async (path: string): Promise<{ enabled: boolean }> => {
+    return apiClient.post<{ enabled: boolean }>(
+      `/v1/state/${encodeURIComponent(path)}/encryption`,
+      {}
+    );
+  },
+
+  // Get encryption statistics
+  getEncryptionStats: async (path: string): Promise<{
+    encrypted: boolean;
+    algorithm?: string;
+    keyId?: string;
+    lastRotated?: number;
+  }> => {
+    return apiClient.get<{
+      encrypted: boolean;
+      algorithm?: string;
+      keyId?: string;
+      lastRotated?: number;
+    }>(`/v1/state/${encodeURIComponent(path)}/encryption/stats`);
+  },
+
+  // Migrate encryption
+  migrateEncryption: async (
+    path: string,
+    data: { algorithm: string; keyId?: string }
+  ): Promise<{ migrated: boolean }> => {
+    return apiClient.post<{ migrated: boolean }>(
+      `/v1/state/${encodeURIComponent(path)}/encryption/migrate`,
+      data
+    );
+  },
+
+  // Rotate encryption key
+  rotateEncryptionKey: async (path: string): Promise<{ rotated: boolean; keyId: string }> => {
+    return apiClient.post<{ rotated: boolean; keyId: string }>(
+      `/v1/state/${encodeURIComponent(path)}/encryption/rotate`,
+      {}
+    );
+  },
 };

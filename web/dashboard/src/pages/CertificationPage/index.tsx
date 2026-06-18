@@ -52,11 +52,12 @@ export function CertificationPage() {
   const handleStartExam = (tierSlug: string) => {
     startExam.mutate(tierSlug, {
       onSuccess: (data) => {
-        const checkoutUrl = typeof data === 'object' && data && 'checkout_url' in (data as Record<string, unknown>) ? (data as Record<string, string>).checkout_url : undefined;
+        const dataObj = data as { checkout_url?: string; exam?: { id: string } };
+        const checkoutUrl = dataObj?.checkout_url;
         if (checkoutUrl) {
           window.location.href = checkoutUrl;
-        } else {
-          navigate(`/certification/exam/${data.exam.id}`);
+        } else if (dataObj?.exam?.id) {
+          navigate(`/certification/exam/${dataObj.exam.id}`);
         }
       },
     });
@@ -65,7 +66,8 @@ export function CertificationPage() {
   const handleContinueToCheckout = (tierSlug: string) => {
     startExam.mutate(tierSlug, {
       onSuccess: (data) => {
-        const checkoutUrl = typeof data === 'object' && data && 'checkout_url' in (data as Record<string, unknown>) ? (data as Record<string, string>).checkout_url : undefined;
+        const dataObj = data as { checkout_url?: string };
+        const checkoutUrl = dataObj?.checkout_url;
         if (checkoutUrl) {
           window.location.href = checkoutUrl;
         }

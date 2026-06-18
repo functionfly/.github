@@ -299,13 +299,13 @@ interface CollaborationState {
   addBookmark: (bookmark: ExecutionBookmark) => void
   removeBookmark: (bookmarkId: string) => void
   setGraphNodes: (nodes: GraphNode[]) => void
-  setGraphEdges: (edges: unknown[]) => void
-  addGraphNode: (node: unknown) => void
-  updateGraphNode: (nodeId: string, updates: unknown) => void
+  setGraphEdges: (edges: GraphEdge[]) => void
+  addGraphNode: (node: GraphNode) => void
+  updateGraphNode: (nodeId: string, updates: Partial<GraphNode>) => void
   removeGraphNode: (nodeId: string) => void
-  addGraphEdge: (edge: unknown) => void
+  addGraphEdge: (edge: GraphEdge) => void
   removeGraphEdge: (edgeId: string) => void
-  addGraphOperation: (operation: unknown) => void
+  addGraphOperation: (operation: GraphOperation) => void
   lockNode: (nodeId: string) => void
   unlockNode: (nodeId: string) => void
   setAnnotations: (annotations: Annotation[]) => void
@@ -325,7 +325,7 @@ interface CollaborationState {
   setMemoryCards: (cards: MemoryCard[]) => void
   addMemoryCard: (card: MemoryCard) => void
   updateMemoryCard: (cardId: string, updates: Partial<MemoryCard>) => void
-  moveMemoryCard: (cardId: string, position: unknown) => void
+  moveMemoryCard: (cardId: string, position: { x: number; y: number }) => void
   deleteMemoryCard: (cardId: string) => void
   linkMemoryCards: (cardId: string, targetCardId: string) => void
   setConflicts: (conflicts: ConflictResolution[]) => void
@@ -333,9 +333,9 @@ interface CollaborationState {
   resolveConflict: (id: string, resolution: unknown) => void
   dismissConflict: (id: string) => void
   setCurrentReview: (review: ReviewSession | null) => void
-  addReviewComment: (comment: unknown) => void
+  addReviewComment: (comment: ReviewComment) => void
   resolveReviewComment: (commentId: string) => void
-  updateReviewStatus: (status: unknown) => void
+  updateReviewStatus: (status: ReviewSession['status']) => void
   setPromptSegments: (segments: PromptSegment[]) => void
   addPromptSegment: (segment: PromptSegment) => void
   updatePromptSegment: (segmentId: string, content: string) => void
@@ -349,7 +349,7 @@ interface CollaborationState {
   updateTask: (taskId: string, updates: Partial<TaskAssignment>) => void
   deleteTask: (taskId: string) => void
   selectTask: (taskId: string | null) => void
-  assignTask: (taskId: string, assignee: string) => void
+  assignTask: (taskId: string, assignee: TaskAssignee) => void
   acceptAISuggestion: (taskId: string) => void
   rejectAISuggestion: (taskId: string) => void
 }

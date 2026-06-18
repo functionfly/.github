@@ -111,6 +111,9 @@ type Server struct {
 	// State fabric cleanup service for TTL-based cleanup
 	stateFabricCleanup *statefabricrepo.CleanupService
 
+	// State metrics collector for usage aggregation
+	stateMetricsCollector *staterepo.MetricsCollector
+
 	// Recommendations service
 	recommendationSvc *recommendations.Service
 
@@ -375,6 +378,9 @@ func NewServer(db *storage.PostgresDB) *Server {
 		stateFabricCleanup = statefabricrepo.NewCleanupService(db.GORM, stateFabricCleanupConfig)
 	}
 
+	// Initialize state metrics collector for usage aggregation
+	stateMetricsCollector := staterepo.NewMetricsCollector(db.GORM, staterepo.DefaultMetricsCollectorConfig())
+
 	// Initialize verification service
 	clamAVURL := os.Getenv("CLAMAV_URL")
 	if clamAVURL == "" {
@@ -457,6 +463,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		executionLogCleanup:    executionLogCleanup,
 		stateCleanup:           stateCleanup,
 		stateFabricCleanup:     stateFabricCleanup,
+		stateMetricsCollector:  stateMetricsCollector,
 		healthMonitor:          healthMonitor,
 		redisClient:            redisClient,
 		upstashRedis:           upstashRedis,
@@ -657,10 +664,10 @@ func (s *Server) ListenAndServe(addr string) error {
 	}()
 
 	// Start session cleanup routine (runs every hour)
-	s.sessionCleanup.StartCleanupRoutine(s.serverCtx, time.Hour)
+	s.sessionCleanup.StartCleanupRoutine(time.Hour)
 
 	// Start OAuth state cleanup routine (runs every 6 hours)
-	s.oauthStateCleanup.StartCleanupRoutine(s.serverCtx, 6*time.Hour)
+	s.oauthStateCleanup.StartCleanupRoutine(6 * time.Hour)
 
 	// Start login attempt cleanup routine (runs daily, keeps 30 days of history)
 	s.loginAttemptCleanup.StartCleanupRoutine(s.serverCtx, 24*time.Hour, 30*24*time.Hour)
@@ -720,6 +727,12 @@ func (s *Server) ListenAndServe(addr string) error {
 	if s.stateFabricCleanup != nil {
 		go s.stateFabricCleanup.StartCleanupRoutine(s.serverCtx)
 		logging.Logger().Info("State fabric TTL cleanup routine started")
+	}
+
+	// Start state metrics collector for usage aggregation (runs every 5 minutes)
+	if s.stateMetricsCollector != nil {
+		go s.stateMetricsCollector.Start(s.serverCtx)
+		logging.Logger().Info("State metrics collector started")
 	}
 
 	// Start vault expired-token cleanup (runs daily; prunes tokens expired/revoked > 30 days ago)

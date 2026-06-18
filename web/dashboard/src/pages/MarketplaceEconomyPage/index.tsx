@@ -19,7 +19,7 @@ import {
   SalesConversionAnalytics,
   MonetizationOptimizer,
   MarketplaceTrendRadar,
-} from '@functionfly/ui-marketplace-economy'
+} from '@functionfly/ui-marketplace-economy/components'
 import { useMarketplaceEconomyStore } from '@/stores/marketplaceEconomyStore'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -364,7 +364,7 @@ export function MarketplaceEconomyPage() {
                   activeCount={subscriptions.filter(s => s.status === 'active').length}
                   cancelledCount={subscriptions.filter(s => s.status === 'cancelled').length}
                   pastDueCount={subscriptions.filter(s => s.status === 'past_due').length}
-                  onSubscriptionSelect={(sub) => console.log('Selected subscription:', sub)}
+                  onSubscriptionSelect={(sub) => console.log('Selected subscription:', sub.id)}
                   className="aviation-component"
                 />
               )}
@@ -376,6 +376,8 @@ export function MarketplaceEconomyPage() {
                   billingCycle="monthly"
                   currency="USD"
                   className="aviation-component"
+                  onUpgradeClick={undefined}
+                  onMetricClick={undefined}
                 />
               )}
 
@@ -396,6 +398,8 @@ export function MarketplaceEconomyPage() {
                   stats={selectedCreator.stats}
                   payoutInfo={selectedCreator.payoutInfo}
                   className="aviation-component"
+                  onEditProfile={undefined}
+                  onViewPayoutHistory={undefined}
                 />
               )}
 
@@ -442,6 +446,8 @@ export function MarketplaceEconomyPage() {
                   functionName=""
                   currentPricing={[]}
                   className="aviation-component"
+                  onPriceUpdate={undefined}
+                  onSave={undefined}
                 />
               )}
 
@@ -453,6 +459,7 @@ export function MarketplaceEconomyPage() {
                   overallConversionRate={0}
                   averageOrderValue={0}
                   className="aviation-component"
+                  onStageClick={undefined}
                 />
               )}
 
@@ -460,6 +467,7 @@ export function MarketplaceEconomyPage() {
                 <MonetizationOptimizer
                   suggestions={[]}
                   currentRevenue={revenue.total}
+                  projectedRevenue={revenue.total * 1.12}
                   className="aviation-component"
                 />
               )}
@@ -469,6 +477,8 @@ export function MarketplaceEconomyPage() {
                   trends={[]}
                   timeRange="30d"
                   className="aviation-component"
+                  onTrendSelect={undefined}
+                  onCategoryChange={undefined}
                 />
               )}
             </div>

@@ -1,21 +1,19 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type {
-  UserSkillLevel,
-  ComplexityLevel,
-  ContextHint,
-  RecommendationType,
-  AttentionState,
-  LearningPhase,
-  ComplexityConfig,
-  ToolbarAction,
-  PredictedAction,
-  WorkspaceRecommendation,
-  LearningPattern,
-  CognitiveMetrics,
-  FocusHighlight,
-  WorkflowHint,
-} from '@functionfly/ui-adaptive-ux';
+
+type UserSkillLevel = 'beginner' | 'intermediate' | 'expert';
+type ComplexityLevel = 'simple' | 'standard' | 'advanced';
+type ContextHint = 'action' | 'navigation' | 'information';
+type WorkspaceRecommendation = any;
+type LearningPhase = 'observing' | 'adapting' | 'optimized';
+type AttentionState = 'focused' | 'distracted' | 'idle';
+type CognitiveMetrics = any;
+type ComplexityConfig = any;
+type ToolbarAction = any;
+type PredictedAction = any;
+type LearningPattern = any;
+type FocusHighlight = any;
+type WorkflowHint = any;
 
 interface AdaptiveUXState {
   userSkillLevel: UserSkillLevel;

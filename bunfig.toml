@@ -1,0 +1,6 @@
+[install]
+# Use hoisted linker so workspace packages are symlinked (not hardlinked copies).
+# This means changes to packages/* source or dist/ are immediately reflected
+# in the consumer's node_modules without needing to re-run `bun install`.
+# See: https://bun.sh/docs/pm/cli/install#installation-strategies
+linker = "hoisted"

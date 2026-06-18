@@ -45,7 +45,7 @@ func (d *DelegatingHostHandler) KVSet(key, value string) error {
 	return d.current().KVSet(key, value)
 }
 
-func (d *DelegatingHostHandler) GetEnv(name string) (string, error) {
+func (d *DelegatingHostHandler) GetEnv(name string) string {
 	return d.current().GetEnv(name)
 }
 

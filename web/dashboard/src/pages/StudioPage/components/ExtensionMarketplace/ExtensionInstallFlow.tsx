@@ -171,7 +171,7 @@ export function ExtensionInstallFlow({ extension, onInstall, onCancel }: Extensi
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white">{perm.type}</span>
                       {perm.risk === "high" && (
-                        <Badge variant="destructive" size="sm">
+                        <Badge variant="error" size="sm">
                           <AlertTriangle className="w-3 h-3 mr-1" />
                           High Risk
                         </Badge>

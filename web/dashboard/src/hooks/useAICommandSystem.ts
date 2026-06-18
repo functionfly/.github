@@ -53,12 +53,15 @@ export function useAICommandSystem() {
     
     // Simulate AI response after delay
     setTimeout(() => {
-      store.addMessage({
+      const assistantMessage: AIMessage = {
+        id: `ai-${Date.now()}`,
+        timestamp: Date.now(),
         role: 'assistant',
         content: 'I understand. Let me help you with that.',
         agentId: store.currentAgentId || 'primary',
         agentName: store.agents.find(a => a.id === store.currentAgentId)?.name || 'Assistant',
-      })
+      }
+      store.addMessage(assistantMessage)
       store.setIsThinking(false)
     }, 1500)
   }, [addMessage, store])

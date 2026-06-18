@@ -1,0 +1,23 @@
+[Unit]
+Description=HashiCorp Nomad Client
+Documentation=https://www.nomadproject.io/docs/
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/nomad agent -config=/etc/nomad.d/nomad-client.hcl
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+KillSignal=SIGTERM
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65536
+
+# NVIDIA runtime
+Environment=NVIDIA_VISIBLE_DEVICES=all
+Environment=NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+[Install]
+WantedBy=multi-user.target

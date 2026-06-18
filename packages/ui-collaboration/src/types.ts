@@ -75,12 +75,19 @@ export interface GraphOperation {
 
 export interface Annotation {
   id: string;
-  type: 'comment' | 'highlight' | 'note';
+  type: 'comment' | 'highlight' | 'note' | 'suggestion' | 'todo' | 'issue';
   content: string;
   author: string;
-  timestamp: number;
-  position: { line: number; column: number };
+  timestamp?: number;
+  createdAt?: number;
+  updatedAt?: number;
+  resolvedAt?: number;
+  resolvedBy?: string;
   resolved?: boolean;
+  position: { line: number; column: number } | { filePath: string; startLine: number; endLine: number; startColumn?: number; endColumn?: number };
+  replies?: Annotation[];
+  reactions?: Array<{ emoji: string; userId: string }>;
+  mentions?: string[];
 }
 
 export interface SessionEvent {
@@ -137,23 +144,36 @@ export interface ReviewComment {
   id: string;
   author: string;
   content: string;
-  timestamp: number;
-  line?: number;
+  timestamp?: number;
+  createdAt?: number;
+  lineNumber?: number;
+  filePath?: string;
   resolved?: boolean;
 }
 
 export interface ReviewSession {
   id: string;
-  status: 'open' | 'in-progress' | 'completed';
+  name?: string;
+  description?: string;
+  status: 'open' | 'in-progress' | 'completed' | 'in-review' | 'approved' | 'changes-requested' | 'merged';
+  author?: { id: string; name: string; avatar?: string };
+  createdAt?: number;
+  updatedAt?: number;
+  participants?: Array<{ userId: string; userName: string; role: 'reviewer' | 'author' }>;
   comments: ReviewComment[];
+  timeline?: Array<{ id: string; event: string; userId: string; userName: string; timestamp: number; details?: string }>;
 }
 
 export interface PromptSegment {
   id: string;
-  type: 'text' | 'code' | 'result';
+  type: 'text' | 'code' | 'result' | 'variable' | 'function' | 'loop' | 'conditional' | 'ai-template';
   content: string;
-  timestamp: number;
+  timestamp?: number;
+  createdAt?: number;
   author?: string;
+  editedBy?: string;
+  lastEditAt?: number;
+  metadata?: { variableName?: string; functionName?: string; outputType?: string };
 }
 
 export interface DriverNavigator {

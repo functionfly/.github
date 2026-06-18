@@ -75,6 +75,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
 	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
+	drecert "github.com/functionfly/functionfly/internal/dre/cert"
 	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
 	"github.com/functionfly/functionfly/internal/api/handlers/schedule"
@@ -124,7 +125,7 @@ import (
 	"github.com/functionfly/functionfly/internal/wallet"
 	statefabricadapter "github.com/functionfly/functionfly/internal/wasmpool/statefabric"
 	wasmpoolclient "github.com/functionfly/functionfly/internal/wasmpool/client"
-	wasmpool "github.com/functionfly/wasm"
+	wasmpool "github.com/functionfly/functionfly/internal/wasm"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -142,7 +143,7 @@ import (
 //  3. Calls to the focused register* helpers (one file per domain)
 func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Handler initialization ────────────────────────────────────────────────
-	authHandler := authHandlerPkg.NewHandler(s.authSvc, s.redisClient)
+	authHandler := authHandlerPkg.NewHandler(s.authSvc)
 	tenantAuthHandler := authHandlerPkg.NewTenantAuthHandler(s.repo)
 	usersHandler := usersHandlerPkg.NewHandler(s.repo, s.authSvc)
 	favoritesHandler := usersHandlerPkg.NewFavoritesHandler(s.repo)
@@ -428,12 +429,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		}
 		// InitPoolsWithConfig will log a warning if CGO is disabled but won't fail
 	wasmpool.InitPoolsWithConfig(factory, poolSize, 30*time.Minute)
-	wasmPool = wasmpool.PerTenantPools
-		if wasmPool != nil {
-			s.logger.WithField("pool_size", poolSize).Info("WASM instance pool initialized")
-		} else {
-			s.logger.Warn("WASM pool is nil (CGO disabled) - Python execution will use external service")
-		}
+	if perTenantPools := wasmpool.PerTenantPools; perTenantPools != nil {
+		wasmPool = perTenantPools
+	}
+	if wasmPool != nil {
+		s.logger.WithField("pool_size", poolSize).Info("WASM instance pool initialized")
+	} else {
+		s.logger.Warn("WASM pool is nil (CGO disabled) - Python execution will use external service")
+	}
 	} else {
 		s.logger.WithField("path", micropythonPath).Warn("MicroPython WASM not found, skipping instance pool")
 	}
@@ -540,14 +543,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		os.Getenv("FUNCTION_EXECUTION_URL"),
 		os.Getenv("FUNCTION_API_KEY"),
 	)
+	stateFabricRepo.SetTriggerEngine(s.triggerEngine)
 	s.stateFabricRepo = stateFabricRepo
 	stateFabricHandler := statefabric.NewHandlerWithCleanup(stateFabricRepo, sfAddonRepo, s.stateFabricCleanup)
 
 	// Build the RuntimeRouter now that stateFabricRepo is available.
 	// The adapter wraps the concrete *statefabric.Repository to satisfy
 	// wasmpool.StateFabricRepo (the minimal interface the wasm module needs).
-	var stateFabricWasmRepo wasmpool.StateFabricRepo
-	stateFabricWasmRepo = statefabricadapter.NewAdapter(stateFabricRepo)
+	_ = statefabricadapter.NewAdapter(stateFabricRepo)
 
 	// wasmpool SDK manager: routes between External and Local pool. With
 	// ExternalPercent=0 (the default), every request goes to Local via
@@ -556,11 +559,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// route a percentage of traffic to the external wasm-pool-service.
 	wmgr, err := wasmpoolclient.NewManagerFromConfig(wasmPool)
 	if err != nil {
-		log.WithError(err).Fatal("build wasmpool manager")
+		logrus.WithError(err).Fatal("build wasmpool manager")
 	}
 	defer wmgr.Close()
 
-	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath, stateFabricWasmRepo, wmgr)
+	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath)
 	registryHandler.SetRuntimeRouter(runtimeRouter)
 
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
@@ -947,7 +950,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.Use(middleware.TracingMiddleware)
 	s.router.Use(maintenanceMiddleware.CheckMaintenanceMode)
 	s.router.Use(middleware.EnvironmentMiddleware)
-	s.router.Use(middleware.BodySizeLimitMiddleware(1 << 20)) // 1MB default
+	s.router.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(middleware.BodySizeLimitMiddleware(1 << 20)(next.ServeHTTP))
+	}) // 1MB default
 
 	s.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(advancedSecurityMiddleware.CORSMiddleware(http.HandlerFunc(next.ServeHTTP)))
@@ -1046,11 +1051,28 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// ── DRE Anchoring Service (blockchain anchoring for execution certificates) ──
 	var anchoringService drehandler.AnchorServicer
-	if signingKey := os.Getenv("ANCHOR_SIGNING_KEY"); signingKey != "" {
-		ethSvc := drehandler.NewEthereumAnchoringService()
-		ethSvc.SetSigningKey(signingKey)
-		anchoringService = ethSvc
-		s.logger.Info("DRE anchoring service initialized (blockchain anchoring enabled)")
+	if cfg, cfgErr := drecert.LoadAnchoringConfigFromEnv(); cfgErr != nil {
+		s.logger.WithError(cfgErr).Error("DRE anchoring config invalid; anchoring disabled")
+	} else if cfg.IsEnabled() {
+		if err := cfg.Validate(); err != nil {
+			s.logger.WithError(err).Error("DRE anchoring config validation failed; anchoring disabled")
+		} else {
+			ethSvc := drecert.NewEthereumAnchoringService(cfg.RPCEndpoints)
+			for chain, addr := range cfg.ContractAddresses {
+				ethSvc.SetContractAddress(chain, addr)
+			}
+			if err := ethSvc.Configure(cfg); err != nil {
+				s.logger.WithError(err).Error("DRE anchoring service configuration failed; anchoring disabled")
+			} else {
+				anchoringService = ethSvc
+				s.logger.WithFields(map[string]interface{}{
+					"chains":            cfg.ConfiguredChains(),
+					"min_confirmations": cfg.MinConfirmations,
+				}).Info("DRE anchoring service initialized (blockchain anchoring enabled)")
+			}
+		}
+	} else {
+		s.logger.Info("DRE anchoring not configured (set ANCHOR_SIGNING_KEY + ANCHOR_RPC_<CHAIN> + ANCHOR_CONTRACT_<CHAIN> to enable)")
 	}
 
 	registerPublicWebhookRoutes(

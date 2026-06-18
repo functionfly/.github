@@ -8,12 +8,8 @@ import { cn } from '@/lib/utils'
 import { useAICommandSystem, useAIConfidence, useActiveAgents, useToolInvocations } from '@/hooks/useAICommandSystem'
 import { 
   AICommandPalette,
-  PromptComposer,
-  AgentChatPanel,
-  ReasoningStream,
-  PromptHistory,
   ConversationThread,
-  ExecutionNarrator,
+  PromptHistory,
   GoalPlanner,
   IntentTranslator,
   PromptTemplateLibrary,
@@ -21,6 +17,9 @@ import {
   AIConfidenceMeter,
   MultiAgentConversationView,
   AgentConversationTimeline,
+} from '@functionfly/ui-ai'
+import type {
+  AgentChatMessage,
 } from '@functionfly/ui-ai'
 import { 
   Sparkles, MessageSquare, History, Target, Wrench, 
@@ -71,7 +70,7 @@ export function AICommandPanel({ className, defaultView = 'chat' }: AICommandPan
     id: step.id,
     text: step.description || step.label,
     type: step.status === 'completed' ? 'result' as const : 
-          step.status === 'running' ? 'action' as const : 'reasoning' as const,
+          step.status === 'running' ? 'action' as const : 'observation' as const,
     timestamp: step.timestamp,
     confidence: step.status === 'completed' ? 0.95 : step.status === 'running' ? 0.7 : 0.5,
   })), [ai.executionSteps])
@@ -146,30 +145,10 @@ export function AICommandPanel({ className, defaultView = 'chat' }: AICommandPan
       <div className="flex-1 overflow-hidden">
         {activeView === 'chat' && (
           <div className="h-full flex">
-            {/* Chat Panel */}
-            <div className="flex-1">
-              <AgentChatPanel
-                messages={chatMessages}
-                agentName={currentAgent?.name || 'AI Assistant'}
-                isThinking={ai.isThinking}
-                onSendMessage={(msg) => ai.sendMessage(msg)}
-                className="h-full border-0 rounded-none"
-              />
-            </div>
-
-            {/* Reasoning Stream (sidebar) */}
-            {reasoningSteps.length > 0 && (
-              <div className="w-80 border-l border-border-subtle overflow-y-auto">
-                <div className="p-3 border-b border-border-subtle bg-bg-tertiary/30">
-                  <span className="text-xs font-medium text-text-muted">Reasoning</span>
-                </div>
-                <ReasoningStream
-                  steps={reasoningSteps}
-                  currentStep={ai.executionSteps.findIndex(s => s.id === ai.currentStepId)}
-                  className="p-3"
-                />
-              </div>
-            )}
+            <ConversationThread
+              messages={chatMessages}
+              className="h-full border-0 rounded-none"
+            />
           </div>
         )}
 

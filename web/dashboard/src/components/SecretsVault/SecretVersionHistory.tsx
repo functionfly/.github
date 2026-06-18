@@ -148,7 +148,8 @@ export function SecretVersionHistory({
   const [rollbackVersion, setRollbackVersion] = useState<number | null>(null);
   const [rollbackReason, setRollbackReason] = useState("");
 
-  const { data: versions, isLoading, error, refetch } = useSecretVersions(secretId);
+  const { data: versionsResponse, isLoading, error, refetch } = useSecretVersions(secretId);
+  const versions = versionsResponse?.versions ?? [];
   const diffQuery = useDiffSecretVersions(
     secretId,
     selectedVersions?.fromVersion ?? -1,
@@ -521,7 +522,7 @@ export function SecretVersionHistory({
           <SheetFooter className="shrink-0">
             <div className="flex items-center gap-2 text-sm text-text-muted">
               <Clock className="h-4 w-4" />
-              <span>{versions?.length ?? 0} versions</span>
+              <span>{versions.length ?? 0} versions</span>
             </div>
           </SheetFooter>
         </SheetContent>

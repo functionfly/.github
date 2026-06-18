@@ -265,6 +265,7 @@ func registerRegistryRoutes(
 	api.HandleFunc("/functions/{author}/{name}/cert/{cert_id}", dreHandler.HandleGetCertificate).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/cert/{cert_id}/verify", dreHandler.HandleVerifyCertificate).Methods("POST", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/cert/{cert_id}/anchor", dreHandler.HandleAnchorCertificate).Methods("POST", "OPTIONS")
+	api.HandleFunc("/dre/anchoring/status", dreHandler.HandleGetAnchoringStatus).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/certs", dreHandler.HandleListCertificates).Methods("GET", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/replay/{execution_id}", dreHandler.HandleReplay).Methods("POST", "OPTIONS")
 	api.HandleFunc("/functions/{author}/{name}/passport", dreHandler.HandleGetPassport).Methods("GET", "OPTIONS")

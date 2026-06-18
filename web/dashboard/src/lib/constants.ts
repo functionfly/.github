@@ -349,6 +349,9 @@ export const ROUTE_BUILDERS = {
 
   // Agent dynamic routes
   agent: (slug: string) => `/agents/${slug}`,
+
+  // Receipt routes
+  receipt: (id: string) => `/receipts/${id}`,
 } as const;
 
 // Type for route builder function

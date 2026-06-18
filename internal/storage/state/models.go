@@ -2,8 +2,10 @@ package state
 
 import (
 	"crypto/sha256"
+	"database/sql/driver"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +14,36 @@ import (
 
 // JSONMap represents flexible JSON data storage
 type JSONMap map[string]interface{}
+
+// Scan implements sql.Scanner so the DB driver can read JSONB into JSONMap.
+func (m *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*m = nil
+		return nil
+	}
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to unmarshal JSONB value: %v", value)
+	}
+	if len(bytes) == 0 {
+		*m = JSONMap{}
+		return nil
+	}
+	var out map[string]interface{}
+	if err := json.Unmarshal(bytes, &out); err != nil {
+		return err
+	}
+	*m = out
+	return nil
+}
+
+// Value implements driver.Valuer so JSONMap is stored as JSON in JSONB columns.
+func (m JSONMap) Value() (driver.Value, error) {
+	if m == nil {
+		return []byte("{}"), nil
+	}
+	return json.Marshal(m)
+}
 
 // ============================================
 // Core State Models

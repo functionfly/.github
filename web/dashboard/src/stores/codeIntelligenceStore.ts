@@ -405,7 +405,7 @@ export interface CodeIntelligenceState {
   // Execution Aware Editor
   executionPoints: ExecutionPoint[]
   currentExecutionPointId: string | null
-  breakpoints: string[]
+  breakpoints: number[]
   watchExpressions: WatchExpression[]
   isRunning: boolean
 
@@ -437,65 +437,65 @@ export interface CodeIntelligenceState {
   setEditorFilePath: (filePath: string) => void
   setEditorCursorPosition: (position: { line: number; column: number }) => void
   setEditorSelection: (selection: { start: { line: number; column: number }; end: { line: number; column: number } } | null) => void
-  setEditorSymbols: (symbols: unknown[]) => void
-  setEditorDiagnostics: (diagnostics: unknown[]) => void
-  setAST: (ast: unknown) => void
+  setEditorSymbols: (symbols: SemanticSymbol[]) => void
+  setEditorDiagnostics: (diagnostics: Diagnostic[]) => void
+  setAST: (ast: ASTNode) => void
   selectASTNode: (nodeId: string | null) => void
   toggleASTNode: (nodeId: string) => void
   setASTSearchQuery: (query: string) => void
-  setDependencies: (nodes: unknown[], edges: unknown[]) => void
+  setDependencies: (nodes: DependencyNode[], edges: DependencyEdge[]) => void
   selectDependencyNode: (nodeId: string | null) => void
   setDependencyColorMetric: (metric: 'complexity' | 'coupling' | 'changes' | 'bugs' | 'maintenance') => void
-  setDiffFiles: (files: unknown[]) => void
+  setDiffFiles: (files: DiffFile[]) => void
   selectDiffFile: (fileId: string | null) => void
-  setArchitecture: (nodes: unknown[], connections: unknown[]) => void
+  setArchitecture: (nodes: ArchitectureNode[], connections: ArchitectureConnection[]) => void
   selectArchitectureNode: (nodeId: string | null) => void
   toggleArchitectureNode: (nodeId: string) => void
   setArchitectureLayout: (layout: 'tree' | 'force' | 'circular') => void
   setShowArchitectureMetrics: (show: boolean) => void
-  setRefactorOpportunities: (opportunities: unknown[]) => void
+  setRefactorOpportunities: (opportunities: RefactorOpportunity[]) => void
   selectRefactorOpportunity: (opportunityId: string | null) => void
-  setGeneratedCode: (code: unknown) => void
+  setGeneratedCode: (code: GeneratedCode) => void
   setIsGenerating: (isGenerating: boolean) => void
   setGenerationError: (error: string | null) => void
   toggleGenerationExplanation: () => void
   clearGeneratedCode: () => void
-  setInlineSuggestions: (suggestions: unknown[]) => void
-  setCurrentInlineSuggestion: (suggestion: unknown) => void
+  setInlineSuggestions: (suggestions: AIInlineSuggestion[]) => void
+  setCurrentInlineSuggestion: (suggestion: AIInlineSuggestion | null) => void
   toggleInlineAI: () => void
-  setIntents: (intents: unknown[]) => void
+  setIntents: (intents: CodeIntent[]) => void
   selectIntent: (intentId: string | null) => void
   toggleIntentReasoning: () => void
   setSearchQuery: (query: string) => void
-  setSearchResults: (results: unknown[]) => void
+  setSearchResults: (results: SearchResult[]) => void
   selectSearchResult: (resultId: string | null) => void
   setSearchType: (type: 'text' | 'semantic' | 'symbol' | 'regex') => void
   setIsSearching: (isSearching: boolean) => void
   clearSearchResults: () => void
-  setLineageNodes: (nodes: unknown[]) => void
+  setLineageNodes: (nodes: LineageNode[]) => void
   selectLineageNode: (nodeId: string | null) => void
   setFocusedFilePath: (filePath: string | null) => void
-  setRiskIndicators: (risks: unknown[]) => void
+  setRiskIndicators: (risks: RiskIndicator[]) => void
   selectRisk: (riskId: string | null) => void
   setShowRiskMetrics: (show: boolean) => void
-  setImports: (imports: unknown[], edges: unknown[]) => void
+  setImports: (imports: ImportNode[], edges: ImportEdge[]) => void
   selectImportNode: (nodeId: string | null) => void
   setSelectedImportFilePath: (filePath: string | null) => void
-  setExecutionPoints: (points: unknown[]) => void
+  setExecutionPoints: (points: ExecutionPoint[]) => void
   selectExecutionPoint: (pointId: string | null) => void
   toggleBreakpoint: (line: number) => void
   addWatchExpression: (expression: string) => void
   removeWatchExpression: (expressionId: string) => void
   setIsRunning: (isRunning: boolean) => void
-  setCompletions: (completions: unknown[]) => void
+  setCompletions: (completions: AICompletion[]) => void
   selectCompletion: (completionId: string | null) => void
-  setSimulation: (simulation: unknown) => void
+  setSimulation: (simulation: RefactorSimulation) => void
   stepSimulationForward: () => void
   stepSimulationBackward: () => void
   clearSimulation: () => void
-  setConstraints: (constraints: unknown[]) => void
+  setConstraints: (constraints: ArchitectureConstraint[]) => void
   selectConstraint: (constraintId: string | null) => void
-  setOwnerships: (ownerships: unknown[]) => void
+  setOwnerships: (ownerships: FileOwnership[]) => void
   selectFileOwnership: (filePath: string | null) => void
   selectOwner: (ownerId: string | null) => void
   setActivePanel: (panel: 'editor' | 'ast' | 'dependencies' | 'diff' | 'architecture' | 'refactor' | 'generation' | 'search' | 'lineage' | 'risk' | 'imports' | 'ownership') => void

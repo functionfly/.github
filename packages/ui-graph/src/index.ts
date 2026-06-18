@@ -25,6 +25,7 @@ export type {
   Connection,
   CanvasState,
   GraphContextType,
+  NodeType,
 } from "./types";
 
 // ============================================================================

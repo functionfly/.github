@@ -293,7 +293,9 @@ func (a *walletBillingAdapter) SettleCredits(ctx context.Context, agentID uuid.U
 
 // GetCreditBalance returns the current credit balance for an agent
 func (a *walletBillingAdapter) GetCreditBalance(ctx context.Context, agentID uuid.UUID) (float64, error) {
-	// TODO: wallet.Service does not expose GetBalance(ctx, string).
-	// Stubbed to return 0 until the method is added.
-	return 0, nil
+	wallet, err := a.wallet.GetAgentWallet(ctx, agentID.String())
+	if err != nil {
+		return 0, err
+	}
+	return wallet.BalanceUSD, nil
 }

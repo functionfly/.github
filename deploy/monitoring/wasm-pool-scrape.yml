@@ -1,0 +1,21 @@
+# WASM pool service — Prometheus scrape config snippet.
+#
+# Add this to deploy/monitoring/prometheus.yml under scrape_configs.
+# The headless K8s Service gives each pod a stable DNS A record, so
+# Kubernetes service discovery picks up all 3 replicas automatically.
+
+  - job_name: "wasm-pool-service"
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [functionfly]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        regex: wasm-pool-service
+        action: keep
+      - source_labels: [__meta_kubernetes_pod_ip]
+        target_label: __address__
+        replacement: ${1}:8085
+        regex: (.+)
+    scrape_interval: 10s
+    metrics_path: /metrics

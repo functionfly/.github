@@ -257,6 +257,7 @@ export interface AgentMemory {
   memory_type: string;
   content?: string;
   structured_data?: Record<string, unknown>;
+  embedding?: number[];
   importance_score: number;
   access_count: number;
   last_accessed_at?: string;

@@ -33,6 +33,8 @@ export interface Conversation {
   updated_at: string;
   /** Present on list responses; messages from others since last read. */
   unread_count?: number;
+  /** Preview of the last message in the conversation. */
+  last_message_preview?: string;
 }
 
 export interface ConversationMessage {

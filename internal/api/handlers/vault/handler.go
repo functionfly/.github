@@ -28,6 +28,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/functionfly/functionfly/internal/storage/vault/quota"
 	"github.com/google/uuid"
@@ -362,4 +363,33 @@ func trimSpace(s string) string {
 		end--
 	}
 	return s[start:end]
+}
+
+// requireDynamicPerm checks that the calling user has the requested
+// permission against the given vault namespace, writing a 401/403
+// response and returning false if the check fails. Callers should
+// `return` immediately on a false result.
+func (h *Handler) requireDynamicPerm(w http.ResponseWriter, r *http.Request, claims *auth.Claims, permission, namespace string) bool {
+	if claims == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
+		return false
+	}
+	if h.RBAC == nil {
+		apierror.WriteError(w, apierror.NewInternal("RBAC engine not configured"))
+		return false
+	}
+	scope := "/"
+	if namespace != "" {
+		scope = "/namespaces/" + namespace + "/"
+	}
+	dec, err := h.RBAC.Check(r.Context(), claims.TenantID, claims.UserID, permission, scope)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewInternal("Permission check failed"))
+		return false
+	}
+	if !dec.Allowed {
+		apierror.WriteError(w, apierror.NewForbidden("Permission denied"))
+		return false
+	}
+	return true
 }

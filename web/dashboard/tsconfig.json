@@ -1,12 +1,16 @@
 {
   "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2022",
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["vite/client"],
+    "types": ["vite/client", "node"],
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
@@ -16,26 +20,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": false,
-    "ignoreDeprecations": "6.0",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@functionfly/shared": ["../../packages/shared/src"],
-      "@functionfly/ui-core": ["../../packages/ui-core/src"],
-      "@functionfly/ui-graph": ["../../packages/ui-graph/src"],
-      "@functionfly/ui-ai": ["../../packages/ui-ai/src"],
-      "@functionfly/ui-agent": ["../../packages/ui-agent/src"],
-      "@functionfly/ui-observability": ["../../packages/ui-observability/src"],
-      "@functionfly/ui-marketplace": ["../../packages/ui-marketplace/src"],
-      "@functionfly/ui-marketplace-economy": ["../../packages/ui-marketplace-economy/src"],
-      "@functionfly/ui-visualization": ["../../packages/ui-visualization/src"],
-      "@functionfly/ui-runtime": ["../../packages/ui-runtime/src"],
-      "@functionfly/ui-security": ["../../packages/ui-security/src"],
-      "@functionfly/ui-collaboration": ["../../packages/ui-collaboration/src"],
-      "@functionfly/ui-adaptive-ux": ["../../packages/ui-adaptive-ux/src"],
-      "@functionfly/ui-robotics": ["../../packages/ui-robotics/src"]
-    }
+    "noUncheckedSideEffectImports": false
   },
-  "include": ["src", "../../packages/shared/src/**/*", "../../packages/ui-core/src/**/*", "../../packages/ui-graph/src/**/*", "../../packages/ui-ai/src/**/*", "../../packages/ui-agent/src/**/*", "../../packages/ui-observability/src/**/*", "../../packages/ui-marketplace/src/**/*", "../../packages/ui-marketplace-economy/src/**/*", "../../packages/ui-visualization/src/**/*", "../../packages/ui-runtime/src/**/*", "../../packages/ui-security/src/**/*", "../../packages/ui-collaboration/src/**/*", "../../packages/ui-adaptive-ux/src/**/*", "../../packages/ui-robotics/src/**/*"]
+  "include": ["src", "../dashboard/src/**/*.ts", "../dashboard/src/**/*.tsx"]
 }

@@ -60,8 +60,9 @@ export function trackAuth(
   const eventName = `auth_${event}`;
 
   // Mixpanel
-  if (typeof window !== "undefined" && (window as MixpanelWindow).mixpanel) {
-    (window as MixpanelWindow).mixpanel.track(eventName, properties);
+  const mixpanel = (window as MixpanelWindow).mixpanel;
+  if (typeof window !== "undefined" && mixpanel) {
+    mixpanel.track(eventName, properties);
   }
 
   // Plausible

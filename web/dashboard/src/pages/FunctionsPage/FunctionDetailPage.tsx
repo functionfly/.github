@@ -47,6 +47,7 @@ import { toast } from 'sonner';
 interface FunctionData {
   id: string;
   name: string;
+  author?: string;
   status: 'online' | 'offline' | 'degraded';
   providers: string[];
   region: string;

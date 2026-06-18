@@ -32,6 +32,7 @@ export interface OfflineQueueItem {
   payload: Record<string, unknown>;
   timestamp: number;
   retries: number;
+  lastError?: string;
 }
 
 class OfflineStore {
@@ -72,11 +73,11 @@ class OfflineStore {
     return messages.filter((m) => !m.deletedAt);
   }
 
-  async getPendingMessages(): Promise<PendingMessage[]> {
+  async getPendingMessages(): Promise<OfflineQueueItem[]> {
     const db = await this.init();
     const queue = db.transaction('queue').store;
     const items = await queue.getAll();
-    return items as PendingMessage[];
+    return items as OfflineQueueItem[];
   }
 
   async addToQueue(item: OfflineQueueItem): Promise<void> {
@@ -109,7 +110,7 @@ class OfflineStore {
   async getUnsyncedMessages(): Promise<CachedMessage[]> {
     const db = await this.init();
     const index = db.transaction('messages').store.index('synced');
-    const messages = await index.getAll(false);
+    const messages = await index.getAll(IDBKeyRange.bound([false], [false]));
     return messages;
   }
 

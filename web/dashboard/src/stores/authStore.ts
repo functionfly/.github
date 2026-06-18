@@ -37,7 +37,7 @@ function broadcastAuthEvent(event: AuthSyncEvent) {
   localStorage.setItem('ff-auth-event', JSON.stringify(event));
 }
 
-function setupAuthSyncListener(store: ReturnType<typeof authStore>) {
+function setupAuthSyncListener(store: { getState: () => { logout: (redirect?: boolean) => void; initialize: () => void } }) {
   if (typeof window === 'undefined' || window.hasAuthSyncListener) return;
   window.hasAuthSyncListener = true;
 

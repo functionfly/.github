@@ -75,7 +75,8 @@ export function TokenGenerator({
   onGenerated,
 }: TokenGeneratorProps) {
   const generateToken = useGenerateToken(secretId);
-  const { data: tokens } = useSecretTokens(secretId);
+  const { data: tokensResponse } = useSecretTokens(secretId);
+  const tokens = tokensResponse?.tokens ?? [];
   const user = useAuthStore((state) => state.user);
   const userPlan = user?.plan;
   const tokenLimit = getTokensPerSecretLimit(userPlan);

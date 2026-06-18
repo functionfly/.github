@@ -106,27 +106,15 @@ export function filterConversations(
   if (q) {
     list = list.filter((c) => {
       const title = getConversationTitle(c, displayForParticipantId, currentUserId).toLowerCase();
-      const preview = (c.last_message_preview ?? '').toLowerCase();
       const type = c.type.replace(/_/g, ' ');
-      return title.includes(q) || preview.includes(q) || type.includes(q);
+      return title.includes(q) || type.includes(q);
     });
   }
 
   const resolved =
-    filter === 'all' || filter === 'resolved'
+    filter === 'all'
       ? conversations.filter((c) => c.resolved_at)
       : [];
-
-  if (filter === 'resolved') {
-    if (q) {
-      const filtered = resolved.filter((c) => {
-        const title = getConversationTitle(c, displayForParticipantId, currentUserId).toLowerCase();
-        return title.includes(q) || (c.last_message_preview ?? '').toLowerCase().includes(q);
-      });
-      return { active: [], resolved: filtered };
-    }
-    return { active: [], resolved };
-  }
 
   return { active: list, resolved: filter === 'all' ? resolved : [] };
 }

@@ -27,6 +27,7 @@ import {
   useDeleteTask,
   useUpdateTask,
 } from "@/hooks/useStudioTask";
+import type { AgentData } from "@functionfly/ui-agent";
 import { useTeamMembers, useTeams } from "@/hooks/useTeams";
 import {
   StudioSettingsCenter
@@ -51,7 +52,8 @@ import {
   Tooltip
 } from "@functionfly/ui-core";
 import {
-  type NodeData
+  type NodeData,
+  type NodeType
 } from "@functionfly/ui-graph";
 import {
   Activity,
@@ -157,13 +159,13 @@ function agentStatusToAgentData(agent: AgentStatus): AgentData {
     id: agent.id,
     name: agent.name,
     role: agent.agentId,
-    status: agent.status === 'active' ? 'running' : agent.status === 'pending' ? 'idle' : agent.status === 'terminating' || agent.status === 'terminated' ? 'stopped' : agent.status as 'running' | 'idle' | 'paused' | 'stopped' | 'error',
+    status: agent.status === 'active' ? 'running' : agent.status === 'pending' ? 'idle' : agent.status === 'terminated' ? 'terminated' : agent.status === 'terminating' ? 'terminated' : agent.status as 'running' | 'idle' | 'paused' | 'terminated' | 'spawning' | 'error',
     memoryUsage: 0,
     memoryLimit: 512 * 1024 * 1024,
     executionBudget: 10.0,
     executionBudgetUsed: 0,
-    permissions: [],
-    tools: [],
+    permissions: [] as unknown as AgentData['permissions'],
+    tools: [] as unknown as AgentData['tools'],
     runtime: "wasm",
     model: "gpt-4o",
     uptime: 0,
@@ -249,10 +251,10 @@ export function StudioPage() {
 
   const canvasNodes = useMemo(() => (graph?.nodes || []).map((n) => ({
     id: n.id,
-    type: n.type as NodeData["type"],
+    type: n.type as NodeType,
     label: n.name,
     position: n.position,
-    status: "pending" as const,
+    status: "idle" as const,
     metadata: n.config || {},
     inputs: [],
     outputs: [],
@@ -264,7 +266,7 @@ export function StudioPage() {
     target: e.target,
     sourcePort: "output",
     targetPort: "input",
-    status: "pending" as const,
+    status: "idle" as const,
   })), [graph]);
 
   const workflowNodes = graph?.nodes || [];
@@ -365,7 +367,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
   }, [handleAgentSpawn, handleAgentTerminate]);
 
   const handleRuntimeSelect = useCallback((runtimeId: string) => {
-    setSelectedRuntime({ runtimeId, config: {}, priority: "normal" });
+    setSelectedRuntime({ runtimeId, config: {}, priority: "speed" });
   }, []);
 
   const handleNodeSelect = useCallback((node: NodeData) => {
@@ -567,7 +569,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
         <div className="flex-1 flex overflow-hidden">
           <ResizablePanelGroup direction="horizontal">
             {/* Left Panel */}
-            <ResizablePanel defaultSize={18} minSize={15} maxSize={35} collapsible onCollapse={setLeftPanelCollapsed}>
+            <ResizablePanel defaultSize={18} minSize={15} maxSize={35}>
               <div className="h-full flex flex-col bg-bg-secondary border-r border-border-subtle">
                 {!leftPanelCollapsed && (
                   <>
@@ -609,7 +611,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                         <CanvasPanel
                           canvasNodes={canvasNodes}
                           canvasEdges={canvasEdges}
-                          selectedAgent={selectedAgent}
+                          selectedAgent={selectedAgent ? agentStatusToAgentData(selectedAgent) : null}
                           showGrid={studioState.gridEnabled}
                           showMinimap={studioState.showMinimap}
                           onNodeSelect={handleNodeSelect}
@@ -677,7 +679,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
 
                 <ResizableHandle />
 
-                <ResizablePanel defaultSize={35} minSize={15} collapsible onCollapse={setBottomPanelCollapsed}>
+                <ResizablePanel defaultSize={35} minSize={15}>
                   <div className="h-full flex flex-col bg-bg-secondary border-t border-border-subtle">
                     {!bottomPanelCollapsed && (
                       <Tabs value={bottomPanelTab} onValueChange={(v) => setBottomPanelTab(v as typeof bottomPanelTab)} className="h-full flex flex-col">
@@ -703,10 +705,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                           <TabsContent value="simulation" className="h-full">
                             <SimulationPanel
                               config={simulationConfig}
-                              result={activeSimulation ? {
-                                id: activeSimulation.id,
-                                status: activeSimulation.status === 'completed' ? 'completed' : 'running',
-                              } : undefined}
+                              result={activeSimulation ?? undefined}
                               isRunning={simulationRunning}
                               tokenUsage={simulationTokenUsage}
                               onConfigChange={handleSimulationConfig}
@@ -774,7 +773,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
             <ResizableHandle />
 
             {/* Right Panel */}
-            <ResizablePanel defaultSize={32} minSize={20} maxSize={45} collapsible onCollapse={setRightPanelCollapsed}>
+            <ResizablePanel defaultSize={32} minSize={20} maxSize={45}>
               <div className="h-full flex flex-col bg-bg-secondary border-l border-border-subtle">
                 {!rightPanelCollapsed && (
                   <Tabs value={rightPanelTab} onValueChange={(v) => setRightPanelTab(v as typeof rightPanelTab)} className="h-full">
@@ -859,20 +858,20 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
         <AICommandPalette
           isOpen={isCommandPaletteOpen}
           onClose={() => setIsCommandPaletteOpen(false)}
-          onExecute={handleCommandExecute}
           commands={[
-            { id: "cmd-1", name: "Run Workflow", description: "Execute the current workflow", shortcut: "⌘↵", category: "execution", icon: <Play className="size-4" /> },
-            { id: "cmd-2", name: "Format Code", description: "Format the editor content", shortcut: "⇧⌘F", category: "editor", icon: <Code className="size-4" /> },
-            { id: "cmd-3", name: "Create Agent", description: "Start a new agent", shortcut: "⌘A", category: "agent", icon: <Bot className="size-4" /> },
-            { id: "cmd-4", name: "Open Marketplace", description: "Browse function marketplace", shortcut: "⌘M", category: "navigation", icon: <Layers className="size-4" /> },
-            { id: "cmd-5", name: "Start Simulation", description: "Run workflow simulation", shortcut: "⌘S", category: "simulation", icon: <Gauge className="size-4" /> },
-            { id: "cmd-6", name: "Ghost Mode", description: "Toggle autonomous building", shortcut: "⌘G", category: "automation", icon: <Activity className="size-4" /> },
-            { id: "cmd-7", name: "View Telemetry", description: "Open live telemetry panel", shortcut: "⌘T", category: "observability", icon: <Activity className="size-4" /> },
-            { id: "cmd-8", name: "AI Assist", description: "Get AI-powered assistance", shortcut: "⌘K", category: "ai", icon: <Brain className="size-4" /> },
-            { id: "cmd-9", name: "Save", description: "Save current file", shortcut: "⌘S", category: "editor", icon: <Save className="size-4" /> },
-            { id: "cmd-10", name: "Undo", description: "Undo last action", shortcut: "⌘Z", category: "editor", icon: <Undo2 className="size-4" /> },
-            { id: "cmd-11", name: "Redo", description: "Redo last action", shortcut: "⇧⌘Z", category: "editor", icon: <Redo2 className="size-4" /> },
+            { id: "cmd-1", label: "Run Workflow", description: "Execute the current workflow", shortcut: "⌘↵", category: "execution", icon: <Play className="size-4" />, action: () => handleWorkflowExecute() },
+            { id: "cmd-2", label: "Format Code", description: "Format the editor content", shortcut: "⇧⌘F", category: "editor", icon: <Code className="size-4" />, action: () => {} },
+            { id: "cmd-3", label: "Create Agent", description: "Start a new agent", shortcut: "⌘A", category: "agent", icon: <Bot className="size-4" />, action: () => handleAgentSpawn() },
+            { id: "cmd-4", label: "Open Marketplace", description: "Browse function marketplace", shortcut: "⌘M", category: "navigation", icon: <Layers className="size-4" />, action: () => setLeftPanelTab("marketplace") },
+            { id: "cmd-5", label: "Start Simulation", description: "Run workflow simulation", shortcut: "⌘S", category: "simulation", icon: <Gauge className="size-4" />, action: () => {} },
+            { id: "cmd-6", label: "Ghost Mode", description: "Toggle autonomous building", shortcut: "⌘G", category: "automation", icon: <Activity className="size-4" />, action: () => {} },
+            { id: "cmd-7", label: "View Telemetry", description: "Open live telemetry panel", shortcut: "⌘T", category: "observability", icon: <Activity className="size-4" />, action: () => setRightPanelTab("telemetry") },
+            { id: "cmd-8", label: "AI Assist", description: "Get AI-powered assistance", shortcut: "⌘K", category: "ai", icon: <Brain className="size-4" />, action: () => {} },
+            { id: "cmd-9", label: "Save", description: "Save current file", shortcut: "⌘S", category: "editor", icon: <Save className="size-4" />, action: () => saveCode.mutateAsync({ code, file_path: 'main.ts' }) },
+            { id: "cmd-10", label: "Undo", description: "Undo last action", shortcut: "⌘Z", category: "editor", icon: <Undo2 className="size-4" />, action: () => undoCode.mutateAsync({ file_path: 'main.ts', current_version: codeVersion }) },
+            { id: "cmd-11", label: "Redo", description: "Redo last action", shortcut: "⇧⌘Z", category: "editor", icon: <Redo2 className="size-4" />, action: () => redoCode.mutateAsync({ file_path: 'main.ts', current_version: codeVersion }) },
           ]}
+          promptTemplates={[]}
         />
 
         <DataSourceConfigDialog
@@ -919,33 +918,10 @@ function useStudioCollaborators() {
   return { collaborators, currentUser };
 }
 
-type AgentData = {
-  id: string;
-  name: string;
-  role: string;
-  status: 'running' | 'idle' | 'paused' | 'stopped' | 'error';
-  memoryUsage: number;
-  memoryLimit: number;
-  executionBudget: number;
-  executionBudgetUsed: number;
-  permissions: string[];
-  tools: string[];
-  runtime: string;
-  model: string;
-  uptime: number;
-  tasksCompleted: number;
-  tasksFailed: number;
-  avgLatency: number;
-  lastHeartbeat: string;
-  createdAt: string;
-  description: string;
-  tags: string[];
-};
-
 type RuntimeSelection = {
   runtimeId: string;
   config: Record<string, unknown>;
-  priority: string;
+  priority: "cost" | "speed" | "reliability" | "privacy";
 };
 
 interface SimulationConfig {

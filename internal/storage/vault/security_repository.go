@@ -353,3 +353,46 @@ func (r *Repository) UpsertEscrowConfig(ctx context.Context, cfg *VaultEscrowCon
 func (r *Repository) DisableEscrow(ctx context.Context, tenantID uuid.UUID) error {
 	return r.db.WithContext(ctx).Where("tenant_id = ?", tenantID).Delete(&VaultEscrowConfig{}).Error
 }
+
+// ListActiveBreakGlassForUser returns the most recent active break-glass
+// grant for the given user, or nil if none is currently in effect.
+//
+// "Active" means Status == "approved", ExpiresAt is in the future, and
+// the request was not revoked. Used by the vault MFA middleware to
+// short-circuit MFA checks for users with an active emergency grant.
+func (r *Repository) ListActiveBreakGlassForUser(ctx context.Context, tenantID, userID uuid.UUID) (*BreakGlassRequest, error) {
+	var bg BreakGlassRequest
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND requested_by = ? AND status = ? AND expires_at > ? AND revoked_at IS NULL",
+			tenantID, userID, "approved", time.Now()).
+		Order("expires_at DESC").
+		First(&bg).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &bg, nil
+}
+
+// HasRecentMFAVerify reports whether the user has a recent
+// AuditActionMFAVerify row within the supplied window. The vault MFA
+// middleware uses this to skip re-prompting for users who verified
+// within the session TTL.
+func (r *Repository) HasRecentMFAVerify(ctx context.Context, tenantID, userID uuid.UUID, window time.Duration) (bool, error) {
+	if window <= 0 {
+		return false, nil
+	}
+	cutoff := time.Now().Add(-window)
+	var count int64
+	err := r.db.WithContext(ctx).
+		Table("audit_log").
+		Where("tenant_id = ? AND actor_user_id = ? AND action = ? AND created_at > ?",
+			tenantID, userID, "vault.mfa.verify", cutoff).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

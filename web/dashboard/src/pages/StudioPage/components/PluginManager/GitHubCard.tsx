@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Badge, GlassCard, Button, Spinner } from "@functionfly/ui-core";
-import { Github, Link2, RefreshCw, Settings, ExternalLink, CheckCircle, XCircle } from "lucide-react";
+import { Globe, Link2, RefreshCw, Settings, ExternalLink, CheckCircle, XCircle } from "lucide-react";
 import type { Plugin } from "@/api/plugins";
 
 interface GitHubCardProps {
@@ -50,7 +50,7 @@ export function GitHubCard({ plugin, onConfigure, onEnable, onDisable, onSync }:
     <GlassCard className="p-4 space-y-4">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-lg bg-[#24292e] flex items-center justify-center">
-          <Github className="w-6 h-6 text-white" />
+          <Globe className="w-6 h-6 text-white" />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -63,7 +63,7 @@ export function GitHubCard({ plugin, onConfigure, onEnable, onDisable, onSync }:
           </div>
           <p className="text-xs text-white/60 mt-0.5">v{plugin.version} • by {plugin.author_name}</p>
         </div>
-        <Badge variant={isEnabled ? "success" : "secondary"} size="sm">
+        <Badge variant={isEnabled ? "success" : "outline"} size="sm">
           {isEnabled ? "Active" : "Disabled"}
         </Badge>
       </div>
@@ -72,7 +72,7 @@ export function GitHubCard({ plugin, onConfigure, onEnable, onDisable, onSync }:
         <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-center">
           <p className="text-xs text-white/60 mb-3">Connect your GitHub account to enable integration</p>
           <Button size="sm" variant="default" onClick={handleConnect}>
-            <Github className="w-4 h-4 mr-1" />
+            <Globe className="w-4 h-4 mr-1" />
             Connect GitHub
           </Button>
         </div>
@@ -122,7 +122,7 @@ export function GitHubCard({ plugin, onConfigure, onEnable, onDisable, onSync }:
                     <Link2 className="w-3 h-3 text-white/40" />
                     <span className="text-white">{repo.full_name}</span>
                     {repo.private && (
-                      <Badge variant="secondary" size="sm">private</Badge>
+                      <Badge variant="outline" size="sm">private</Badge>
                     )}
                   </div>
                   <a

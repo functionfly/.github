@@ -132,7 +132,7 @@ func (m *mockDRERepo) GetDriftReportsByFunctionID(functionID uuid.UUID, limit, o
 	return reports[offset:end], nil
 }
 
-func (m *mockDRERepo) GetFunctionByAuthorName(author, name string) (*registry.RegistryFunction, error) {
+func (m *mockDRERepo) GetFunctionByAuthorName(_ context.Context, author, name string) (*registry.RegistryFunction, error) {
 	key := author + "/" + name
 	if fn, ok := m.functions[key]; ok {
 		return fn, nil
@@ -140,7 +140,7 @@ func (m *mockDRERepo) GetFunctionByAuthorName(author, name string) (*registry.Re
 	return nil, nil
 }
 
-func (m *mockDRERepo) GetFunctionByID(id uuid.UUID) (*registry.RegistryFunction, error) {
+func (m *mockDRERepo) GetFunctionByID(_ context.Context, id uuid.UUID) (*registry.RegistryFunction, error) {
 	for _, fn := range m.functions {
 		if fn.ID == id {
 			return fn, nil
@@ -177,6 +177,7 @@ func (m *mockDRERepo) UpdateCertificateAnchored(certID string, anchored bool, an
 type mockAnchoringService struct {
 	configured bool
 	shouldFail bool
+	chains     []string
 }
 
 func (m *mockAnchoringService) Anchor(ctx context.Context, req *drecert.AnchorRequest) (*drecert.AnchorReceipt, error) {
@@ -195,6 +196,16 @@ func (m *mockAnchoringService) Anchor(ctx context.Context, req *drecert.AnchorRe
 
 func (m *mockAnchoringService) IsConfigured() bool {
 	return m.configured
+}
+
+func (m *mockAnchoringService) Chains() []string {
+	if m.chains == nil {
+		if m.configured {
+			return []string{drecert.ChainBase}
+		}
+		return nil
+	}
+	return m.chains
 }
 
 // ─── Hex helpers ─────────────────────────────────────────────────────────────
@@ -933,6 +944,46 @@ func TestHandleAnchorCertificate_UnsupportedChain(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestHandleGetAnchoringStatus_NotConfigured(t *testing.T) {
+	repo := newMockDRERepo()
+	h := NewHandlerFromRepo(repo)
+	router := mux.NewRouter()
+	router.HandleFunc("/dre/anchoring/status", h.HandleGetAnchoringStatus).Methods("GET", "OPTIONS")
+
+	req := httptest.NewRequest("GET", "/dre/anchoring/status", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, false, body["enabled"])
+	assert.NotEmpty(t, body["default_chain"])
+	assert.NotEmpty(t, body["message"])
+}
+
+func TestHandleGetAnchoringStatus_Configured(t *testing.T) {
+	repo := newMockDRERepo()
+	mockAnchoring := &mockAnchoringService{configured: true, chains: []string{drecert.ChainBase, drecert.ChainPolygon}}
+	h := NewHandlerWithAnchoring(repo, mockAnchoring)
+	router := mux.NewRouter()
+	router.HandleFunc("/dre/anchoring/status", h.HandleGetAnchoringStatus).Methods("GET", "OPTIONS")
+
+	req := httptest.NewRequest("GET", "/dre/anchoring/status", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	var body map[string]interface{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, true, body["enabled"])
+	chains, ok := body["chains"].([]interface{})
+	require.True(t, ok)
+	assert.Equal(t, 2, len(chains))
+	assert.Equal(t, drecert.ChainBase, chains[0])
+	assert.Equal(t, drecert.ChainPolygon, chains[1])
 }
 
 func TestHandleGetDRESummary(t *testing.T) {

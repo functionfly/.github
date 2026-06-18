@@ -202,3 +202,11 @@ func WritePartialContent(w http.ResponseWriter, data interface{}, contentRange s
 	w.WriteHeader(http.StatusPartialContent)
 	json.NewEncoder(w).Encode(data)
 }
+
+// EncodeJSON writes data as a JSON response. Used by handlers that need
+// to emit raw payloads (e.g. webhook responses) but want consistent
+// encoding and headers with the rest of the API.
+func EncodeJSON(w http.ResponseWriter, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(data)
+}

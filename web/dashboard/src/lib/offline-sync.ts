@@ -63,7 +63,8 @@ class OfflineSyncQueue {
     try {
       const pendingItems = await offlineStore.getPendingMessages();
 
-      for (const item of pendingItems) {
+      for (const rawItem of pendingItems) {
+        const item = rawItem as unknown as OfflineQueueItem;
         if (this.retryTimeouts.has(item.id)) continue;
 
         try {

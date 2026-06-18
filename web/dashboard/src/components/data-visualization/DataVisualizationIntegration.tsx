@@ -6,7 +6,7 @@ import {
   ExecutionSunburst,
   DependencyTreemap,
   CircularFlow,
-  WaterfallChart,
+  RuntimeWaterfallChart,
   CostDistribution,
   SemanticCluster,
   AgentInteractionGraph,
@@ -19,15 +19,15 @@ export function DataVisualizationIntegration() {
 
   const renderChartByType = (type: string, index: number) => {
     const sampleData = Array.from({ length: 15 }, (_, i) => ({
-      x: i,
-      y: Math.random() * 100,
+      timestamp: Date.now() - (15 - i) * 1000,
+      value: Math.random() * 100,
       label: `Point ${i}`,
     }));
 
     const scatterData = Array.from({ length: 30 }, () => ({
       x: Math.random() * 100,
       y: Math.random() * 100,
-      z: Math.random() * 30,
+      size: Math.random() * 30,
     }));
 
     switch (type) {
@@ -40,9 +40,9 @@ export function DataVisualizationIntegration() {
           <ThreeDTopologyChart
             key={index}
             nodes={[
-              { id: '1', label: 'Core', x: 50, y: 50, z: 80 },
-              { id: '2', label: 'Edge A', x: 30, y: 30, z: 60 },
-              { id: '3', label: 'Edge B', x: 70, y: 40, z: 70 },
+              { id: '1', label: 'Core', depth: 0 },
+              { id: '2', label: 'Edge A', depth: 1 },
+              { id: '3', label: 'Edge B', depth: 1 },
             ]}
             className="aviation-chart-topology"
           />
@@ -59,15 +59,13 @@ export function DataVisualizationIntegration() {
         return (
           <DependencyTreemap
             key={index}
-            data={{
-              name: 'Deps',
-              value: 100,
-              children: [
-                { name: 'A', value: 30 },
-                { name: 'B', value: 40 },
-                { name: 'C', value: 30 },
-              ],
-            }}
+            data={[
+              { id: '1', name: 'Deps', value: 100, children: [
+                { id: '2', name: 'A', value: 30 },
+                { id: '3', name: 'B', value: 40 },
+                { id: '4', name: 'C', value: 30 },
+              ]},
+            ]}
             className="aviation-chart-treemap"
           />
         );
@@ -76,22 +74,26 @@ export function DataVisualizationIntegration() {
           <CircularFlow
             key={index}
             nodes={[
-              { id: '1', label: 'Input' },
-              { id: '2', label: 'Process' },
-              { id: '3', label: 'Output' },
+              { id: '1', label: 'Input', value: 100 },
+              { id: '2', label: 'Process', value: 100 },
+              { id: '3', label: 'Output', value: 100 },
+            ]}
+            connections={[
+              { source: '1', target: '2', value: 1 },
+              { source: '2', target: '3', value: 1 },
             ]}
             className="aviation-chart-circular"
           />
         );
       case 'waterfall':
         return (
-          <WaterfallChart
+          <RuntimeWaterfallChart
             key={index}
-            data={[
-              { label: 'Start', value: 0, isTotal: true },
-              { label: 'A', value: 20 },
-              { label: 'B', value: 30 },
-              { label: 'End', value: 50, isTotal: true },
+            steps={[
+              { name: 'Start', start: 0, end: 0 },
+              { name: 'A', start: 0, end: 20 },
+              { name: 'B', start: 20, end: 50 },
+              { name: 'End', start: 50, end: 50 },
             ]}
             className="aviation-chart-waterfall"
           />
@@ -101,9 +103,9 @@ export function DataVisualizationIntegration() {
           <CostDistribution
             key={index}
             data={[
-              { label: 'CPU', value: 50 },
-              { label: 'Memory', value: 30 },
-              { label: 'Network', value: 20 },
+              { category: 'CPU', value: 50 },
+              { category: 'Memory', value: 30 },
+              { category: 'Network', value: 20 },
             ]}
             className="aviation-chart-cost"
           />
@@ -113,10 +115,11 @@ export function DataVisualizationIntegration() {
           <SemanticCluster
             key={index}
             points={Array.from({ length: 20 }, (_, i) => ({
+              id: `p${i}`,
               x: Math.random() * 100,
               y: Math.random() * 100,
               label: `P${i}`,
-              cluster: Math.floor(Math.random() * 3),
+              cluster: String(Math.floor(Math.random() * 3)),
             }))}
             className="aviation-chart-cluster"
           />
@@ -126,13 +129,13 @@ export function DataVisualizationIntegration() {
           <AgentInteractionGraph
             key={index}
             nodes={[
-              { id: '1', label: 'Agent', type: 'agent' },
-              { id: '2', label: 'Service', type: 'function' },
-              { id: '3', label: 'Client', type: 'user' },
+              { id: '1', label: 'Agent', type: 'agent', connections: ['2'] },
+              { id: '2', label: 'Service', type: 'function', connections: ['3'] },
+              { id: '3', label: 'Client', type: 'user', connections: [] },
             ]}
             edges={[
-              { source: '1', target: '2', strength: 2 },
-              { source: '2', target: '3', strength: 3 },
+              { source: '1', target: '2', weight: 2 },
+              { source: '2', target: '3', weight: 3 },
             ]}
             className="aviation-chart-agent"
           />

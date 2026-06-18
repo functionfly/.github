@@ -24,8 +24,8 @@ import {
 } from '@/hooks/useStudioMarketplace';
 import {
   LicenseManager as EconomyLicenseManager,
-  type License,
-} from '@functionfly/ui-marketplace-economy';
+} from '@functionfly/ui-marketplace-economy/components';
+import type { License } from '@functionfly/ui-marketplace-economy/types';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -38,11 +38,11 @@ function toUiLicense(license: MarketplaceLicense): License {
     functionName: license.functionName,
     purchaserId: license.purchaserId,
     purchaserName: license.purchaserName,
-    issuedAt: license.issuedAt,
-    expiresAt: license.expiresAt,
-    maxActivations: license.maxActivations,
-    activationCount: license.activationCount,
-    revoked: license.revoked,
+    issuedAt: license.issuedAt ? new Date(license.issuedAt).getTime() : Date.now(),
+    expiresAt: license.expiresAt ? new Date(license.expiresAt).getTime() : null,
+    maxActivations: license.maxActivations ?? null,
+    activationCount: license.activationCount ?? 0,
+    revoked: license.revoked ?? false,
   };
 }
 
@@ -62,6 +62,7 @@ export function LicenseManagerPanel({ className }: LicenseManagerPanelProps) {
     functionId: '',
     functionName: '',
     licenseType: 'commercial' as 'open' | 'restricted' | 'commercial',
+    purchaserId: '',
     purchaserName: '',
     maxActivations: '',
     expiresAt: '',
@@ -77,6 +78,7 @@ export function LicenseManagerPanel({ className }: LicenseManagerPanelProps) {
       functionId: first?.id ?? '',
       functionName: first?.name ?? '',
       licenseType: 'commercial',
+      purchaserId: '',
       purchaserName: '',
       maxActivations: '',
       expiresAt: '',
@@ -93,15 +95,16 @@ export function LicenseManagerPanel({ className }: LicenseManagerPanelProps) {
 
     const selected = functions.find((fn) => fn.id === form.functionId);
     const result = await createLicense.mutateAsync({
-      function_id: form.functionId,
-      function_name: form.functionName || selected?.name || form.functionId,
-      license_type: form.licenseType,
-      purchaser_name: form.purchaserName || undefined,
-      max_activations: form.maxActivations ? Number(form.maxActivations) : undefined,
-      expires_at: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
+      functionId: form.functionId,
+      functionName: form.functionName || selected?.name || form.functionId,
+      type: form.licenseType,
+      purchaserId: form.purchaserId || 'anonymous',
+      purchaserName: form.purchaserName || undefined,
+      maxActivations: form.maxActivations ? Number(form.maxActivations) : undefined,
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : undefined,
     });
 
-    if (result.license.key) {
+    if (result.license?.key) {
       setGeneratedKey(result.license.key);
       toast.success('Copy the license key now — it will not be shown again.');
     } else {

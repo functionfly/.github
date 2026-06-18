@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/plans"
 	statestore "github.com/functionfly/functionfly/internal/storage/state"
 )
@@ -17,6 +18,10 @@ func (h *Handler) requireFabricPermission(
 	permission string,
 ) bool {
 	if h.repo == nil {
+		return true
+	}
+	claims := middleware.GetUserFromContext(r)
+	if claims != nil && (claims.Role == "super_admin" || claims.Role == "admin") {
 		return true
 	}
 	allowed, err := h.repo.UserHasFabricPermission(r.Context(), tenantID, fabricID, userID, permission)

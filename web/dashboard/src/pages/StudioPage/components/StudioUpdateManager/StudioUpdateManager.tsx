@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Download, RefreshCw, Check, AlertTriangle, Clock, HardDrive,
-  Zap, ArrowUp, ArrowDown, Github, Tag, Package, Monitor, Smartphone,
+  Zap, ArrowUp, ArrowDown, Globe, Tag, Package, Monitor, Smartphone,
   CheckCircle2, XCircle, Info, ExternalLink
 } from "lucide-react";
 

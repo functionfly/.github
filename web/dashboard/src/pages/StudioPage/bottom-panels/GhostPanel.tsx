@@ -105,9 +105,18 @@ export function GhostPanel({ build, tasks, onCancelBuild, onCreateBuild }: Ghost
       {build ? (
         <>
           <GhostModeOrchestrator
-            build={build}
+            build={{
+              id: build.id,
+              goal: build.goal || "",
+              description: build.description || "",
+              phase: build.phase,
+              progress: build.progress,
+              tasks: (build.tasks || []) as any,
+              startedAt: build.started_at || new Date().toISOString(),
+              updatedAt: build.updated_at || new Date().toISOString(),
+            } as any}
             onCancel={handleCancel}
-            onApproval={handleApproval}
+            onApprove={(approvalType) => handleApproval(approvalType as "approve" | "reject")}
           />
 
           <div className="border-t border-border-subtle pt-4">
@@ -129,12 +138,15 @@ export function GhostPanel({ build, tasks, onCancelBuild, onCreateBuild }: Ghost
                 .filter((t) => t.status === "awaiting_approval")
                 .map((t) => ({
                   id: t.id,
-                  taskId: t.id,
-                  taskTitle: t.title,
-                  description: t.description || "",
-                  status: "pending" as const,
-                  timestamp: t.updated_at,
-                }))}
+                  timestamp: t.updated_at || new Date().toISOString(),
+                  agentId: t.id,
+                  agentName: t.title,
+                  decision: t.description || "pending decision",
+                  rationale: t.description || "awaiting approval",
+                  alternatives: [],
+                  chosen: "pending",
+                  confidence: 0.5,
+                })) as any}
             />
           </div>
 

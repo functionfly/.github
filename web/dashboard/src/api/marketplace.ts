@@ -9,6 +9,7 @@ export interface Extension {
   description: string;
   category: string;
   icon_url?: string;
+  homepage_url?: string;
   screenshots?: string[];
   manifest?: Record<string, unknown>;
   manifest_url?: string;
@@ -87,6 +88,16 @@ export interface ExtensionUpdate {
   latest_version: string;
   changelog: string;
   manifest?: Record<string, unknown>;
+}
+
+export interface SandboxConfig {
+  id: string;
+  name: string;
+  tier: 'free' | 'basic' | 'pro' | 'enterprise';
+  memoryLimit: number;
+  timeout: number;
+  maxEndpoints: number;
+  price: number;
 }
 
 export interface InstalledPluginInfo {

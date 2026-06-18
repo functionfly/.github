@@ -103,10 +103,10 @@ export function useScreenDetection() {
         setScreenCount(screens.length)
       }).catch(() => {
         // Fallback
-        setScreenCount(window.screen.isExtended ? 2 : 1)
+        setScreenCount((window.screen as Screen & { isExtended?: boolean }).isExtended ? 2 : 1)
       })
     } else {
-      setScreenCount(window.screen.isExtended ? 2 : 1)
+      setScreenCount((window.screen as Screen & { isExtended?: boolean }).isExtended ? 2 : 1)
     }
   }, [])
 

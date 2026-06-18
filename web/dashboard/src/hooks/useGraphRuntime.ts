@@ -8,12 +8,10 @@ import { useGraphRuntimeStore } from '@/stores/graphRuntimeStore'
 import type {
   NodeData,
   EdgeData,
-  CanvasViewport,
   ViewMode,
   RuntimeStatus,
   RuntimeMetrics,
   ExecutionEvent,
-  NodeType,
 } from '@functionfly/ui-graph'
 
 // ============================================================================
@@ -53,7 +51,7 @@ export function useGraphRuntime() {
   }, [store])
 
   // ---- Viewport ----
-  const setViewport = useCallback((viewport: CanvasViewport) => {
+  const setViewport = useCallback((viewport: { x: number; y: number; zoom: number }) => {
     store.setViewport(viewport)
   }, [store])
 
@@ -151,11 +149,11 @@ export function useGraphRuntime() {
   }, [store])
 
   // ---- Loops ----
-  const addLoopIteration = useCallback((iteration: Omit<ReturnType<typeof store.addLoopIteration>, 'id'> & { nodeId: string; index: number; startTime: number; status: 'running' | 'completed' | 'failed' | 'skipped' }) => {
+  const addLoopIteration = useCallback((iteration: { nodeId: string; index: number; startTime: number; status: 'running' | 'completed' | 'failed' | 'skipped'; endTime?: number; duration?: number }) => {
     store.addLoopIteration({
       id: `iter-${Date.now()}`,
       ...iteration,
-    })
+    } as unknown as Parameters<typeof store.addLoopIteration>[0])
   }, [store])
 
   const setMaxLoopIterations = useCallback((max: number) => {

@@ -54,10 +54,16 @@ type StateFabric struct {
 	Settings      JSONMap    `gorm:"type:jsonb;not null;default:'{}'"`
 	Throughput    int64      `gorm:"not null;default:0"`
 	LatencyMs     int64      `gorm:"not null;default:0"`
-	LastUpdated   time.Time  `gorm:"autoUpdateTime"`
-	CreatedAt     time.Time  `gorm:"autoCreateTime"`
-	UpdatedAt     time.Time  `gorm:"autoUpdateTime"`
-	SuspendedAt   *time.Time `gorm:"column:suspended_at"`
+
+	// Retention
+	TTLDays   int        `gorm:"not null;default:0"` // 0 = forever
+	ExpiresAt *time.Time `gorm:"column:expires_at;index"`
+
+	// Timestamps
+	LastUpdated  time.Time  `gorm:"autoUpdateTime"`
+	CreatedAt    time.Time  `gorm:"autoCreateTime"`
+	UpdatedAt    time.Time  `gorm:"autoUpdateTime"`
+	SuspendedAt  *time.Time `gorm:"column:suspended_at"`
 	SuspendReason *string    `gorm:"column:suspend_reason;type:text"`
 }
 
@@ -150,6 +156,7 @@ func (StateFabricSnapshot) TableName() string { return "state_fabric_snapshots" 
 // StateFabricReplay is a replay session
 type StateFabricReplay struct {
 	ID             uuid.UUID  `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID       uuid.UUID  `gorm:"type:uuid;not null;index"`
 	FabricID       uuid.UUID  `gorm:"type:uuid;not null;index"`
 	SnapshotID     *uuid.UUID `gorm:"type:uuid"`
 	StartEventID   *uuid.UUID `gorm:"type:uuid;column:start_event_id"`

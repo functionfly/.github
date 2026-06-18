@@ -49,9 +49,13 @@ export interface MarketplaceLicense {
   purchaserId: string;
   purchaserName: string;
   maxActivations?: number;
+  activationCount?: number;
+  issuedAt?: string;
   expiresAt?: string;
   createdAt: string;
   revokedAt?: string | null;
+  revoked?: boolean;
+  license?: string;
 }
 
 async function marketplaceFetch<T>(path: string, options?: RequestInit): Promise<T> {
@@ -233,7 +237,14 @@ export function useUpdatePricing() {
 export function useMarketplaceLicenses() {
   return useQuery({
     queryKey: ['marketplace', 'licenses'],
-    queryFn: () => marketplaceFetch<{ licenses: MarketplaceLicense[] }>('/v1/marketplace/licenses'),
+    queryFn: async () => {
+      const data = await marketplaceFetch<{ licenses: MarketplaceLicense[]; totalActive?: number; totalRevoked?: number }>('/v1/marketplace/licenses');
+      return {
+        ...data,
+        totalActive: data.totalActive ?? data.licenses.filter(l => !l.revokedAt).length,
+        totalRevoked: data.totalRevoked ?? data.licenses.filter(l => l.revokedAt).length,
+      };
+    },
     staleTime: 1000 * 60,
   });
 }
@@ -243,7 +254,7 @@ export function useCreateLicense() {
 
   return useMutation({
     mutationFn: (data: Omit<MarketplaceLicense, 'id' | 'key' | 'createdAt' | 'revokedAt'>) =>
-      marketplaceFetch<MarketplaceLicense>('/v1/marketplace/licenses', {
+      marketplaceFetch<{ license: MarketplaceLicense }>('/v1/marketplace/licenses', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

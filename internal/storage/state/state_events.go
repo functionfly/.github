@@ -34,6 +34,7 @@ func (r *StateRepository) recordEventTX(tx *gorm.DB, stateID uuid.UUID, eventTyp
 		Key:           k,
 		SourceType:    sourceType,
 		SourceID:      sourceID,
+		CorrelationID: uuid.NewString(),
 		Deterministic: false,
 		SequenceNum:   seqNum,
 		Timestamp:     time.Now(),

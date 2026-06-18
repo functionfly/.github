@@ -21,7 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, ShieldCheck } from "lucide-react";
 
-interface MCPSettings {
+export interface MCPSettings {
   function_id?: string;
   enabled: boolean;
   transports: string[];

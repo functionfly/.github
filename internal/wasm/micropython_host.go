@@ -627,10 +627,7 @@ func DefineFunctionFlyPythonBridge(linker *wasmtime.Linker, store *wasmtime.Stor
 			return -2
 		}
 		name := string(memoryData[namePtr : namePtr+nameLen])
-		value, err := handler.GetEnv(name)
-		if err != nil {
-			return -1
-		}
+		value := handler.GetEnv(name)
 		valueBytes := []byte(value)
 		valLen := len(valueBytes)
 		if err := validateMemoryBounds(memoryData, valPtr, int32(valLen)); err != nil {

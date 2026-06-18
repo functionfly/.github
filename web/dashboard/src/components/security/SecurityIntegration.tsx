@@ -74,28 +74,28 @@ export const SecurityIntegration: React.FC<{ className?: string }> = ({ classNam
   ], [])
 
   const mockPermissions = useMemo(() => [
-    { id: 'p1', name: 'Read', resource: 'functions', action: 'read' },
-    { id: 'p2', name: 'Write', resource: 'functions', action: 'write' },
-    { id: 'p3', name: 'Delete', resource: 'functions', action: 'delete' },
-    { id: 'p4', name: 'Admin', resource: 'users', action: 'admin' },
-    { id: 'p5', name: 'Read', resource: 'logs', action: 'read' },
-    { id: 'p6', name: 'Write', resource: 'config', action: 'write' },
+    { id: 'p1', name: 'Read', resource: 'functions', action: 'read' as const },
+    { id: 'p2', name: 'Write', resource: 'functions', action: 'write' as const },
+    { id: 'p3', name: 'Delete', resource: 'functions', action: 'delete' as const },
+    { id: 'p4', name: 'Admin', resource: 'users', action: 'admin' as const },
+    { id: 'p5', name: 'Read', resource: 'logs', action: 'read' as const },
+    { id: 'p6', name: 'Write', resource: 'config', action: 'write' as const },
   ], [])
 
   const mockThreatSectors = useMemo(() => [
     { id: 's1', name: 'Network', angle: 45, radius: 0.6, severity: 'high' as const, threats: [
-      { id: 't1', type: 'intrusion', severity: 'high', source: '185.220.101.x', target: 'api-server', timestamp: Date.now(), status: 'detected' },
+      { id: 't1', type: 'intrusion' as const, severity: 'high' as const, source: '185.220.101.x', target: 'api-server', timestamp: Date.now(), status: 'detected' as const },
     ]},
     { id: 's2', name: 'Application', angle: 135, radius: 0.4, severity: 'medium' as const, threats: [] },
     { id: 's3', name: 'Data', angle: 225, radius: 0.8, severity: 'critical' as const, threats: [
-      { id: 't2', type: 'data-breach', severity: 'critical', source: 'internal', target: 'user-db', timestamp: Date.now() - 3600000, status: 'investigating' },
+      { id: 't2', type: 'data-breach' as const, severity: 'critical' as const, source: 'internal', target: 'user-db', timestamp: Date.now() - 3600000, status: 'investigating' as const },
     ]},
   ], [])
 
   const mockEvents = useMemo(() => [
-    { id: 'e1', type: 'login', severity: 'info', message: 'User sarah@company.com logged in', timestamp: Date.now() - 60000, userName: 'Sarah Chen', ipAddress: '192.168.1.1' },
-    { id: 'e2', type: 'permission-change', severity: 'warning', message: 'Admin role granted to mike@company.com', timestamp: Date.now() - 300000, userName: 'Mike Johnson' },
-    { id: 'e3', type: 'resource-access', severity: 'info', message: 'API key created for production', timestamp: Date.now() - 600000, userName: 'Sarah Chen' },
+    { id: 'e1', type: 'login' as const, severity: 'info' as const, message: 'User sarah@company.com logged in', timestamp: Date.now() - 60000, userName: 'Sarah Chen', ipAddress: '192.168.1.1' },
+    { id: 'e2', type: 'permission-change' as const, severity: 'warning' as const, message: 'Admin role granted to mike@company.com', timestamp: Date.now() - 300000, userName: 'Mike Johnson' },
+    { id: 'e3', type: 'resource-access' as const, severity: 'info' as const, message: 'API key created for production', timestamp: Date.now() - 600000, userName: 'Sarah Chen' },
   ], [])
 
   const mockBoundaries = useMemo(() => [

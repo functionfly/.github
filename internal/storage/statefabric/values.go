@@ -34,7 +34,25 @@ func (r *Repository) SetFabricValue(ctx context.Context, tenantID, fabricID uuid
 	if sourceID == "" {
 		sourceID = "edge"
 	}
-	return r.stateRepo.SetStateValue(ctx, fabricID, key, value, "edge", sourceID)
+
+	oldValue, _ := r.stateRepo.GetStateValue(ctx, fabricID, key)
+	var oldValPtr *statestore.JSONMap
+	if oldValue != nil {
+		oldVal := statestore.JSONMap(oldValue.Value)
+		oldValPtr = &oldVal
+	}
+
+	result, err := r.stateRepo.SetStateValue(ctx, fabricID, key, value, "edge", sourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.triggerEngine != nil {
+		newVal := statestore.JSONMap(value)
+		go r.triggerEngine.ProcessStateChange(ctx, fabricID, key, "set", oldValPtr, &newVal)
+	}
+
+	return result, nil
 }
 
 // DeleteFabricValue removes a key from the fabric's durable state store.
@@ -45,7 +63,24 @@ func (r *Repository) DeleteFabricValue(ctx context.Context, tenantID, fabricID u
 	if sourceID == "" {
 		sourceID = "edge"
 	}
-	return r.stateRepo.DeleteStateValue(ctx, fabricID, key, "edge", sourceID)
+
+	oldValue, _ := r.stateRepo.GetStateValue(ctx, fabricID, key)
+	var oldValPtr *statestore.JSONMap
+	if oldValue != nil {
+		oldVal := statestore.JSONMap(oldValue.Value)
+		oldValPtr = &oldVal
+	}
+
+	err := r.stateRepo.DeleteStateValue(ctx, fabricID, key, "edge", sourceID)
+	if err != nil {
+		return err
+	}
+
+	if r.triggerEngine != nil {
+		go r.triggerEngine.ProcessStateChange(ctx, fabricID, key, "delete", oldValPtr, nil)
+	}
+
+	return nil
 }
 
 // GetFabricValueOrNil returns nil when the key is missing instead of an error.

@@ -64,8 +64,32 @@ import {
 // Robot Fleet Dashboard
 // ============================================================================
 
-import type { RobotStatus, RobotType } from "./types";
+import { type RobotStatus, type RobotType } from "./types";
 export type { RobotStatus, RobotType } from "./types";
+export type { Robot } from "./types";
+export type { Fleet } from "./types";
+export type { RobotFleetDashboardProps } from "./types";
+export type { SensorReading } from "./types";
+export type { SensorTelemetryPanelProps } from "./types";
+export type { Command } from "./types";
+export type { RobotCommandCenterProps } from "./types";
+export type { MapWaypoint } from "./types";
+export type { Obstacle } from "./types";
+export type { PhysicalEnvironmentMapProps } from "./types";
+export type { FlightPath } from "./types";
+export type { DroneFlightOverlayProps } from "./types";
+export type { VisionFrame } from "./types";
+export type { RobotVisionStreamProps } from "./types";
+export type { MeshNode } from "./types";
+export type { DeviceMeshViewerProps } from "./types";
+export type { Actuator } from "./types";
+export type { ActuatorControlPanelProps } from "./types";
+export type { EdgeMetric } from "./types";
+export type { EdgeDevice } from "./types";
+export type { EdgeDeviceMonitorProps } from "./types";
+export type { WorkflowStep } from "./types";
+export type { RoboticWorkflow } from "./types";
+export type { RoboticWorkflowDesignerProps } from "./types";
 
 interface Robot {
   id: string;

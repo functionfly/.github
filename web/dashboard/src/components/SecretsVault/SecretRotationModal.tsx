@@ -403,7 +403,7 @@ export function SecretRotationModal({
         const response = await vaultApi.getSecretDependencies(secretId);
         const mapped: ImpactedService[] = response.dependencies.map((dep) => ({
           id: dep.dependent_id,
-          name: dep.dependent_name,
+          name: dep.name,
           type: dep.dependent_type as ImpactedService["type"],
           criticality: dep.criticality as ImpactedService["criticality"],
           lastUsedAt: undefined,

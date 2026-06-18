@@ -36,7 +36,6 @@ import {
   type RuntimeStatus,
   type RuntimeMetrics,
   type ExecutionEvent,
-  type NodeType,
   type NodeInspectorProps,
   type GraphMiniMapProps,
   type ExecutionReplayControlsProps,

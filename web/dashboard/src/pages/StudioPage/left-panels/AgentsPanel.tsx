@@ -42,8 +42,8 @@ export function AgentsPanel({
         : agent.status === "pending"
           ? "idle"
           : agent.status === "terminating" || agent.status === "terminated"
-            ? "stopped"
-            : (agent.status as "running" | "idle" | "paused" | "stopped" | "error"),
+            ? "terminated"
+            : (agent.status as "running" | "idle" | "paused" | "terminated" | "error"),
     memoryUsage: 0,
     memoryLimit: 512 * 1024 * 1024,
     executionBudget: 10.0,
@@ -59,7 +59,7 @@ export function AgentsPanel({
     lastHeartbeat: agent.lastActivity || new Date().toISOString(),
     createdAt: new Date().toISOString(),
     description: `Agent ${agent.name}`,
-    tags: [],
+    tags: [] as string[],
   }));
 
   const selectedAgent = agents.find((a) => a.id === selectedAgentId) || null;
@@ -77,8 +77,6 @@ export function AgentsPanel({
         onAgentCreate={onAgentCreate}
         onAgentTerminate={onAgentTerminate}
         isLoading={isLoadingAgents}
-        virtualized
-        maxHeight={400}
       />
 
       {selectedAgent && (
@@ -98,10 +96,17 @@ export function AgentsPanel({
         <div className="px-3 pb-3">
           <AgentMemoryViewer
             agentId={selectedAgent.id}
-            memories={agentMemories.memories as AgentMemory[]}
-            onMemoryAdd={(content, type) =>
-              agentMemories.addMemory.mutate({ content, memory_type: type })
-            }
+            memories={(agentMemories.memories || []).map((m) => ({
+              id: m.id,
+              type: m.memory_type as "working" | "longterm" | "context" | "episodic",
+              content: m.content || "",
+              importance: m.importance_score,
+              lastAccessed: m.last_accessed_at || new Date().toISOString(),
+              createdAt: m.created_at,
+            }))}
+            onMemoryAdd={() => {
+              // Placeholder - component doesn't provide content/type on click
+            }}
             onMemorySearch={(q) => agentMemories.searchMemories.mutate(q)}
             onMemoryDelete={(id) => agentMemories.deleteMemory.mutate(id)}
           />

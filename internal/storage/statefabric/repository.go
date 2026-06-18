@@ -32,10 +32,10 @@ const (
 )
 
 const (
-	ErrFabricNotFound  = "state fabric not found"
+	ErrFabricNotFound   = "state fabric not found"
 	ErrSnapshotNotFound = "snapshot not found"
-	ErrReplayNotFound  = "replay not found"
-	ErrTriggerNotFound = "trigger not found"
+	ErrReplayNotFound   = "replay not found"
+	ErrTriggerNotFound  = "trigger not found"
 )
 
 var (
@@ -165,6 +165,9 @@ type Repository struct {
 	// Redis cache for StateFabric data
 	cache *StateFabricCache
 
+	// Trigger engine for processing state change triggers
+	triggerEngine *statestore.TriggerEngine
+
 	// Active replay tracking for graceful shutdown
 	mu                sync.Mutex
 	replayCancelFuncs map[uuid.UUID]context.CancelFunc
@@ -266,6 +269,11 @@ func (r *Repository) ConfigureExecutionWithVault(ctx context.Context, baseURL, v
 	}
 
 	return nil
+}
+
+// SetTriggerEngine configures the trigger engine for processing state change triggers
+func (r *Repository) SetTriggerEngine(engine *statestore.TriggerEngine) {
+	r.triggerEngine = engine
 }
 
 // getAPIKey retrieves the API key, preferring vault over cached value
@@ -1662,6 +1670,7 @@ func (r *Repository) CreateReplay(ctx context.Context, tenantID, fabricID uuid.U
 
 	dbReplay := &StateFabricReplay{
 		ID:             replayID,
+		TenantID:       tenantID,
 		FabricID:       fabricID,
 		SnapshotID:     snapshotUUID,
 		StartEventID:   startEventUUID,
@@ -2388,20 +2397,29 @@ func (r *Repository) RetryDeadLetter(ctx context.Context, tenantID, fabricID, de
 		return err
 	}
 
-	go r.processDeadLetterRetry(deadLetter.ID, deadLetter.OperationType, deadLetter.InputData)
+	go r.processDeadLetterRetry(ctx, tenantID, fabricID, deadLetter.PipelineID, deadLetter.ID, deadLetter.OperationType, deadLetter.InputData)
 
 	return nil
 }
 
 // processDeadLetterRetry processes a dead letter retry in the background
-func (r *Repository) processDeadLetterRetry(deadLetterID uuid.UUID, operationType string, inputData map[string]interface{}) {
-	ctx := context.Background()
+func (r *Repository) processDeadLetterRetry(ctx context.Context, tenantID, fabricID uuid.UUID, pipelineID *uuid.UUID, deadLetterID uuid.UUID, operationType string, inputData map[string]interface{}) {
+	retryCtx := context.Background()
 
 	var err error
 	switch operationType {
 	case "pipeline_execution":
-		// Pipeline retries are handled by the trigger system
-		err = fmt.Errorf("pipeline retry not implemented - requires manual intervention")
+		if pipelineID == nil {
+			err = fmt.Errorf("pipeline ID is nil, cannot retry")
+			break
+		}
+		_, err = r.ExecutePipeline(retryCtx, tenantID, fabricID, *pipelineID, inputData)
+		if err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"pipeline_id": *pipelineID,
+				"fabric_id":   fabricID,
+			}).Warn("pipeline retry execution failed")
+		}
 	default:
 		err = fmt.Errorf("unknown operation type: %s", operationType)
 	}

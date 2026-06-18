@@ -60,6 +60,16 @@ const (
 	AuditActionBreakGlass AuditAction = "break_glass"
 	// AuditActionMFAVerify for vault MFA verification (Phase 1.1)
 	AuditActionMFAVerify AuditAction = "mfa_verify"
+	// AuditActionDYNTokenCreate for creating a dynamic wrapped access token.
+	AuditActionDYNTokenCreate AuditAction = "dyn_token_create"
+	// AuditActionDYNTokenRevoke for revoking a dynamic wrapped access token.
+	AuditActionDYNTokenRevoke AuditAction = "dyn_token_revoke"
+	// AuditActionClientDekInit for initializing a client-side data encryption key.
+	AuditActionClientDekInit AuditAction = "client_dek_init"
+	// AuditActionClientWrapRotate for rotating a wrapped client DEK.
+	AuditActionClientWrapRotate AuditAction = "client_dek_wrap_rotate"
+	// AuditActionClientDekShare for sharing a wrapped DEK with another user.
+	AuditActionClientDekShare AuditAction = "client_dek_share"
 )
 
 // Valid checks if the AuditAction is valid
@@ -67,7 +77,9 @@ func (a AuditAction) Valid() bool {
 	switch a {
 	case AuditActionCreate, AuditActionRead, AuditActionUpdate, AuditActionDelete, AuditActionUse,
 		AuditActionRevoke, AuditActionVersion, AuditActionRollback, AuditActionExpire,
-		AuditActionBreakGlass, AuditActionMFAVerify:
+		AuditActionBreakGlass, AuditActionMFAVerify,
+		AuditActionDYNTokenCreate, AuditActionDYNTokenRevoke,
+		AuditActionClientDekInit, AuditActionClientWrapRotate, AuditActionClientDekShare:
 		return true
 	}
 	return false

@@ -32,6 +32,7 @@ export { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./Select";
 export { Slider } from "./Slider";
 export { Input } from "./Input";
+export { Textarea } from "./Textarea";
 export { StudioShell, TitleBar, ComplexityToggle, LeftSidebar, RightPanel, StudioShellContext } from "./StudioShell";
 export { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetClose } from "./Sheet";
 

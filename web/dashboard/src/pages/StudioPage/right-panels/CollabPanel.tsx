@@ -1,7 +1,6 @@
 import type { CollabEvent } from "@/api/studioCollab";
-import type { Collaborator } from "@functionfly/ui-collaboration";
 import {
-  AIHumanTaskBoard,
+  AIHumanTaskAssignmentBoard,
   AsyncReviewTimeline,
   CollaborativeGraphEditor,
   CollaborativePromptEditor,
@@ -16,6 +15,30 @@ import {
 import { AlertTriangle, Users } from "lucide-react";
 import { useMemo } from "react";
 import { CollabPanelSkeleton } from "../components/StudioPanelsSkeleton";
+import {
+  adaptMemoryCard,
+  adaptCollabEventList,
+  adaptPromptVersionList,
+  adaptPairSession,
+  adaptCommentListToReviewSession,
+  adaptGraphEdit,
+  adaptExecutionToRecording,
+  adaptExecutionToBookmarks,
+  adaptExecutionListToTasks,
+} from "@/adapters";
+import type {
+  MemoryCard as UIMemoryCard,
+  ActivityItem,
+  PromptSegment,
+  PairProgrammingSession,
+  ReviewSession,
+  GraphNode,
+  GraphEdge,
+  Annotation,
+  ExecutionBookmark,
+  ConflictMarker,
+  TaskAssignment as UITaskAssignment,
+} from "@functionfly/ui-collaboration/types";
 
 interface PromptVersion {
   id: string;
@@ -54,7 +77,7 @@ interface Comment {
   created_at: string;
 }
 
-interface Annotation {
+interface AnnotationData {
   id: string;
   metadata?: {
     user_name?: string;
@@ -113,7 +136,7 @@ interface Execution {
 }
 
 interface CollabPanelProps {
-  collaborators: Collaborator[];
+  collaborators: Array<{ id: string; name: string; color: string }>;
   currentUser: { name: string; color: string };
   collabActivityData: CollabEvent[];
   promptVersionsData: PromptVersion[];
@@ -153,6 +176,76 @@ export function CollabPanel({
 }: CollabPanelProps) {
   const hasConflicts = conflictsData && conflictsData.length > 0;
 
+  const adaptedRecording = useMemo(() => adaptExecutionToRecording(executions), [executions]);
+
+  const adaptedMemoryCards = useMemo<UIMemoryCard[]>(() =>
+    teamMemories.map(m => ({
+      id: m.id,
+      title: m.summary || m.memory_type || "Memory",
+      content: m.summary || "",
+      author: m.created_by || "Team",
+      createdAt: new Date(m.created_at).getTime(),
+      tags: [],
+    })),
+    [teamMemories]
+  );
+
+  const adaptedActivities = useMemo<ActivityItem[]>(() =>
+    adaptCollabEventList(collabActivityData || []),
+    [collabActivityData]
+  );
+
+  const adaptedPromptSegments = useMemo<PromptSegment[]>(() =>
+    adaptPromptVersionList(promptVersionsData || []),
+    [promptVersionsData]
+  );
+
+  const adaptedPairSession = useMemo<PairProgrammingSession | null>(() =>
+    adaptPairSession((pairSessionsData || [])[0] || null),
+    [pairSessionsData]
+  );
+
+  const adaptedReviewSession = useMemo<ReviewSession>(() =>
+    adaptCommentListToReviewSession(commentsData || []),
+    [commentsData]
+  );
+
+  const adaptedAnnotations = useMemo<Annotation[]>(() =>
+    (annotationsData || []).map(ev => ({
+      id: ev.id,
+      type: 'comment' as const,
+      content: ev.metadata?.content || "",
+      author: ev.metadata?.user_name || "Unknown",
+      timestamp: new Date(ev.created_at).getTime(),
+      createdAt: new Date(ev.created_at).getTime(),
+      position: { line: 1, column: 1 },
+      resolved: ev.metadata?.resolved,
+    })),
+    [annotationsData]
+  );
+
+  const adaptedBookmarks = useMemo<ExecutionBookmark[]>(() =>
+    adaptExecutionToBookmarks(executions),
+    [executions]
+  );
+
+  const adaptedTasks = useMemo<UITaskAssignment[]>(() =>
+    adaptExecutionListToTasks(executions),
+    [executions]
+  );
+
+  const conflictMarkers = useMemo<ConflictMarker[]>(() =>
+    (conflictsData || []).map(ev => ({
+      id: ev.id,
+      type: 'edit' as const,
+      filePath: 'unknown',
+      position: { start: 0, end: 0 },
+      original: ev.metadata?.current_value,
+      incoming: ev.metadata?.incoming_value,
+    })),
+    [conflictsData]
+  );
+
   if (isLoading) {
     return <CollabPanelSkeleton />;
   }
@@ -166,18 +259,7 @@ export function CollabPanel({
             <span className="text-xs font-medium text-error">Conflicts Detected</span>
           </div>
           <ConflictResolutionPanel
-            conflicts={conflictsData!.map((ev) => ({
-              id: ev.id,
-              field: ev.metadata?.field || "unknown",
-              current: {
-                user: ev.metadata?.current_user || "You",
-                value: ev.metadata?.current_value || "",
-              },
-              incoming: {
-                user: ev.metadata?.incoming_user || "Collaborator",
-                value: ev.metadata?.incoming_value || "",
-              },
-            }))}
+            conflicts={conflictMarkers}
           />
         </div>
       )}
@@ -204,189 +286,62 @@ export function CollabPanel({
       </div>
 
       <SessionReplayViewer
-        recording={{
-          id: executions[0]?.id || "session-1",
-          name: "Execution Replay",
-          events: executions.slice(0, 10).map((ex) => ({
-            id: ex.id,
-            type: ex.status,
-            userId: ex.graphId || "system",
-            timestamp: new Date(ex.startedAt || Date.now()).getTime(),
-            data: { graphId: ex.graphId, status: ex.status, nodeResults: ex.nodeResults },
-          })),
-          duration: 60000,
-          createdAt: Date.now(),
-        }}
-        className="bg-bg-primary rounded-lg border border-border-subtle p-3"
+        recording={adaptedRecording}
+        onEventClick={undefined}
       />
 
       <SharedMemoryBoard
-        cards={teamMemories.map((m) => ({
-          id: m.id,
-          title: m.summary || m.memory_type || "Memory",
-          content: m.summary || "",
-          author: m.created_by || "Team",
-          createdAt: new Date(m.created_at).getTime(),
-          tags: [],
-        }))}
-        className="bg-bg-primary rounded-lg border border-border-subtle p-3"
+        cards={adaptedMemoryCards}
+        onCardCreate={undefined}
+        onCardUpdate={undefined}
+        onCardDelete={undefined}
       />
 
       <TeamActivityFeed
-        activities={useMemo(() => {
-          const collabActivities = (collabActivityData || []).map((ev) => ({
-            id: ev.id,
-            user: {
-              name: ev.metadata?.user_name || ev.created_by || "Unknown",
-              color: ev.metadata?.user_color || "#6b7280",
-              isAI: !!ev.metadata?.is_ai,
-            },
-            action: ev.metadata?.action || ev.event_type || "performed action",
-            target: ev.metadata?.target,
-            timestamp: ev.created_at,
-            icon: ev.metadata?.icon || "🔹",
-          }));
-          return collabActivities.sort(
-            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
-        }, [collabActivityData])}
-        className="bg-bg-primary rounded-lg border border-border-subtle p-3"
+        activities={adaptedActivities}
+        onActivityClick={undefined}
       />
 
       <CollaborativeGraphEditor
-        edits={(graphEditsData || []).map((ev) => ({
-          id: ev.id,
-          userId: ev.created_by,
-          userName: ev.metadata?.user_name || "Unknown",
-          nodeId: ev.metadata?.node_id || "",
-          field: ev.metadata?.field || "property",
-          oldValue: ev.metadata?.old_value || "",
-          newValue: ev.metadata?.new_value || "",
-          timestamp: ev.created_at,
-        }))}
-        className="bg-bg-primary rounded-lg border border-border-subtle p-3"
+        nodes={[]}
+        edges={[]}
+        onNodesChange={undefined}
+        onEdgesChange={undefined}
+        onOperation={undefined}
+        editable={false}
       />
 
       <CollaborativePromptEditor
-        versions={(promptVersionsData || []).map((ev, idx) => ({
-          id: ev.id,
-          author: {
-            name: ev.metadata?.user_name || "Unknown",
-            color: ev.metadata?.user_color || "#6b7280",
-          },
-          version: idx + 1,
-          prompt: ev.metadata?.prompt || "",
-          timestamp: ev.created_at,
-          changes: ev.metadata?.changes || "Update",
-        }))}
-        currentPrompt={(promptVersionsData || [])[0]?.metadata?.prompt || ""}
-        onPromptChange={(p) => onUpdatePromptVersion?.(p, "Edit")}
+        segments={adaptedPromptSegments}
+        onSegmentUpdate={(id, content) => onUpdatePromptVersion?.(content, "Edit")}
       />
 
-      <AIHumanTaskBoard
-        tasks={executions.slice(0, 5).map((ex, i) => ({
-          id: ex.id || `task-${i}`,
-          title: ex.graphId || `Execution ${i + 1}`,
-          assignedTo: {
-            name: "Agent",
-            isAI: true,
-          },
-          status:
-            ex.status === "completed"
-              ? "done"
-              : ex.status === "failed"
-                ? "blocked"
-                : "in-progress",
-          priority: "medium" as const,
-        }))}
+      <AIHumanTaskAssignmentBoard
+        tasks={adaptedTasks}
       />
 
       <LivePairProgrammingView
-        session={{
-          id: (pairSessionsData || [])[0]?.id || "none",
-          host: {
-            name:
-              (pairSessionsData || [])[0]?.metadata?.host_name ||
-              currentUser.name,
-            color:
-              (pairSessionsData || [])[0]?.metadata?.host_color ||
-              currentUser.color,
-          },
-          guest: (pairSessionsData || [])[0]?.metadata?.guest_name
-            ? {
-                name: (pairSessionsData || [])[0]!.metadata!.guest_name!,
-                color:
-                  (pairSessionsData || [])[0]!.metadata?.guest_color || "#10b981",
-              }
-            : undefined,
-          status:
-            ((pairSessionsData || [])[0]?.metadata?.status) as
-              | "active"
-              | "ended"
-              | "paused" || "ended",
-          startedAt:
-            (pairSessionsData || [])[0]?.created_at ||
-            new Date().toISOString(),
-          currentFile:
-            (pairSessionsData || [])[0]?.metadata?.current_file,
-          currentLine: (pairSessionsData || [])[0]?.metadata?.current_line,
-        }}
-        onEndSession={() => {
+        session={adaptedPairSession}
+        onSessionEnd={() => {
           const ev = (pairSessionsData || [])[0];
           if (ev?.id) onEndPairSession?.(ev.id);
         }}
       />
 
       <AsyncReviewTimeline
-        comments={(commentsData || []).map((ev) => ({
-          id: ev.id,
-          author: {
-            name: ev.metadata?.user_name || "Unknown",
-            color: ev.metadata?.user_color || "#6b7280",
-          },
-          content: ev.metadata?.content || "",
-          timestamp: ev.created_at,
-          line: ev.metadata?.line,
-          resolved: !!ev.metadata?.resolved,
-        }))}
-        onResolve={(id) => onResolveComment?.(id, true)}
+        session={adaptedReviewSession}
+        onCommentResolve={(id) => onResolveComment?.(id, true)}
       />
 
       <RealtimeAnnotationSystem
-        annotations={(annotationsData || []).map((ev) => ({
-          id: ev.id,
-          author: {
-            name: ev.metadata?.user_name || "Unknown",
-            color: ev.metadata?.user_color || "#6b7280",
-          },
-          targetId: ev.metadata?.target_id || "",
-          targetType: ev.metadata?.target_type || "canvas",
-          content: ev.metadata?.content || "",
-          position: ev.metadata?.position || { x: 0, y: 0 },
-          timestamp: ev.created_at,
-          resolved: !!ev.metadata?.resolved,
-        }))}
-        onResolve={(id) => onResolveAnnotation?.(id, true)}
+        annotations={adaptedAnnotations}
+        onResolveAnnotation={(id) => onResolveAnnotation?.(id, true)}
       />
 
       <SharedExecutionView
-        executionId={executions[0]?.id || "none"}
-        participants={collaborators.map((c) => ({
-          id: c.id,
-          name: c.name,
-          color: c.color,
-          currentStep: 0,
-        }))}
-        steps={(executions[0]?.nodeResults || []).map((nr, idx) => ({
-          step: idx,
-          action: nr.nodeId,
-          agent: "Agent",
-          timestamp: executions[0]?.startedAt || new Date().toISOString(),
-          result: nr.status === "success" ? "Completed" : nr.error,
-        }))}
-        onStepClick={(step) =>
-          onRecordActivity?.({ action: "clicked step", target: `step-${step}`, icon: "👆" })
-        }
+        executionId={executions[0]?.id || null}
+        bookmarks={adaptedBookmarks}
+        onBookmarkJump={(id) => onRecordActivity?.({ action: "clicked bookmark", target: id, icon: "👆" })}
       />
     </div>
   );

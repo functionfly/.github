@@ -518,10 +518,7 @@ func defineHostFunctions(linker *wasmtime.Linker, store *wasmtime.Store, handler
 			name := string(memoryData[namePtr : namePtr+nameLen])
 
 			// Get environment variable
-			value, err := handler.GetEnv(name)
-			if err != nil {
-				return -1
-			}
+			value := handler.GetEnv(name)
 
 			valueBytes := []byte(value)
 			valLen := len(valueBytes)

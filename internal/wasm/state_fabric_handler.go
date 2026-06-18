@@ -52,14 +52,15 @@ func (h *StateFabricHostHandler) StateGet(path string) (string, error) {
 		return "", fmt.Errorf("fabric is not active")
 	}
 
-	value, err := h.getValueFromFabricWithFabric(fabric, key)
+	value, err := h.repo.GetFabricValue(h.ctx, tenantID, fabricID, key)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get value: %v", err)
 	}
 
 	result := map[string]interface{}{
 		"value":     value,
 		"path":      path,
+		"key":       key,
 		"fabric_id": fabricID.String(),
 		"tenant_id": tenantID.String(),
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
@@ -88,13 +89,14 @@ func (h *StateFabricHostHandler) StateSet(path string, value string) error {
 		return fmt.Errorf("fabric is not active")
 	}
 
-	var valueData interface{}
+	var valueData map[string]interface{}
 	if err := json.Unmarshal([]byte(value), &valueData); err != nil {
-		return fmt.Errorf("invalid JSON value")
+		return fmt.Errorf("invalid JSON value: %v", err)
 	}
 
-	if err := h.setValueInFabricWithFabric(fabric, key, valueData); err != nil {
-		return err
+	_, err = h.repo.SetFabricValue(h.ctx, tenantID, fabricID, key, valueData, "edge")
+	if err != nil {
+		return fmt.Errorf("failed to set value: %v", err)
 	}
 
 	return nil
@@ -115,11 +117,35 @@ func (h *StateFabricHostHandler) StateDelete(path string) error {
 		return fmt.Errorf("fabric is not active")
 	}
 
-	if err := h.deleteValueFromFabricWithFabric(fabric, key); err != nil {
-		return err
+	err = h.repo.DeleteFabricValue(h.ctx, tenantID, fabricID, key, "edge")
+	if err != nil {
+		return fmt.Errorf("failed to delete value: %v", err)
 	}
 
 	return nil
+}
+
+func (h *StateFabricHostHandler) StateList(prefix string) (string, error) {
+	entries, _, _, err := h.repo.ListFabricKeys(h.ctx, h.tenantID, h.fabricID, prefix, 1000, 0)
+	if err != nil {
+		return "", fmt.Errorf("failed to list keys: %v", err)
+	}
+
+	result := map[string]interface{}{
+		"keys":      entries,
+		"fabric_id": h.fabricID.String(),
+		"tenant_id": h.tenantID.String(),
+		"prefix":    prefix,
+		"count":     len(entries),
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	}
+
+	jsonResult, err := json.Marshal(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal result")
+	}
+
+	return string(jsonResult), nil
 }
 
 func (h *StateFabricHostHandler) StateGetFabric(fabricIDStr string) (string, error) {
@@ -246,77 +272,6 @@ func (h *StateFabricHostHandler) parsePath(path string) (uuid.UUID, uuid.UUID, s
 	default:
 		return uuid.Nil, uuid.Nil, "", fmt.Errorf("invalid path format")
 	}
-}
-
-func (h *StateFabricHostHandler) getValueFromFabricWithFabric(fabric *statefabric.Fabric, key string) (interface{}, error) {
-	edgeState, ok := fabric.Settings["_edge_state"]
-	if !ok {
-		return nil, nil
-	}
-
-	stateMap, ok := edgeState.(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid edge state format")
-	}
-
-	value, exists := stateMap[key]
-	if !exists {
-		return nil, nil
-	}
-
-	return value, nil
-}
-
-func (h *StateFabricHostHandler) setValueInFabricWithFabric(fabric *statefabric.Fabric, key string, valueData interface{}) error {
-	edgeState, ok := fabric.Settings["_edge_state"]
-	if !ok {
-		edgeState = make(map[string]interface{})
-	}
-
-	stateMap, ok := edgeState.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("invalid edge state format: expected map, got %T", edgeState)
-	}
-
-	stateMap[key] = valueData
-	fabric.Settings["_edge_state"] = stateMap
-
-	updates := map[string]interface{}{
-		"settings": fabric.Settings,
-	}
-
-	_, err := h.repo.UpdateFabric(h.ctx, fabric.TenantID, fabric.ID, updates)
-	if err != nil {
-		return fmt.Errorf("failed to update fabric")
-	}
-
-	return nil
-}
-
-func (h *StateFabricHostHandler) deleteValueFromFabricWithFabric(fabric *statefabric.Fabric, key string) error {
-	edgeState, ok := fabric.Settings["_edge_state"]
-	if !ok {
-		return nil
-	}
-
-	stateMap, ok := edgeState.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-
-	delete(stateMap, key)
-	fabric.Settings["_edge_state"] = stateMap
-
-	updates := map[string]interface{}{
-		"settings": fabric.Settings,
-	}
-
-	_, err := h.repo.UpdateFabric(h.ctx, fabric.TenantID, fabric.ID, updates)
-	if err != nil {
-		return fmt.Errorf("failed to update fabric")
-	}
-
-	return nil
 }
 
 func (h *StateFabricHostHandler) WithContext(ctx context.Context) *StateFabricHostHandler {

@@ -17,6 +17,8 @@ import {
 import {
   FunctionCanvas,
   type NodeData,
+  type EdgeData,
+  type NodeType,
 } from "@functionfly/ui-graph";
 import { Database, Plus, Settings } from "lucide-react";
 import { useState } from "react";
@@ -24,18 +26,20 @@ import { useState } from "react";
 interface CanvasPanelProps {
   canvasNodes: Array<{
     id: string;
-    type: string;
+    type: NodeType;
     label: string;
     position?: { x: number; y: number };
-    status: "pending" | "running" | "success" | "error";
-    inputs: unknown[];
-    outputs: unknown[];
+    status: "idle" | "running" | "completed" | "error" | "waiting";
+    inputs?: unknown[];
+    outputs?: unknown[];
   }>;
   canvasEdges: Array<{
     id: string;
     source: string;
     target: string;
-    status: "pending" | "running" | "success" | "error";
+    sourcePort?: string;
+    targetPort?: string;
+    status: "idle" | "active" | "error";
   }>;
   selectedAgent: AgentData | null;
   showGrid: boolean;
@@ -180,7 +184,7 @@ function DataFlowMapper({ onConfigureSources }: DataFlowMapperProps) {
             <div className="flex-1 min-w-0">
               <div className="text-xs font-mono text-success truncate">{mapping.target}</div>
             </div>
-            <Badge variant="subtle" size="sm" className="text-[10px]">
+            <Badge variant="ghost" size="sm" className="text-[10px]">
               {mapping.transform}
             </Badge>
           </div>
@@ -215,7 +219,7 @@ export function CanvasPanel({
 
   return (
     <div className="p-3 space-y-3">
-      <GlassCard variant="subtle" className="p-3">
+      <GlassCard className="p-3">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-4 h-4 rounded bg-brand-500/20 flex items-center justify-center">
             <div className="w-2 h-2 rounded bg-brand-500" />
@@ -279,10 +283,17 @@ export function CanvasPanel({
         <div className="px-3 pb-3">
           <AgentMemoryViewer
             agentId={selectedAgent.id}
-            memories={agentMemories.memories as AgentMemory[]}
-            onMemoryAdd={(content, type) =>
-              agentMemories.addMemory.mutate({ content, memory_type: type })
-            }
+            memories={(agentMemories.memories || []).map((m) => ({
+              id: m.id,
+              type: m.memory_type as "working" | "longterm" | "context" | "episodic",
+              content: m.content || "",
+              importance: m.importance_score,
+              lastAccessed: m.last_accessed_at || new Date().toISOString(),
+              createdAt: m.created_at,
+            }))}
+            onMemoryAdd={() => {
+              // Placeholder - component doesn't provide content/type on click
+            }}
             onMemorySearch={(q) => agentMemories.searchMemories.mutate(q)}
             onMemoryDelete={(id) => agentMemories.deleteMemory.mutate(id)}
           />

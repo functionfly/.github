@@ -131,15 +131,16 @@ export function AuditLog({
     error: errorSecret,
   } = useSecretAuditLog(secretId || "", secretId ? limit : undefined);
 
-  const entries = secretId ? secretEntries : allEntries;
+  const entriesData = secretId ? secretEntries : allEntries;
+  const entriesArray = entriesData?.entries ?? [];
   const isLoading = secretId ? isLoadingSecret : isLoadingAll;
   const error = secretId ? errorSecret : errorAll;
 
   // Filter entries
   const filteredEntries = useMemo(() => {
-    if (!entries) return [];
+    if (!entriesArray) return [];
 
-    return entries.filter((entry) => {
+    return entriesArray.filter((entry) => {
       // Action filter
       if (actionFilter !== "all" && entry.action !== actionFilter) {
         return false;
@@ -159,7 +160,7 @@ export function AuditLog({
 
       return true;
     });
-  }, [entries, actionFilter, searchQuery]);
+  }, [entriesArray, actionFilter, searchQuery]);
 
   // Toggle row expansion
   const toggleRow = (id: string) => {
@@ -454,7 +455,7 @@ export function AuditLog({
           </Table>
 
           {/* Load more button */}
-          {entries && entries.length >= limit && (
+          {entriesArray && entriesArray.length >= limit && (
             <div className="p-4 border-t border-border-subtle text-center">
               <Button
                 variant="outline"
@@ -469,7 +470,7 @@ export function AuditLog({
 
       {/* Entry count */}
       <p className="text-sm text-text-muted text-center">
-        Showing {filteredEntries?.length || 0} of {entries?.length || 0} entries
+        Showing {filteredEntries?.length || 0} of {entriesArray?.length || 0} entries
       </p>
     </div>
   );

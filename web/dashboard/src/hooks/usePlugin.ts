@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { pluginsApi, type Plugin, type PluginFilters, type InstallPluginRequest, type UpdateSandboxRequest, type SetPermissionRequest, type RateLimitCheckRequest } from '@/api/plugins';
 
 export { type Plugin, type PluginFilters, type InstallPluginRequest, type UpdateSandboxRequest, type SetPermissionRequest };
+export type PluginType = 'code-intelligence' | 'data-visualization' | 'futuristic' | 'marketplace' | 'security' | 'observability' | 'custom';
+export type SandboxTier = 'free' | 'basic' | 'pro' | 'enterprise';
 
 export const pluginKeys = {
   all: ['plugins'] as const,

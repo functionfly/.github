@@ -5,8 +5,8 @@
 
 import * as React from "react";
 import { cn } from "@functionfly/ui-core";
-import { Badge } from "@functionfly/ui-core";
-import { MessageSquare, ArrowUp, ArrowDown, MoreHorizontal, RefreshCw } from "lucide-react";
+import { Badge, Button, Textarea } from "@functionfly/ui-core";
+import { MessageSquare, ArrowUp, ArrowDown, MoreHorizontal, RefreshCw, Send } from "lucide-react";
 
 export interface ThreadMessage {
   id: string;
@@ -27,6 +27,8 @@ export interface ConversationThreadProps {
   onMessageReply?: (messageId: string, content: string) => void;
   onMessageReact?: (messageId: string, emoji: string) => void;
   onThreadCollapse?: (messageId: string) => void;
+  onSendMessage?: (content: string) => void;
+  isThinking?: boolean;
   className?: string;
 }
 
@@ -37,9 +39,12 @@ export function ConversationThread({
   onMessageReply,
   onMessageReact,
   onThreadCollapse,
+  onSendMessage,
+  isThinking,
   className,
 }: ConversationThreadProps) {
   const [collapsedIds, setCollapsedIds] = React.useState<Set<string>>(new Set());
+  const [inputValue, setInputValue] = React.useState("");
 
   const toggleCollapse = (id: string) => {
     setCollapsedIds(prev => {
@@ -201,6 +206,43 @@ export function ConversationThread({
           </div>
         )}
       </div>
+
+      {/* Message Input Footer */}
+      {onSendMessage && (
+        <div className="px-4 py-3 border-t border-border-subtle">
+          <div className="flex items-end gap-2">
+              <Textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  if (inputValue.trim()) {
+                    onSendMessage(inputValue.trim());
+                    setInputValue("");
+                  }
+                }
+              }}
+              placeholder={isThinking ? "AI is thinking..." : "Type a message..."}
+              disabled={isThinking}
+              className="flex-1 min-h-[60px] max-h-[120px] resize-none"
+            />
+            <Button
+              size="sm"
+              onClick={() => {
+                if (inputValue.trim()) {
+                  onSendMessage(inputValue.trim());
+                  setInputValue("");
+                }
+              }}
+              disabled={!inputValue.trim() || isThinking}
+              className="shrink-0"
+            >
+              <Send className="size-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

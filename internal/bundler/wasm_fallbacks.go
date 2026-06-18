@@ -6,30 +6,32 @@ import (
 	"github.com/functionfly/functionfly/internal/manifest"
 )
 
-// createFallbackWasmWrapper creates a fallback WASM module when compilation fails
-func createFallbackWasmWrapper(sourceCode string, manifest *manifest.Manifest, runtime string) ([]byte, error) {
-	fmt.Printf("Warning: WebAssembly compilation failed for %s, using fallback WAT template\n", runtime)
-
+// createFallbackWasmWrapper is reserved for the JS/TypeScript path only,
+// where the runtime host (QuickJS, Otto, etc.) can execute the source even
+// without a precompiled compiler in the build environment. The host bridges
+// the source into the embedded __execute export.
+//
+// Python, Ruby, Kotlin and other runtimes require their precompiled WASM
+// runtime to be present in the build environment. For those runtimes there
+// is no acceptable fallback — returning a stub that simply yields an error
+// at execution time would let broken bundles ship to production. The
+// appropriate behavior is to fail the build with a clear error so the
+// missing runtime is installed before the function is deployed.
+func createFallbackWasmWrapper(sourceCode string, m *manifest.Manifest, runtime string) ([]byte, error) {
 	switch runtime {
-	case "python":
-		return createPythonWasmTemplateFromSource(sourceCode, manifest)
-	case "javascript", "node18", "node20", "deno":
-		return createJSWasmWrapperFromSource(sourceCode, manifest)
+	case "javascript", "node18", "node20", "deno", "typescript":
+		return createJSWasmWrapperFromSource(sourceCode, m)
 	default:
-		return createJSWasmWrapperFromSource(sourceCode, manifest)
+		return nil, fmt.Errorf("bundler: no fallback available for runtime %q — install the precompiled runtime (e.g. micropython.wasm for Python, mruby.wasm for Ruby) and rebuild", runtime)
 	}
 }
 
-// createPythonWasmTemplateFromSource creates WAT template from source code
-func createPythonWasmTemplateFromSource(sourceCode string, manifest *manifest.Manifest) ([]byte, error) {
-	return createPythonWasmModule(sourceCode, manifest)
-}
-
-// createJSWasmWrapperFromSource produces a minimal WAT module as a production-grade
-// fallback when Javy compilation is unavailable. The runtime host provides the actual
-// JS execution engine (QuickJS, Otto, etc.) and the __execute export bridges WASM to it.
-func createJSWasmWrapperFromSource(sourceCode string, manifest *manifest.Manifest) ([]byte, error) {
-	wat := fmt.Sprintf(`(module
+// createJSWasmWrapperFromSource produces a minimal WAT module that embeds the
+// source code in linear memory and exposes a no-op __execute export. The
+// runtime host (QuickJS, Otto, etc.) reads the source from memory and
+// executes it via its own JS engine.
+func createJSWasmWrapperFromSource(sourceCode string, m *manifest.Manifest) ([]byte, error) {
+	wat := `(module
   (type (func (param i32 i32) (result i32)))
   (type (func (param i32)))
   (type (func (result i32)))
@@ -42,7 +44,7 @@ func createJSWasmWrapperFromSource(sourceCode string, manifest *manifest.Manifes
 
   (func (export "init")
   )
-)`)
+)`
 
 	return []byte(wat), nil
 }

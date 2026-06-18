@@ -54,6 +54,7 @@ const applyThemeToDocument = (resolved: 'light' | 'dark') => {
 interface ThemeStoreState {
   theme: Theme;
   resolvedTheme: 'light' | 'dark';
+  isDarkMode: boolean;
   setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
 }
@@ -63,7 +64,7 @@ export const useThemeStore = create<ThemeStoreState>()((set, get) => {
 
   const handleExternalChange = (state: ThemeState) => {
     const resolved = getResolvedTheme(state.theme);
-    set({ theme: state.theme, resolvedTheme: resolved });
+    set({ theme: state.theme, resolvedTheme: resolved, isDarkMode: resolved === 'dark' });
     applyThemeToDocument(resolved);
   };
 
@@ -87,12 +88,13 @@ export const useThemeStore = create<ThemeStoreState>()((set, get) => {
   return {
     theme: 'system',
     resolvedTheme: 'dark',
+    isDarkMode: true,
     setTheme: (theme: Theme) => {
       const resolved = getResolvedTheme(theme);
       if (import.meta.env.DEV) {
         console.log('Setting theme:', theme, 'resolved:', resolved);
       }
-      set({ theme, resolvedTheme: resolved });
+      set({ theme, resolvedTheme: resolved, isDarkMode: resolved === 'dark' });
       sharedSetTheme(theme);
       applyThemeToDocument(resolved);
     },
@@ -100,7 +102,7 @@ export const useThemeStore = create<ThemeStoreState>()((set, get) => {
       const current = get().resolvedTheme;
       const nextTheme: Theme = current === 'dark' ? 'light' : 'dark';
       const resolved = nextTheme;
-      set({ theme: nextTheme, resolvedTheme: resolved });
+      set({ theme: nextTheme, resolvedTheme: resolved, isDarkMode: resolved === 'dark' });
       sharedSetTheme(nextTheme);
       applyThemeToDocument(resolved);
     },

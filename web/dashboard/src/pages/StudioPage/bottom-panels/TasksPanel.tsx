@@ -85,11 +85,11 @@ export function TasksPanel({
         onTaskCreate={(task) =>
           onTaskCreate({ title: task.title, description: task.description })
         }
-        onTaskUpdate={({ id, updates }) =>
+        onTaskUpdate={(id, updates) =>
           onTaskUpdate({ id, updates: { ...updates } as Partial<Task> })
         }
         onTaskDelete={onTaskDelete}
-        onTaskAssign={({ id, agentId }) =>
+        onTaskAssign={(id, agentId) =>
           onTaskAssign({ id, agentId: agentId || null })
         }
       />

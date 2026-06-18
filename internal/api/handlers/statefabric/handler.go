@@ -145,9 +145,14 @@ func getIPAddress(r *http.Request) string {
 }
 
 func (h *Handler) fabricToAPI(f repo.Fabric, stores []repo.FabricStore, pipelines []repo.Pipeline) map[string]interface{} {
-	data, _ := json.Marshal(f)
-	var out map[string]interface{}
-	_ = json.Unmarshal(data, &out)
+	data, err := json.Marshal(f)
+	out := make(map[string]interface{})
+	if err == nil {
+		_ = json.Unmarshal(data, &out)
+	}
+	if out == nil {
+		out = make(map[string]interface{})
+	}
 	out["stores"] = stores
 	out["pipelines"] = pipelines
 	return out

@@ -624,7 +624,7 @@ export function AIComposerPage() {
   }, []);
 
   // Handle streaming generation with EventSource
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     if (!description.trim()) {
       toast.error('Please describe what you want the function to do');
       return;
@@ -647,7 +647,7 @@ export function AIComposerPage() {
     };
 
     // Create EventSource for streaming
-    const eventSource = composerApi.generateFunctionStream(request);
+    const eventSource = await composerApi.generateFunctionStream(request);
     eventSourceRef.current = eventSource;
     abortControllerRef.current = new AbortController();
 
@@ -743,7 +743,7 @@ export function AIComposerPage() {
   }, [description, runtime, constraints, cleanupEventSource, generatedFunction, streamingResult.code.length, addToHistory]);
 
   // Handle streaming refinement
-  const handleStreamRefine = useCallback((request: string) => {
+  const handleStreamRefine = useCallback(async (request: string) => {
     if (!generatedFunction?.generation_id) {
       toast.error('No generation to refine');
       return;
@@ -765,7 +765,7 @@ export function AIComposerPage() {
     }]);
 
     // Create EventSource for streaming refinement
-    const eventSource = composerApi.refineFunctionStream({
+    const eventSource = await composerApi.refineFunctionStream({
       generation_id: generatedFunction.generation_id,
       modification_request: request,
       preserve_structure: true,

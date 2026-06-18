@@ -638,3 +638,128 @@ type SIEMWebhookResponse struct {
 	// shared secret the receiver uses to verify X-Signature.
 	SecretHMAC string `json:"secret_hmac,omitempty"`
 }
+
+// CreateDynamicTokenRequest is the body for POST /v1/vault/dynamic-tokens.
+type CreateDynamicTokenRequest struct {
+	CredentialID    uuid.UUID  `json:"credential_id"`
+	Name            string     `json:"name"`
+	Scopes          []string   `json:"scopes"`
+	ExpiresInHours  int        `json:"expires_in_hours"`
+	AllowedIPs      []string   `json:"allowed_ips"`
+	DeniedIPs       []string   `json:"denied_ips"`
+	IPRestrictionEnabled bool  `json:"ip_restriction_enabled"`
+	IPPolicy        *IPPolicyDTO `json:"ip_policy,omitempty"`
+}
+
+// RevokeDynamicTokenRequest is the body for DELETE /v1/vault/dynamic-tokens/{id}.
+type RevokeDynamicTokenRequest struct {
+	Reason string `json:"reason"`
+}
+
+// IPPolicyDTO is the wire form of an IP-allow/deny policy attached to a
+// dynamic token.
+type IPPolicyDTO struct {
+	AllowedIPs           []string `json:"allowed_ips"`
+	DeniedIPs            []string `json:"denied_ips"`
+	IPRestrictionEnabled bool     `json:"ip_restriction_enabled"`
+}
+
+// DynamicTokenResponse is the wire form of a dynamic wrapped access
+// token. The raw token bytes are only returned in the SecretHMAC field
+// on the create response and never on subsequent reads.
+type DynamicTokenResponse struct {
+	ID            uuid.UUID  `json:"id"`
+	TenantID      uuid.UUID  `json:"tenant_id"`
+	CredentialID  uuid.UUID  `json:"credential_id"`
+	Name          string     `json:"name"`
+	Scopes        []string   `json:"scopes"`
+	ExpiresAt     time.Time  `json:"expires_at"`
+	IsRevoked     bool       `json:"is_revoked"`
+	RevokedAt     *time.Time `json:"revoked_at,omitempty"`
+	RevokedReason string     `json:"revoked_reason,omitempty"`
+	LastUsedAt    *time.Time `json:"last_used_at,omitempty"`
+	UseCount      int        `json:"use_count"`
+	CreatedBy     uuid.UUID  `json:"created_by"`
+	CreatedAt     time.Time  `json:"created_at"`
+	IPPolicy      IPPolicyDTO `json:"ip_policy"`
+	// Token is the raw bearer token string. It is only populated on the
+	// create response and never returned on subsequent reads.
+	Token string `json:"token,omitempty"`
+	// SecretHMAC is only set on the create response. It is the shared
+	// secret the bearer uses to authenticate subsequent requests.
+	SecretHMAC string `json:"secret_hmac,omitempty"`
+}
+
+// WrappedDEKResponse is the wire form of a wrapped data-encryption key
+// returned to a client after wrapping.
+type WrappedDEKResponse struct {
+	ID             uuid.UUID  `json:"id"`
+	TenantID       uuid.UUID  `json:"tenant_id"`
+	UserID         uuid.UUID  `json:"user_id"`
+	CredentialID   uuid.UUID  `json:"credential_id"`
+	Algorithm      string     `json:"algorithm"`
+	WrappedDEK     string     `json:"wrapped_dek"`
+	DEKIV          string     `json:"dek_iv"`
+	DEKAuthTag     string     `json:"dek_auth_tag"`
+	DEKSalt        string     `json:"dek_salt"`
+	KeyVersion     int        `json:"key_version"`
+	KDFParams      string     `json:"kdf_params"`
+	CreatedAt      time.Time  `json:"created_at"`
+	RotatedAt      *time.Time `json:"rotated_at,omitempty"`
+	ExpiresAt      time.Time  `json:"expires_at"`
+}
+
+// DynamicTargetShareResponse is the wire form of a dynamic target share.
+type DynamicTargetShareResponse struct {
+	ID                uuid.UUID  `json:"id"`
+	TenantID          uuid.UUID  `json:"tenant_id"`
+	SourceTenantID    uuid.UUID  `json:"source_tenant_id"`
+	GrantedToTenantID uuid.UUID  `json:"granted_to_tenant_id"`
+	TargetID          uuid.UUID  `json:"target_id"`
+	GrantedByUser     uuid.UUID  `json:"granted_by_user"`
+	Permissions       string     `json:"permissions"`
+	Share             string     `json:"share"`
+	ExpiresAt         *time.Time `json:"expires_at,omitempty"`
+	IsRevoked         bool       `json:"is_revoked"`
+	RevokedAt         *time.Time `json:"revoked_at,omitempty"`
+	CreatedBy         uuid.UUID  `json:"created_by"`
+	CreatedAt         time.Time  `json:"created_at"`
+}
+
+// UpsertWrappedDEKRequest is the body for POST/PUT /v1/vault/keys/dek.
+// All binary fields are base64-encoded to keep the body JSON-safe.
+type UpsertWrappedDEKRequest struct {
+	CredentialID   uuid.UUID  `json:"credential_id"`
+	Algorithm      string     `json:"algorithm"`
+	KeyVersion     int        `json:"key_version"`
+	WrappedDEK     string     `json:"wrapped_dek"`
+	DEKIV          string     `json:"dek_iv"`
+	DEKAuthTag     string     `json:"dek_auth_tag"`
+	DEKSalt        string     `json:"dek_salt"`
+	KDFIterations  int        `json:"kdf_iterations"`
+	KDFParams      string     `json:"kdf_params"`
+	ExpiresInHours int        `json:"expires_in_hours"`
+}
+
+// ShareDEKRequest is the body for POST /v1/vault/keys/dek/share.
+type ShareDEKRequest struct {
+	CredentialID   uuid.UUID  `json:"credential_id"`
+	TargetUserID   uuid.UUID  `json:"target_user_id"`
+	Algorithm      string     `json:"algorithm"`
+	KeyVersion     int        `json:"key_version"`
+	WrappedDEK     string     `json:"wrapped_dek"`
+	DEKIV          string     `json:"dek_iv"`
+	DEKAuthTag     string     `json:"dek_auth_tag"`
+	DEKSalt        string     `json:"dek_salt"`
+	KDFIterations  int        `json:"kdf_iterations"`
+	KDFParams      string     `json:"kdf_params"`
+	ExpiresInHours int        `json:"expires_in_hours"`
+}
+
+// DynamicTargetShareRequest is the body for POST /v1/vault/dynamic-targets/{id}/share.
+type DynamicTargetShareRequest struct {
+	GranteeTenantID string     `json:"grantee_tenant_id"`
+	Permissions     string     `json:"permissions"`
+	ExpiresInHours  int        `json:"expires_in_hours"`
+	ExpiresAt       *time.Time `json:"expires_at,omitempty"`
+}

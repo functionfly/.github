@@ -115,24 +115,27 @@ export function usePresence(options: UsePresenceOptions = defaultOptions): UsePr
       setError('Failed to connect to presence service');
     });
 
-    ws.on('presence_join', (data: PresenceSocketEvent) => {
-      if (data.type === 'presence_join') {
+    ws.on('presence_join', ((data: PresenceSocketEvent) => {
+      const d = data as unknown as { type: string; userId: string; status?: string };
+      if (d.type === 'presence_join') {
         setOnlineUsers(prev => {
-          if (prev.some(u => u.userId === data.userId)) return prev;
-          return [...prev, {
-            userId: data.userId,
-            status: data.status || 'online',
+          if (prev.some(u => u.userId === d.userId)) return prev;
+          const newUser: UserPresence = {
+            userId: d.userId,
+            status: (d.status || 'online') as UserPresence['status'],
             lastActive: new Date().toISOString(),
-          }];
+          };
+          return [...prev, newUser];
         });
       }
-    });
+    }) as (data: PresenceSocketEvent) => void);
 
-    ws.on('presence_leave', (data: PresenceSocketEvent) => {
-      if (data.type === 'presence_leave') {
-        setOnlineUsers(prev => prev.filter(u => u.userId !== data.userId));
+    ws.on('presence_leave', ((data: PresenceSocketEvent) => {
+      const d = data as unknown as { type: string; userId: string };
+      if (d.type === 'presence_leave') {
+        setOnlineUsers(prev => prev.filter(u => u.userId !== d.userId));
       }
-    });
+    }) as (data: PresenceSocketEvent) => void);
 
     ws.on('presence_update', (data: PresenceSocketEvent) => {
       if (data.type === 'presence_update' && data.userId !== user?.id) {

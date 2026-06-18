@@ -167,10 +167,11 @@ func (s *CleanupService) cleanupExpiredStates(ctx context.Context) int64 {
 	for {
 		// Find states where TTL has expired
 		// TTL of 0 means no expiration
+		// A state expires if: NOW() > updated_at + (ttl_days * INTERVAL '1 day')
 		var expiredStateIDs []uuid.UUID
 		err := s.db.WithContext(ctx).
 			Model(&State{}).
-			Where("ttl_days > 0 AND updated_at < ?", time.Now().AddDate(0, 0, -365)).
+			Where("ttl_days > 0 AND updated_at < NOW() - (ttl_days * INTERVAL '1 day')").
 			Limit(s.config.BatchSize).
 			Pluck("id", &expiredStateIDs).Error
 

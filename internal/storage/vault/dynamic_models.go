@@ -30,6 +30,7 @@ func (d DynamicSecretDBType) Valid() bool {
 type DynamicSecretTarget struct {
 	ID                     uuid.UUID           `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	TenantID               uuid.UUID           `gorm:"type:uuid;not null;index"`
+	Namespace              string              `gorm:"size:128;not null;default:'default'"`
 	Name                   string              `gorm:"size:255;not null"`
 	Description            string              `gorm:"type:text"`
 	DBType                 DynamicSecretDBType `gorm:"column:db_type;size:20;not null"`

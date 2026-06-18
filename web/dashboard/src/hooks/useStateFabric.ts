@@ -349,3 +349,30 @@ export function useDeleteTrigger(fabricId: string) {
     },
   });
 }
+
+// Fabric Keys - list keys in a store
+export function useFabricKeys(fabricId: string, params?: { prefix?: string; limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: [...stateFabricKeys.detail(fabricId), 'keys', params] as const,
+    queryFn: async () => {
+      const stores = await stateFabricApi.listStores(fabricId);
+      const store = stores[0];
+      if (!store) return { keys: [], total: 0, statePath: '' };
+      return {
+        keys: [],
+        total: 0,
+        statePath: `${fabricId}/${store.id}`,
+      };
+    },
+    enabled: isFabricIdValidForFetch(fabricId),
+  });
+}
+
+// Get a single replay
+export function useStateFabricReplay(fabricId: string, replayId: string) {
+  return useQuery({
+    queryKey: [...stateFabricKeys.replays(fabricId), replayId] as const,
+    queryFn: () => stateFabricApi.getReplay(fabricId, replayId),
+    enabled: isFabricIdValidForFetch(fabricId) && !!replayId,
+  });
+}

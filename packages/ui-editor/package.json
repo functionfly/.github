@@ -1,26 +1,38 @@
 {
-    "name": "@functionfly/ui-editor",
-    "version": "0.1.0",
-    "private": true,
-    "type": "module",
-    "main": "./src/index.ts",
-    "scripts": {
-        "dev": "tsc --noEmit --watch",
-        "build": "tsc --noEmit",
-        "test": "vitest run"
+  "name": "@functionfly/ui-editor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsc --noEmit --watch",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "build:watch": "tsc -p tsconfig.build.json --watch"
+  },
+  "dependencies": {
+    "@functionfly/ui-core": "file:../ui-core",
+    "lucide-react": "^1.14.0",
+    "@monaco-editor/react": "^4.7.0",
+    "monaco-editor": "^0.45.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3"
+  },
+  "peerDependencies": {
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5"
+  },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
-    "dependencies": {
-        "@functionfly/ui-core": "file:../ui-core",
-        "lucide-react": "^1.14.0",
-        "@monaco-editor/react": "^4.7.0",
-        "monaco-editor": "^0.45.0"
-    },
-    "devDependencies": {
-        "@types/react": "^19.2.14",
-        "@types/react-dom": "^19.2.3"
-    },
-    "peerDependencies": {
-        "react": "^19.2.5",
-        "react-dom": "^19.2.5"
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "import": "./dist/*.js"
     }
+  }
 }

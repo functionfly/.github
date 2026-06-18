@@ -69,6 +69,9 @@ type Handler struct {
 type AnchorServicer interface {
 	Anchor(ctx context.Context, req *drecert.AnchorRequest) (*drecert.AnchorReceipt, error)
 	IsConfigured() bool
+	// Chains returns the chains that have both an RPC endpoint and a
+	// contract address configured.
+	Chains() []string
 }
 
 // EthereumAnchoringService exposes the Ethereum anchoring service for route initialization.
@@ -223,6 +226,41 @@ func (h *Handler) HandleVerifyCertificate(w http.ResponseWriter, r *http.Request
 	})
 }
 
+
+// HandleGetAnchoringStatus returns the operational status of the DRE
+// anchoring service so operators can verify configuration without inspecting
+// environment variables. It is safe to call publicly — it exposes no
+// secrets, only which chains are ready and whether the signing key is set.
+//
+// GET /dre/anchoring/status
+func (h *Handler) HandleGetAnchoringStatus(w http.ResponseWriter, r *http.Request) {
+	enabled := h.anchoringService != nil && h.anchoringService.IsConfigured()
+	chains := []string{}
+	if h.anchoringService != nil {
+		chains = h.anchoringService.Chains()
+	}
+	defaultChain := ""
+	if len(chains) > 0 {
+		defaultChain = chains[0]
+	} else {
+		defaultChain = drecert.DefaultChain
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"enabled":        enabled,
+		"chains":         chains,
+		"default_chain":  defaultChain,
+		"supported_chains": drecert.SupportedChains,
+		"message":        anchoringStatusMessage(enabled, len(chains)),
+	})
+}
+
+func anchoringStatusMessage(enabled bool, chainCount int) string {
+	if enabled {
+		return fmt.Sprintf("DRE anchoring is enabled for %d chain(s)", chainCount)
+	}
+	return "DRE anchoring is not configured. Set ANCHOR_SIGNING_KEY, ANCHOR_RPC_<CHAIN>, and ANCHOR_CONTRACT_<CHAIN> to enable."
+}
 
 // HandleAnchorCertificate anchors a certificate to the blockchain.
 //

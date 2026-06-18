@@ -121,7 +121,7 @@ export function useComposerGeneration({
     },
   });
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     if (!description.trim()) {
       toast.error('Please describe what you want the function to do');
       return;
@@ -138,11 +138,9 @@ export function useComposerGeneration({
       description,
       runtime,
       constraints: constraints || undefined,
-      provider: selectedModel?.provider,
-      model: selectedModel?.model_id,
     };
 
-    const eventSource = composerApi.generateFunctionStream(request);
+    const eventSource = await composerApi.generateFunctionStream(request);
     eventSourceRef.current = eventSource;
     abortControllerRef.current = new AbortController();
 
@@ -228,7 +226,7 @@ export function useComposerGeneration({
   ]);
 
   const handleStreamRefine = useCallback(
-    (request: string) => {
+    async (request: string) => {
       if (!generatedFunction?.generation_id) {
         toast.error('No generation to refine');
         return;
@@ -243,12 +241,10 @@ export function useComposerGeneration({
         { id: Date.now().toString(), request, timestamp: new Date() },
       ]);
 
-      const eventSource = composerApi.refineFunctionStream({
+      const eventSource = await composerApi.refineFunctionStream({
         generation_id: generatedFunction.generation_id,
         modification_request: request,
         preserve_structure: true,
-        provider: selectedModel?.provider,
-        model: selectedModel?.model_id,
       });
       eventSourceRef.current = eventSource;
       abortControllerRef.current = new AbortController();
@@ -322,10 +318,8 @@ export function useComposerGeneration({
       description,
       runtime,
       constraints: constraints || undefined,
-      provider: selectedModel?.provider,
-      model: selectedModel?.model_id,
     });
-  }, [cleanupEventSource, description, runtime, constraints, selectedModel, generateMutation]);
+  }, [cleanupEventSource, description, runtime, constraints, generateMutation]);
 
   const handleCancel = useCallback(() => {
     cleanupEventSource();

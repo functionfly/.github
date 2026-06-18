@@ -66,9 +66,18 @@ func (s *EthereumAnchoringService) SetSigningKey(hexKey string) {
 	s.privateKey = hexKey
 }
 
-// IsConfigured returns true if the signing key is set (anchoring is ready).
+// IsConfigured returns true if anchoring is ready: a signing key is set
+// AND at least one chain has both an RPC endpoint and a contract address.
 func (s *EthereumAnchoringService) IsConfigured() bool {
-	return s.privateKey != ""
+	if s.privateKey == "" {
+		return false
+	}
+	for chain := range s.rpcEndpoints {
+		if _, ok := s.contractAddresses[chain]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // clientForChain returns a cached ethclient for the given chain, dialing if necessary.

@@ -234,6 +234,17 @@ export function minPlanForFeature(
 }
 
 /**
+ * PLAN_LIMITS combines VAULT_LIMITS and VAULT_FEATURES for direct access.
+ * @deprecated Use getPlanLimits() instead
+ */
+export const PLAN_LIMITS: Record<VaultPlan, PlanLimits> = {
+  free: { ...VAULT_LIMITS.free, features: VAULT_FEATURES.free },
+  pro: { ...VAULT_LIMITS.pro, features: VAULT_FEATURES.pro },
+  team: { ...VAULT_LIMITS.team, features: VAULT_FEATURES.team },
+  enterprise: { ...VAULT_LIMITS.enterprise, features: VAULT_FEATURES.enterprise },
+};
+
+/**
  * isFeatureAvailable is a convenience over hasFeature.
  */
 export function isFeatureAvailable(

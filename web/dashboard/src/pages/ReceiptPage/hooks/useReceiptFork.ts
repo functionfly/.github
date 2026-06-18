@@ -30,7 +30,7 @@ export interface ReceiptForkLink {
 }
 
 async function fetchForkPayload(receiptId: string, signal?: AbortSignal): Promise<ReceiptForkPayload> {
-  const res = await fetch(API_URLS.receipts.fork(receiptId), {
+  const res = await fetch(API_URLS.receipts.forkPayload(receiptId), {
     credentials: "omit",
     headers: { Accept: "application/json" },
     signal,

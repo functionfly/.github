@@ -5,15 +5,29 @@ import {
   ThreeDTopologyChart,
   ExecutionSunburst,
   DependencyTreemap,
-  CircularFlow,
-  WaterfallChart,
-  CostDistribution,
-  SemanticCluster,
+  CircularFlowDiagram,
+  RuntimeWaterfallChart,
+  CostDistributionGraph,
+  SemanticClusterChart,
   AgentInteractionGraph,
 } from '@functionfly/ui-data-visualization';
 import { useDataVisualizationStore } from '@/stores/dataVisualizationStore';
 import { cn } from '@/lib/utils';
 import { RefreshCw, Settings, ChevronDown, BarChart3, ScatterChart, Globe, CircleDot, Grid3X3, TrendingDown, PieChart, Sparkles, Network } from 'lucide-react';
+import {
+  adaptStreamingLineData,
+  adaptScatterData,
+  adaptTopologyNodes,
+  adaptSunburstData,
+  adaptTreemapData,
+  adaptWaterfallData,
+  adaptCostData,
+  adaptClusterData,
+  extractClusters,
+  adaptAgentNodes,
+  adaptAgentEdges,
+  adaptCircularFlowConnections,
+} from '@/adapters';
 
 const chartTypeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'streaming-line': BarChart3,
@@ -81,76 +95,74 @@ export function DataVisualizationPage() {
 
   const renderChart = () => {
     const sampleData = Array.from({ length: 20 }, (_, i) => ({
-      x: i,
-      y: Math.random() * 100,
+      timestamp: Date.now() - (20 - i) * 1000,
+      value: Math.random() * 100,
       label: `Point ${i}`,
     }));
 
     const scatterSampleData = Array.from({ length: 50 }, () => ({
       x: Math.random() * 100,
       y: Math.random() * 100,
-      z: Math.random() * 50,
-      label: `Cluster ${Math.floor(Math.random() * 5)}`,
+      size: Math.random() * 50,
+      category: `cluster_${Math.floor(Math.random() * 5)}`,
+      label: `Point`,
     }));
 
     const sunburstSampleData = {
       name: 'Root',
       value: 100,
       children: [
-        { name: 'A', value: 40 },
-        { name: 'B', value: 30 },
-        { name: 'C', value: 30 },
+        { name: 'A', value: 40, children: [] },
+        { name: 'B', value: 30, children: [] },
+        { name: 'C', value: 30, children: [] },
       ],
     };
 
-    const treemapSampleData = {
-      name: 'Dependencies',
-      value: 100,
-      children: [
-        { name: 'core', value: 30 },
-        { name: 'utils', value: 25 },
-        { name: 'api', value: 20 },
-        { name: 'ui', value: 15 },
-        { name: 'auth', value: 10 },
-      ],
-    };
+    const treemapSampleData = [
+      { id: 'treemap-1', name: 'core', value: 30, children: [] },
+      { id: 'treemap-2', name: 'utils', value: 25, children: [] },
+      { id: 'treemap-3', name: 'api', value: 20, children: [] },
+      { id: 'treemap-4', name: 'ui', value: 15, children: [] },
+      { id: 'treemap-5', name: 'auth', value: 10, children: [] },
+    ];
 
     const waterfallSampleData = [
-      { label: 'Start', value: 0, isTotal: true },
-      { label: 'CPU', value: 25 },
-      { label: 'Memory', value: 15 },
-      { label: 'Network', value: 10 },
-      { label: 'Storage', value: 20 },
-      { label: 'End', value: 70, isTotal: true },
+      { name: 'Start', start: 0, end: 0, category: 'compute' },
+      { name: 'CPU', start: 0, end: 25, category: 'compute' },
+      { name: 'Memory', start: 25, end: 40, category: 'memory' },
+      { name: 'Network', start: 40, end: 50, category: 'network' },
+      { name: 'Storage', start: 50, end: 70, category: 'io' },
+      { name: 'End', start: 70, end: 70, category: 'compute' },
     ];
 
     const costSampleData = [
-      { label: 'Compute', value: 45 },
-      { label: 'Storage', value: 25 },
-      { label: 'Network', value: 15 },
-      { label: 'API', value: 10 },
-      { label: 'Other', value: 5 },
+      { category: 'Compute', value: 45 },
+      { category: 'Storage', value: 25 },
+      { category: 'Network', value: 15 },
+      { category: 'API', value: 10 },
+      { category: 'Other', value: 5 },
     ];
 
     const semanticSampleData = Array.from({ length: 30 }, (_, i) => ({
+      id: `cluster-${i}`,
       x: Math.random() * 100,
       y: Math.random() * 100,
+      cluster: `Cluster ${Math.floor(Math.random() * 5)}`,
       label: `Item ${i}`,
-      cluster: Math.floor(Math.random() * 5),
     }));
 
     const agentNodes = [
-      { id: '1', label: 'Agent A', type: 'agent' as const },
-      { id: '2', label: 'Func B', type: 'function' as const },
-      { id: '3', label: 'User C', type: 'user' as const },
-      { id: '4', label: 'Agent D', type: 'agent' as const },
+      { id: '1', label: 'Agent A', type: 'agent', connections: ['2', '4'] },
+      { id: '2', label: 'Func B', type: 'function', connections: ['3'] },
+      { id: '3', label: 'User C', type: 'user', connections: ['1'] },
+      { id: '4', label: 'Agent D', type: 'agent', connections: [] },
     ];
 
     const agentEdges = [
-      { source: '1', target: '2', strength: 3 },
-      { source: '2', target: '3', strength: 2 },
-      { source: '3', target: '1', strength: 4 },
-      { source: '1', target: '4', strength: 2 },
+      { source: '1', target: '2', weight: 3, type: 'calls' },
+      { source: '2', target: '3', weight: 2, type: 'calls' },
+      { source: '3', target: '1', weight: 4, type: 'calls' },
+      { source: '1', target: '4', weight: 2, type: 'calls' },
     ];
 
     switch (activeView) {
@@ -162,10 +174,10 @@ export function DataVisualizationPage() {
         return (
           <ThreeDTopologyChart
             nodes={[
-              { id: '1', label: 'Node A', x: 30, y: 40, z: 60 },
-              { id: '2', label: 'Node B', x: 70, y: 30, z: 40 },
-              { id: '3', label: 'Node C', x: 50, y: 70, z: 80 },
-              { id: '4', label: 'Node D', x: 20, y: 20, z: 50 },
+              { id: '1', label: 'Node A', depth: 0, children: [] },
+              { id: '2', label: 'Node B', depth: 1, children: [] },
+              { id: '3', label: 'Node C', depth: 0, children: [] },
+              { id: '4', label: 'Node D', depth: 1, children: [] },
             ]}
           />
         );
@@ -175,21 +187,26 @@ export function DataVisualizationPage() {
         return <DependencyTreemap data={treemapSampleData} />;
       case 'circular-flow':
         return (
-          <CircularFlow
+          <CircularFlowDiagram
             nodes={[
-              { id: '1', label: 'API' },
-              { id: '2', label: 'Auth' },
-              { id: '3', label: 'DB' },
-              { id: '4', label: 'Cache' },
+              { id: '1', label: 'API', value: 100, type: 'source' },
+              { id: '2', label: 'Auth', value: 80, type: 'processor' },
+              { id: '3', label: 'DB', value: 60, type: 'sink' },
+              { id: '4', label: 'Cache', value: 40, type: 'processor' },
+            ]}
+            connections={[
+              { source: '1', target: '2', value: 50 },
+              { source: '2', target: '3', value: 40 },
+              { source: '1', target: '4', value: 30 },
             ]}
           />
         );
       case 'waterfall':
-        return <WaterfallChart data={waterfallSampleData} />;
+        return <RuntimeWaterfallChart steps={waterfallSampleData} />;
       case 'cost-distribution':
-        return <CostDistribution data={costSampleData} />;
+        return <CostDistributionGraph data={costSampleData} />;
       case 'semantic-cluster':
-        return <SemanticCluster points={semanticSampleData} />;
+        return <SemanticClusterChart points={semanticSampleData} clusters={['Cluster 0', 'Cluster 1', 'Cluster 2', 'Cluster 3', 'Cluster 4']} />;
       case 'agent-interaction':
         return <AgentInteractionGraph nodes={agentNodes} edges={agentEdges} />;
       default:
@@ -345,7 +362,7 @@ export function DataVisualizationPage() {
             </div>
             <div className="aviation-dv-chart-container">
               <StreamingLineChart
-                data={Array.from({ length: 30 }, (_, i) => ({ x: i, y: Math.sin(i / 5) * 50 + 50 }))}
+                data={Array.from({ length: 30 }, (_, i) => ({ timestamp: Date.now() - (30 - i) * 1000, value: Math.sin(i / 5) * 50 + 50 }))}
               />
             </div>
           </div>

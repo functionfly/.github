@@ -66,6 +66,7 @@ require (
 )
 
 require (
+	github.com/buraksezer/consistent v0.10.0 // indirect
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327 // indirect
 	github.com/chromedp/sysutil v1.1.0 // indirect
 	github.com/go-json-experiment/json v0.0.0-20250725192818-e39067aee2d2 // indirect
@@ -73,6 +74,8 @@ require (
 	github.com/gobwas/pool v0.2.1 // indirect
 	github.com/gobwas/ws v1.4.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
+	google.golang.org/grpc v1.74.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

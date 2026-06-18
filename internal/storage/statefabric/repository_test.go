@@ -32,7 +32,7 @@ func TestMain(m *testing.M) {
 	os.Setenv("DB_USER", getEnvOrDefault("TEST_DB_USER", "postgres"))
 	os.Setenv("DB_PASSWORD", getEnvOrDefault("TEST_DB_PASSWORD", "postgres"))
 	os.Setenv("DB_NAME", getEnvOrDefault("TEST_DB_NAME", "functionfly_test"))
-	os.Setenv("DB_SSLMODE", "disable")
+	os.Setenv("DB_SSLMODE", "require")
 	os.Setenv("DB_MAX_OPEN_CONNS", "5")
 	os.Setenv("DB_MAX_IDLE_CONNS", "2")
 	os.Setenv("DB_CONN_MAX_LIFETIME", "5m")
@@ -60,6 +60,7 @@ func createTestTables(db *storage.PostgresDB) {
 	for _, table := range tables {
 		db.DB.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s CASCADE", table))
 	}
+	db.DB.Exec("DROP TABLE IF EXISTS state_values CASCADE")
 	db.DB.Exec("DROP TABLE IF EXISTS state_triggers CASCADE")
 	db.DB.Exec("DROP TABLE IF EXISTS state_snapshots CASCADE")
 	db.DB.Exec("DROP TABLE IF EXISTS state_events CASCADE")
@@ -115,12 +116,16 @@ func createTestTables(db *storage.PostgresDB) {
 		CREATE TABLE state_snapshots (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
-			name VARCHAR(255),
+			label VARCHAR(255),
 			state_data JSONB NOT NULL DEFAULT '{}',
-			key_count INTEGER NOT NULL DEFAULT 0,
+			snapshot_version INTEGER NOT NULL DEFAULT 0,
 			state_size_bytes BIGINT NOT NULL DEFAULT 0,
+			key_count INTEGER NOT NULL DEFAULT 0,
 			first_sequence BIGINT NOT NULL DEFAULT 0,
 			last_sequence BIGINT NOT NULL DEFAULT 0,
+			root_event_id UUID,
+			is_compressed BOOLEAN NOT NULL DEFAULT false,
+			compression_algo VARCHAR(50),
 			expires_at TIMESTAMP,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			r2_object_key VARCHAR(512),
@@ -132,15 +137,41 @@ func createTestTables(db *storage.PostgresDB) {
 	db.DB.Exec(`
 		CREATE TABLE state_triggers (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
-			name VARCHAR(255) NOT NULL,
+			tenant_id UUID NOT NULL,
+			source_state_id UUID REFERENCES states(id) ON DELETE CASCADE,
+			trigger_type VARCHAR(50) NOT NULL DEFAULT 'on_write',
+			name VARCHAR(255) NOT NULL DEFAULT '',
 			description TEXT,
+			key_pattern VARCHAR(512),
 			condition JSONB NOT NULL DEFAULT '{}',
+			target_function VARCHAR(255),
+			target_function_id UUID,
+			include_previous BOOLEAN NOT NULL DEFAULT false,
+			include_new BOOLEAN NOT NULL DEFAULT true,
+			max_invocations_per_minute INTEGER NOT NULL DEFAULT 60,
 			is_active BOOLEAN NOT NULL DEFAULT true,
 			last_triggered_at TIMESTAMP,
 			trigger_count BIGINT NOT NULL DEFAULT 0,
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+		)
+	`)
+
+	db.DB.Exec(`
+		CREATE TABLE state_values (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			state_id UUID NOT NULL REFERENCES states(id) ON DELETE CASCADE,
+			key VARCHAR(1024) NOT NULL,
+			value JSONB NOT NULL,
+			encrypted_val BYTEA,
+			version INTEGER NOT NULL DEFAULT 1,
+			previous_value JSONB,
+			content_hash VARCHAR(64),
+			is_encrypted BOOLEAN NOT NULL DEFAULT false,
+			expires_at TIMESTAMP,
+			created_by VARCHAR(255),
+			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+			UNIQUE(state_id, key, version)
 		)
 	`)
 
@@ -789,8 +820,20 @@ func (s *StateFabricRepositoryTestSuite) TestCreateReplay() {
 
 	require.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), replay.ID)
-	assert.Equal(s.T(), "completed", replay.Status)
 	assert.Equal(s.T(), fabric.ID.String(), replay.FabricID)
+
+	// Poll for replay completion (replay runs async in a goroutine)
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		got, err := s.repo.GetReplay(ctx, tenantID, fabric.ID, replay.ID)
+		require.NoError(s.T(), err)
+		if got.Status == "completed" || got.Status == "failed" {
+			assert.Equal(s.T(), "completed", got.Status)
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	s.T().Fatal("replay did not complete within 10s")
 }
 
 // TestGetReplay tests getting a replay by ID

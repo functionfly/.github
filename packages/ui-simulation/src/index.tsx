@@ -152,7 +152,7 @@ export const SimulationControlCenter: React.FC<
   const [elapsedTime, setElapsedTime] = useState(0);
 
   useEffect(() => {
-    let interval: number;
+    let interval: ReturnType<typeof setInterval>;
     if (status === "running") {
       interval = setInterval(() => setElapsedTime((t) => t + 1), 1000);
     } else if (status === "idle") {

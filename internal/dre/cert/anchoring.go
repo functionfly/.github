@@ -166,6 +166,23 @@ func (s *EthereumAnchoringService) GetBlockNumber(ctx context.Context, chain str
 	return s.getBlockNumberOnChain(ctx, chain)
 }
 
+// Chains returns the list of chains that have both an RPC endpoint and a
+// contract address configured. The result is ordered by cost-efficiency
+// (cheapest first), matching SupportedChains.
+func (s *EthereumAnchoringService) Chains() []string {
+	out := make([]string, 0, len(s.rpcEndpoints))
+	for _, chain := range SupportedChains {
+		if _, ok := s.rpcEndpoints[chain]; !ok {
+			continue
+		}
+		if _, ok := s.contractAddresses[chain]; !ok {
+			continue
+		}
+		out = append(out, chain)
+	}
+	return out
+}
+
 // IsChainSupported checks if a chain is supported.
 func IsChainSupported(chain string) bool {
 	for _, c := range SupportedChains {

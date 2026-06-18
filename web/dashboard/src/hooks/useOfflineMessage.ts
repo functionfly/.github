@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { conversationsApi } from '@/api/conversations';
-import { offlineStore, offlineSyncQueue } from '@/lib/offline-store';
+import { offlineStore } from '@/lib/offline-store';
+import { offlineSyncQueue } from '@/lib/offline-sync';
 import { conversationKeys } from './useConversations';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from 'sonner';
@@ -30,15 +31,18 @@ export function useOfflineMessage() {
     const loadPending = async () => {
       const items = await offlineStore.getPendingMessages();
       const pending = items
-        .filter((item) => item.type === 'create_message')
-        .map((item) => ({
-          id: item.id,
-          conversationId: item.conversationId,
-          content: item.content,
-          timestamp: item.timestamp,
-          status: 'pending' as const,
-          error: item.lastError,
-        }));
+        .filter((item) => (item as unknown as { type?: string }).type === 'create_message')
+        .map((item) => {
+          const i = item as unknown as { id: string; conversationId: string; content: string; timestamp: number; lastError?: string };
+          return {
+            id: i.id,
+            conversationId: i.conversationId,
+            content: i.content,
+            timestamp: i.timestamp,
+            status: 'pending' as const,
+            error: i.lastError,
+          };
+        });
       setPendingMessages(pending);
     };
 
@@ -106,10 +110,13 @@ export function useOfflineMessage() {
     );
 
     const items = await offlineStore.getPendingMessages();
-    const item = items.find((i) => i.id === localId);
+    const item = items.find((i: { id: string }) => i.id === localId);
 
     if (item) {
-      await offlineSyncQueue.enqueueMessage(item.type, item.payload);
+      await offlineSyncQueue.enqueueMessage(
+        item.type,
+        item.payload
+      );
     }
   }, []);
 

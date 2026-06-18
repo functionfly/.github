@@ -3,9 +3,8 @@
  * Main hook and specialized hooks for DevOps components
  */
 
-import { useCodeIntelligenceStore as create } from 'zustand'
-import { immer } from 'zustand/middleware/immer'
 import { useDevOpsStore } from '../stores/devopsStore'
+import { useCodeIntelligenceStore } from '@/stores/codeIntelligenceStore'
 
 // Main hook returning the full store
 export const useDevOps = () => useDevOpsStore()

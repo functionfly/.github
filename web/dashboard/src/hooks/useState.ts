@@ -254,3 +254,51 @@ export function useGrantPermission(path: string) {
     },
   });
 }
+
+// Enable encryption for a state path
+export function useEnableEncryption(path: string) {
+  return useMutation({
+    mutationFn: () => stateApi.enableEncryption(path),
+    onSuccess: () => {
+      toast.success("Encryption enabled");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to enable encryption: ${error.message}`);
+    },
+  });
+}
+
+// Get encryption statistics
+export function useEncryptionStats(path: string) {
+  return useQuery({
+    queryKey: [...stateKeys.detail(path), 'encryption'] as const,
+    queryFn: () => stateApi.getEncryptionStats(path),
+    enabled: isPathValidForFetch(path),
+  });
+}
+
+// Migrate encryption
+export function useMigrateEncryption(path: string) {
+  return useMutation({
+    mutationFn: (data: { algorithm: string; keyId?: string }) => stateApi.migrateEncryption(path, data),
+    onSuccess: () => {
+      toast.success("Encryption migrated");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to migrate encryption: ${error.message}`);
+    },
+  });
+}
+
+// Rotate encryption key
+export function useRotateEncryptionKey(path: string) {
+  return useMutation({
+    mutationFn: () => stateApi.rotateEncryptionKey(path),
+    onSuccess: () => {
+      toast.success("Encryption key rotated");
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to rotate encryption key: ${error.message}`);
+    },
+  });
+}

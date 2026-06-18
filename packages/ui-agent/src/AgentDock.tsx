@@ -116,10 +116,12 @@ export interface AgentMemoryViewerProps {
   agentId: string;
   onMemoryAdd?: () => void;
   onMemorySearch?: (query: string) => void;
+  onMemoryDelete?: (id: string) => void;
   className?: string;
 }
 
 export interface AgentPermissionEditorProps {
+  agentId: string;
   permissions: AgentPermission[];
   onPermissionToggle?: (id: string, granted: boolean) => void;
   onSave?: () => void;
@@ -563,6 +565,7 @@ export function AgentMemoryViewer({
   agentId,
   onMemoryAdd,
   onMemorySearch,
+  onMemoryDelete,
   className,
 }: AgentMemoryViewerProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -673,6 +676,7 @@ export function AgentMemoryViewer({
 
 // --- AgentPermissionEditor ---
 export function AgentPermissionEditor({
+  agentId: _agentId,
   permissions,
   onPermissionToggle,
   onSave,

@@ -77,7 +77,7 @@ export function ExtensionSecurityScore({ extension, detailed = false }: Extensio
           <Shield className={`w-5 h-5 ${statusColor}`} />
           <h3 className="text-sm font-semibold text-white">Security Assessment</h3>
         </div>
-        <Badge variant={overallStatus === "pass" ? "success" : overallStatus === "warning" ? "warning" : "destructive"}>
+        <Badge variant={overallStatus === "pass" ? "success" : overallStatus === "warning" ? "warning" : "error"}>
           {overallScore}%
         </Badge>
       </div>

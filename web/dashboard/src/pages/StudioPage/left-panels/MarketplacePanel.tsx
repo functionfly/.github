@@ -12,7 +12,7 @@ import {
   FunctionRoyaltiesPanel,
   MarketplaceLeaderboard,
   RevenueAnalytics,
-} from "@functionfly/ui-marketplace-economy";
+} from "@functionfly/ui-marketplace-economy/components";
 import { GlassCard, Badge, cn } from "@functionfly/ui-core";
 import {
   useExecuteFunction,

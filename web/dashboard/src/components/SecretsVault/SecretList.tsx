@@ -108,7 +108,8 @@ export interface SecretListProps {
 }
 
 export function SecretList({ className }: SecretListProps) {
-  const { data: secrets, isLoading, error } = useVaultSecrets();
+  const { data: secretsResponse, isLoading, error } = useVaultSecrets();
+  const secrets = secretsResponse?.secrets ?? [];
   const deleteSecret = useDeleteSecret();
   const user = useAuthStore((state) => state.user);
   const userPlan = user?.plan;
@@ -125,7 +126,7 @@ export function SecretList({ className }: SecretListProps) {
   const canCreateSecrets = secretsLimit > 0;
 
   // Filter secrets based on search query
-  const filteredSecrets = secrets?.filter((secret) => {
+  const filteredSecrets = secrets.filter((secret) => {
     const query = searchQuery.toLowerCase();
     return (
       secret.name.toLowerCase().includes(query) ||

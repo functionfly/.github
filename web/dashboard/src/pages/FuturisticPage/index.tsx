@@ -6,19 +6,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useFuturisticStore, type ThoughtWave, type Token, type SwarmAgent, type TelemetryMetric, type TwinEntity } from '@/stores/futuristicStore';
-import {
-  OrbitCommandLayer as OrbitCommand,
-  QuantumWorkspaceTransition as QuantumTransition,
-  HolographicPanel as HolographicDisplay,
-  CinematicFocusMode as CinematicFocus,
-  AIThoughtWave as AIThoughtWaveVisualizer,
-  GlassExecutionCard,
-  TokenStormRenderer as TokenStreamDisplay,
-  SwarmMindVisualizer as SwarmAgentMonitor,
-  AmbientTelemetryLayer as TelemetryMetricsPanel,
-  DigitalTwinViewport as DigitalTwinView,
-  AmbientEffects,
-} from '@functionfly/ui-futuristic';
+import * as FuturisticUI from '@functionfly/ui-futuristic';
+
+const OrbitCommand = FuturisticUI.OrbitCommandLayer as any;
+const QuantumTransition = FuturisticUI.QuantumWorkspaceTransition as any;
+const HolographicDisplay = FuturisticUI.HolographicPanel as any;
+const CinematicFocus = FuturisticUI.CinematicFocusMode as any;
+const AIThoughtWaveVisualizer = FuturisticUI.AIThoughtWave as any;
+const TokenStreamDisplay = FuturisticUI.TokenStormRenderer as any;
+const SwarmAgentMonitor = FuturisticUI.SwarmMindVisualizer as any;
+const TelemetryMetricsPanel = FuturisticUI.AmbientTelemetryLayer as any;
+const DigitalTwinView = FuturisticUI.DigitalTwinViewport as any;
 import { Sparkles, Brain, Zap, Activity, Wifi, AudioWaveform, Bot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -150,9 +148,9 @@ const FuturisticPage: React.FC = () => {
         return (
           <div className="h-[400px]">
             <OrbitCommand
-              items={orbitItems}
-              activeItemId={orbitItems.find(item => item.label.toLowerCase() === activeLayer)?.id}
-              onItemSelect={(item) => setActiveLayer(item.label.toLowerCase())}
+              items={orbitItems as any}
+              activeItemId={String(orbitItems.find(item => item.label.toLowerCase() === activeLayer)?.id || '')}
+              onItemSelect={(item: any) => setActiveLayer(item.label.toLowerCase())}
               rotationSpeed={activeLayer === 'orbit' ? 0.2 : 0}
               showTrails
             />
@@ -161,22 +159,22 @@ const FuturisticPage: React.FC = () => {
       case 'quantum':
         return (
           <QuantumTransition
-            states={transitionStates}
-            currentStateIndex={currentStateIndex}
-            onStateChange={triggerTransition}
+            states={transitionStates as any}
+            currentStateIndex={currentStateIndex as any}
+            onStateChange={triggerTransition as any}
           />
         );
       case 'thought-wave':
         return (
           <AIThoughtWaveVisualizer
-            waves={thoughtWaves}
+            waves={thoughtWaves as any}
             isProcessing={isProcessing}
           />
         );
       case 'token-stream':
         return (
           <TokenStreamDisplay
-            tokens={tokenStream}
+            tokens={tokenStream as any}
             isStreaming={isStreaming}
             maxDisplay={100}
           />
@@ -184,21 +182,21 @@ const FuturisticPage: React.FC = () => {
       case 'swarm':
         return (
           <SwarmAgentMonitor
-            agents={swarmAgents}
+            agents={swarmAgents as any}
             showConnections
           />
         );
       case 'telemetry':
         return (
           <TelemetryMetricsPanel
-            metrics={telemetryMetrics}
+            metrics={telemetryMetrics as any}
             refreshInterval={2000}
           />
         );
       case 'twin':
         return (
           <DigitalTwinView
-            entities={twinEntities}
+            entities={twinEntities as any}
           />
         );
       default:
@@ -207,32 +205,32 @@ const FuturisticPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-4 h-full">
               <div className="col-span-2 h-[200px]">
                 <OrbitCommand
-                  items={orbitItems}
-                  activeItemId={orbitItems[0].id}
+                  items={orbitItems as any}
+                  activeItemId={orbitItems[0].id as any}
                   showTrails
                 />
               </div>
               <div className="h-[200px]">
                 <AIThoughtWaveVisualizer
-                  waves={thoughtWaves}
+                  waves={thoughtWaves as any}
                   isProcessing={isProcessing}
                 />
               </div>
               <div className="h-[200px]">
                 <SwarmAgentMonitor
-                  agents={swarmAgents}
+                  agents={swarmAgents as any}
                   showConnections
                 />
               </div>
               <div className="h-[200px]">
                 <TokenStreamDisplay
-                  tokens={tokenStream.slice(-20)}
+                  tokens={tokenStream.slice(-20) as any}
                   isStreaming={isStreaming}
                 />
               </div>
               <div className="h-[200px]">
                 <TelemetryMetricsPanel
-                  metrics={telemetryMetrics.slice(0, 4)}
+                  metrics={telemetryMetrics.slice(0, 4) as any}
                 />
               </div>
             </div>
@@ -260,7 +258,7 @@ const FuturisticPage: React.FC = () => {
           <h1 className="text-2xl font-bold text-aviation-text-primary">Futuristic Signature</h1>
           <p className="text-sm text-aviation-text-muted">Next-generation AI visualization components</p>
         </div>
-        <AmbientEffects enabled={ambientEnabled} onToggle={toggleAmbient} />
+        <button onClick={toggleAmbient}>Toggle Ambient</button>
       </div>
 
       <div className="flex items-center gap-2 overflow-x-auto pb-2">

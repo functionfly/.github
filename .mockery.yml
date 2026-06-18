@@ -28,3 +28,7 @@ packages:
   github.com/functionfly/functionfly/internal/adapters/functionfly:
     interfaces:
       EdgeDeploymentClientInterface: {}
+  github.com/functionfly/functionfly/internal/api/handlers/registry/dre:
+    interfaces:
+      DRERepository: {}
+      AnchorServicer: {}
