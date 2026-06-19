@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/manifest"
+	"github.com/sirupsen/logrus"
 )
 
 // JavyCompilationConfig contains configuration for Javy compilation
@@ -146,7 +147,7 @@ func bundleJSForWasmRuntime(manifest *manifest.Manifest) ([]byte, error) {
 			return data, nil
 		}
 		// Daemon failed - fall through to Javy compilation
-		fmt.Printf("Warning: daemon execution failed (%v), falling back to Javy compilation\n", daemonErr)
+		logrus.WithField("error", daemonErr).Warn("daemon execution failed, falling back to Javy compilation")
 	}
 
 	// Try actual WebAssembly compilation using Javy with timeout
@@ -158,17 +159,17 @@ func bundleJSForWasmRuntime(manifest *manifest.Manifest) ([]byte, error) {
 	if err == nil {
 		// Validate the compiled WebAssembly
 		if err := validateWasmModule(wasmBytes); err != nil {
-			fmt.Printf("Warning: Compiled WebAssembly validation failed (%v), using fallback\n", err)
+			logrus.WithField("error", err).Warn("Compiled WebAssembly validation failed, using fallback")
 			return createSecureFallbackWasmWrapper(string(sourceCode), manifest, "javascript")
 		}
-		fmt.Printf("Successfully compiled %s to WebAssembly using Javy\n", entryFile)
+		logrus.WithField("entry_file", entryFile).Debug("Successfully compiled to WebAssembly using Javy")
 		return wasmBytes, nil
 	} else {
 		// Check if it was a timeout
 		if ctx.Err() == context.DeadlineExceeded {
 			return nil, NewBundlerError("wasm js bundle", fmt.Sprintf("Javy compilation timed out after %v", config.MaxCompilationTime))
 		}
-		fmt.Printf("Warning: WebAssembly compilation failed (%v), using fallback wrapper\n", err)
+		logrus.WithField("error", err).Warn("WebAssembly compilation failed, using fallback wrapper")
 	}
 
 	// Fallback: Create a JavaScript wrapper for Wasm runtime (secure version)

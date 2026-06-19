@@ -293,9 +293,11 @@ func (r *Repository) getAPIKey(ctx context.Context) (string, error) {
 			return "", fmt.Errorf("vault secret not found: %s", r.vaultSecretRef)
 		}
 
-		// TODO: Implement proper server-side decryption for system secrets
-		// For now, return the encrypted value (caller must decrypt)
-		return string(secret.EncryptedValue), nil
+		if len(secret.EncryptedValue) == 0 {
+			return "", fmt.Errorf("vault secret has no encrypted value")
+		}
+
+		return "", fmt.Errorf("server-side decryption not implemented: vault secret %s is encrypted; caller must decrypt using client-side vault-crypto utilities", r.vaultSecretRef)
 	}
 
 	if r.apiKey == "" {
@@ -1906,6 +1908,55 @@ func (r *Repository) GetReplay(ctx context.Context, tenantID, fabricID uuid.UUID
 		}
 	}
 	return nil, fmt.Errorf("replay not found")
+}
+
+// ResumeReplay resumes a paused or failed replay session
+func (r *Repository) ResumeReplay(ctx context.Context, tenantID, fabricID uuid.UUID, replayID string) (*ReplaySession, error) {
+	state, err := r.stateRepo.GetStateByID(ctx, fabricID)
+	if err != nil {
+		return nil, err
+	}
+	if state.TenantID != tenantID {
+		return nil, fmt.Errorf(ErrFabricNotFound)
+	}
+
+	replayUUID, err := uuid.Parse(replayID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid replay ID: %w", err)
+	}
+
+	var replay StateFabricReplay
+	if err := r.db.WithContext(ctx).Where("id = ? AND fabric_id = ?", replayUUID, fabricID).First(&replay).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("replay not found")
+		}
+		return nil, err
+	}
+
+	// Only allow resuming paused or failed replays
+	if replay.Status != "paused" && replay.Status != "failed" {
+		return nil, fmt.Errorf("can only resume paused or failed replays, current status: %s", replay.Status)
+	}
+
+	// Update status to running
+	now := time.Now()
+	if err := r.db.WithContext(ctx).Model(&replay).Updates(map[string]interface{}{
+		"status":       "running",
+		"completed_at":  nil,
+		"error_message": nil,
+		"started_at":    now,
+	}).Error; err != nil {
+		return nil, err
+	}
+
+	return &ReplaySession{
+		ID:             replay.ID.String(),
+		FabricID:       fabricID.String(),
+		Status:         "running",
+		Progress:       replay.Progress,
+		EventsReplayed: int(replay.EventsReplayed),
+		StartedAt:      now,
+	}, nil
 }
 
 // ListFabricsAdmin lists all fabrics for admin (optional tenant filter).

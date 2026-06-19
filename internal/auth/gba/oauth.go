@@ -260,10 +260,3 @@ func (om *OAuthManager) FindOrCreateUser(db *gorm.DB, tenantID uuid.UUID, info *
 
 	return &user, nil
 }
-
-// gorm import placeholder - needed for compilation
-type gormDB interface {
-	Where(query interface{}, args ...interface{}) interface{}
-	First(dest interface{}, conds ...interface{}) error
-	Create(value interface{}) error
-}

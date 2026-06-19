@@ -191,11 +191,21 @@ func NewServer(db *storage.PostgresDB) *Server {
 
 	// SECURITY: Block DEVELOPMENT=true on machines whose hostname looks like a deployed server.
 	// Many dev laptops/WSL hosts use a real hostname (not "localhost"), so allow an explicit opt-in.
+	// Also skip check in containers (identified by /.dockerenv)
 	if os.Getenv("DEVELOPMENT") == "true" {
 		hostname, _ := os.Hostname()
 		isLocalhost := strings.HasPrefix(hostname, "localhost") || strings.HasPrefix(hostname, "127.0.0.1") || strings.Contains(hostname, ".local")
+		isContainer := func() bool {
+			if _, err := os.Stat("/.dockerenv"); err == nil {
+				return true
+			}
+			if data, err := os.ReadFile("/proc/self/cgroup"); err == nil {
+				return strings.Contains(string(data), "docker") || strings.Contains(string(data), "containerd")
+			}
+			return false
+		}()
 		allowNonlocal := os.Getenv("DEVELOPMENT_ALLOW_NONLOCAL_HOST") == "true"
-		if !isLocalhost && !allowNonlocal {
+		if !isLocalhost && !isContainer && !allowNonlocal {
 			logging.Logger().Fatal("FATAL: DEVELOPMENT=true is set but this machine's hostname is not localhost-like (" + hostname + "). " +
 				"For a normal dev workstation (e.g. WSL), set DEVELOPMENT_ALLOW_NONLOCAL_HOST=true or unset DEVELOPMENT. " +
 				"Never set DEVELOPMENT=true in real production.")

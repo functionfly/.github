@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // CreateFunction creates a new function in the registry
@@ -29,7 +30,7 @@ func (r *RegistryRepository) CreateFunction(ctx context.Context, fn *RegistryFun
 	if r.cache != nil {
 		go func() {
 			if err := r.cache.InvalidateSearchResults(context.Background()); err != nil {
-				fmt.Printf("Failed to invalidate search cache after function creation: %v\n", err)
+				logrus.WithError(err).Warn("Failed to invalidate search cache after function creation")
 			}
 		}()
 	}

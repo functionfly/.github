@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -79,9 +80,11 @@ func (h *TenantAuthHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	updates["updated_at"] = time.Now()
-
-	if err := 	h.repo.UpdateAuthSettings(ctx, claims.TenantID, updates); err != nil {
+	if err := h.repo.UpdateAuthSettings(ctx, claims.TenantID, updates); err != nil {
+		if strings.Contains(err.Error(), "invalid field name") {
+			writeJSONError(w, http.StatusBadRequest, "Invalid field name in updates")
+			return
+		}
 		logrus.WithError(err).Error("Failed to update auth settings")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to update settings")
 		return

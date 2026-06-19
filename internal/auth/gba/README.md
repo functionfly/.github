@@ -49,12 +49,13 @@ GoBetterAuth is embedded directly into the Go backend, providing authentication 
 - ✅ JWT token generation
 - ✅ Database migrations
 
-### Future Phases
-- ⏳ MFA (TOTP) plugin
-- ⏳ WebAuthn/Passkeys plugin
-- ⏳ SAML SSO plugin
-- ⏳ Advanced session policies
-- ⏳ IP allowlisting
+### Implemented Plugins
+- ✅ MFA (TOTP) plugin - `gba/plugins/mfa/plugin.go`
+- ✅ WebAuthn/Passkeys plugin - `gba/plugins/webauthn/plugin.go`
+- ✅ SAML SSO plugin - `gba/plugins/saml/plugin.go`
+- ✅ SCIM provisioning - `gba/plugins/scim/plugin.go`
+- ✅ Advanced session policies
+- ✅ IP allowlisting
 
 ## Configuration
 

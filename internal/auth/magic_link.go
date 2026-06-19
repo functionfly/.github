@@ -102,23 +102,38 @@ func generateMagicLinkToken() (string, error) {
 
 // hashMagicLinkToken creates an HMAC-SHA256 hash of a magic link token for secure storage
 // Uses a secret key to prevent rainbow table attacks from database breaches
-func hashMagicLinkToken(token string) string {
+func hashMagicLinkToken(token string) (string, error) {
 	secretKey := os.Getenv("MAGIC_LINK_TOKEN_SECRET")
 	if secretKey == "" {
-		// In production, require the secret to be set - fail secure
-		if os.Getenv("PRODUCTION_ENV") == "true" {
-			logrus.Error("MAGIC_LINK_TOKEN_SECRET environment variable is required in production")
-			// Return a hash with an invalid key indicator - tokens won't match
-			// This causes verification failures which is safer than using a known secret
-			return "PRODUCTION_SECRET_REQUIRED"
-		}
-		// In development, generate a secret from a derivation string but log warning
-		secretKey = "functionfly-magic-link-hmac-secret-do-not-share"
-		logrus.Warn("MAGIC_LINK_TOKEN_SECRET not set - using insecure default for development only")
+		return "", fmt.Errorf("MAGIC_LINK_TOKEN_SECRET environment variable is required")
+	}
+	if err := validateMagicLinkSecretStrength(secretKey); err != nil {
+		return "", err
 	}
 	h := hmac.New(sha256.New, []byte(secretKey))
 	h.Write([]byte(token))
-	return hex.EncodeToString(h.Sum(nil))
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// validateMagicLinkSecretStrength checks that the magic link secret has sufficient entropy
+// and is not a known weak value
+func validateMagicLinkSecretStrength(secret string) error {
+	if len(secret) < 32 {
+		return fmt.Errorf("MAGIC_LINK_TOKEN_SECRET must be at least 32 bytes; got %d bytes. Generate a secure secret with: openssl rand -hex 32", len(secret))
+	}
+
+	weakPatterns := []string{
+		"password", "admin", "secret", "changeme",
+	}
+
+	secretLower := strings.ToLower(secret)
+	for _, pattern := range weakPatterns {
+		if strings.Contains(secretLower, pattern) && len(secret) < 64 {
+			return fmt.Errorf("MAGIC_LINK_TOKEN_SECRET appears to be a weak secret. Please generate a secure secret with: openssl rand -hex 32")
+		}
+	}
+
+	return nil
 }
 
 // normalizeEmail normalizes an email address for comparison
@@ -172,7 +187,11 @@ func (a *AuthService) RequestMagicLink(req MagicLinkRequest, ipAddress, userAgen
 	}
 
 	// Hash the token for secure database storage (prevents token theft from DB breaches)
-	tokenHash := hashMagicLinkToken(token)
+	tokenHash, hashErr := hashMagicLinkToken(token)
+	if hashErr != nil {
+		logrus.Error(hashErr)
+		return nil, fmt.Errorf("failed to configure magic link security: %w", hashErr)
+	}
 
 	// Calculate expiry
 	expiresAt := time.Now().Add(config.TokenExpiry)
@@ -239,7 +258,11 @@ func (a *AuthService) VerifyMagicLink(req MagicLinkVerifyRequest) (*MagicLinkVer
 		Info("Magic link verification request received")
 
 	// Hash the provided token to look up in database (tokens are stored as hashes for security)
-	tokenHash := hashMagicLinkToken(req.Token)
+	tokenHash, hashErr := hashMagicLinkToken(req.Token)
+	if hashErr != nil {
+		logrus.Error(hashErr)
+		return nil, fmt.Errorf("magic link security not configured")
+	}
 
 	// Get magic link from database by hash
 	magicLink, err := a.repo.GetMagicLinkByToken(ctx, tokenHash)

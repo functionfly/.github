@@ -3,6 +3,7 @@ package functionfly
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -295,18 +296,8 @@ func (c *DeploymentClient) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
-// checksum computes a simple checksum of the artifact for verification
+// checksum computes a SHA-256 hash of the artifact for verification
 func checksum(data []byte) [32]byte {
-	// Using a simple FNV-like hash for quick checksums
-	var hash uint64 = 14695981039346656037
-	for _, b := range data {
-		hash ^= uint64(b)
-		hash *= 1099511628211
-	}
-	// Convert to [32]byte for compatibility
-	var result [32]byte
-	for i := 0; i < 32; i++ {
-		result[i] = byte(hash >> (i * 8))
-	}
-	return result
+	hash := sha256.Sum256(data)
+	return hash
 }

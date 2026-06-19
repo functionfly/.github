@@ -155,6 +155,10 @@ func (db *PostgresDB) ListAffiliateReferralsByCode(ctx context.Context, codeID u
 	return db.billingRepository.ListAffiliateReferralsByCode(ctx, codeID)
 }
 
+func (db *PostgresDB) ListAffiliateReferralsByPublisher(ctx context.Context, publisherID uuid.UUID) ([]*AffiliateReferral, error) {
+	return db.billingRepository.ListAffiliateReferralsByPublisher(ctx, publisherID)
+}
+
 func (db *PostgresDB) UpdateAffiliateReferralStatus(ctx context.Context, id uuid.UUID, status string) error {
 	return db.billingRepository.UpdateAffiliateReferralStatus(ctx, id, status)
 }

@@ -1,6 +1,7 @@
 package routing
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -26,11 +27,11 @@ func NewMockRepository() *MockRepository {
 	}
 }
 
-func (m *MockRepository) ListBackendsByAppID(appID uuid.UUID) ([]*storage.Backend, error) {
+func (m *MockRepository) ListBackendsByAppID(ctx context.Context, appID uuid.UUID) ([]*storage.Backend, error) {
 	return m.backends[appID], nil
 }
 
-func (m *MockRepository) GetRecentHealthChecks(backendID uuid.UUID, limit int) ([]*storage.HealthCheck, error) {
+func (m *MockRepository) GetRecentHealthChecks(ctx context.Context, backendID uuid.UUID, limit int) ([]*storage.HealthCheck, error) {
 	checks := m.healthData[backendID]
 	if len(checks) > limit {
 		return checks[:limit], nil
@@ -38,7 +39,7 @@ func (m *MockRepository) GetRecentHealthChecks(backendID uuid.UUID, limit int) (
 	return checks, nil
 }
 
-func (m *MockRepository) GetCircuitState(backendID uuid.UUID) (*storage.CircuitState, error) {
+func (m *MockRepository) GetCircuitState(ctx context.Context, backendID uuid.UUID) (*storage.CircuitState, error) {
 	if state, exists := m.circuitData[backendID]; exists {
 		return state, nil
 	}
@@ -46,7 +47,7 @@ func (m *MockRepository) GetCircuitState(backendID uuid.UUID) (*storage.CircuitS
 	return &storage.CircuitState{State: "closed"}, nil
 }
 
-func (m *MockRepository) InsertRoutingEvent(appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error {
+func (m *MockRepository) InsertRoutingEvent(ctx context.Context, appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error {
 	// Mock implementation - just return success
 	return nil
 }

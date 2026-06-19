@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -205,8 +206,7 @@ func (r *RegistryRepository) StoreDriftReport(report *DriftReportRecord) error {
 		TrustPenalty:   report.TrustPenalty,
 	}
 	if err := r.UpdatePassport(report.FunctionID, update); err != nil {
-		// Log but don't fail — drift report is already stored
-		fmt.Printf("dre: update passport after drift: %v\n", err)
+		logrus.WithError(err).Warn("dre: failed to update passport after drift")
 	}
 
 	_ = now
@@ -296,8 +296,7 @@ func (r *RegistryRepository) UpdatePassport(functionID uuid.UUID, update Passpor
 	// Track resource hash for performance stability calculation
 	if update.ResourceHash != "" {
 		if err := r.TrackResourceHash(functionID, update.ResourceHash); err != nil {
-			// Log but don't fail - performance tracking is non-critical
-			fmt.Printf("dre: track resource hash: %v\n", err)
+			logrus.WithError(err).Warn("dre: failed to track resource hash")
 		}
 	}
 
@@ -312,7 +311,7 @@ func (r *RegistryRepository) UpdatePassport(functionID uuid.UUID, update Passpor
 	// Compute performance stability score from resource hash history
 	resourceHashes, err := r.GetResourceHashHistory(functionID)
 	if err != nil {
-		fmt.Printf("dre: get resource history: %v\n", err)
+		logrus.WithError(err).Warn("dre: failed to get resource history")
 	} else {
 		passport.PerformanceStabilityScore = computePerformanceStabilityScore(resourceHashes)
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/functionfly/functionfly/internal/manifest"
+	"github.com/sirupsen/logrus"
 )
 
 // bundlePythonForWasmRuntime bundles Python source for execution inside the
@@ -40,10 +41,14 @@ func bundlePythonForWasmRuntime(m *manifest.Manifest) ([]byte, error) {
 	// Precompiled runtime is known-good; validation may report false positives
 	// for the embedded user-code data section, so warn but do not fail.
 	if err := validateWasmModule(wasmBytes); err != nil {
-		fmt.Printf("Warning: MicroPython WASM validation reported issues (%v) — using runtime anyway\n", err)
+		logrus.WithField("error", err).Warn("MicroPython WASM validation reported issues — using runtime anyway")
 	}
 
-	fmt.Printf("Bundled Python %q (%s, %d bytes) to MicroPython runtime (%d bytes)\n",
-		entryFile, m.Name, len(sourceCode), len(wasmBytes))
+	logrus.WithFields(logrus.Fields{
+		"entry_file": entryFile,
+		"name":       m.Name,
+		"source_len": len(sourceCode),
+		"wasm_len":   len(wasmBytes),
+	}).Debug("Bundled Python to MicroPython runtime")
 	return wasmBytes, nil
 }

@@ -39,11 +39,11 @@ type ManualReviewService struct {
 }
 
 // NewManualReviewService creates a new manual review service
-func NewManualReviewService(repo registry.ManualReviewRepositoryInterface) *ManualReviewService {
+func NewManualReviewService(repo registry.ManualReviewRepositoryInterface) (*ManualReviewService, error) {
 	if repo == nil {
-		panic("repository is required")
+		return nil, fmt.Errorf("repository is required")
 	}
-	return &ManualReviewService{repo: repo}
+	return &ManualReviewService{repo: repo}, nil
 }
 
 // ManualReview represents a manual review entry (view model for API responses)

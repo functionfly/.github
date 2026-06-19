@@ -435,6 +435,7 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateReplay))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays/{replayId:[0-9a-fA-F-]{36}}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGetReplay))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays/{replayId:[0-9a-fA-F-]{36}}/progress", stateFabricHandler.HandleReplayProgress).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays/{replayId:[0-9a-fA-F-]{36}}/resume", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleResumeReplay))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/triggers", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListTriggers))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/triggers", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateTrigger))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/triggers/{triggerId:[0-9a-fA-F-]{36}}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleUpdateTrigger))).Methods("PATCH", "OPTIONS")

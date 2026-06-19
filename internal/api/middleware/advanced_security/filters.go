@@ -2,6 +2,7 @@ package advanced_security
 
 import (
 	"net/http"
+	"net/url"
 	"regexp"
 )
 
@@ -22,8 +23,9 @@ type PathTraversalFilter struct {
 
 // Filter implementations
 func (sqlf *SQLInjectionFilter) Detect(r *http.Request) bool {
+	decodedQuery, _ := url.QueryUnescape(r.URL.RawQuery)
 	for _, pattern := range sqlf.patterns {
-		if pattern.MatchString(r.URL.RawQuery) {
+		if pattern.MatchString(decodedQuery) {
 			return true
 		}
 	}

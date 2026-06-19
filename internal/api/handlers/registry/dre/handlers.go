@@ -22,6 +22,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 // DREStatsResponse is the response shape for the DRE summary endpoint.
@@ -341,8 +342,7 @@ func (h *Handler) HandleAnchorCertificate(w http.ResponseWriter, r *http.Request
 		&now,
 	)
 	if upErr != nil {
-		// Log but don't fail - anchoring succeeded on chain
-		fmt.Printf("dre: failed to persist anchoring state: %v\n", upErr)
+		logrus.WithError(upErr).Warn("dre: failed to persist anchoring state")
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{

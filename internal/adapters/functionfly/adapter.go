@@ -222,13 +222,13 @@ func baseURLFromSpec(spec *common.DeploymentSpec) string {
 	return "https://edge.functionfly.com"
 }
 
-func wasmURLFromSpec(spec *common.DeploymentSpec) string {
+func wasmURLFromSpec(spec *common.DeploymentSpec) (string, error) {
 	if spec != nil && spec.ProviderConfig != nil {
 		if u, ok := spec.ProviderConfig["wasm_url"].(string); ok && u != "" {
-			return strings.TrimSuffix(u, "/")
+			return strings.TrimSuffix(u, "/"), nil
 		}
 	}
-	return "http://localhost:8080"
+	return "", fmt.Errorf("wasm_url provider config is required for WASM runtime deployments")
 }
 
 func apiKeyFromSpec(spec *common.DeploymentSpec) string {
@@ -293,15 +293,15 @@ func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.Deployment
 		base := baseURLFromSpec(spec)
 		deploymentURL := base + "/" + spec.AppName
 		return &common.DeploymentResult{
-			Status:        common.DeploymentStatusSuccess,
-			Message:       fmt.Sprintf("Function registered (API unavailable: %v), accessible via edge", err),
+			Status:        common.DeploymentStatusFailed,
+			Message:       fmt.Sprintf("Function registration failed (API unavailable: %v)", err),
 			DeploymentURL: deploymentURL,
 			DeploymentID:  spec.AppName,
 			Metadata: map[string]interface{}{
 				"provider":   ProviderName,
 				"endpoint":   deploymentURL,
 				"registered": false,
-				"error":     err.Error(),
+				"error":      err.Error(),
 			},
 		}, nil
 	}
@@ -325,7 +325,13 @@ func (a *FunctionFlyAdapter) Deploy(ctx context.Context, spec *common.Deployment
 }
 
 func (a *FunctionFlyAdapter) deployWASM(ctx context.Context, spec *common.DeploymentSpec) (*common.DeploymentResult, error) {
-	wasmURL := wasmURLFromSpec(spec)
+	wasmURL, err := wasmURLFromSpec(spec)
+	if err != nil {
+		return &common.DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: err.Error(),
+		}, nil
+	}
 
 	artifact := spec.Artifact
 	if len(artifact) == 0 {

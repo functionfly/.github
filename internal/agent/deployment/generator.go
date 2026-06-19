@@ -281,7 +281,7 @@ function processInput(inputData) {
   }
   return { processed: true, data: String(inputData) };
 }
-`, req.FunctionSpec.Title, funcName, req.FunctionSpec.Description, req.FunctionSpec.Prompt)
+`, req.FunctionSpec.Title, funcName, req.FunctionSpec.Description)
 
 	return template, nil
 }

@@ -122,7 +122,7 @@ type PayoutApprovalConfig struct {
 func DefaultPayoutApprovalConfig() *PayoutApprovalConfig {
 	adminEmail := os.Getenv("ADMIN_NOTIFICATION_EMAIL")
 	if adminEmail == "" {
-		adminEmail = "admin@functionfly.local"
+		logrus.Warn("ADMIN_NOTIFICATION_EMAIL not set - payout notifications will be disabled")
 	}
 	return &PayoutApprovalConfig{
 		ApprovalThresholdUSD:       getEnvFloat64("PAYOUT_APPROVAL_THRESHOLD_USD", 1000.0),

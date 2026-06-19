@@ -214,10 +214,11 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 
 	// Parse the event to get the event ID for idempotency check
 	if h.webhookSecret == "" {
-		// In non-production, only allow unverified webhooks if explicitly opted in
+		// In non-production, only allow unverified webhooks if explicitly opted in via both env vars
 		// Note: ALLOW_UNVERIFIED_WEBHOOKS is IGNORED in production due to check above
-		if os.Getenv("ALLOW_UNVERIFIED_WEBHOOKS") != "true" {
-			logrus.Error("STRIPE_WEBHOOK_SECRET not configured - rejecting webhook. Set ALLOW_UNVERIFIED_WEBHOOKS=true to allow unverified webhooks in development (not recommended)")
+		isDev := os.Getenv("DEVELOPMENT") == "true"
+		if os.Getenv("ALLOW_UNVERIFIED_WEBHOOKS") != "true" || !isDev {
+			logrus.Error("STRIPE_WEBHOOK_SECRET not configured - rejecting webhook. Set ALLOW_UNVERIFIED_WEBHOOKS=true and DEVELOPMENT=true to allow unverified webhooks in development only")
 			apierror.WriteError(w, apierror.NewInternal("Webhook authentication not configured"))
 			return
 		}

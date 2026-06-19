@@ -14,6 +14,7 @@ import (
 	"github.com/functionfly/functionfly/internal/dre/capsule"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // verifyReplay re-executes a function with the same input and verifies the output matches.
@@ -182,7 +183,7 @@ func (h *Handler) updatePassportVerified(functionID uuid.UUID, resourceHash stri
 		LastVerifiedAt:    &now,
 	}
 	if err := h.Repo.UpdatePassport(functionID, update); err != nil {
-		fmt.Printf("DRE: failed to update passport verified: %v\n", err)
+		logrus.WithError(err).Warn("DRE: failed to update passport verified")
 	}
 }
 

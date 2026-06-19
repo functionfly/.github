@@ -10,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -139,14 +140,12 @@ func (p *Publisher) Publish(ctx context.Context, req *PublishRequest) (*Publishe
 
 	// Update the agent's function ownership
 	if err := p.trackOwnership(ctx, req.AgentID, funcID); err != nil {
-		// Log but don't fail
-		fmt.Printf("Warning: failed to track ownership: %v\n", err)
+		logrus.WithError(err).Warn("Failed to track ownership")
 	}
 
 	// Create changelog entry for the published function
 	if err := p.createChangelogEntry(ctx, funcID, req); err != nil {
-		// Log but don't fail the publish
-		fmt.Printf("Warning: failed to create changelog entry: %v\n", err)
+		logrus.WithError(err).Warn("Failed to create changelog entry")
 	}
 
 	return published, nil

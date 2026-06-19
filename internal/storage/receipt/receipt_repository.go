@@ -74,13 +74,13 @@ type Repository struct {
 }
 
 // NewRepository constructs a Repository. Both arguments are required in
-// production; the constructor panics if the DB is nil to surface a
+// production; the constructor returns an error if the DB is nil to surface a
 // misconfiguration at startup rather than at request time.
-func NewRepository(db *gorm.DB, redisClient *redis.Client) *Repository {
+func NewRepository(db *gorm.DB, redisClient *redis.Client) (*Repository, error) {
 	if db == nil {
-		panic("receipt.NewRepository: db is required")
+		return nil, fmt.Errorf("receipt.NewRepository: db is required")
 	}
-	return &Repository{db: db, redis: redisClient}
+	return &Repository{db: db, redis: redisClient}, nil
 }
 
 // ----------------------------------------------------------------------------

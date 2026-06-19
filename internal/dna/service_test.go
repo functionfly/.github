@@ -10,19 +10,10 @@ import (
 )
 
 func newTestService() *Service {
-	svc, err := NewService(nil, logrus.StandardLogger())
-	if err != nil {
-		// For tests that don't need AI, set a dummy URL
-		t := &Service{
-			repo:       nil,
-			logger:     logrus.StandardLogger(),
-			aiBaseURL:  "http://localhost:8081",
-			aiAPIKey:   "",
-			httpClient: &http.Client{Timeout: 2 * time.Minute},
-			aiCircuitBreaker: newCircuitBreaker(5, 2*time.Minute),
-		}
-		return t
-	}
+	svc := NewService(nil, logrus.StandardLogger())
+	// For tests that don't need AI, ensure the service has a dummy URL
+	svc.aiBaseURL = "http://localhost:8081"
+	svc.aiAPIKey = ""
 	return svc
 }
 

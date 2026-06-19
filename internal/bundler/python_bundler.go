@@ -9,6 +9,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/functionfly/functionfly/internal/manifest"
+	"github.com/sirupsen/logrus"
 )
 
 // PythonDependency represents a Python package dependency
@@ -29,8 +30,7 @@ func bundlePython(manifest *manifest.Manifest) ([]byte, error) {
 	// Parse dependencies from requirements.txt or pyproject.toml
 	dependencies, err := parsePythonDependencies()
 	if err != nil {
-		// Don't fail if no dependencies file found, just log as warning
-		fmt.Printf("Warning: failed to parse Python dependencies: %v\n", err)
+		logrus.WithError(err).Warn("Failed to parse Python dependencies")
 		dependencies = nil
 	}
 

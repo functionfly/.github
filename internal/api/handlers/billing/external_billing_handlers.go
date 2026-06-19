@@ -732,7 +732,8 @@ func (h *ExternalBillingHandler) testConnectionWithExporter(ctx context.Context,
 
 	exporter, ok := billing.GetExporter(storage.BillingSystemType(system.SystemType))
 	if !ok {
-		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection test not implemented for system type: %s", system.SystemType)}
+		supportedTypes := []string{"quickbooks", "xero"}
+		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection test not implemented for system type %q. Supported types for connection testing: %v. Use the API endpoint test for custom integrations.", system.SystemType, supportedTypes)}
 	}
 
 	system.OAuthToken = oauthToken

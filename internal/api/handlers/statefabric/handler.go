@@ -767,6 +767,47 @@ func (h *Handler) HandleGetReplay(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, item)
 }
 
+// HandleResumeReplay handles POST /state-fabrics/{id}/replays/{replayId}/resume - Resume a paused or failed replay
+// @Summary Resume a replay session
+// @Description Resumes a paused or failed replay session
+// @Tags StateFabric
+// @Accept json
+// @Param id path string true "State Fabric ID"
+// @Param replayId path string true "Replay ID"
+// @Success 200 {object} ReplaySession
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Router /state-fabrics/{id}/replays/{replayId}/resume [post]
+func (h *Handler) HandleResumeReplay(w http.ResponseWriter, r *http.Request) {
+	tenantID, _, ok := tenantAndUser(r, w)
+	if !ok {
+		return
+	}
+	if !h.requireAddon(w, r, tenantID, "hot_cache_booster") {
+		return
+	}
+	vars := mux.Vars(r)
+	fabricID, parsed := parseID(w, vars["id"], "state fabric id")
+	if !parsed {
+		return
+	}
+
+	replay, err := h.repo.ResumeReplay(r.Context(), tenantID, fabricID, vars["replayId"])
+	if err != nil {
+		if err.Error() == "replay not found" {
+			apierror.WriteError(w, apierror.NewNotFound("replay not found"))
+			return
+		}
+		if strings.Contains(err.Error(), "can only resume") {
+			apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+			return
+		}
+		serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, replay)
+}
+
 // HandleHealth handles GET /state-fabrics/health - liveness probe
 // @Summary Health check (liveness)
 // @Description Returns OK if the StateFabric service is alive

@@ -1276,7 +1276,7 @@ func (r *CertificationRepository) NextCredentialNumber(ctx context.Context, tier
 	var seq int
 	seqName := pq.QuoteIdentifier("cert_credential_seq_" + tierSlug)
 	err := r.db.QueryRowContext(ctx,
-		fmt.Sprintf(`SELECT nextval('%s')`, seqName)).Scan(&seq)
+		fmt.Sprintf(`SELECT nextval(%s)`, seqName)).Scan(&seq)
 	if err != nil {
 		return "", fmt.Errorf("failed to get next credential number: %w", err)
 	}

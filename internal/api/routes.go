@@ -123,7 +123,6 @@ import (
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/functionfly/functionfly/internal/wallet"
-	statefabricadapter "github.com/functionfly/functionfly/internal/wasmpool/statefabric"
 	wasmpoolclient "github.com/functionfly/functionfly/internal/wasmpool/client"
 	wasmpool "github.com/functionfly/functionfly/internal/wasm"
 	"github.com/google/uuid"
@@ -198,7 +197,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	if jwtSecret == "" {
 		s.logger.Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
 	}
-	apiKeyAuthHandler := apikeys.NewAPIKeyAuthHandler(apikeyRepo, jwtSecret)
+	apiKeyAuthHandler, err := apikeys.NewAPIKeyAuthHandler(apikeyRepo, jwtSecret)
+	if err != nil {
+		s.logger.WithError(err).Fatal("FATAL: Failed to create API key auth handler")
+	}
 
 	monitoringHandler := monitoring.NewHandler(s.repo, s.monitoringSvc, s.realtimeMonitor, s.authSvc)
 	mfaRateLimiter := middleware.NewMFARateLimiter()
@@ -548,10 +550,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	stateFabricHandler := statefabric.NewHandlerWithCleanup(stateFabricRepo, sfAddonRepo, s.stateFabricCleanup)
 
 	// Build the RuntimeRouter now that stateFabricRepo is available.
-	// The adapter wraps the concrete *statefabric.Repository to satisfy
-	// wasmpool.StateFabricRepo (the minimal interface the wasm module needs).
-	_ = statefabricadapter.NewAdapter(stateFabricRepo)
-
 	// wasmpool SDK manager: routes between External and Local pool. With
 	// ExternalPercent=0 (the default), every request goes to Local via
 	// the SDK's LocalPoolClient, which is byte-identical to the previous

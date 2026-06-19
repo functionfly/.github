@@ -586,7 +586,7 @@ func (h *Handler) HandleCancelSubscription(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-// Get subscription to find Stripe subscription ID
+	// Get subscription to find Stripe subscription ID
 	subscription, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get subscription")
@@ -1068,7 +1068,7 @@ func (h *Handler) HandleGetAffiliateEarningsSummary(w http.ResponseWriter, r *ht
 		"paid_out_cents":         totalPaidOutCents,
 		"total_referrals":        totalReferrals,
 		"pending_commissions":    pendingCommissions,
-		"codes_count":           len(codes),
+		"codes_count":            len(codes),
 	})
 }
 

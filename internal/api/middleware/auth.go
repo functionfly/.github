@@ -176,7 +176,7 @@ func (m *AuthMiddleware) RequireTenantContext(repo storage.Repository) func(http
 			}
 
 			// Verify the tenant exists and is not suspended
-			tenant, err := repo.GetTenantByID(ctx, *actingTenantID)
+			tenant, err := repo.GetTenantByID(r.Context(), *actingTenantID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to verify tenant context")
 				http.Error(w, "Failed to verify tenant context", http.StatusInternalServerError)

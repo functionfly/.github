@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/manifest"
+	"github.com/sirupsen/logrus"
 )
 
 // WASM 1.0 section IDs
@@ -107,20 +108,20 @@ func bundleTypeScriptWASMWithConfig(manifest *manifest.Manifest, config *TypeScr
 	if wasmBinary, err := compileJSToWASMWithConfig(string(jsBundle), manifest, config); err == nil {
 		// Validate the compiled WASM
 		if err := validateWasmModule(wasmBinary); err != nil {
-			fmt.Printf("Warning: Compiled WASM validation failed (%v), using fallback\n", err)
+			logrus.WithField("error", err).Warn("Compiled WASM validation failed, using fallback")
 			return createTypeScriptWasmFallback(jsBundle, manifest, config)
 		}
 
 		// Extract metadata from WASM
 		metadata := extractWASMMetadata(wasmBinary)
-		fmt.Printf("Successfully compiled %s to WASM\n", entryFile)
+		logrus.WithField("entry_file", entryFile).Debug("Successfully compiled to WASM")
 
 		// Return combined binary with metadata prefix
 		return embedMetadata(wasmBinary, metadata)
 	}
 
 	// Fallback: Use JavaScript wrapper
-	fmt.Printf("Warning: JS to WASM compilation failed, using JavaScript wrapper\n")
+	logrus.WithField("entry_file", entryFile).Warn("JS to WASM compilation failed, using JavaScript wrapper")
 	return createTypeScriptWasmFallback(jsBundle, manifest, config)
 }
 

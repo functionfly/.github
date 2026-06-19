@@ -161,6 +161,7 @@ func registerFRGRoutes(
 	// Instance management
 	api.HandleFunc("/frg/instances/{instance_id}", frgHandler.GetInstanceStatus).Methods("GET", "OPTIONS")
 	api.HandleFunc("/frg/instances/{instance_id}/stop", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(frgHandler.StopInstance))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/frg/instances/{instance_id}/resume", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(frgHandler.ResumeInstance))).Methods("POST", "OPTIONS")
 
 	// ── AI Composition (protected + rate limiting) ──────────────────────────────────────────
 	api.HandleFunc("/frg/compose", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(frgHandler.AICompose))).Methods("POST", "OPTIONS")

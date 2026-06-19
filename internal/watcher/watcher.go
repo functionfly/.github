@@ -41,8 +41,7 @@ func (fw *FileWatcher) WatchFiles(files []string) error {
 
 		// Add file to watcher
 		if err := fw.watcher.Add(file); err != nil {
-			// Log but don't fail - some files might not be watchable
-			fmt.Printf("Warning: failed to watch file %s: %v\n", file, err)
+			logrus.WithField("file", file).WithError(err).Warn("failed to watch file")
 			continue
 		}
 

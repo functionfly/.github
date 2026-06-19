@@ -89,8 +89,8 @@ func NewAuthService(repo storage.Repository, jwtSecret string) (*AuthService, er
 		authURL:        getEnvOrDefault("AUTH_FRONTEND_URL", "https://auth.functionfly.com"),
 	}
 
-	// Initialize MFA service
-	service.mfaSvc = NewMFAService(repo)
+	// Initialize MFA service (Redis optional - rate limiting will be no-op without it)
+	service.mfaSvc = NewMFAService(repo, nil)
 
 	// Initialize OAuth providers (will be configured with environment variables)
 	service.initOAuthProviders()

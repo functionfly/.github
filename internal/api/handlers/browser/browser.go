@@ -2,7 +2,6 @@ package browser
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/agent/browser"
@@ -364,7 +363,6 @@ func (h *Handler) DeleteCredential(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	agentID := vars["agent_id"]
-	fmt.Printf("DEBUG GetConfig called for agent_id: %s\n", agentID)
 
 	perm, err := h.browserSvc.GetPermission(r.Context(), agentID)
 	if err != nil {

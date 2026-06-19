@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -259,7 +260,7 @@ func encryptSecret(secret string) (string, error) {
 	if isProduction() {
 		return "", fmt.Errorf("MFA_ENCRYPTION_KEY not configured - TOTP secrets cannot be stored in production without encryption")
 	}
-	fmt.Printf("WARNING: MFA_ENCRYPTION_KEY not set - TOTP secret stored without encryption (DEV ONLY). Set MFA_ENCRYPTION_KEY in production.\n")
+	logrus.Warn("MFA_ENCRYPTION_KEY not set - TOTP secret stored without encryption (DEV ONLY). Set MFA_ENCRYPTION_KEY in production")
 	return secretPrefixPlain + base64.StdEncoding.EncodeToString([]byte(secret)), nil
 }
 

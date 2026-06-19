@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -110,7 +111,7 @@ func TestCharge_Validation(t *testing.T) {
 				os.Unsetenv("STRIPE_SECRET_KEY")
 			}
 
-			result, err := Charge(nil, tt.paymentMethodID, tt.amountUSD, nil)
+			result, err := Charge(context.Background(), tt.paymentMethodID, tt.amountUSD, nil, "")
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.errContains != "" {
@@ -144,7 +145,7 @@ func TestCharge_MinimumAmount(t *testing.T) {
 	resetStripeKey()
 	os.Setenv("STRIPE_SECRET_KEY", "sk_test_123")
 
-	_, err := Charge(nil, "pm_123", 0.50, nil)
+	_, err := Charge(context.Background(), "pm_123", 0.50, nil, "")
 	// Will fail at Stripe API level, but not at validation level
 	assert.Error(t, err)
 	assert.NotContains(t, err.Error(), "minimum charge") // Validation passes

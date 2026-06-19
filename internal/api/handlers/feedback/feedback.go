@@ -208,8 +208,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 					// Upload file to storage backend (local, S3, R2, or S3-compatible e.g. B2)
 					_, err = h.storageService.UploadFile(r.Context(), fileHeader, storagePath)
 					if err != nil {
-						// Log error but don't fail the entire request
-						fmt.Printf("Failed to upload file to storage: %v\n", err)
+						logrus.WithError(err).Warn("Failed to upload file to storage")
 						continue
 					}
 
@@ -225,8 +224,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 
 					_, err = h.repo.CreateFeedbackAttachment(r.Context(), attachment)
 					if err != nil {
-						// Log error but don't fail the entire request
-						fmt.Printf("Failed to create attachment: %v\n", err)
+						logrus.WithError(err).Warn("Failed to create attachment")
 					}
 				}
 			}

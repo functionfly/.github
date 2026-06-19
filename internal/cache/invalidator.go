@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // RegistryRepository interface for cache invalidation
@@ -50,8 +51,7 @@ func (i *CacheInvalidator) OnFunctionPublished(fn FunctionInfo) error {
 	if i.edgeCache != nil {
 		ctx := context.Background()
 		if err := i.edgeCache.PurgeFunctionFromEdge(ctx, fn.ID); err != nil {
-			// Log but don't fail the operation
-			fmt.Printf("Failed to purge function from edge cache: %v\n", err)
+			logrus.WithField("function_id", fn.ID).WithError(err).Warn("Failed to purge function from edge cache")
 		}
 	}
 

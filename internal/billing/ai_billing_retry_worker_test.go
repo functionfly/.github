@@ -163,10 +163,13 @@ func TestAIBillingRetryWorker_ProcessRetryQueue_RetrySuccess(t *testing.T) {
 	require.NoError(t, err)
 	defer mr.Close()
 
-	mr.SetTime(time.Now())
+	now := time.Now()
+	mr.SetTime(now)
 
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	defer rdb.Close()
+
+	ctx := context.Background()
 
 	payload := AIFailedBillingPayload{
 		TenantID:     "tenant_123",
@@ -183,7 +186,7 @@ func TestAIBillingRetryWorker_ProcessRetryQueue_RetrySuccess(t *testing.T) {
 	pipe := rdb.Pipeline()
 	pipe.LPush(ctx, aiBillingRetryQueueKey, data)
 	pipe.ZAdd(ctx, aiBillingDelayedQueueKey, redis.Z{
-		Score:  float64(mr.Time().Unix() - 10),
+		Score:  float64(now.Unix() - 10),
 		Member: string(data),
 	})
 	pipe.Exec(ctx)
@@ -194,7 +197,6 @@ func TestAIBillingRetryWorker_ProcessRetryQueue_RetrySuccess(t *testing.T) {
 		stop:       make(chan struct{}),
 	}
 
-	ctx := context.Background()
 	worker.processRetryQueue(ctx)
 
 	queueLen, _ := rdb.LLen(ctx, aiBillingRetryQueueKey).Result()
@@ -206,10 +208,13 @@ func TestAIBillingRetryWorker_MaxRetriesExceeded(t *testing.T) {
 	require.NoError(t, err)
 	defer mr.Close()
 
-	mr.SetTime(time.Now())
+	now := time.Now()
+	mr.SetTime(now)
 
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	defer rdb.Close()
+
+	ctx := context.Background()
 
 	suspendCalled := false
 	suspendFn := func(ctx context.Context, tenantID string, reason string) error {
@@ -232,7 +237,7 @@ func TestAIBillingRetryWorker_MaxRetriesExceeded(t *testing.T) {
 	pipe := rdb.Pipeline()
 	pipe.LPush(ctx, aiBillingRetryQueueKey, data)
 	pipe.ZAdd(ctx, aiBillingDelayedQueueKey, redis.Z{
-		Score:  float64(mr.Time().Unix() - 10),
+		Score:  float64(now.Unix() - 10),
 		Member: string(data),
 	})
 	pipe.Exec(ctx)
@@ -244,7 +249,6 @@ func TestAIBillingRetryWorker_MaxRetriesExceeded(t *testing.T) {
 		suspendFunc: suspendFn,
 	}
 
-	ctx := context.Background()
 	worker.processRetryQueue(ctx)
 
 	assert.True(t, suspendCalled)
@@ -255,10 +259,13 @@ func TestAIBillingRetryWorker_ExponentialBackoff(t *testing.T) {
 	require.NoError(t, err)
 	defer mr.Close()
 
-	mr.SetTime(time.Now())
+	now := time.Now()
+	mr.SetTime(now)
 
 	rdb := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	defer rdb.Close()
+
+	ctx := context.Background()
 
 	attempts := []int{0, 1, 2, 3}
 	expectedDelays := []int{30, 120, 480, 1920}
@@ -276,7 +283,7 @@ func TestAIBillingRetryWorker_ExponentialBackoff(t *testing.T) {
 		pipe := rdb.Pipeline()
 		pipe.LPush(ctx, aiBillingRetryQueueKey, data)
 		pipe.ZAdd(ctx, aiBillingDelayedQueueKey, redis.Z{
-			Score:  float64(mr.Time().Unix() - 10),
+			Score:  float64(now.Unix() - 10),
 			Member: string(data),
 		})
 		pipe.Exec(ctx)

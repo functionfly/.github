@@ -16,7 +16,7 @@ import (
 // mockAuthMiddleware creates a mock auth middleware for testing
 // Uses the exported NewAuthService constructor
 func mockAuthMiddleware() *AuthMiddleware {
-	authSvc, err := auth.NewAuthService(nil, "test-secret-key-for-testing-purposes")
+	authSvc, err := auth.NewAuthService(nil, "c3d1148ec940122ae79123fe3f6f21ca")
 	if err != nil {
 		panic(err)
 	}
@@ -196,7 +196,7 @@ func TestRequireAuth_ValidToken(t *testing.T) {
 
 	// Create a test user and generate a valid token
 	user := mockUser()
-	authSvc, err := auth.NewAuthService(nil, "test-secret-key-for-testing-purposes")
+	authSvc, err := auth.NewAuthService(nil, "c3d1148ec940122ae79123fe3f6f21ca")
 	if err != nil {
 		t.Fatalf("Failed to create auth service: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestRequireAuth_ExpiredToken(t *testing.T) {
 
 // TestNewAuthMiddleware tests the constructor
 func TestNewAuthMiddleware(t *testing.T) {
-	authSvc, err := auth.NewAuthService(nil, "test-secret-key-for-testing")
+	authSvc, err := auth.NewAuthService(nil, "c3d1148ec940122ae79123fe3f6f21ca")
 	if err != nil {
 		t.Fatalf("Failed to create auth service: %v", err)
 	}

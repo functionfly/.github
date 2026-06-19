@@ -4,11 +4,46 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
+
+var tenantAuthSettingsAllowedFields = map[string]bool{
+	"mfa_required":              true,
+	"mfa_mode":                  true,
+	"password_policy":           true,
+	"session_timeout_minutes":    true,
+	"ip_allowlist_enabled":      true,
+	"ip_allowlist":              true,
+	"allowed_domains":           true,
+	"sso_provider":              true,
+	"saml_metadata_url":        true,
+	"saml_entity_id":           true,
+	"use_custom_branding":       true,
+	"email_from_name":           true,
+	"email_from_address":        true,
+	"require_email_verification": true,
+	"allow_password_login":      true,
+	"allow_magic_link":          true,
+	"max_login_attempts":        true,
+	"lockout_duration_minutes":  true,
+}
+
+var tenantOAuthProviderAllowedFields = map[string]bool{
+	"client_id":                 true,
+	"enabled":                   true,
+	"callback_url":              true,
+	"scopes":                    true,
+}
+
+var tenantMembershipAllowedFields = map[string]bool{
+	"role":         true,
+	"status":       true,
+	"last_active_at": true,
+}
 
 // CreateAuthSettings creates new auth settings for a tenant
 func (r *BillingRepository) CreateAuthSettings(ctx context.Context, settings *TenantAuthSettings) error {
@@ -67,7 +102,7 @@ func (r *BillingRepository) GetAuthSettings(ctx context.Context, tenantID uuid.U
 		return nil, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get auth settings: %w", err)
 	}
 	return settings, nil
 }
@@ -78,22 +113,32 @@ func (r *BillingRepository) UpdateAuthSettings(ctx context.Context, tenantID uui
 		return nil
 	}
 
-	// Build dynamic update query
-	query := "UPDATE tenant_auth_settings SET updated_at = NOW(), "
+	setParts := []string{}
 	args := []interface{}{}
 	argIndex := 1
 
 	for key, value := range updates {
-		query += fmt.Sprintf("%s = $%d, ", key, argIndex)
+		if !tenantAuthSettingsAllowedFields[key] {
+			return fmt.Errorf("invalid field name: %s", key)
+		}
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", pq.QuoteIdentifier(key), argIndex))
 		args = append(args, value)
 		argIndex++
 	}
-	query = query[:len(query)-2] // Remove trailing comma
-	query += fmt.Sprintf(" WHERE tenant_id = $%d", argIndex)
+
+	if len(setParts) == 0 {
+		return nil
+	}
+
+	query := fmt.Sprintf("UPDATE tenant_auth_settings SET updated_at = NOW(), %s WHERE tenant_id = $%d",
+		strings.Join(setParts, ", "), argIndex)
 	args = append(args, tenantID)
 
 	_, err := r.db.ExecContext(ctx, query, args...)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update auth settings: %w", err)
+	}
+	return nil
 }
 
 // DeleteAuthSettings deletes auth settings for a tenant
@@ -177,21 +222,29 @@ func (r *BillingRepository) UpdateOAuthProvider(ctx context.Context, tenantID uu
 		return r.GetOAuthProvider(ctx, tenantID, providerName)
 	}
 
-	query := "UPDATE tenant_oauth_providers SET updated_at = NOW(), "
+	setParts := []string{}
 	args := []interface{}{}
 	argIndex := 1
 
 	for key, value := range updates {
-		query += fmt.Sprintf("%s = $%d, ", key, argIndex)
+		if !tenantOAuthProviderAllowedFields[key] {
+			return nil, fmt.Errorf("invalid field name: %s", key)
+		}
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", pq.QuoteIdentifier(key), argIndex))
 		args = append(args, value)
 		argIndex++
 	}
-	query = query[:len(query)-2]
-	query += " WHERE tenant_id = $%d AND provider = $%d"
+
+	if len(setParts) == 0 {
+		return r.GetOAuthProvider(ctx, tenantID, providerName)
+	}
+
+	query := fmt.Sprintf("UPDATE tenant_oauth_providers SET updated_at = NOW(), %s WHERE tenant_id = $%d AND provider = $%d",
+		strings.Join(setParts, ", "), argIndex, argIndex+1)
 	args = append(args, tenantID, providerName)
 
 	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to update OAuth provider: %w", err)
 	}
 	return r.GetOAuthProvider(ctx, tenantID, providerName)
 }
@@ -460,21 +513,29 @@ func (r *BillingRepository) UpdateMembership(ctx context.Context, tenantID, user
 		return r.GetMembership(ctx, tenantID, userID)
 	}
 
-	query := "UPDATE tenant_memberships SET "
+	setParts := []string{}
 	args := []interface{}{}
 	argIndex := 1
 
 	for key, value := range updates {
-		query += fmt.Sprintf("%s = $%d, ", key, argIndex)
+		if !tenantMembershipAllowedFields[key] {
+			return nil, fmt.Errorf("invalid field name: %s", key)
+		}
+		setParts = append(setParts, fmt.Sprintf("%s = $%d", pq.QuoteIdentifier(key), argIndex))
 		args = append(args, value)
 		argIndex++
 	}
-	query = query[:len(query)-2]
-	query += fmt.Sprintf(" WHERE tenant_id = $%d AND user_id = $%d", argIndex, argIndex+1)
+
+	if len(setParts) == 0 {
+		return r.GetMembership(ctx, tenantID, userID)
+	}
+
+	query := fmt.Sprintf("UPDATE tenant_memberships SET %s WHERE tenant_id = $%d AND user_id = $%d",
+		strings.Join(setParts, ", "), argIndex, argIndex+1)
 	args = append(args, tenantID, userID)
 
 	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to update membership: %w", err)
 	}
 	return r.GetMembership(ctx, tenantID, userID)
 }

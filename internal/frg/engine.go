@@ -6,6 +6,7 @@ package frg
 import (
 	"context"
 	"crypto/ed25519"
+	"encoding/json"
 	"fmt"
 	"sync"
 	"time"
@@ -202,6 +203,106 @@ func (e *ExecutionEngine) StopInstance(instanceID uuid.UUID) error {
 
 	// Update status
 	return e.repo.UpdateInstanceStatus(context.Background(), instanceID, InstanceStatusCompleted)
+}
+
+// ResumeInstance resumes a paused or failed graph instance
+func (e *ExecutionEngine) ResumeInstance(instanceID uuid.UUID) error {
+	ctx := context.Background()
+
+	// Get instance from database
+	instance, err := e.repo.GetInstanceByID(ctx, instanceID)
+	if err != nil {
+		return fmt.Errorf("instance not found: %s", instanceID)
+	}
+
+	// Check if instance is in a resumable state
+	if instance.Status != InstanceStatusPaused && instance.Status != InstanceStatusFailed {
+		return fmt.Errorf("cannot resume instance with status: %s", instance.Status)
+	}
+
+	// Check if already running
+	e.instancesMu.Lock()
+	if _, exists := e.instances[instanceID]; exists {
+		e.instancesMu.Unlock()
+		return fmt.Errorf("instance is already running: %s", instanceID)
+	}
+	e.instancesMu.Unlock()
+
+	// Parse frozen nodes and edges from instance
+	var nodeRefs []GraphNodeRef
+	if err := json.Unmarshal(instance.FrozenNodes, &nodeRefs); err != nil {
+		return fmt.Errorf("invalid frozen nodes: %w", err)
+	}
+
+	var edges []GraphEdge
+	if err := json.Unmarshal(instance.FrozenEdges, &edges); err != nil {
+		return fmt.Errorf("invalid frozen edges: %w", err)
+	}
+
+	// Rebuild runtime nodes with resolved functions
+	nodes := make(map[string]*RuntimeNode)
+	for _, ref := range nodeRefs {
+		fn, err := e.registryRepo.GetFunctionByAuthorName(ctx, ref.Author, ref.Name)
+		if err != nil {
+			return fmt.Errorf("function not found: %s/%s", ref.Author, ref.Name)
+		}
+
+		version, err := e.registryRepo.GetFunctionVersion(fn.ID, ref.Version)
+		if err != nil {
+			return fmt.Errorf("version not found: %s/%s@%s", ref.Author, ref.Name, ref.Version)
+		}
+
+		nodes[ref.NodeID] = &RuntimeNode{
+			Ref:        &ref,
+			Definition: version,
+			State:      &NodeState{Status: "pending"},
+		}
+	}
+
+	// Rebuild runtime edges
+	var runtimeEdges []*RuntimeEdge
+	for i := range edges {
+		runtimeEdges = append(runtimeEdges, &RuntimeEdge{
+			Definition: &edges[i],
+		})
+	}
+
+	// Create a minimal definition for the runtime
+	def := &GraphDefinition{
+		ID:       instance.DefinitionID,
+		NodeRefs: instance.FrozenNodes,
+		Edges:    instance.FrozenEdges,
+	}
+
+	// Create runtime
+	runtime := &GraphRuntime{
+		Instance:   instance,
+		Definition: def,
+		Nodes:      nodes,
+		Edges:      runtimeEdges,
+		InputChannel: make(chan *GraphEvent, 100),
+		OutputChannel: make(chan *ExecutionResult, 10),
+	}
+
+	// Store runtime
+	e.instancesMu.Lock()
+	e.instances[instanceID] = runtime
+	e.instancesMu.Unlock()
+
+	// Update status to running
+	if err := e.repo.UpdateInstanceStatus(ctx, instanceID, InstanceStatusRunning); err != nil {
+		return err
+	}
+	instance.Status = InstanceStatusRunning
+
+	// Start background execution
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		e.runInstance(runtime)
+	}()
+
+	return nil
 }
 
 // Helper function

@@ -60,7 +60,7 @@ func TestPublisher_Enabled_Nil(t *testing.T) {
 	assert.False(t, publisher.Enabled())
 }
 
-func TestenvOr(t *testing.T) {
+func TestEnvOr(t *testing.T) {
 	os.Setenv("TEST_KEY", "test_value")
 	defer os.Unsetenv("TEST_KEY")
 
@@ -253,13 +253,13 @@ func TestPublisher_Close_Multiple(t *testing.T) {
 	assert.NoError(t, err2)
 }
 
-func TestenvOr_EmptyEnv(t *testing.T) {
+func TestEnvOr_EmptyEnv(t *testing.T) {
 	os.Unsetenv("EMPTY_KEY")
 	result := envOr("EMPTY_KEY", "fallback")
 	assert.Equal(t, "fallback", result)
 }
 
-func TestenvOr_NonEmptyEnv(t *testing.T) {
+func TestEnvOr_NonEmptyEnv(t *testing.T) {
 	os.Setenv("NON_EMPTY_KEY", "actual_value")
 	defer os.Unsetenv("NON_EMPTY_KEY")
 

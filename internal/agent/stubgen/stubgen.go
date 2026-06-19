@@ -433,14 +433,13 @@ async def search_%s(query_params: Dict[str, List[str]]) -> Dict[str, Any]:
 		resource, resource, resource, resource, resource,
 		resource, resource, resource, resource,
 		resource, resource, resource, resource,
-		resource, resource)
+		resource)
 
 	return code, nil
 }
 
 func (g *stubGenerator) generateCronJob(req *GenerationRequest) (string, error) {
 	schedule := extractSchedule(req.Description)
-	resource := extractResourceName(req)
 
 	code := fmt.Sprintf(`"""Cron Job Function: %s"""
 
@@ -648,14 +647,12 @@ def get_state() -> Dict[str, Any]:
 
 
 import asyncio
-`, req.Name, schedule, resource, resource, resource, resource, resource, resource, resource)
+`, req.Name, schedule)
 
 	return code, nil
 }
 
 func (g *stubGenerator) generateWebhook(req *GenerationRequest) (string, error) {
-	resource := extractResourceName(req)
-
 	code := fmt.Sprintf(`"""Webhook Handler: %s"""
 
 import json
@@ -1054,7 +1051,7 @@ def get_stats() -> Dict[str, Any]:
         "failed_count": _failed_count,
         "pending_count": len(_event_store)
     }
-`, req.Name, resource)
+`, req.Name)
 
 	return code, nil
 }

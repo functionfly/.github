@@ -146,6 +146,9 @@ func (m *mockPreferenceRepo) CleanupOldNotifications(ctx context.Context, olderT
 func (m *mockPreferenceRepo) ResetStaleProcessing(ctx context.Context, staleAfter time.Duration) (int64, error) {
 	return 0, nil
 }
+func (m *mockPreferenceRepo) CleanupDeadLetterQueue(ctx context.Context, maxAge time.Duration) error {
+	return nil
+}
 func (m *mockPreferenceRepo) GetPreferences(ctx context.Context, userID uuid.UUID) ([]*NotificationPreference, error) {
 	return nil, nil
 }

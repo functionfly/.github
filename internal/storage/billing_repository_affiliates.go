@@ -251,6 +251,39 @@ func (r *BillingRepository) ListAffiliateReferralsByCode(ctx context.Context, co
 	return referrals, nil
 }
 
+func (r *BillingRepository) ListAffiliateReferralsByPublisher(ctx context.Context, publisherID uuid.UUID) ([]*AffiliateReferral, error) {
+	query := `
+		SELECT ar.id, ar.affiliate_code_id, ar.referred_tenant_id, ar.subscription_id,
+			   ar.utm_source, ar.utm_campaign, ar.utm_content, ar.utm_term,
+			   ar.ip_address, ar.user_agent, ar.status, ar.referred_at, ar.converted_at,
+			   ar.created_at, ar.updated_at
+		FROM affiliate_referrals ar
+		INNER JOIN affiliate_codes ac ON ar.affiliate_code_id = ac.id
+		WHERE ac.publisher_id = $1
+		ORDER BY ar.created_at DESC`
+
+	rows, err := r.db.Query(query, publisherID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list affiliate referrals by publisher: %w", err)
+	}
+	defer rows.Close()
+
+	var referrals []*AffiliateReferral
+	for rows.Next() {
+		referral := &AffiliateReferral{}
+		err := rows.Scan(&referral.ID, &referral.AffiliateCodeID, &referral.ReferredTenantID,
+			&referral.SubscriptionID, &referral.UTMSource, &referral.UTMCampaign, &referral.UTContent, &referral.UTMTerm,
+			&referral.IPAddress, &referral.UserAgent, &referral.Status, &referral.ReferredAt, &referral.ConvertedAt,
+			&referral.CreatedAt, &referral.UpdatedAt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan affiliate referral: %w", err)
+		}
+		referrals = append(referrals, referral)
+	}
+
+	return referrals, nil
+}
+
 func (r *BillingRepository) UpdateAffiliateReferralStatus(ctx context.Context, id uuid.UUID, status string) error {
 	_, err := r.db.Exec("UPDATE affiliate_referrals SET status = $2, updated_at = $3 WHERE id = $1", id, status, time.Now())
 	if err != nil {
@@ -404,6 +437,7 @@ func (r *BillingRepository) CalculateCommission(ctx context.Context, commissionT
 	commissionCents = int64(commissionUSD * 100)
 	return commissionCents, commissionUSD
 }
+
 // Status constant aliases from the types package.
 const CommissionStatusCanceled = types.CommissionStatusCanceled
 const CommissionStatusPaid = types.CommissionStatusPaid

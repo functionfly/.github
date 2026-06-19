@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
@@ -65,7 +66,7 @@ func (r *RegistryRepository) UpdateRating(rating *RegistryFunctionRating) error 
 		cacheKey := r.keyGen.FunctionRating(rating.FunctionID.String())
 		go func() {
 			if err := r.cache.Delete(context.Background(), cacheKey); err != nil {
-				fmt.Printf("Failed to invalidate rating cache: %v\n", err)
+				logrus.WithError(err).Warn("Failed to invalidate rating cache")
 			}
 		}()
 	}

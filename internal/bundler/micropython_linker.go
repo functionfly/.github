@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/functionfly/functionfly/internal/manifest"
+	"github.com/sirupsen/logrus"
 )
 
 // ProductionMicroPythonLinker provides production-ready linking of Python code with MicroPython runtime
@@ -39,8 +40,8 @@ func (l *ProductionMicroPythonLinker) Link() ([]byte, error) {
 		return nil, fmt.Errorf("failed to read micropython runtime: %v", err)
 	}
 
-	fmt.Printf("Using micropython runtime: %d bytes\n", len(runtimeBytes))
-	fmt.Printf("User code will be loaded at runtime via mp_js_do_exec\n")
+	logrus.WithField("runtime_bytes", len(runtimeBytes)).Debug("Using micropython runtime")
+	logrus.Debug("User code will be loaded at runtime via mp_js_do_exec")
 
 	return runtimeBytes, nil
 }
@@ -53,7 +54,7 @@ func (l *ProductionMicroPythonLinker) GetUserCode() string {
 // CompileWithMicropython returns the micropython.wasm for runtime execution
 // The user code is stored separately and loaded at runtime via mp_js_do_exec
 func CompileWithMicropython(sourceCode string, m *manifest.Manifest) ([]byte, error) {
-	fmt.Printf("Preparing MicroPython runtime for %s\n", m.Name)
+	logrus.WithField("name", m.Name).Debug("Preparing MicroPython runtime")
 
 	linker := NewProductionMicroPythonLinker(sourceCode, m)
 	wasm, err := linker.Link()
@@ -70,7 +71,7 @@ func CompileWithMicropython(sourceCode string, m *manifest.Manifest) ([]byte, er
 		return nil, fmt.Errorf("invalid WASM magic")
 	}
 
-	fmt.Printf("MicroPython runtime ready: %d bytes\n", len(wasm))
+	logrus.WithField("wasm_bytes", len(wasm)).Debug("MicroPython runtime ready")
 	return wasm, nil
 }
 

@@ -72,6 +72,7 @@ type Claims struct {
 	Role         string    `json:"role,omitempty"`                // Platform role (for admin users)
 	Permissions  []string  `json:"permissions,omitempty"`        // Explicit permissions
 	TokenVersion int       `json:"token_version,omitempty"`       // For token revocation - incremented on password change/logout all
+	SessionID    uuid.UUID `json:"session_id,omitempty"`         // Server-side session ID for session validation
 	jwt.RegisteredClaims
 }
 

@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -74,7 +75,7 @@ func TestValidateToken(t *testing.T) {
 	require.NoError(t, err)
 
 	// Validate the token
-	claims, err := authSvc.ValidateToken(token)
+	claims, err := authSvc.ValidateToken(context.Background(), token)
 	require.NoError(t, err)
 	assert.NotNil(t, claims)
 	assert.Equal(t, user.ID, claims.UserID)
@@ -106,7 +107,7 @@ func TestValidateToken_InvalidToken(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			claims, err := authSvc.ValidateToken(tt.token)
+			claims, err := authSvc.ValidateToken(context.Background(), tt.token)
 			assert.Error(t, err)
 			assert.Nil(t, claims)
 		})
@@ -124,7 +125,7 @@ func TestValidateToken_WrongSecret(t *testing.T) {
 	require.NoError(t, err)
 
 	// Try to validate with different secret
-	claims, err := authSvc2.ValidateToken(token)
+	claims, err := authSvc2.ValidateToken(context.Background(), token)
 	assert.Error(t, err)
 	assert.Nil(t, claims)
 }
@@ -191,7 +192,7 @@ func TestClaims_UserID(t *testing.T) {
 	token, err := authSvc.GenerateToken(user)
 	require.NoError(t, err)
 
-	claims, err := authSvc.ValidateToken(token)
+	claims, err := authSvc.ValidateToken(context.Background(), token)
 	require.NoError(t, err)
 
 	assert.Equal(t, user.ID, claims.UserID)
@@ -205,7 +206,7 @@ func TestClaims_Email(t *testing.T) {
 	token, err := authSvc.GenerateToken(user)
 	require.NoError(t, err)
 
-	claims, err := authSvc.ValidateToken(token)
+	claims, err := authSvc.ValidateToken(context.Background(), token)
 	require.NoError(t, err)
 
 	assert.Equal(t, user.Email, claims.Email)
@@ -219,7 +220,21 @@ func TestClaims_TenantID(t *testing.T) {
 	token, err := authSvc.GenerateToken(user)
 	require.NoError(t, err)
 
-	claims, err := authSvc.ValidateToken(token)
+	claims, err := authSvc.ValidateToken(context.Background(), token)
+	require.NoError(t, err)
+
+	assert.Equal(t, user.TenantID, claims.TenantID)
+}
+
+// TestClaims_Role tests that Role claim is properly set
+func TestClaims_Role(t *testing.T) {
+	authSvc := mockAuthServiceForJWT("test-secret-key")
+	user := mockAdminUser()
+
+	token, err := authSvc.GenerateToken(user)
+	require.NoError(t, err)
+
+	claims, err := authSvc.ValidateToken(context.Background(), token)
 	require.NoError(t, err)
 
 	assert.Equal(t, user.TenantID, claims.TenantID)
@@ -248,7 +263,7 @@ func TestClaims_Permissions(t *testing.T) {
 	token, err := authSvc.GenerateToken(adminUser)
 	require.NoError(t, err)
 
-	claims, err := authSvc.ValidateToken(token)
+	claims, err := authSvc.ValidateToken(context.Background(), token)
 	require.NoError(t, err)
 
 	assert.Contains(t, claims.Permissions, "*", "admin should have wildcard permission")
@@ -262,7 +277,7 @@ func TestClaims_Username(t *testing.T) {
 	token, err := authSvc.GenerateToken(user)
 	require.NoError(t, err)
 
-	claims, err := authSvc.ValidateToken(token)
+	claims, err := authSvc.ValidateToken(context.Background(), token)
 	require.NoError(t, err)
 
 	assert.Equal(t, *user.Username, claims.Username)

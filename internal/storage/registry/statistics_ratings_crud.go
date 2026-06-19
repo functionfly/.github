@@ -74,7 +74,7 @@ func (r *RegistryRepository) UpdateRating(rating *RegistryFunctionRating) error 
 				}
 			}()
 			if err := r.cache.Delete(context.Background(), cacheKey); err != nil {
-				fmt.Printf("Failed to invalidate rating cache: %v\n", err)
+				logrus.WithError(err).Warn("Failed to invalidate rating cache")
 			}
 		}()
 	}
@@ -109,7 +109,7 @@ func (r *RegistryRepository) UpdateTrustScore(rating *RegistryFunctionRating) er
 	if r.cache != nil && r.keyGen != nil {
 		cacheKey := r.keyGen.FunctionRating(rating.FunctionID.String())
 		if err := r.cache.Delete(context.Background(), cacheKey); err != nil {
-			fmt.Printf("Failed to invalidate rating cache: %v\n", err)
+			logrus.WithError(err).Warn("Failed to invalidate rating cache")
 		}
 	}
 	return nil
@@ -142,8 +142,7 @@ func (r *RegistryRepository) GetRatingByFunctionID(ctx context.Context, function
 		cacheKey := r.keyGen.FunctionRating(functionID.String())
 		go func() {
 			if err := r.cache.SetJSON(context.Background(), cacheKey, rating); err != nil {
-				// Log error but don't fail the operation
-				fmt.Printf("Failed to cache function rating: %v\n", err)
+				logrus.WithError(err).Warn("Failed to cache function rating")
 			}
 		}()
 	}

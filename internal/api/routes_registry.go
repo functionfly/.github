@@ -249,7 +249,7 @@ func registerRegistryRoutes(
 
 	// ── Stats / test / rating / reviews (public or protected) ────────────────
 	api.HandleFunc("/functions/{author}/{name}/stats", registryHandler.HandleGetFunctionStats).Methods("GET")
-	api.HandleFunc("/functions/{author}/{name}/test", registryHandler.HandleTest).Methods("POST")
+	api.HandleFunc("/functions/{author}/{name}/test", authMiddleware.RequireAuth(registryHandler.HandleTest)).Methods("POST")
 	api.HandleFunc("/functions/{author}/{name}/rating", authMiddleware.RequireAuth(registryHandler.HandleSubmitRating)).Methods("POST")
 	api.HandleFunc("/functions/{author}/{name}/reviews", registryHandler.HandleListReviews).Methods("GET")
 	api.HandleFunc("/functions/{author}/{name}/reviews", authMiddleware.RequireAuth(registryHandler.HandleSubmitReview)).Methods("POST")

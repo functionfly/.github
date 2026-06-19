@@ -858,6 +858,35 @@ func (h *Handler) StopInstance(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// ResumeInstance resumes a paused or failed graph instance
+func (h *Handler) ResumeInstance(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		respondError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	vars := mux.Vars(r)
+	instanceID := vars["instance_id"]
+
+	// Parse UUID
+	id, err := parseUUID(instanceID)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid instance ID")
+		return
+	}
+
+	// Resume the instance
+	if err := h.engine.ResumeInstance(id); err != nil {
+		respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{
+		"status": "running",
+	})
+}
+
 // ==================== Fork/Remix Handlers ====================
 
 // RemixGraph forks a graph

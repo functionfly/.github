@@ -2,6 +2,7 @@ package github
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -561,7 +562,7 @@ func TestHandler_MapImportResponse(t *testing.T) {
 		TotalSizeBytes:    1024000,
 	}
 
-	resp := h.mapImportResponse(imp)
+	resp := h.mapImportResponse(context.Background(), imp)
 	assert.Equal(t, importID, resp.ID)
 	assert.Equal(t, "my-func", resp.FunctionName)
 	assert.Equal(t, "main", resp.SourceBranch)

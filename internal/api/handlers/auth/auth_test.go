@@ -2,6 +2,7 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -22,10 +23,13 @@ import (
 
 type AuthHandlerTestSuite struct {
 	test.TestSuite
-	db      *storage.PostgresDB
-	repo    storage.Repository
-	handler *Handler
-	router  *mux.Router
+	db           *storage.PostgresDB
+	repo         storage.Repository
+	authSvc      *auth.AuthService
+	handler      *Handler
+	router       *mux.Router
+	createdTenants [][]byte // Track created tenant IDs for cleanup
+	createdUsers   [][]byte // Track created user IDs for cleanup
 }
 
 func TestAuthHandlerTestSuite(t *testing.T) {
@@ -42,15 +46,57 @@ func (s *AuthHandlerTestSuite) SetupTest() {
 	s.repo = db.Repository()
 
 	// Create auth service
-	authSvc, err := auth.NewAuthService(s.repo, "test-secret-key")
+	s.authSvc, err = auth.NewAuthService(s.repo, "test-secret-key-for-testing-purp")
 	require.NoError(s.T(), err)
 
 	// Create handler
-	s.handler = NewHandler(authSvc)
+	s.handler = NewHandler(s.authSvc)
 
 	// Set up router
 	s.router = mux.NewRouter()
 	s.setupRoutes()
+
+	// Initialize cleanup tracking
+	s.createdTenants = [][]byte{}
+	s.createdUsers = [][]byte{}
+}
+
+func (s *AuthHandlerTestSuite) TearDownTest() {
+	// Clean up test data in reverse order (users before tenants due to FK constraints)
+	for _, userID := range s.createdUsers {
+		_ = s.deleteUserByID(userID)
+	}
+	for _, tenantID := range s.createdTenants {
+		_ = s.deleteTenantByID(tenantID)
+	}
+
+	// Close database connection
+	if s.db != nil {
+		s.db.Close()
+	}
+}
+
+// deleteUserByID deletes a user by ID directly via SQL
+func (s *AuthHandlerTestSuite) deleteUserByID(userID []byte) error {
+	if s.db == nil || s.db.DB == nil {
+		return nil
+	}
+	_, err := s.db.DB.Exec("DELETE FROM users WHERE id = $1", userID)
+	return err
+}
+
+// deleteTenantByID deletes a tenant by ID directly via SQL
+func (s *AuthHandlerTestSuite) deleteTenantByID(tenantID []byte) error {
+	if s.db == nil || s.db.DB == nil {
+		return nil
+	}
+	_, err := s.db.DB.Exec("DELETE FROM tenants WHERE id = $1", tenantID)
+	return err
+}
+
+// trackCreatedUser adds a user ID to the cleanup list
+func (s *AuthHandlerTestSuite) trackCreatedUser(userID uuid.UUID) {
+	s.createdUsers = append(s.createdUsers, userID[:])
 }
 
 func (s *AuthHandlerTestSuite) setupRoutes() {
@@ -96,6 +142,8 @@ func (s *AuthHandlerTestSuite) CreateTestTenant(name, domain string) (uuid.UUID,
 	if err != nil {
 		return uuid.Nil, err
 	}
+	// Track for cleanup
+	s.createdTenants = append(s.createdTenants, tenant.ID[:])
 	return tenant.ID, nil
 }
 
@@ -205,9 +253,10 @@ func (s *AuthHandlerTestSuite) TestHandleLogin_Success() {
 
 	// Create user directly in database (simulating verified user)
 	repo := s.db.Repository()
-	user, err := repo.CreateUser("test@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "test@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
 	userID := user.ID
+	s.trackCreatedUser(userID)
 
 	// Mark email as verified (simplified)
 	_, err = s.db.DB.Exec("UPDATE users SET email_verified = true WHERE id = $1", userID)
@@ -269,9 +318,10 @@ func (s *AuthHandlerTestSuite) TestHandleVerifyEmail_Success() {
 	require.NoError(s.T(), err)
 
 	repo := s.db.Repository()
-	user, err := repo.CreateUser("test@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "test@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
 	userID := user.ID
+	s.trackCreatedUser(userID)
 
 	// Generate verification token (simplified)
 	token := "verification-token-123"
@@ -338,8 +388,9 @@ func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_Success() {
 
 	// Create user
 	repo := s.db.Repository()
-	_, err = repo.CreateUser("magicuser@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "magicuser@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
+	s.trackCreatedUser(user.ID)
 
 	payload := map[string]interface{}{
 		"email":         "magicuser@example.com",
@@ -506,8 +557,9 @@ func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_ExpiredToken() {
 	tenantID, err := s.CreateTestTenant("Expired Magic Link Test", "expired.test.com")
 	require.NoError(s.T(), err)
 
-	user, err := repo.CreateUser("expireduser@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "expireduser@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
+	s.trackCreatedUser(user.ID)
 
 	// Create expired magic link
 	expiredLink, err := s.db.CreateMagicLink(ctx, "expireduser@example.com", "expired-token-123456789012345678901234567890123456789012345678901234567890", &user.ID, "", "", "", time.Now().Add(-1*time.Hour))
@@ -539,8 +591,9 @@ func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_AlreadyUsedToken() {
 	tenantID, err := s.CreateTestTenant("Used Magic Link Test", "used.test.com")
 	require.NoError(s.T(), err)
 
-	user, err := repo.CreateUser("useduser@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "useduser@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
+	s.trackCreatedUser(user.ID)
 
 	// Create magic link and mark it as used
 	usedLink, err := s.db.CreateMagicLink(ctx, "useduser@example.com", "used-token-12345678901234567890123456789012345678901234567890123456789012", &user.ID, "", "", "", time.Now().Add(15*time.Minute))
@@ -576,8 +629,9 @@ func (s *AuthHandlerTestSuite) TestHandleMagicLinkVerify_ValidToken() {
 	tenantID, err := s.CreateTestTenant("Valid Magic Link Test", "valid.test.com")
 	require.NoError(s.T(), err)
 
-	user, err := repo.CreateUser("validuser@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "validuser@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
+	s.trackCreatedUser(user.ID)
 
 	// Create valid magic link
 	validLink, err := s.db.CreateMagicLink(ctx, "validuser@example.com", "valid-token-1234567890123456789012345678901234567890123456789012345678901", &user.ID, "", "", "/dashboard", time.Now().Add(15*time.Minute))
@@ -616,8 +670,9 @@ func (s *AuthHandlerTestSuite) TestHandleMagicLinkRequest_RateLimiting() {
 	require.NoError(s.T(), err)
 
 	repo := s.db.Repository()
-	_, err = repo.CreateUser("rateuser@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "rateuser@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
+	s.trackCreatedUser(user.ID)
 
 	// Make 6 requests (exceeds default limit of 5 per hour)
 	for i := 0; i < 6; i++ {
@@ -655,13 +710,13 @@ func (s *AuthHandlerTestSuite) TestSessionRegeneration_RefreshTokensRevoked() {
 	repo := s.db.Repository()
 	
 	// Create a user with a properly hashed password
-	// Use bcrypt hash of "password123" - in real tests you'd use auth.HashPassword
-	hashedPassword, err := s.db.userRepository.HashPassword("password123")
+	hashedPassword, err := s.authSvc.HashPassword("password123")
 	require.NoError(s.T(), err)
 	
-	user, err := repo.CreateUser("sessiontest@example.com", hashedPassword, tenantID)
+	user, err := repo.CreateUser(context.Background(), "sessiontest@example.com", hashedPassword, tenantID)
 	require.NoError(s.T(), err)
 	userID := user.ID
+	s.trackCreatedUser(userID)
 
 	// Mark email as verified
 	_, err = s.db.DB.Exec("UPDATE users SET email_verified = true WHERE id = $1", userID)
@@ -671,16 +726,16 @@ func (s *AuthHandlerTestSuite) TestSessionRegeneration_RefreshTokensRevoked() {
 	oldRefreshToken := "old-refresh-token-123"
 	oldTokenHash := storage.HashRefreshToken(oldRefreshToken)
 	expiresAt := time.Now().Add(24 * time.Hour)
-	_, err = repo.CreateRefreshToken(userID, oldTokenHash, "127.0.0.1", "test-agent", expiresAt)
+	_, err = repo.CreateRefreshToken(context.Background(), userID, oldTokenHash, "127.0.0.1", "test-agent", expiresAt)
 	require.NoError(s.T(), err)
 
 	// Verify old refresh token exists
-	oldToken, err := repo.GetRefreshTokenByHash(oldTokenHash)
+	oldToken, err := repo.GetRefreshTokenByHash(context.Background(), oldTokenHash)
 	require.NoError(s.T(), err)
 	require.NotNil(s.T(), oldToken, "Old refresh token should exist before login")
 
 	// Get initial token version
-	initialUser, err := repo.GetUserByID(userID)
+	initialUser, err := repo.GetUserByID(context.Background(), userID)
 	require.NoError(s.T(), err)
 	initialTokenVersion := initialUser.TokenVersion
 
@@ -703,15 +758,15 @@ func (s *AuthHandlerTestSuite) TestSessionRegeneration_RefreshTokensRevoked() {
 	// The key assertion is that IF login succeeds, old tokens are revoked
 	if w.Code == http.StatusOK {
 		// Old refresh token should be revoked
-		revokedToken, err := repo.GetRefreshTokenByHash(oldTokenHash)
+		revokedToken, err := repo.GetRefreshTokenByHash(context.Background(), oldTokenHash)
 		// Either error or nil indicates token was revoked/invalidated
 		if err == nil && revokedToken != nil {
 			// Token still exists - check if it was marked as revoked
 			// In this case, the token was NOT revoked because login failed auth
 		}
-		
+
 		// Check that user's TokenVersion was incremented
-		updatedUser, err := repo.GetUserByID(userID)
+		updatedUser, err := repo.GetUserByID(context.Background(), userID)
 		require.NoError(s.T(), err)
 		
 		// TokenVersion should have been incremented
@@ -731,12 +786,13 @@ func (s *AuthHandlerTestSuite) TestIncrementUserTokenVersion() {
 	require.NoError(s.T(), err)
 
 	repo := s.db.Repository()
-	user, err := repo.CreateUser("tokenversion@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "tokenversion@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
 	userID := user.ID
+	s.trackCreatedUser(userID)
 
 	// Get initial token version
-	initialUser, err := repo.GetUserByID(userID)
+	initialUser, err := repo.GetUserByID(context.Background(), userID)
 	require.NoError(s.T(), err)
 	initialVersion := initialUser.TokenVersion
 
@@ -746,7 +802,7 @@ func (s *AuthHandlerTestSuite) TestIncrementUserTokenVersion() {
 	assert.Equal(s.T(), initialVersion+1, newVersion, "New version should be initial+1")
 
 	// Verify by fetching again
-	updatedUser, err := repo.GetUserByID(userID)
+	updatedUser, err := repo.GetUserByID(context.Background(), userID)
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), newVersion, updatedUser.TokenVersion, "User record should reflect new version")
 
@@ -763,9 +819,10 @@ func (s *AuthHandlerTestSuite) TestRevokeUserRefreshTokens() {
 	require.NoError(s.T(), err)
 
 	repo := s.db.Repository()
-	user, err := repo.CreateUser("revoketest@example.com", "hashedpassword", tenantID)
+	user, err := repo.CreateUser(context.Background(), "revoketest@example.com", "hashedpassword", tenantID)
 	require.NoError(s.T(), err)
 	userID := user.ID
+	s.trackCreatedUser(userID)
 
 	// Create multiple refresh tokens
 	token1 := "refresh-token-1"
@@ -773,28 +830,28 @@ func (s *AuthHandlerTestSuite) TestRevokeUserRefreshTokens() {
 	token3 := "refresh-token-3"
 
 	expiresAt := time.Now().Add(24 * time.Hour)
-	
-	_, err = repo.CreateRefreshToken(userID, storage.HashRefreshToken(token1), "127.0.0.1", "agent1", expiresAt)
+
+	_, err = repo.CreateRefreshToken(context.Background(), userID, storage.HashRefreshToken(token1), "127.0.0.1", "agent1", expiresAt)
 	require.NoError(s.T(), err)
-	_, err = repo.CreateRefreshToken(userID, storage.HashRefreshToken(token2), "127.0.0.2", "agent2", expiresAt)
+	_, err = repo.CreateRefreshToken(context.Background(), userID, storage.HashRefreshToken(token2), "127.0.0.2", "agent2", expiresAt)
 	require.NoError(s.T(), err)
-	_, err = repo.CreateRefreshToken(userID, storage.HashRefreshToken(token3), "127.0.0.3", "agent3", expiresAt)
+	_, err = repo.CreateRefreshToken(context.Background(), userID, storage.HashRefreshToken(token3), "127.0.0.3", "agent3", expiresAt)
 	require.NoError(s.T(), err)
 
 	// Verify all tokens exist
-	tokens, err := repo.ListUserRefreshTokens(userID)
+	tokens, err := repo.ListUserRefreshTokens(context.Background(), userID)
 	require.NoError(s.T(), err)
 	assert.Len(s.T(), tokens, 3, "Should have 3 refresh tokens before revocation")
 
 	// Revoke all tokens
-	err = repo.RevokeUserRefreshTokens(userID)
+	err = repo.RevokeUserRefreshTokens(context.Background(), userID)
 	require.NoError(s.T(), err)
 
 	// Verify tokens are revoked (GetRefreshTokenByHash should fail or return revoked token)
 	// The implementation checks for revoked=false, so revoked tokens won't be returned
 	for _, token := range []string{token1, token2, token3} {
 		tokenHash := storage.HashRefreshToken(token)
-		rt, err := repo.GetRefreshTokenByHash(tokenHash)
+		rt, err := repo.GetRefreshTokenByHash(context.Background(), tokenHash)
 		// After revocation, either error (token not found as active) or nil returned
 		if err == nil && rt != nil {
 			// Token exists but should be marked revoked - the query only returns non-revoked tokens

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // AIConfig holds configuration for the AI support service
@@ -110,7 +111,7 @@ func GenerateAIReply(ctx context.Context, req *AIReplyRequest, cfg *AIConfig) (*
 		if err == nil {
 			return resp, nil
 		}
-		fmt.Printf("OpenAI fallback failed: %v\n", err)
+		logrus.WithError(err).Warn("OpenAI fallback failed")
 	}
 
 	// Try Anthropic second
@@ -119,7 +120,7 @@ func GenerateAIReply(ctx context.Context, req *AIReplyRequest, cfg *AIConfig) (*
 		if err == nil {
 			return resp, nil
 		}
-		fmt.Printf("Anthropic fallback failed: %v\n", err)
+		logrus.WithError(err).Warn("Anthropic fallback failed")
 	}
 
 	// Rule-based fallback when no AI keys configured or AI calls fail

@@ -3,7 +3,6 @@ package templates
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 type EmailTemplate struct {
@@ -62,22 +61,4 @@ func TestBannerHTML(html string) string {
 
 func TestBannerText(text string) string {
 	return "[TEST EMAIL - FunctionFly Development Environment]\n\n" + text
-}
-
-func TransactionalEmailCopyrightHTML() string {
-	return fmt.Sprintf(`© %d FunctionFly. All rights reserved.`, time.Now().Year())
-}
-
-func TransactionalEmailCopyrightPlain() string {
-	return fmt.Sprintf("© %d FunctionFly. All rights reserved.", time.Now().Year())
-}
-
-func TransactionalEmailCopyrightOrangeHTML() string {
-	return fmt.Sprintf(`© %d FunctionFly. All rights reserved.<br>
-<a href="https://functionfly.com/privacy" style="color:#f97316;text-decoration:none;">Privacy Policy</a> · 
-<a href="https://functionfly.com/terms" style="color:#f97316;text-decoration:none;">Terms of Service</a>`, time.Now().Year())
-}
-
-func TransactionalEmailCopyrightOrangePlain() string {
-	return fmt.Sprintf("© %d FunctionFly. All rights reserved.\nhttps://functionfly.com/privacy | https://functionfly.com/terms", time.Now().Year())
 }

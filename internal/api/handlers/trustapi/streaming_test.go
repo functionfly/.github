@@ -19,7 +19,7 @@ type mockRegistryRepo struct {
 	deltas    []registry.TrustScoreDelta
 }
 
-func (m *mockRegistryRepo) UpdateSlidingWindowScores(config registry.SlidingWindowConfig) ([]registry.TrustScoreDelta, error) {
+func (m *mockRegistryRepo) UpdateSlidingWindowScores(ctx context.Context, config registry.SlidingWindowConfig) ([]registry.TrustScoreDelta, error) {
 	return m.deltas, nil
 }
 

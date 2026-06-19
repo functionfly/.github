@@ -34,21 +34,26 @@ type APIKeyAuthHandler struct {
 
 // NewAPIKeyAuthHandler creates a new API key auth handler
 // JWT secret must be at least 32 bytes (256 bits) for HS256 security
-func NewAPIKeyAuthHandler(repo *apikey.Repository, jwtSecret string) *APIKeyAuthHandler {
+// Returns an error if the JWT secret is invalid
+func NewAPIKeyAuthHandler(repo *apikey.Repository, jwtSecret string) (*APIKeyAuthHandler, error) {
 	if len(jwtSecret) < 32 {
-		panic(fmt.Sprintf("JWT_SECRET must be at least 32 bytes (256 bits) for HS256 security, got %d bytes", len(jwtSecret)))
+		return nil, fmt.Errorf("JWT_SECRET must be at least 32 bytes (256 bits) for HS256 security, got %d bytes", len(jwtSecret))
 	}
 	return &APIKeyAuthHandler{
 		repo:      repo,
 		hasher:    apikey.NewHasher(),
 		jwtSecret: jwtSecret,
-	}
+	}, nil
 }
 
 // HandleAPIKeyAuth returns an http.HandlerFunc for API key authentication
-func HandleAPIKeyAuth(repo *apikey.Repository) http.HandlerFunc {
-	h := NewAPIKeyAuthHandler(repo, os.Getenv("JWT_SECRET"))
-	return h.HandleAuthenticate
+// Returns an error if the JWT secret is invalid
+func HandleAPIKeyAuth(repo *apikey.Repository) (http.HandlerFunc, error) {
+	h, err := NewAPIKeyAuthHandler(repo, os.Getenv("JWT_SECRET"))
+	if err != nil {
+		return nil, err
+	}
+	return h.HandleAuthenticate, nil
 }
 
 // HandleAuthenticate handles POST /api/v1/auth/api-key
@@ -166,9 +171,14 @@ func (h *APIKeyAuthHandler) writeError(w http.ResponseWriter, status int, code s
 }
 
 // RegisterAuthRoutes registers the API key auth routes
-func RegisterAuthRoutes(router *mux.Router, repo *apikey.Repository, jwtSecret string) {
-	h := NewAPIKeyAuthHandler(repo, jwtSecret)
+// Returns an error if the JWT secret is invalid
+func RegisterAuthRoutes(router *mux.Router, repo *apikey.Repository, jwtSecret string) error {
+	h, err := NewAPIKeyAuthHandler(repo, jwtSecret)
+	if err != nil {
+		return err
+	}
 	router.HandleFunc("/auth/api-key", h.HandleAuthenticate).Methods("POST", "OPTIONS")
+	return nil
 }
 
 // ValidateAPIKeyRequest represents a request to validate an API key (for AI service integration)
@@ -270,7 +280,12 @@ func (h *APIKeyAuthHandler) HandleValidateAPIKey(w http.ResponseWriter, r *http.
 }
 
 // RegisterValidateRoutes registers the API key validation route for AI service
-func RegisterValidateRoutes(router *mux.Router, repo *apikey.Repository, jwtSecret string) {
-	h := NewAPIKeyAuthHandler(repo, jwtSecret)
+// Returns an error if the JWT secret is invalid
+func RegisterValidateRoutes(router *mux.Router, repo *apikey.Repository, jwtSecret string) error {
+	h, err := NewAPIKeyAuthHandler(repo, jwtSecret)
+	if err != nil {
+		return err
+	}
 	router.HandleFunc("/auth/validate-key", h.HandleValidateAPIKey).Methods("POST", "OPTIONS")
+	return nil
 }

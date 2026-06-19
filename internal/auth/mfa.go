@@ -9,18 +9,36 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 )
 
 // MFAService handles Multi-Factor Authentication operations
 type MFAService struct {
-	repo storage.Repository
+	repo        storage.Repository
+	redisClient *redis.Client
 }
 
 // NewMFAService creates a new MFA service
-func NewMFAService(repo storage.Repository) *MFAService {
+func NewMFAService(repo storage.Repository, redisClient *redis.Client) *MFAService {
 	return &MFAService{
-		repo: repo,
+		repo:        repo,
+		redisClient: redisClient,
+	}
+}
+
+// mfaRateLimitConfig holds rate limiting configuration for MFA verification
+type mfaRateLimitConfig struct {
+	maxAttempts int
+	windowSecs  int
+	lockoutSecs int
+}
+
+func getMFARateLimitConfig() mfaRateLimitConfig {
+	return mfaRateLimitConfig{
+		maxAttempts: 5,
+		windowSecs:  60,
+		lockoutSecs: 300,
 	}
 }
 
@@ -120,6 +138,11 @@ func (m *MFAService) VerifyMFA(ctx context.Context, req MFAVerifyRequest) (*MFAV
 		return &MFAVerifyResponse{Verified: false}, nil
 	}
 
+	// Check if user is rate limited (too many failed attempts)
+	if m.isMFALocked(ctx, req.UserID) {
+		return nil, fmt.Errorf("too many failed MFA attempts, please wait before trying again")
+	}
+
 	// Check if it's a backup code first
 	if m.isValidBackupCode(user.MFABackupCodes, req.Code) {
 		// Remove used backup code
@@ -127,6 +150,9 @@ func (m *MFAService) VerifyMFA(ctx context.Context, req MFAVerifyRequest) (*MFAV
 		if err != nil {
 			return nil, fmt.Errorf("failed to consume backup code: %w", err)
 		}
+
+		// Clear failed attempts on successful verification
+		m.clearMFAFailedAttempts(ctx, req.UserID)
 
 		// Update last used timestamp
 		now := time.Now()
@@ -141,8 +167,13 @@ func (m *MFAService) VerifyMFA(ctx context.Context, req MFAVerifyRequest) (*MFAV
 	// Verify TOTP code
 	valid := totp.Validate(req.Code, *user.MFASecret)
 	if !valid {
+		// Increment failed attempt counter
+		m.incrementMFAFailedAttempts(ctx, req.UserID)
 		return &MFAVerifyResponse{Verified: false}, nil
 	}
+
+	// Clear failed attempts on successful verification
+	m.clearMFAFailedAttempts(ctx, req.UserID)
 
 	// Update last used timestamp
 	now := time.Now()
@@ -293,4 +324,65 @@ func (m *MFAService) consumeBackupCode(ctx context.Context, userID uuid.UUID, co
 	}
 
 	return m.repo.UpdateUserMFABackupCodes(ctx, userID, remainingCodes)
+}
+
+// mfaFailedAttemptsKey returns the Redis key for tracking MFA failed attempts
+func mfaFailedAttemptsKey(userID uuid.UUID) string {
+	return fmt.Sprintf("mfa:failed:%s", userID.String())
+}
+
+// isMFALocked checks if the user has too many failed MFA attempts and is locked out
+func (m *MFAService) isMFALocked(ctx context.Context, userID uuid.UUID) bool {
+	if m.redisClient == nil {
+		return false
+	}
+
+	config := getMFARateLimitConfig()
+	key := mfaFailedAttemptsKey(userID)
+
+	attempts, err := m.redisClient.Get(ctx, key).Int()
+	if err != nil {
+		return false
+	}
+
+	return attempts >= config.maxAttempts
+}
+
+// incrementMFAFailedAttempts increments the failed MFA attempt counter
+func (m *MFAService) incrementMFAFailedAttempts(ctx context.Context, userID uuid.UUID) {
+	if m.redisClient == nil {
+		return
+	}
+
+	config := getMFARateLimitConfig()
+	key := mfaFailedAttemptsKey(userID)
+
+	pipe := m.redisClient.Pipeline()
+	pipe.Incr(ctx, key)
+	pipe.Expire(ctx, key, time.Duration(config.windowSecs)*time.Second)
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return
+	}
+
+	// Check if we just hit the lockout threshold
+	attempts, _ := m.redisClient.Get(ctx, key).Int()
+	if attempts >= config.maxAttempts {
+		// Set lockout expiry
+		lockoutKey := fmt.Sprintf("mfa:lockout:%s", userID.String())
+		m.redisClient.Set(ctx, lockoutKey, "1", time.Duration(config.lockoutSecs)*time.Second)
+	}
+}
+
+// clearMFAFailedAttempts clears the failed MFA attempt counter on successful verification
+func (m *MFAService) clearMFAFailedAttempts(ctx context.Context, userID uuid.UUID) {
+	if m.redisClient == nil {
+		return
+	}
+
+	key := mfaFailedAttemptsKey(userID)
+	m.redisClient.Del(ctx, key)
+
+	lockoutKey := fmt.Sprintf("mfa:lockout:%s", userID.String())
+	m.redisClient.Del(ctx, lockoutKey)
 }
