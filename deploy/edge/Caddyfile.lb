@@ -1,33 +1,37 @@
-# edge.functionfly.com Load Balancer
+# Edge Load Balancer Configuration
 # Pass-through mode — TLS termination on LB, origins handle their own TLS on their Caddy instances
+#
+# Environment variables:
+#   EDGE_DOMAIN - Domain for edge load balancer (e.g., edge.example.com)
+#   EDGE_EMAIL - Email for TLS certificate (e.g., ops@example.com)
+#   EDGE_NODE_1 - Primary edge node (host:port, e.g., 217.160.124.206:443)
+#   EDGE_NODE_2 - Secondary edge node (host:port, e.g., 209.46.125.113:443)
+#   EDGE_HEALTH_URI - Health check URI (default: /health)
+#   EDGE_HEALTH_INTERVAL - Health check interval (default: 10s)
+#   EDGE_HEALTH_TIMEOUT - Health check timeout (default: 5s)
+#   EDGE_FAIL_DURATION - Fail duration after failures (default: 30s)
+#   EDGE_MAX_FAILS - Max consecutive failures before removal (default: 3)
 
 {
-    email ops@functionfly.com
+    email {$EDGE_EMAIL}
     admin off
 }
 
 # HTTP → HTTPS redirect
-http://edge.functionfly.com {
-    redir https://edge.functionfly.com{uri}
+http://{$EDGE_DOMAIN} {
+    redir https://{$EDGE_DOMAIN}{uri}
 }
 
-# Primary Edge Nodes (VPS):
-#   - 217.160.124.206: Frankfurt VPS (primary)
-#   - 209.46.125.113: Singapore VPS (secondary)
-#
-# Health check failover: nodes are probed every 10s; failures trigger 30s fail_duration
-# before removing from rotation. Max 3 consecutive failures before removal.
-#
-# For DNS-based discovery, consider SRV records or separate load balancer config.
-edge.functionfly.com {
+# Edge nodes with health check failover
+{$EDGE_DOMAIN} {
     tls /etc/ssl/functionfly/fullchain.pem /etc/ssl/functionfly/privkey.pem
 
-    reverse_proxy 217.160.124.206:443 209.46.125.113:443 {
-        health_uri /health
-        health_interval 10s
-        health_timeout 5s
-        fail_duration 30s
-        max_fails 3
+    reverse_proxy {$EDGE_NODE_1} {$EDGE_NODE_2} {
+        health_uri {$EDGE_HEALTH_URI:-/health}
+        health_interval {$EDGE_HEALTH_INTERVAL:-10s}
+        health_timeout {$EDGE_HEALTH_TIMEOUT:-5s}
+        fail_duration {$EDGE_FAIL_DURATION:-30s}
+        max_fails {$EDGE_MAX_FAILS:-3}
 
         header_up X-Forwarded-Proto https
         header_up X-Real-IP {remote_host}

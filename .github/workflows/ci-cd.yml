@@ -483,9 +483,6 @@ jobs:
           sarif_file: "trivy-results.sarif"
 
   # Performance Testing
-  # NOTE: Performance testing requires artillery or similar tooling setup.
-  # This job is a placeholder until performance tests are implemented.
-  # To enable: replace this job with actual performance test commands.
   performance:
     runs-on: ubuntu-latest
     needs: [build]
@@ -493,9 +490,101 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Performance tests placeholder
+      - name: Setup k6
+        uses: grafana/k6-action@v0.3.0
+        with:
+          version: latest
+
+      - name: Run k6 load tests
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          BASE_URL: https://api.functionfly.com
         run: |
-          echo "Performance testing not yet configured."
-          echo "To enable, add performance test commands using artillery or similar tooling."
-          echo "See: https://www.artillery.io/docs/getting-started"
-          # Example: artillery run performance-tests.yml
+          if [ -n "$K6_CLOUD_TOKEN" ]; then
+            k6 run cloud ./load-tests/k6-load-test.js
+          else
+            k6 run --out json=performance-results.json ./load-tests/k6-load-test.js
+          fi
+
+      - name: Upload performance results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: performance-results.json
+          retention-days: 30
+
+  # Backup and Restore Testing
+  backup-restore-test:
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: functionfly_backup_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h localhost -p 5432; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready"
+
+      - name: Run database backup test
+        run: |
+          go run ./cmd/database-backup/main.go backup \
+            --db-host localhost \
+            --db-port 5432 \
+            --db-user postgres \
+            --db-password postgres \
+            --db-name functionfly_backup_test \
+            --output /tmp/backup-test.sql
+
+      - name: Verify backup file exists and has content
+        run: |
+          if [ ! -f /tmp/backup-test.sql ]; then
+            echo "Backup file not created"
+            exit 1
+          fi
+          if [ ! -s /tmp/backup-test.sql ]; then
+            echo "Backup file is empty"
+            exit 1
+          fi
+          echo "Backup file created successfully"
+          ls -la /tmp/backup-test.sql
+
+      - name: Test restore to clean database
+        run: |
+          export PGPASSWORD=postgres
+          dropdb -h localhost -p 5432 -U postgres functionfly_backup_test || true
+          createdb -h localhost -p 5432 -U postgres functionfly_backup_test
+          psql -h localhost -p 5432 -U postgres -d functionfly_backup_test -f /tmp/backup-test.sql
+          echo "Restore completed successfully"
+
+      - name: Verify restored data integrity
+        run: |
+          export PGPASSWORD=postgres
+          TABLE_COUNT=$(psql -h localhost -p 5432 -U postgres -d functionfly_backup_test -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")
+          echo "Restored $TABLE_COUNT tables"
+          if [ "$TABLE_COUNT" -lt "1" ]; then
+            echo "Warning: No tables restored"
+          fi

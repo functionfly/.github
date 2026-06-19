@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Secrets
+**/secrets/
+**/*.pem
+**/*.key
+**/*.crt
+**/*.pub
+id_rsa*
+id_ed25519*
+
+# Documentation
+**/*.md
+!README.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+bin/
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test files
+**/*_test.go
+**/testdata/
+**/__tests__/
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+coverage/
+
+# Local development
+tmp/
+temp/
+*.log
+logs/
+
+# Development files
+node_modules/
+vendor/

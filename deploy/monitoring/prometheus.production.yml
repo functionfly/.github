@@ -1,6 +1,15 @@
+# FunctionFly Production Prometheus Configuration
+# For production deployments - no development targets
+#
+# Environment variables:
+#   PROMETHEUS_SCRAPE_INTERVAL - How often to scrape targets (default: 15s)
+#   PROMETHEUS_EVALUATION_INTERVAL - How often to evaluate rules (default: 15s)
+#   DATADOG_API_KEY - Datadog API key for remote_write (optional)
+#   DATADOG_SITE - Datadog site (default: datadoghq.com)
+
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: ${PROMETHEUS_SCRAPE_INTERVAL:-15s}
+  evaluation_interval: ${PROMETHEUS_EVALUATION_INTERVAL:-15s}
 
 rule_files:
   - "alert_rules.yml"
@@ -12,16 +21,15 @@ alerting:
             - alertmanager:9093
 
 scrape_configs:
-  # Job names must match status handler: orchestrator-api, health-monitor, postgres, redis
+  # Prometheus self-monitoring
   - job_name: "prometheus"
     static_configs:
       - targets: ["localhost:9090"]
 
-  # Orchestrator API: use ORCHESTRATOR_API_TARGETS env var (default: orchestrator-api:8080)
-  # For local dev with host machine: host.docker.internal:8080
+  # Orchestrator API - production targets only
   - job_name: "orchestrator-api"
     static_configs:
-      - targets: ["${ORCHESTRATOR_API_TARGETS:-orchestrator-api:8080}"]
+      - targets: ["orchestrator-api:8080"]
     scrape_interval: 10s
     metrics_path: /metrics
 
@@ -32,23 +40,20 @@ scrape_configs:
     scrape_interval: 30s
     metrics_path: /metrics
 
-  # Optional: when postgres-exporter / redis-exporter are running (e.g. docker-compose.monitoring)
+  # PostgreSQL exporter (when running)
   - job_name: "postgres"
     static_configs:
       - targets: ["postgres-exporter:9187"]
     scrape_interval: 30s
 
+  # Redis exporter (when running)
   - job_name: "redis"
     static_configs:
       - targets: ["redis-exporter:9121"]
     scrape_interval: 30s
 
-# =============================================================================
-# Datadog remote_write (dual-write evaluation)
-# Configure via environment variables:
-#   DATADOG_API_KEY - API key for Datadog (required for remote_write)
-#   DATADOG_SITE - Datadog site (default: datadoghq.com, use datadoghq.eu for EU)
-# =============================================================================
+# Remote write configuration for Datadog (optional)
+# Enable by setting DATADOG_API_KEY
 remote_write:
   - url: "https://api.${DATADOG_SITE:-datadoghq.com}/api/v1/series"
     bearer_token_file: /etc/secrets/datadog_api_key

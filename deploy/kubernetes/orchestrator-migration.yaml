@@ -1,0 +1,145 @@
+# Kubernetes Job to run database migrations before deployment
+# Apply this job before deploying the orchestrator API to ensure schema is up to date
+#
+# Usage:
+#   kubectl apply -f deploy/kubernetes/orchestrator-migration.yaml
+#   kubectl wait --for=condition=complete job/orchestrator-migration -n functionfly --timeout=300s
+#   kubectl delete job/orchestrator-migration -n functionfly
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: orchestrator-migration
+  namespace: functionfly
+  labels:
+    app: orchestrator-api
+    tier: database
+  annotations:
+    description: "Runs database migrations for the orchestrator API"
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: orchestrator-api
+        tier: database
+    spec:
+      serviceAccountName: orchestrator-api
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: functionfly/orchestrator-api:latest
+          imagePullPolicy: Always
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Running database migrations..."
+              # Wait for database to be ready
+              for i in {1..30}; do
+                if pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME; then
+                  echo "Database is ready"
+                  break
+                fi
+                echo "Waiting for database... attempt $i/30"
+                sleep 2
+              done
+
+              # Run migrations directly using psql
+              # Note: golang-migrate has duplicate sequence issues, so we apply SQL directly
+              echo "Applying migrations from /migrations directory..."
+              for f in $(ls -1 /migrations/*.up.sql 2>/dev/null | sort); do
+                echo "Applying: $(basename $f)"
+                PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME --single-transaction -f "$f" || {
+                  echo "Migration failed: $f"
+                  exit 1
+                }
+              done
+
+              echo "Migrations completed successfully"
+          env:
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: functionfly-secrets
+                  key: db-host
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: functionfly-secrets
+                  key: db-port
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: functionfly-secrets
+                  key: db-user
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: functionfly-secrets
+                  key: db-password
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: functionfly-secrets
+                  key: db-name
+            - name: DB_SSLMODE
+              value: "require"
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+---
+# Alternative: Init container approach for deployments
+# Add this to your deployment's pod template spec:
+#
+# initContainers:
+#   - name: migration
+#     image: functionfly/orchestrator-api:latest
+#     imagePullPolicy: Always
+#     command:
+#       - /bin/sh
+#       - -c
+#       - |
+#         echo "Running pre-deployment migrations..."
+#         for f in $(ls -1 /migrations/*.up.sql 2>/dev/null | sort); do
+#           echo "Applying: $(basename $f)"
+#           PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -p $DB_PORT -U $DB_USER -d $DB_NAME --single-transaction -f "$f"
+#         done
+#     env:
+#       - name: DB_HOST
+#         valueFrom:
+#           secretKeyRef:
+#             name: functionfly-secrets
+#             key: db-host
+#       - name: DB_PORT
+#         valueFrom:
+#           secretKeyRef:
+#             name: functionfly-secrets
+#             key: db-port
+#       - name: DB_USER
+#         valueFrom:
+#           secretKeyRef:
+#             name: functionfly-secrets
+#             key: db-user
+#       - name: DB_PASSWORD
+#         valueFrom:
+#           secretKeyRef:
+#             name: functionfly-secrets
+#             key: db-password
+#       - name: DB_NAME
+#         valueFrom:
+#           secretKeyRef:
+#             name: functionfly-secrets
+#             key: db-name
+#     resources:
+#       limits:
+#         cpu: "500m"
+#         memory: "256Mi"
+#       requests:
+#         cpu: "100m"
+#         memory: "64Mi"

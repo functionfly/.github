@@ -1,5 +1,11 @@
 # FunctionFly Production Caddyfile
 # Reverse proxy configuration for production deployment
+#
+# Environment variables:
+#   SSL_EMAIL - Email for TLS certificate
+#   SSL_DOMAIN - Primary domain (e.g., example.com)
+#   CSP_API_ORIGINS - Additional API origins for CSP (space-separated, e.g., "https://api.example.com https://api.staging.example.com")
+#   MONITORING_BASIC_AUTH_HASH - bcrypt hash for monitoring basic auth
 
 {
     email ${SSL_EMAIL}
@@ -37,7 +43,7 @@ ${SSL_DOMAIN} {
         X-XSS-Protection "1; mode=block"
         Referrer-Policy "strict-origin-when-cross-origin"
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss:; form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com;"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' ws: wss: ${CSP_API_ORIGINS}; form-action 'self';"
     }
 
     # Logging
@@ -51,7 +57,7 @@ ${SSL_DOMAIN} {
     }
 }
 
-# API subdomain (optional)
+# API subdomain
 api.${SSL_DOMAIN} {
     reverse_proxy orchestrator-api:8080 {
         header_up X-Real-IP {remote_host}
@@ -78,7 +84,7 @@ api.${SSL_DOMAIN} {
     }
 }
 
-# Monitoring subdomain (optional)
+# Monitoring subdomain
 monitoring.${SSL_DOMAIN} {
     # Grafana
     handle /grafana/* {

@@ -1,22 +1,28 @@
-# Edge TLS termination for edge.functionfly.com
+# Edge TLS termination for edge endpoints
 # Handles HTTP (health checks) AND HTTPS (Cloudflare → origin)
 # Health checks come via HTTP:80, Cloudflare forwards traffic via HTTPS:443
+#
+# Environment variables:
+#   EDGE_DOMAIN - Domain for edge endpoint (e.g., edge.example.com)
+#   EDGE_EMAIL - Email for TLS certificate (e.g., ops@example.com)
+#   EDGE_UPSTREAM_PORT - Port where SAR runtime listens (default: 8082)
+#   EDGE_UPSTREAM_HOST - Host where SAR runtime is located (default: localhost)
 
 {
-    email ops@functionfly.com
+    email {$EDGE_EMAIL}
     auto_https off
 }
 
 # HTTP - for health checks from Cloudflare Load Balancer
-http://edge.functionfly.com {
+http://{$EDGE_DOMAIN} {
     respond /healthz 200
     respond * 401
 }
 
 # HTTPS - Cloudflare forwards traffic to this
-edge.functionfly.com {
+{$EDGE_DOMAIN} {
     tls /etc/ssl/functionfly/fullchain.pem /etc/ssl/functionfly/privkey.pem
-    reverse_proxy localhost:8082 {
+    reverse_proxy {$EDGE_UPSTREAM_HOST}:{$EDGE_UPSTREAM_PORT:-8082} {
         header_up Host {host}
         header_up X-Forwarded-Proto https
         header_up X-Real-IP {remote_host}
