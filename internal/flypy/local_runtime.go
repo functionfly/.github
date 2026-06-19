@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // LocalRuntimeConfig holds configuration for the local runtime
@@ -113,7 +114,7 @@ func (r *LocalRuntime) Reload(ctx context.Context) error {
 // handleHealth handles health check requests
 func (r *LocalRuntime) handleHealth(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
@@ -131,7 +132,7 @@ func (r *LocalRuntime) handleHealth(w http.ResponseWriter, req *http.Request) {
 // handleInfo handles function information requests
 func (r *LocalRuntime) handleInfo(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
@@ -151,14 +152,14 @@ func (r *LocalRuntime) handleInfo(w http.ResponseWriter, req *http.Request) {
 // handleExecute handles function execution requests
 func (r *LocalRuntime) handleExecute(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Parse request body
 	var input map[string]interface{}
 	if err := json.NewDecoder(req.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid JSON input", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON input"))
 		return
 	}
 

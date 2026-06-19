@@ -12,6 +12,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -264,7 +265,7 @@ func RequireAPIVersion(requiredVersion string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			info := GetVersionInfo(r.Context())
 			if info == nil || info.Version != requiredVersion {
-				http.Error(w, "Invalid API version", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Invalid API version"))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -279,7 +280,7 @@ func ResponseWithVersionInfo(w http.ResponseWriter, version string, data interfa
 
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		logrus.WithError(err).Error("Failed to encode response")
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 	}
 }
 

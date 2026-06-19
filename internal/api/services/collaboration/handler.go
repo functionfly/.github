@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 var upgrader = websocket.Upgrader{
@@ -52,30 +53,30 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	user, err := h.authSvc.GetUserFromRequest(r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	tenantID, _, err := h.authSvc.GetTenantByUser(user.ID.String())
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	plan, err := h.planSvc.GetTenantPlan(tenantID)
 	if err != nil {
-		http.Error(w, "Failed to get plan", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get plan"))
 		return
 	}
 
 	if !plans.HasFeature(plan, plans.FeatureCollaborativeSessions) {
-		http.Error(w, "Collaborative sessions require Enterprise plan", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Collaborative sessions require Enterprise plan"))
 		return
 	}
 
 	session, err := h.svc.GetSession(r.Context(), sessionKey)
 	if err != nil {
-		http.Error(w, "Session not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Session not found"))
 		return
 	}
 
@@ -115,31 +116,31 @@ func (h *Handler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authSvc.GetUserFromRequest(r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	tenantID, _, err := h.authSvc.GetTenantByUser(user.ID.String())
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	plan, err := h.planSvc.GetTenantPlan(tenantID)
 	if err != nil {
-		http.Error(w, "Failed to get plan", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get plan"))
 		return
 	}
 
 	if !plans.HasFeature(plan, plans.FeatureCollaborativeSessions) {
-		http.Error(w, "Collaborative sessions require Enterprise plan", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Collaborative sessions require Enterprise plan"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["functionID"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
@@ -152,7 +153,7 @@ func (h *Handler) HandleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.svc.CreateSession(r.Context(), functionID, user.ID, req.InitialInput)
 	if err != nil {
-		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create session"))
 		return
 	}
 
@@ -169,7 +170,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.svc.GetSession(r.Context(), sessionKey)
 	if err != nil {
-		http.Error(w, "Session not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Session not found"))
 		return
 	}
 
@@ -180,7 +181,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleLeaveSession(w http.ResponseWriter, r *http.Request) {
 	user, err := h.authSvc.GetUserFromRequest(r)
 	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *Handler) HandleLeaveSession(w http.ResponseWriter, r *http.Request) {
 	sessionKey := vars["sessionKey"]
 
 	if err := h.svc.LeaveSession(r.Context(), sessionKey, user.ID); err != nil {
-		http.Error(w, "Failed to leave session", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to leave session"))
 		return
 	}
 

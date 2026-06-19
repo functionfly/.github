@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // ProxyResult captures the outcome of a proxy operation
@@ -153,7 +154,7 @@ func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *stor
 		"request_id": requestID,
 	}).Error("All backends failed")
 
-	http.Error(w, "All backends unavailable", http.StatusServiceUnavailable)
+	apierror.WriteError(w, apierror.NewServiceUnavailable("All backends unavailable"))
 	return result
 }
 

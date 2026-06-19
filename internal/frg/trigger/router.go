@@ -27,6 +27,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Router manages trigger registration and routing for graph execution
@@ -159,7 +160,7 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 		r.mu.RUnlock()
 
 		if !ok {
-			http.Error(w, "Webhook not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Webhook not found"))
 			return
 		}
 
@@ -173,20 +174,20 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			signature := req.Header.Get("X-Webhook-Signature")
 			if signature == "" {
 				logrus.Warn("Webhook signature missing")
-				http.Error(w, "Missing webhook signature", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Missing webhook signature"))
 				return
 			}
 
 			// Read body for signature verification
 			body, err := io.ReadAll(req.Body)
 			if err != nil {
-				http.Error(w, "Failed to read request body", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 				return
 			}
 
 			if !r.verifyWebhookSignature(body, signature) {
 				logrus.Warn("Webhook signature verification failed")
-				http.Error(w, "Invalid webhook signature", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Invalid webhook signature"))
 				return
 			}
 		}
@@ -224,7 +225,7 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 		ctx := req.Context()
 		parts := strings.Split(trigger.GraphName, "/")
 		if len(parts) != 2 {
-			http.Error(w, "Invalid graph name", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Invalid graph name"))
 			return
 		}
 
@@ -232,7 +233,7 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 		graphDef, err := r.frgRepo.GetDefinitionByName(ctx, author, name, "v1")
 		if err != nil {
 			logrus.WithError(err).WithField("graph", trigger.GraphName).Error("Failed to get graph definition")
-			http.Error(w, "Graph not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Graph not found"))
 			return
 		}
 
@@ -243,7 +244,7 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			result, err := r.engine.ExecuteSync(ctx, graphDef, inputData)
 			if err != nil {
 				logrus.WithError(err).WithField("graph", trigger.GraphName).Error("Sync execution failed")
-				http.Error(w, "Graph execution failed", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Graph execution failed"))
 				return
 			}
 
@@ -255,7 +256,7 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			instance, err := r.engine.ExecuteAsync(ctx, graphDef, inputData)
 			if err != nil {
 				logrus.WithError(err).WithField("graph", trigger.GraphName).Error("Async execution failed")
-				http.Error(w, "Graph execution failed", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Graph execution failed"))
 				return
 			}
 
@@ -268,7 +269,7 @@ func (r *Router) GetWebhookHandler() http.HandlerFunc {
 			})
 
 		default:
-			http.Error(w, "Unsupported execution mode", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Unsupported execution mode"))
 		}
 	}
 }

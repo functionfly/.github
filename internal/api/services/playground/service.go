@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 var upgrader = websocket.Upgrader{
@@ -103,13 +104,13 @@ func (s *PlaygroundService) HandleWebSocket(w http.ResponseWriter, r *http.Reque
 
 	fn, err := s.registryRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := s.registryRepo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -163,13 +164,13 @@ func (s *PlaygroundService) HandleWebSocketExecute(w http.ResponseWriter, r *htt
 
 	fn, err := s.registryRepo.GetFunctionByAuthorName(author, name)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	fnVersion, err := s.registryRepo.GetLatestFunctionVersion(fn.ID)
 	if err != nil {
-		http.Error(w, "Function version not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function version not found"))
 		return
 	}
 
@@ -177,7 +178,7 @@ func (s *PlaygroundService) HandleWebSocketExecute(w http.ResponseWriter, r *htt
 		Input json.RawMessage `json:"input"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 

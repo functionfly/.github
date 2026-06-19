@@ -105,7 +105,7 @@ func (h *Handler) HandleProvisionBundle(w http.ResponseWriter, r *http.Request) 
 
 	case err := <-errCh:
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Error("Bundle provisioning failed")
-		writeJSONError(w, http.StatusInternalServerError, "Provisioning failed: "+err.Error())
+		writeJSONError(w, http.StatusInternalServerError, "Provisioning failed. Check server logs for details.")
 
 	case <-r.Context().Done():
 		writeJSONError(w, http.StatusRequestTimeout, "Provisioning timed out")

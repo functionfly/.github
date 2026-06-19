@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // RequestValidator validates incoming requests
@@ -301,21 +302,21 @@ func (m *SecurityMiddleware) Middleware(next http.Handler) http.Handler {
 		// Check IP allowlist
 		if !m.ipAllowlist.IsAllowed(clientIP) {
 			logrus.WithField("ip", clientIP).Warn("Blocked request from IP")
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 			return
 		}
 
 		// Validate request
 		if err := m.validator.ValidateRequest(r); err != nil {
 			logrus.WithError(err).Warn("Request validation failed")
-			http.Error(w, "Invalid request", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid request"))
 			return
 		}
 
 		// Check rate limit
 		if !m.validator.rateLimiter.Allow() {
 			logrus.Warn("Rate limit exceeded")
-			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
+			apierror.WriteError(w, apierror.NewRateLimited("Too Many Requests"))
 			return
 		}
 
@@ -327,7 +328,7 @@ func (m *SecurityMiddleware) Middleware(next http.Handler) http.Handler {
 						"param": key,
 						"value": value,
 					}).Warn("SQL injection attempt detected")
-					http.Error(w, "Bad Request", http.StatusBadRequest)
+					apierror.WriteError(w, apierror.NewBadRequest("Bad Request"))
 					return
 				}
 			}
@@ -341,7 +342,7 @@ func (m *SecurityMiddleware) Middleware(next http.Handler) http.Handler {
 						"param": key,
 						"value": value,
 					}).Warn("XSS attempt detected")
-					http.Error(w, "Bad Request", http.StatusBadRequest)
+					apierror.WriteError(w, apierror.NewBadRequest("Bad Request"))
 					return
 				}
 			}

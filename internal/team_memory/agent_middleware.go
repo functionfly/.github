@@ -10,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Context keys to avoid collisions with other packages
@@ -76,7 +77,7 @@ func (m *AgentAPIMiddleware) Wrap(next http.Handler) http.Handler {
 					"team_id":   teamID,
 					"tenant_id": user.TenantID,
 				}).Warn("Team does not belong to user tenant, rejecting request")
-				http.Error(w, "Invalid team for tenant", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Invalid team for tenant"))
 				return
 			}
 		}
@@ -197,7 +198,7 @@ func (m *GenerationMiddleware) Wrap(next http.Handler) http.Handler {
 					"team_id":   teamID,
 					"tenant_id": user.TenantID,
 				}).Warn("Team does not belong to user tenant, rejecting request")
-				http.Error(w, "Invalid team for tenant", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Invalid team for tenant"))
 				return
 			}
 		}

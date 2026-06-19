@@ -19,6 +19,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // CDNService handles CDN configuration and headers for static assets
@@ -284,7 +285,7 @@ func (c *CDNService) ServeStaticAsset(w http.ResponseWriter, r *http.Request, fi
 	absPath, err := c.resolveFilePath(filePath)
 	if err != nil {
 		logrus.WithError(err).WithField("filePath", filePath).Warn("Failed to resolve file path")
-		http.Error(w, "Invalid file path", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid file path"))
 		return
 	}
 
@@ -295,13 +296,13 @@ func (c *CDNService) ServeStaticAsset(w http.ResponseWriter, r *http.Request, fi
 			http.NotFound(w, r)
 			return
 		}
-		http.Error(w, "Failed to access file", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to access file"))
 		return
 	}
 
 	// Don't serve directories
 	if info.IsDir() {
-		http.Error(w, "Requested path is a directory", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Requested path is a directory"))
 		return
 	}
 
@@ -313,7 +314,7 @@ func (c *CDNService) ServeStaticAsset(w http.ResponseWriter, r *http.Request, fi
 		served, err := c.serveFileWithRange(w, r, absPath, info)
 		if err != nil {
 			if !served {
-				http.Error(w, "Failed to serve file", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Failed to serve file"))
 			}
 			return
 		}
@@ -323,7 +324,7 @@ func (c *CDNService) ServeStaticAsset(w http.ResponseWriter, r *http.Request, fi
 	// For HEAD requests or other methods, serve the full file
 	file, err := os.Open(absPath)
 	if err != nil {
-		http.Error(w, "Failed to open file", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to open file"))
 		return
 	}
 	defer file.Close()

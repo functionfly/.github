@@ -28,6 +28,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Runtime represents a local FunctionFly function runtime
@@ -329,7 +330,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	// Read request body
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to read request body: %v", err), http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		atomic.AddInt64(&r.activeRequests, -1)
 		if r.metrics != nil {
 			r.metrics.RecordError("read_body_error", r.manifest.Name)
@@ -386,7 +387,7 @@ func (r *Runtime) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 // handleMetrics serves Prometheus metrics
 func (r *Runtime) handleMetrics(w http.ResponseWriter, req *http.Request) {
 	if r.metrics == nil {
-		http.Error(w, "Metrics collection not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Metrics collection not available"))
 		return
 	}
 
