@@ -22,11 +22,8 @@ export const GET: APIRoute = async () => {
         const pubDate = new Date(post.publishedAt!).toUTCString();
         // Convert Slate body to HTML for content
         const bodyHtml = slateBodyToHtml(post.body);
-        // Strip HTML tags and decode entities for description
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = post.description;
-        const plainText = tempDiv.textContent || tempDiv.innerText || '';
-        const plainDesc = decodeHtmlEntities(plainText);
+        // Strip HTML tags and decode entities for description (server-safe)
+        const plainDesc = stripHtmlAndDecode(post.description || '');
 
         return `
     <item>
@@ -59,6 +56,14 @@ function escapeXml(unsafe: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&apos;");
+}
+
+function stripHtmlAndDecode(html: string): string {
+  const text = html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return decodeHtmlEntities(text);
 }
 
 function decodeHtmlEntities(str: string): string {
