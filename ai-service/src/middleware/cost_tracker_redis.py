@@ -48,17 +48,23 @@ class RedisCostTracker:
     COST_PREFIX = "cost:v1"
     COST_ENTRIES_KEY = "cost:entries"
 
-    def __init__(self, redis_client: Optional[RedisClient] = None):
+    def __init__(
+        self,
+        redis_client: Optional[RedisClient] = None,
+        daily_cost_limit: float = 100.0,
+    ):
         """Initialize the Redis cost tracker.
 
         Args:
             redis_client: Optional Redis client. If not provided, will attempt to create one.
+            daily_cost_limit: Daily cost limit per tenant in USD (default: 100.0)
         """
         self._logger = logging.getLogger(__name__)
         self._redis: Optional[RedisClient] = redis_client
         self._lock = threading.Lock()
         self._local_fallback: Dict[str, List[CostEntry]] = []
         self._total_cost = 0.0
+        self._daily_cost_limit = daily_cost_limit
 
     async def _get_redis(self) -> Optional[RedisClient]:
         """Get or create Redis client."""
@@ -170,13 +176,14 @@ class RedisCostTracker:
             CostLimitExceeded: If limit exceeded
         """
         current_cost = await self.get_current_cost(tenant_id, "day")
+        limit = self._daily_cost_limit
 
-        if current_cost + additional_cost > 100.0:
+        if current_cost + additional_cost > limit:
             raise CostLimitExceeded(
-                f"Cost limit exceeded: ${current_cost:.2f} / $100.00 per day",
+                f"Cost limit exceeded: ${current_cost:.2f} / ${limit:.2f} per day",
                 tenant_id=tenant_id,
                 current_cost=current_cost,
-                limit=100.0,
+                limit=limit,
                 period="day",
             )
 
@@ -390,5 +397,7 @@ async def get_redis_cost_tracker() -> RedisCostTracker:
     """
     global _redis_cost_tracker
     if _redis_cost_tracker is None:
-        _redis_cost_tracker = RedisCostTracker()
+        from ..config import settings
+        daily_limit = getattr(settings, 'daily_cost_limit_usd', 100.0)
+        _redis_cost_tracker = RedisCostTracker(daily_cost_limit=daily_limit)
     return _redis_cost_tracker

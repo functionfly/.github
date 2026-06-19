@@ -127,6 +127,7 @@ class Settings(BaseSettings):
 
     # Redis configuration
     redis_url: str = "redis://localhost:6379"
+    redis_password: Optional[str] = Field(default=None, description="Redis password (if auth enabled)")
     redis_cache_ttl: int = 3600  # seconds
     redis_use_tls: bool = Field(
         default=False, description="Enable TLS for Redis connections"
@@ -188,6 +189,7 @@ class Settings(BaseSettings):
     enable_streaming: bool = True
     enable_caching: bool = True
     enable_cost_tracking: bool = True
+    enable_rate_limiting: bool = Field(default=True, description="Enable rate limiting middleware")
 
     # RAG (retrieval-augmented generation) for chat
     enable_rag: bool = True
@@ -301,15 +303,41 @@ class Settings(BaseSettings):
     embedding_max_input_length: int = 8000  # Prevent token bombing
     embedding_blocked_patterns: list[str] = []  # Regex patterns to block
 
+    # Request Security - Timeouts and Size Limits
+    request_timeout_seconds: float = 30.0  # Max request duration
+    max_request_body_bytes: int = 10 * 1024 * 1024  # 10MB max
+
     # Redis Cache Security
     redis_cache_encryption_key: Optional[str] = Field(
-        default=None, description="Fernet key for cache encryption (base64-encoded)"
+        default=None, description="Fernet key for cache encryption (base64-encoded, 32 bytes)"
     )
     redis_cache_namespace: str = "flyembed"
+
+    # Internal API Key (for service-to-service auth)
+    internal_api_key: Optional[str] = Field(
+        default=None, description="Internal API key for /internal endpoints (service-to-service auth)"
+    )
+
+    # Security - Auth Degraded Mode
+    # If True (default), when orchestrator is unreachable, all API key auth requests are REJECTED.
+    # If False, cached keys may still work (less secure but higher availability).
+    reject_auth_in_degraded_mode: bool = Field(
+        default=True, description="Reject auth requests when orchestrator is unreachable"
+    )
+
+    # Security - Require API Key for All Endpoints
+    # If True, all endpoints require API key authentication (except /health, /metrics, /docs)
+    # If False, some endpoints may be accessible without auth (not recommended for production)
+    require_auth_all_endpoints: bool = Field(
+        default=True, description="Require API key authentication for all protected endpoints"
+    )
 
     # Rate Limiting - Embedding Specific
     embed_tokens_per_minute: int = 100000  # Token budget for embeddings
     embed_cost_per_day: float = 50.0  # USD budget for embeddings per tenant
+
+    # Cost Limits
+    daily_cost_limit_usd: float = Field(default=100.0, description="Daily cost limit per tenant in USD")
 
     # RAG Security
     rag_validate_content: bool = True

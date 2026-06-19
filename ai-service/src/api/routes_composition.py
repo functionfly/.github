@@ -10,6 +10,8 @@ from ..security.auth import (
     APIKeyInfo,
     KeyScope,
 )
+from ..utils.security import sanitize_error_message
+from ..config import settings
 from ..models.schemas import (
     GraphCompositionRequest,
     GraphCompositionResponse,
@@ -48,7 +50,7 @@ async def list_graph_templates():
         logger.error(f"Failed to list templates: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to list templates: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -94,7 +96,7 @@ async def compose_graph_from_prompt(
         logger.error(f"Graph composition failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Graph composition failed: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -146,5 +148,5 @@ async def instantiate_graph_template(
         logger.error(f"Template instantiation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Template instantiation failed: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )

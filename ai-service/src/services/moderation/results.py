@@ -29,6 +29,8 @@ class ModerationCategory(str, Enum):
     VIOLENCE = "violence"
     SEXUAL = "sexual"
     SPAM = "spam"
+    SQL_INJECTION = "sql_injection"
+    COMMAND_INJECTION = "command_injection"
     CUSTOM = "custom"
 
 

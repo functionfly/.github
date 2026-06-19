@@ -3,9 +3,13 @@
 import logging
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Query, status, Body
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Query, status, Body, Depends
 
+from ..security.auth import (
+    require_api_key_with_scope,
+    APIKeyInfo,
+    KeyScope,
+)
 from ..models.schemas import (
     ChatSessionResponse,
     ChatMessageResponse,
@@ -37,6 +41,7 @@ async def send_chat_message(
         None, description="Tenant ID for context (e.g. deployed functions)"
     ),
     payload: Optional[ChatSendBody] = Body(default=None),
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
 ):
     """Send a message to a chat session.
 
@@ -45,12 +50,12 @@ async def send_chat_message(
         user_id: The user ID
         message: The message text
         tenant_id: Optional tenant ID; when set, chat context includes functions from the orchestrator
+        api_key: Validated API key with chat:write scope
 
     Returns:
         ChatMessageResponse with the assistant's reply
     """
     try:
-        # Support both JSON body (used by Go orchestrator) and query params (legacy).
         sid = payload.session_id if payload is not None else (session_id or "")
         uid = payload.user_id if payload is not None else (user_id or "")
         msg = payload.message if payload is not None else (message or "")
@@ -62,7 +67,6 @@ async def send_chat_message(
                 detail="message is required",
             )
         if not uid:
-            # Keep the endpoint compatible with older callers that don't send user_id.
             uid = "unknown"
 
         chat_manager = get_chat_manager()
@@ -92,12 +96,14 @@ async def send_chat_message(
 async def list_chat_sessions(
     user_id: str = Query(..., description="User ID"),
     limit: int = Query(10, ge=1, le=50),
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
 ):
     """List chat sessions for a user.
 
     Args:
         user_id: The user ID
         limit: Maximum number of sessions
+        api_key: Validated API key with chat:read scope
 
     Returns:
         List of ChatSessionResponse
@@ -123,11 +129,15 @@ async def list_chat_sessions(
 
 
 @router.get("/api/chat/sessions/{session_id}", response_model=ChatHistoryResponse)
-async def get_chat_session_history(session_id: str):
+async def get_chat_session_history(
+    session_id: str,
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
+):
     """Get chat session history.
 
     Args:
         session_id: The session ID
+        api_key: Validated API key with chat:read scope
 
     Returns:
         ChatHistoryResponse with messages

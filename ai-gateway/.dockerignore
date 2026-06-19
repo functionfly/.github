@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Secrets
+*.pem
+*.key
+*.crt
+*.pub
+id_rsa*
+id_ed25519*
+
+# Documentation
+*.md
+!README.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+bin/
+*.exe
+
+# Test files
+*_test.go
+coverage/
+
+# Development
+tmp/
+temp/
+*.log

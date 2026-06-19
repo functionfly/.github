@@ -2,8 +2,13 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, status, Depends
 
+from ..security.auth import (
+    require_api_key_with_scope,
+    APIKeyInfo,
+    KeyScope,
+)
 from ..models.schemas import (
     SearchQuery,
     SearchResult,
@@ -21,12 +26,14 @@ router = APIRouter()
 async def search_functions(
     request: SearchQuery,
     tenant_id: str = Query(..., description="Tenant ID"),
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.EMBED_READ)),
 ):
     """Search functions using semantic search.
 
     Args:
         request: Search query
         tenant_id: The tenant ID
+        api_key: Validated API key with embed:read scope
 
     Returns:
         SearchResponse with results
@@ -37,10 +44,8 @@ async def search_functions(
         ranker = get_result_ranker()
 
         if request.use_triple:
-            # Triple-vector search path
             processed_query, _, metadata = await query_processor.process_query(request.query)
 
-            # Generate triple query vectors
             flyembed = get_flyembed_service()
             triple_query = await flyembed.embed_query(request.query)
 
@@ -58,7 +63,6 @@ async def search_functions(
                 results = ranker.filter_results(results, request.filters)
             ranked_results = ranker.rank_results_triple(results, request.query, request.weights)
         else:
-            # Single-vector search path (legacy)
             processed_query, embedding, metadata = await query_processor.process_query(
                 request.query
             )
@@ -71,7 +75,6 @@ async def search_functions(
                 results = ranker.filter_results(results, request.filters)
             ranked_results = ranker.rank_results(results, request.query)
 
-        # Keyword fallback if no results
         if not ranked_results:
             all_functions = await indexer.index_tenant_functions(tenant_id)
             ranked_results = query_processor.process_keyword_fallback(

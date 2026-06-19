@@ -264,6 +264,24 @@ class SecurityValidator:
         ],
     }
 
+    # Prompt injection patterns - attempts to manipulate AI behavior
+    PROMPT_INJECTION_PATTERNS = [
+        (r"(?i)ignore\s+(?:all\s+)?previous\s+instructions", "Prompt injection: attempt to ignore instructions"),
+        (r"(?i)forget\s+(?:everything|all\s+prior)", "Prompt injection: forget prior context"),
+        (r"(?i)disregard\s+(?:your\s+)?(?:system\s+)?instructions", "Prompt injection: disregard system prompt"),
+        (r"(?i)you\s+are\s+(?:now|now\s+free|free|free\sto)", "Prompt injection: roleplay/jailbreak attempt"),
+        (r"(?i)pretend\s+you\s+(?:can|have)", "Prompt injection: capability override"),
+        (r"(?i)\{.*?(?:system|developer|instruction).*?\}", "Prompt injection: embedded system prompt"),
+        (r'(?i)end\s+of\s+(?:system|your|the)\s+(?:prompt|instruction)', "Prompt injection: prompt boundary violation"),
+        (r"(?i)respond\s+with\s+only\s+the\s+word\s+['\"]yes['\"]", "Prompt injection: single-word response trigger"),
+    ]
+
+    # Dangerous string patterns in output
+    DANGEROUS_STRINGS = [
+        (r"__import__\s*\(\s*['\"]os['\"]", "Dynamic OS import"),
+        (r"__import__\s*\s*\(['\"]subprocess", "Dynamic subprocess import"),
+    ]
+
     @classmethod
     def validate(cls, code: str, runtime: str) -> ValidationResult:
         """Validate code security."""
@@ -277,12 +295,24 @@ class SecurityValidator:
             if re.search(pattern, code, re.IGNORECASE):
                 warnings.append(f"Security: {message}")
 
+        # Check for prompt injection patterns
+        for pattern, message in cls.PROMPT_INJECTION_PATTERNS:
+            if re.search(pattern, code):
+                errors.append(f"Prompt injection detected: {message}")
+                warnings.append(f"Potential prompt injection: {message}")
+
+        # Check for dangerous string patterns
+        for pattern, message in cls.DANGEROUS_STRINGS:
+            if re.search(pattern, code, re.IGNORECASE):
+                warnings.append(f"Security: {message}")
+
         # Check for hardcoded secrets
         secret_patterns = [
-            (r'password\s*=\s*["\'][^"\']+["\']', "Possible hardcoded password"),
-            (r'api_key\s*=\s*["\'][^"\']+["\']', "Possible hardcoded API key"),
-            (r'secret\s*=\s*["\'][^"\']+["\']', "Possible hardcoded secret"),
-            (r'token\s*=\s*["\'][^"\']+["\']', "Possible hardcoded token"),
+            (r'password\s*=\s*["\'][^"\']{8,}["\']', "Possible hardcoded password"),
+            (r'api_key\s*=\s*["\'][^"\']{20,}["\']', "Possible hardcoded API key"),
+            (r'secret\s*=\s*["\'][^"\']{20,}["\']', "Possible hardcoded secret"),
+            (r'token\s*=\s*["\'][^"\']{20,}["\']', "Possible hardcoded token"),
+            (r'private[_-]?key\s*=\s*["\']-----BEGIN', "Possible private key"),
         ]
 
         for pattern, message in secret_patterns:

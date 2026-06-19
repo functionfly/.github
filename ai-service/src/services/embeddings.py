@@ -30,12 +30,64 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _validate_fernet_key(key: Optional[str]) -> bool:
+    """Validate a Fernet key format.
+
+    Args:
+        key: The Fernet key to validate
+
+    Returns:
+        True if valid, False otherwise
+    """
+    if not key:
+        return False
+    try:
+        fernet = Fernet(key.encode())
+        # Test that we can encrypt and decrypt
+        test_data = b"test"
+        encrypted = fernet.encrypt(test_data)
+        decrypted = fernet.decrypt(encrypted)
+        return decrypted == test_data
+    except Exception:
+        return False
+
+
+def _check_encryption_config() -> None:
+    """Check encryption configuration and warn if not properly configured."""
+    if not CRYPTOGRAPHY_AVAILABLE:
+        logger.warning("cryptography library not available - cache will not be encrypted")
+        return
+
+    if not settings.redis_cache_encryption_key:
+        logger.warning(
+            "Redis cache encryption key not configured - cache data will be stored unencrypted. "
+            "Set redis_cache_encryption_key for production deployments."
+        )
+        return
+
+    if not _validate_fernet_key(settings.redis_cache_encryption_key):
+        logger.error(
+            f"Redis cache encryption key is invalid (must be 32 url-safe base64-encoded bytes). "
+            f"Cache will not be encrypted until a valid key is configured."
+        )
+        return
+
+    logger.info("Redis cache encryption enabled and validated")
+
+
 class EmbeddingsService:
     """Service for generating embeddings with Redis caching."""
 
     def __init__(self):
         self._redis: Optional[redis.Redis] = None
         self._cache_ttl = settings.redis_cache_ttl
+        self._encryption_checked = False
+
+    def _ensure_encryption_checked(self) -> None:
+        """Ensure encryption configuration has been checked (only logs once)."""
+        if not self._encryption_checked:
+            _check_encryption_config()
+            self._encryption_checked = True
 
     async def get_redis(self) -> Optional[redis.Redis]:
         """Get Redis connection."""
@@ -96,6 +148,9 @@ class EmbeddingsService:
         Returns:
             EmbeddingResponse with the embedding vector
         """
+        # Check encryption config on first use (logs warning if not configured)
+        self._ensure_encryption_checked()
+
         start_time = time.monotonic()
         audit_logger = get_audit_logger()
         cost_tracker = get_cost_tracker()
@@ -107,11 +162,17 @@ class EmbeddingsService:
         provider = provider_manager.get_embedding_provider(provider_name)
         resolved_model = request.model or getattr(provider, "embedding_model", None) or provider.model
         resolved_dimensions = request.dimensions or getattr(provider, "embedding_dimensions", None) or 1536
-        
+
         # Get tenant ID from API key or default
         tenant_id = getattr(api_key_info, 'tenant_id', 'default') if api_key_info else 'default'
         api_key_id = getattr(api_key_info, 'key_id', 'unknown') if api_key_info else 'unknown'
-        
+
+        # Check input length limit BEFORE any processing (memory safety)
+        if len(request.text) > settings.embedding_max_input_length:
+            raise ValueError(
+                f"Input text exceeds maximum length of {settings.embedding_max_input_length} characters"
+            )
+
         # Estimate cost and check budget (only for cloud providers)
         estimated_tokens = len(request.text.split()) + 10  # Rough estimate
         if settings.enable_cost_tracking and api_key_info:
@@ -175,12 +236,6 @@ class EmbeddingsService:
                     request.text = sanitized_text
                     logger.info(f"PII redacted from embedding input: {violation_types}")
                 # In "warn" mode, we continue with original text but violations are logged
-
-        # Check input length limit
-        if len(request.text) > settings.embedding_max_input_length:
-            raise ValueError(
-                f"Input text exceeds maximum length of {settings.embedding_max_input_length} characters"
-            )
 
         # Check cache if enabled
         cache_key = None

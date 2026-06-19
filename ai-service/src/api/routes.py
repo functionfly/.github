@@ -16,6 +16,7 @@ Domain routers:
 """
 
 import asyncio
+import json
 import logging
 import time
 from datetime import datetime
@@ -44,6 +45,7 @@ from ..security.auth import (
 )
 
 from ..config import settings
+from ..utils.security import sanitize_error_message
 from ..models.schemas import (
     ChatMessage,
     CompletionRequest,
@@ -204,11 +206,15 @@ async def create_embedding(
 
 
 @router.post("/api/complete", response_model=CompletionResponse)
-async def create_completion(request: CompletionRequest):
+async def create_completion(
+    request: CompletionRequest,
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
+):
     """Generate a completion using the specified provider.
 
     Args:
         request: Completion request with messages and optional provider/model
+        api_key: Validated API key with chat:write scope
 
     Returns:
         Completion response with generated content
@@ -241,11 +247,15 @@ async def create_completion(request: CompletionRequest):
 
 
 @router.post("/api/stream")
-async def stream_completion(request: CompletionRequest):
+async def stream_completion(
+    request: CompletionRequest,
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
+):
     """Stream a completion using the specified provider.
 
     Args:
         request: Completion request with messages and optional provider/model
+        api_key: Validated API key with chat:write scope
 
     Returns:
         Streaming response with generated content
@@ -257,8 +267,7 @@ async def stream_completion(request: CompletionRequest):
         )
 
     if not request.stream:
-        # If stream=False, use regular completion
-        return await create_completion(request)
+        return await create_completion(request, api_key)
 
     try:
         provider_manager = get_provider_manager()
@@ -275,11 +284,13 @@ async def stream_completion(request: CompletionRequest):
                     top_p=request.top_p,
                     stop=request.stop,
                 ):
-                    yield f"data: {chunk}\n\n"
-                yield "data: [DONE]\n\n"
+                    escaped = chunk.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+                    yield f'{{"type": "chunk", "content": "{escaped}"}}\n\n'
+                yield '{"type": "complete"}\n\n'
             except Exception as e:
                 logger.error(f"Streaming failed: {e}")
-                yield f'data: {{"error": "{str(e)}"}}\n\n'
+                error_json = json.dumps({"type": "error", "error": str(e)})
+                yield f'{error_json}\n\n'
 
         return StreamingResponse(
             generate(),
@@ -364,7 +375,7 @@ async def extract_memories(
         logger.error(f"Memory extraction failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Memory extraction failed: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -435,7 +446,7 @@ async def extract_memories_batch(
         logger.error(f"Batch memory extraction failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Batch memory extraction failed: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -522,11 +533,16 @@ class CostSavingsOpportunityResponse(BaseModel):
 
 
 @router.get("/api/economic-memory/scores", response_model=EconomicMemorySummaryResponse)
-async def get_economic_memory_scores():
+async def get_economic_memory_scores(
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
+):
     """Get all cost-quality scores for provider/model combinations.
 
     Returns comprehensive economic analysis showing which providers and models
     offer the best value (cost per unit of quality).
+
+    Args:
+        api_key: Validated API key with chat:read scope
 
     Returns:
         EconomicMemorySummaryResponse with all provider metrics and recommendations
@@ -606,12 +622,15 @@ async def get_economic_memory_scores():
         logger.error(f"Failed to get economic memory scores: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get economic scores: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
 @router.post("/api/economic-memory/route", response_model=EconomicRoutingResponse)
-async def get_economic_routing(request: EconomicRoutingRequest):
+async def get_economic_routing(
+    request: EconomicRoutingRequest,
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
+):
     """Get cost-intelligent routing recommendation.
 
     Uses economic memory data to recommend the best provider/model
@@ -625,6 +644,7 @@ async def get_economic_routing(request: EconomicRoutingRequest):
 
     Args:
         request: Routing request with strategy and constraints
+        api_key: Validated API key with chat:write scope
 
     Returns:
         EconomicRoutingResponse with recommended provider and economics
@@ -682,7 +702,7 @@ async def get_economic_routing(request: EconomicRoutingRequest):
         logger.error(f"Economic routing failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Economic routing failed: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -691,8 +711,19 @@ async def get_model_recommendation(
     provider: str = Query(..., description="Provider type (e.g., 'openai')"),
     current_model: str = Query(..., description="Current model name"),
     target_quality: float = Query(0.75, description="Minimum quality threshold"),
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
 ):
-    """Get model recommendation with economic analysis."""
+    """Get model recommendation with economic analysis.
+
+    Args:
+        provider: Provider type
+        current_model: Current model name
+        target_quality: Minimum quality threshold
+        api_key: Validated API key with chat:read scope
+
+    Returns:
+        ModelRecommendationResponse with recommendation
+    """
     try:
         from ..services.economic_routing import get_economic_routing_service
         from ..models.schemas import ProviderType
@@ -729,7 +760,7 @@ async def get_model_recommendation(
         logger.error(f"Failed to get model recommendation: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get recommendation: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -737,8 +768,18 @@ async def get_model_recommendation(
 async def get_cost_savings_opportunity(
     tenant_id: Optional[str] = Query(None, description="Tenant ID for filtering"),
     days: int = Query(7, description="Analysis period in days"),
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
 ):
-    """Get cost savings opportunity analysis."""
+    """Get cost savings opportunity analysis.
+
+    Args:
+        tenant_id: Optional tenant ID for filtering
+        days: Analysis period in days
+        api_key: Validated API key with chat:read scope
+
+    Returns:
+        CostSavingsOpportunityResponse with savings analysis
+    """
     try:
         from ..services.economic_routing import get_economic_routing_service
 
@@ -764,7 +805,7 @@ async def get_cost_savings_opportunity(
         logger.error(f"Failed to get cost savings opportunity: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to analyze savings: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -816,7 +857,7 @@ async def get_recent_executions(
         logger.error(f"Failed to get executions: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get executions: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 
@@ -838,8 +879,17 @@ async def record_execution_quality(
 
 
 @router.get("/api/economic-memory/health")
-async def economic_memory_health():
-    """Health check for economic memory service."""
+async def economic_memory_health(
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
+):
+    """Health check for economic memory service.
+
+    Args:
+        api_key: Validated API key with chat:read scope
+
+    Returns:
+        Health status of economic memory service
+    """
     try:
         from ..services.economic_memory import get_economic_memory
 

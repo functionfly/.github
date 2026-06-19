@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+!.env.production.example
+!.env.local
+
+# Secrets
+secrets/
+*.pem
+*.key
+*.crt
+*.pub
+id_rsa*
+id_ed25519*
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+*.exe
+
+# Test coverage
+coverage/
+__tests__/
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# Local dev
+tmp/
+temp/
+*.log

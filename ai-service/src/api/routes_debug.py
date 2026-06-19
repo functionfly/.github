@@ -2,8 +2,13 @@
 
 import logging
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 
+from ..security.auth import (
+    require_api_key_with_scope,
+    APIKeyInfo,
+    KeyScope,
+)
 from ..models.schemas import (
     DebugAnalyzeRequest,
     DebugAnalysis,
@@ -18,11 +23,15 @@ router = APIRouter()
 
 
 @router.post("/api/debug/analyze", response_model=DebugAnalysis)
-async def analyze_error(request: DebugAnalyzeRequest):
+async def analyze_error(
+    request: DebugAnalyzeRequest,
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
+):
     """Analyze an error and provide root cause analysis.
 
     Args:
         request: Debug analysis request
+        api_key: Validated API key with chat:read scope
 
     Returns:
         DebugAnalysis with root cause and suggestions
@@ -44,17 +53,20 @@ async def analyze_error(request: DebugAnalyzeRequest):
 
 
 @router.post("/api/debug/suggest", response_model=DebugSuggestResponse)
-async def get_fix_suggestions(request: DebugAnalyzeRequest):
+async def get_fix_suggestions(
+    request: DebugAnalyzeRequest,
+    api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_READ)),
+):
     """Get fix suggestions for an error.
 
     Args:
         request: Debug analysis request
+        api_key: Validated API key with chat:read scope
 
     Returns:
         DebugSuggestResponse with suggestions
     """
     try:
-        # First analyze the error
         analyzer = get_error_analyzer()
         analysis = await analyzer.analyze_error(
             function_id=request.function_id,
@@ -62,7 +74,6 @@ async def get_fix_suggestions(request: DebugAnalyzeRequest):
             stack_trace=request.stack_trace,
         )
 
-        # Then get suggestions
         suggester = get_fix_suggester()
         suggestions = await suggester.generate_suggestions(analysis)
         docs = suggester.get_documentation_links(analysis.get("error_category", ""))

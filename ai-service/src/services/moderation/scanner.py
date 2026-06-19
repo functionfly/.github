@@ -121,6 +121,39 @@ SECRET_PATTERNS = {
     ),
 }
 
+# SQL and Command Injection Patterns
+SQL_INJECTION_PATTERNS = {
+    # SQL keywords that should not appear in user input
+    "sql_union": re.compile(
+        r'\b(?:union|select|insert|update|delete|drop|alter|create|exec|execute)\b',
+        re.IGNORECASE
+    ),
+    # SQL comment injection
+    "sql_comment": re.compile(r'--|\/\*|\*\/'),
+    # SQL injection via tautology
+    "sql_tautology": re.compile(
+        r'\b(?:or|and)\s+(?:1\s*=\s*1|'\''\s*=\s*'|"\s*=\s*"|null\s*=\s*null)',
+        re.IGNORECASE
+    ),
+    # SQL stacked queries
+    "sql_stacked": re.compile(r';\s*(?:select|insert|update|delete|drop)', re.IGNORECASE),
+    # SQL hex encoding bypass
+    "sql_hex": re.compile(r'0x[0-9a-f]+', re.IGNORECASE),
+}
+
+COMMAND_INJECTION_PATTERNS = {
+    # Command separators
+    "cmd_separator": re.compile(r'[;&|`$]'),
+    # Command substitution
+    "cmd_substitution": re.compile(r'\$\(.*?\)|`.*?`'),
+    # Path traversal
+    "path_traversal": re.compile(r'\.\.\/|\.\.\\|%2e%2e%2f|%2e%2e\/'),
+    # Dangerous environment variables
+    "env_injection": re.compile(r'\$\{[A-Za-z_][A-Za-z0-9_]*\}|\\$[A-Za-z_][A-Za-z0-9_]*'),
+    # File write attempts
+    "file_write": re.compile(r'[>|>>|2>|2>>|&&]'),
+}
+
 # Toxic / policy-violation keywords. Used only when neither OpenAI Moderation API
 # nor Detoxify is available. Prefer moderation_provider=openai (or auto with
 # OPENAI_API_KEY) for production.
@@ -405,6 +438,14 @@ class ContentScanner:
         # Scan for malware patterns
         malware_violations = self._scan_malware(content)
         violations.extend(malware_violations)
+
+        # Scan for SQL injection
+        sql_violations = self._scan_sql_injection(content)
+        violations.extend(sql_violations)
+
+        # Scan for command injection
+        cmd_violations = self._scan_command_injection(content)
+        violations.extend(cmd_violations)
 
         # Scan for spam
         spam_violations = self._scan_spam(content)
@@ -741,6 +782,58 @@ class ContentScanner:
                     location_start=match.start(),
                     location_end=match.end(),
                     confidence=0.5,
+                ))
+
+        return violations
+
+    def _scan_sql_injection(self, content: str) -> List[Violation]:
+        """Scan for SQL injection patterns in content.
+
+        Args:
+            content: Content to scan
+
+        Returns:
+            List of SQL injection violations
+        """
+        violations = []
+
+        for pattern_name, pattern in SQL_INJECTION_PATTERNS.items():
+            matches = pattern.finditer(content)
+            for match in matches:
+                violations.append(Violation(
+                    category=ModerationCategory.SQL_INJECTION,
+                    severity="high",
+                    message=f"Potential SQL injection pattern detected: {pattern_name}",
+                    matched_pattern=pattern_name,
+                    location_start=match.start(),
+                    location_end=match.end(),
+                    confidence=0.7,
+                ))
+
+        return violations
+
+    def _scan_command_injection(self, content: str) -> List[Violation]:
+        """Scan for command injection and path traversal in content.
+
+        Args:
+            content: Content to scan
+
+        Returns:
+            List of command injection violations
+        """
+        violations = []
+
+        for pattern_name, pattern in COMMAND_INJECTION_PATTERNS.items():
+            matches = pattern.finditer(content)
+            for match in matches:
+                violations.append(Violation(
+                    category=ModerationCategory.COMMAND_INJECTION,
+                    severity="high",
+                    message=f"Potential command injection pattern detected: {pattern_name}",
+                    matched_pattern=pattern_name,
+                    location_start=match.start(),
+                    location_end=match.end(),
+                    confidence=0.7,
                 ))
 
         return violations
