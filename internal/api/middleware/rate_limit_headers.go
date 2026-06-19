@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -135,7 +136,7 @@ func (m *RateLimitHeaderMiddleware) Handler(next http.HandlerFunc) http.HandlerF
 		if !m.limiter.Allow(key) {
 			retryAfter := time.Until(info.Reset)
 			WriteRetryAfter(w, retryAfter)
-			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 			return
 		}
 

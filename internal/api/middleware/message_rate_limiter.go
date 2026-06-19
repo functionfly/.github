@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type MessageRateLimiter struct {
@@ -51,7 +52,7 @@ func (r *MessageRateLimiter) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		key := req.RemoteAddr
 		if !r.Allow(key) {
-			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 			return
 		}
 		next.ServeHTTP(w, req)

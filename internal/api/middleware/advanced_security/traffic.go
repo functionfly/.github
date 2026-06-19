@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // CircuitBreaker implements circuit breaker pattern
@@ -103,7 +104,7 @@ func (rq *RequestQueue) QueueRequest(w http.ResponseWriter, r *http.Request, han
 		// Request queued successfully
 	default:
 		// Queue is full
-		http.Error(w, "Service temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Service temporarily unavailable"))
 	}
 }
 

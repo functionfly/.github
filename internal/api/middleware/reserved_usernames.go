@@ -7,6 +7,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // ReservedUsernameChecker checks if a username is reserved
@@ -164,7 +165,7 @@ func ValidateUsernameMiddleware(checker ReservedUsernameChecker) func(http.Handl
 			if username, ok := vars["username"]; ok {
 				if checker.IsReservedUsername(username) {
 					logrus.Warnf("Attempted to use reserved username: %s", username)
-					http.Error(w, "This username is reserved and cannot be used", http.StatusForbidden)
+					apierror.WriteError(w, apierror.NewForbidden("This username is reserved and cannot be used"))
 					return
 				}
 			}
@@ -173,7 +174,7 @@ func ValidateUsernameMiddleware(checker ReservedUsernameChecker) func(http.Handl
 			if author, ok := vars["author"]; ok {
 				if checker.IsReservedUsername(author) {
 					logrus.Warnf("Attempted to use reserved author name: %s", author)
-					http.Error(w, "This author name is reserved and cannot be used", http.StatusForbidden)
+					apierror.WriteError(w, apierror.NewForbidden("This author name is reserved and cannot be used"))
 					return
 				}
 			}

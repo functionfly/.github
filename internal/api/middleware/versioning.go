@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -228,7 +229,7 @@ func RequireVersion(vm *VersionManager, requiredVersion string) func(http.Handle
 			version := vm.GetVersion(r)
 
 			if version != requiredVersion {
-				http.Error(w, "Invalid API version", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Invalid API version"))
 				return
 			}
 

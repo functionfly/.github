@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // RequireInternalSecret restricts routes to callers presenting X-Internal-Webhook-Secret
@@ -21,7 +22,7 @@ func RequireInternalSecret(next http.HandlerFunc) http.HandlerFunc {
 		if internalSecret != "" {
 			if r.Header.Get("X-Internal-Webhook-Secret") != internalSecret {
 				logrus.Warn("internal route: invalid or missing X-Internal-Webhook-Secret")
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 				return
 			}
 			next(w, r)
@@ -38,6 +39,6 @@ func RequireInternalSecret(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		logrus.Warn("internal route: rejected non-localhost request without INTERNAL_WEBHOOK_SECRET")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 	}
 }

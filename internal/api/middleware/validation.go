@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 type ValidatedRequest interface {
@@ -35,8 +36,8 @@ func ValidateRequestMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		if req, ok := r.Context().Value("validated_request").(ValidatedRequest); ok {
 			if err := req.Validate(); err != nil {
-				err := apierror.NewValidation(err.Error())
-				apierror.WriteError(w, err)
+				logrus.WithError(err).Info("validation middleware: request validation failed")
+				apierror.WriteError(w, apierror.NewValidation("Request validation failed"))
 				return
 			}
 		}
@@ -49,14 +50,14 @@ func RequireJSONValidation[T ValidatedRequest](target T, handler func(http.Respo
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req T
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			err := apierror.NewBadRequest("Invalid JSON: " + err.Error())
-			apierror.WriteError(w, err)
+			logrus.WithError(err).Info("validation middleware: invalid JSON")
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 			return
 		}
 
 		if err := req.Validate(); err != nil {
-			validationErr := apierror.NewValidation(err.Error())
-			apierror.WriteError(w, validationErr)
+			logrus.WithError(err).Info("validation middleware: validation failed")
+			apierror.WriteError(w, apierror.NewValidation("Request validation failed"))
 			return
 		}
 

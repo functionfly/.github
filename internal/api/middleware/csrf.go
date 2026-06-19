@@ -15,6 +15,7 @@ import (
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // ctx is the default context for Redis operations
@@ -179,7 +180,7 @@ func (m *CSRFMiddleware) InvalidateToken(sessionID string) error {
 func (m *CSRFMiddleware) HandleGetCSRFToken(w http.ResponseWriter, r *http.Request) {
 	claims := GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -187,7 +188,7 @@ func (m *CSRFMiddleware) HandleGetCSRFToken(w http.ResponseWriter, r *http.Reque
 	token, err := m.GenerateToken(sessionID)
 	if err != nil {
 		m.logger.WithError(err).Error("Failed to generate CSRF token")
-		http.Error(w, "Failed to generate CSRF token", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate CSRF token"))
 		return
 	}
 
@@ -280,7 +281,7 @@ func (m *CSRFMiddleware) RequireCSRF(next http.HandlerFunc) http.HandlerFunc {
 			}).Warn("CSRF token validation failed")
 			// Check if it's a service unavailable error (Redis down)
 			if strings.Contains(err.Error(), "service temporarily unavailable") {
-				http.Error(w, "Service temporarily unavailable", http.StatusServiceUnavailable)
+				apierror.WriteError(w, apierror.NewServiceUnavailable("Service temporarily unavailable"))
 				return
 			}
 			writeCSRFError(w, "CSRF token is missing, expired, or invalid", "X-CSRF-Token")
@@ -376,7 +377,7 @@ func (m *CSRFMiddleware) CSRFHandler() http.HandlerFunc {
 			// DELETE /v1/admin/csrf - invalidate current CSRF token
 			claims := GetUserFromContext(r)
 			if claims == nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 				return
 			}
 			sessionID := vars["sessionId"]
@@ -385,12 +386,12 @@ func (m *CSRFMiddleware) CSRFHandler() http.HandlerFunc {
 			}
 			if err := m.InvalidateToken(sessionID); err != nil {
 				m.logger.WithError(err).Error("Failed to invalidate CSRF token")
-				http.Error(w, "Failed to invalidate CSRF token", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Failed to invalidate CSRF token"))
 				return
 			}
 			w.WriteHeader(http.StatusNoContent)
 		default:
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		}
 	}
 }

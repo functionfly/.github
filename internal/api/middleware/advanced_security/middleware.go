@@ -10,6 +10,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // SecurityMiddlewareInterface defines the interface for basic security middleware
@@ -361,7 +362,7 @@ func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) htt
 				"ip":     clientIP,
 				"reason": "blocked_due_to_suspicious_activity",
 			}).Warn("Blocked request from suspicious IP")
-			http.Error(w, "Access denied", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 			return
 		}
 
@@ -376,7 +377,7 @@ func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) htt
 					"bot_reason": reason,
 				}).Warn("Bot detected and blocked")
 				asm.blockIP(clientIP, reason)
-				http.Error(w, "Access denied", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 				return
 			}
 		}
@@ -389,7 +390,7 @@ func (asm *AdvancedSecurityMiddleware) DDoSProtection(next http.HandlerFunc) htt
 					"attack_type": attackType,
 				}).Warn("Attack pattern detected")
 				asm.blockIP(clientIP, attackType)
-				http.Error(w, "Access denied", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 				return
 			}
 		}
@@ -452,7 +453,7 @@ func (asm *AdvancedSecurityMiddleware) GeoBlocking(next http.HandlerFunc) http.H
 				"ip":     clientIP,
 				"reason": "ip_blocked",
 			}).Warn("Request blocked by geo-blocking rules")
-			http.Error(w, "Access denied", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 			return
 		}
 
@@ -462,7 +463,7 @@ func (asm *AdvancedSecurityMiddleware) GeoBlocking(next http.HandlerFunc) http.H
 				"ip":         clientIP,
 				"reputation": reputation,
 			}).Warn("Request blocked due to poor IP reputation")
-			http.Error(w, "Access denied", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 			return
 		}
 
@@ -486,7 +487,7 @@ func (asm *AdvancedSecurityMiddleware) AdvancedInputValidation(next http.Handler
 					"ip":          getClientIP(r),
 					"attack_type": "sql_injection",
 				}).Warn("SQL injection attempt detected")
-				http.Error(w, "Bad request", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Bad request"))
 				return
 			}
 		}
@@ -498,7 +499,7 @@ func (asm *AdvancedSecurityMiddleware) AdvancedInputValidation(next http.Handler
 					"ip":          getClientIP(r),
 					"attack_type": "xss",
 				}).Warn("XSS attempt detected")
-				http.Error(w, "Bad request", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Bad request"))
 				return
 			}
 		}
@@ -510,7 +511,7 @@ func (asm *AdvancedSecurityMiddleware) AdvancedInputValidation(next http.Handler
 					"ip":          getClientIP(r),
 					"attack_type": "path_traversal",
 				}).Warn("Path traversal attempt detected")
-				http.Error(w, "Bad request", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Bad request"))
 				return
 			}
 		}
@@ -616,7 +617,7 @@ func (asm *AdvancedSecurityMiddleware) respondRateLimited(w http.ResponseWriter,
 	w.Header().Set("X-RateLimit-Remaining", "0")
 	w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", time.Now().Add(time.Minute).Unix()))
 	w.Header().Set("Retry-After", "60")
-	http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+	apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 }
 
 func (asm *AdvancedSecurityMiddleware) cleanupRoutine() {

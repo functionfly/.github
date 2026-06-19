@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -36,7 +37,7 @@ func RequestTimeoutMiddleware(next http.Handler) http.Handler {
 				"path":    r.URL.Path,
 				"timeout": timeout.String(),
 			}).Warn("Request timed out")
-			http.Error(w, "Request timed out", http.StatusGatewayTimeout)
+			apierror.WriteError(w, apierror.NewInternal("Request timed out"))
 		}
 	})
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // MetricsRateLimiter implements rate limiting for metrics scraping
@@ -142,7 +143,7 @@ func (rl *MetricsRateLimiter) Limit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := GetClientIP(r)
 		if !rl.Allow(ip) {
-			http.Error(w, "rate limit exceeded for metrics", http.StatusTooManyRequests)
+			apierror.WriteError(w, apierror.NewRateLimited("rate limit exceeded for metrics"))
 			return
 		}
 		next.ServeHTTP(w, r)

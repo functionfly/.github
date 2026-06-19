@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -32,7 +33,7 @@ func (fm *FeatureMiddleware) RequireFeature(feature string) func(http.Handler) h
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			plan := GetTenantPlan(r)
 			if plan == "" {
-				http.Error(w, "Tenant plan not found", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Tenant plan not found"))
 				return
 			}
 
@@ -54,7 +55,7 @@ func (fm *FeatureMiddleware) RequireAnyFeature(features ...string) func(http.Han
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			plan := GetTenantPlan(r)
 			if plan == "" {
-				http.Error(w, "Tenant plan not found", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Tenant plan not found"))
 				return
 			}
 
@@ -77,7 +78,7 @@ func (fm *FeatureMiddleware) RequireAllFeatures(features ...string) func(http.Ha
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			plan := GetTenantPlan(r)
 			if plan == "" {
-				http.Error(w, "Tenant plan not found", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Tenant plan not found"))
 				return
 			}
 

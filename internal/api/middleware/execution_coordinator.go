@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // ExecutionCoordinatorMiddleware coordinates all execution security features
@@ -122,7 +123,7 @@ func (ecm *ExecutionCoordinatorMiddleware) CreateExecutionSecurityRoutes(router 
 
 		challenge, err := ecm.GetCaptchaChallenge(provider)
 		if err != nil {
-			http.Error(w, "Failed to generate CAPTCHA challenge", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to generate CAPTCHA challenge"))
 			return
 		}
 
@@ -135,7 +136,7 @@ func (ecm *ExecutionCoordinatorMiddleware) CreateExecutionSecurityRoutes(router 
 	router.HandleFunc("/execution/limits", func(w http.ResponseWriter, r *http.Request) {
 		limits, err := ecm.GetExecutionLimits(r)
 		if err != nil {
-			http.Error(w, "Failed to get execution limits", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get execution limits"))
 			return
 		}
 

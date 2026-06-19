@@ -8,6 +8,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type SessionValidationMiddleware struct {
@@ -42,7 +43,7 @@ func (m *SessionValidationMiddleware) validateSession(w http.ResponseWriter, r *
 	status, err := m.sessionCache.GetSessionStatus(ctx, claims.SessionID)
 	if err != nil {
 		m.logger.WithError(err).WithField("session_id", claims.SessionID).Warn("Failed to get session status")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return false
 	}
 
@@ -52,7 +53,7 @@ func (m *SessionValidationMiddleware) validateSession(w http.ResponseWriter, r *
 			"valid":      status.Valid,
 			"revoked":    status.Revoked,
 		}).Info("Session invalid or revoked")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return false
 	}
 
@@ -61,7 +62,7 @@ func (m *SessionValidationMiddleware) validateSession(w http.ResponseWriter, r *
 			"session_id": claims.SessionID,
 			"expires_at": status.ExpiresAt,
 		}).Info("Session expired")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return false
 	}
 
@@ -78,7 +79,7 @@ func (m *SessionValidationMiddleware) validateSession(w http.ResponseWriter, r *
 			"last_activity": status.LastActivity,
 			"idle_timeout":  idleTimeout,
 		}).Info("Session idle timeout exceeded")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return false
 	}
 

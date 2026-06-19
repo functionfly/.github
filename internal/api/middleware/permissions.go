@@ -7,6 +7,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // isLocalhost checks if the client IP is from localhost (127.0.0.0/8 or ::1)
@@ -29,7 +30,7 @@ func (m *AuthMiddleware) requirePermissionWithAdminBypass(permission string) fun
 		return m.RequireAuth(func(w http.ResponseWriter, r *http.Request) {
 			claims := GetUserFromContext(r)
 			if claims == nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 				return
 			}
 
@@ -46,7 +47,7 @@ func (m *AuthMiddleware) requirePermissionWithAdminBypass(permission string) fun
 					"email":      claims.Email,
 					"permission": permission,
 				}).Warn("Permission denied")
-				http.Error(w, "Forbidden", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 				return
 			}
 

@@ -18,6 +18,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware/advanced_security"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // SecurityMiddleware contains security-related middleware functions
@@ -137,7 +138,7 @@ func (sm *SecurityMiddleware) RequireHMACSignature(next http.HandlerFunc) http.H
 		sharedSecret := os.Getenv("API_SHARED_SECRET")
 		if sharedSecret == "" {
 			logrus.Error("API_SHARED_SECRET not configured — rejecting HMAC-required request")
-			http.Error(w, "Service misconfigured: API_SHARED_SECRET required", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Service misconfigured: API_SHARED_SECRET required"))
 			return
 		}
 
@@ -149,7 +150,7 @@ func (sm *SecurityMiddleware) RequireHMACSignature(next http.HandlerFunc) http.H
 				"path":   r.URL.Path,
 				"ip":     getClientIP(r),
 			}).Warn("HMAC signature verification failed")
-			http.Error(w, "Invalid signature", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid signature"))
 			return
 		}
 
@@ -159,7 +160,7 @@ func (sm *SecurityMiddleware) RequireHMACSignature(next http.HandlerFunc) http.H
 				"path":   r.URL.Path,
 				"ip":     getClientIP(r),
 			}).Warn("Invalid HMAC signature")
-			http.Error(w, "Invalid signature", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid signature"))
 			return
 		}
 
@@ -186,7 +187,7 @@ func (sm *SecurityMiddleware) RateLimit(next http.HandlerFunc) http.HandlerFunc 
 			w.Header().Set("X-RateLimit-Remaining", "0")
 			w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", time.Now().Add(sm.rateLimiter.window).Unix()))
 
-			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 			return
 		}
 
@@ -270,13 +271,13 @@ func (sm *SecurityMiddleware) CORSMiddleware(next http.HandlerFunc) http.Handler
 			isLocalhost := strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://127.0.0.1:")
 			if !isDev {
 				logrus.Error("CORS_ALLOWED_ORIGINS is empty in production — rejecting cross-origin request")
-				http.Error(w, "CORS not configured", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("CORS not configured"))
 				return
 			}
 			// In dev mode, only allow localhost
 			if !isLocalhost {
 				logrus.Error("CORS_ALLOWED_ORIGINS is empty in development — rejecting non-localhost origin")
-				http.Error(w, "CORS not configured", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("CORS not configured"))
 				return
 			}
 		}
@@ -365,7 +366,7 @@ func (c *ConsciousnessRateLimiter) limitByTenant(prefix string, limiter *RateLim
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -435,7 +436,7 @@ func (sm *SecurityMiddleware) ValidateInput(next http.HandlerFunc) http.HandlerF
 				"path": r.URL.Path,
 				"ip":   getClientIP(r),
 			}).Warn("Invalid path detected")
-			http.Error(w, "Invalid path", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid path"))
 			return
 		}
 
@@ -445,7 +446,7 @@ func (sm *SecurityMiddleware) ValidateInput(next http.HandlerFunc) http.HandlerF
 				"query": r.URL.RawQuery,
 				"ip":    getClientIP(r),
 			}).Warn("Invalid query parameters detected")
-			http.Error(w, "Invalid query parameters", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid query parameters"))
 			return
 		}
 
@@ -454,7 +455,7 @@ func (sm *SecurityMiddleware) ValidateInput(next http.HandlerFunc) http.HandlerF
 			logrus.WithError(err).WithFields(logrus.Fields{
 				"ip": getClientIP(r),
 			}).Warn("Invalid headers detected")
-			http.Error(w, "Invalid headers", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid headers"))
 			return
 		}
 
@@ -880,7 +881,7 @@ func (p *ProviderRateLimiter) limitByTenant(prefix string, limiter *RateLimiter,
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -929,7 +930,7 @@ func (wr *WalletRateLimiter) LimitBalanceCheck(next http.HandlerFunc) http.Handl
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -962,7 +963,7 @@ func (wr *WalletRateLimiter) LimitTopUp(next http.HandlerFunc) http.HandlerFunc 
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -996,7 +997,7 @@ func (wr *WalletRateLimiter) LimitAdminAdjustment(next http.HandlerFunc) http.Ha
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 

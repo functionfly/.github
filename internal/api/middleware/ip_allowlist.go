@@ -10,6 +10,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -342,14 +343,14 @@ func writeIPBlockedError(w http.ResponseWriter, clientIP string) {
 // This is called when the allowlist is modified
 func (m *IPAllowlistMiddleware) HandleInvalidateCache(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	ctx := r.Context()
 	if err := m.invalidateCache(ctx); err != nil {
 		m.logger.WithError(err).Error("Failed to invalidate IP allowlist cache")
-		http.Error(w, "Failed to invalidate cache", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to invalidate cache"))
 		return
 	}
 

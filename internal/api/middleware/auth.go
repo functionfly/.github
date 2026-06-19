@@ -10,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // contextKey is an unexported type used for context keys in this package.
@@ -84,7 +85,7 @@ func (m *AuthMiddleware) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 		claims, err := m.extractUserFromToken(r)
 		if err != nil {
 			logrus.WithError(err).Warn("Authentication failed")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -101,7 +102,7 @@ func (m *AuthMiddleware) RequirePermission(requiredPermission string) func(http.
 		return func(w http.ResponseWriter, r *http.Request) {
 			claims := GetUserFromContext(r)
 			if claims == nil {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 				return
 			}
 
@@ -111,7 +112,7 @@ func (m *AuthMiddleware) RequirePermission(requiredPermission string) func(http.
 					"required_permission":  requiredPermission,
 					"user_permissions":     claims.Permissions,
 				}).Warn("Permission denied")
-				http.Error(w, "Forbidden", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 				return
 			}
 
@@ -171,7 +172,7 @@ func (m *AuthMiddleware) RequireTenantContext(repo storage.Repository) func(http
 		return func(w http.ResponseWriter, r *http.Request) {
 			actingTenantID := GetActingTenantID(r)
 			if actingTenantID == nil {
-				http.Error(w, "Tenant context required for this operation", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Tenant context required for this operation"))
 				return
 			}
 
@@ -179,15 +180,15 @@ func (m *AuthMiddleware) RequireTenantContext(repo storage.Repository) func(http
 			tenant, err := repo.GetTenantByID(r.Context(), *actingTenantID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to verify tenant context")
-				http.Error(w, "Failed to verify tenant context", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Failed to verify tenant context"))
 				return
 			}
 			if tenant == nil {
-				http.Error(w, "Tenant not found", http.StatusNotFound)
+				apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 				return
 			}
 			if tenant.Status == "suspended" {
-				http.Error(w, "Cannot operate on suspended tenant", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Cannot operate on suspended tenant"))
 				return
 			}
 

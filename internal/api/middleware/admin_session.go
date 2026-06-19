@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -329,13 +330,13 @@ func (m *AdminSessionMiddleware) RequireAdminSession(next http.HandlerFunc) http
 		// Extract token from Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Invalid authorization header"))
 			return
 		}
 		token := parts[1]
@@ -379,7 +380,7 @@ func (m *AdminSessionMiddleware) RequireAdminSession(next http.HandlerFunc) http
 			}).Warn("Admin session validation failed")
 
 			// Return generic error to client
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -411,7 +412,7 @@ func GetAdminSessionFromContext(r *http.Request) *AdminSession {
 func (m *AdminSessionMiddleware) HandleRevokeSession(w http.ResponseWriter, r *http.Request) {
 	claims := GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -420,19 +421,19 @@ func (m *AdminSessionMiddleware) HandleRevokeSession(w http.ResponseWriter, r *h
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request"))
 		return
 	}
 
 	sessionID, err := uuid.Parse(req.SessionID)
 	if err != nil {
-		http.Error(w, "Invalid session ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session ID"))
 		return
 	}
 
 	if err := m.RevokeSession(sessionID, claims.UserID); err != nil {
 		m.logger.WithError(err).Error("Failed to revoke session")
-		http.Error(w, "Failed to revoke session", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to revoke session"))
 		return
 	}
 
@@ -443,13 +444,13 @@ func (m *AdminSessionMiddleware) HandleRevokeSession(w http.ResponseWriter, r *h
 func (m *AdminSessionMiddleware) HandleRevokeAllSessions(w http.ResponseWriter, r *http.Request) {
 	claims := GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if err := m.RevokeAllUserSessions(claims.UserID); err != nil {
 		m.logger.WithError(err).Error("Failed to revoke all sessions")
-		http.Error(w, "Failed to revoke sessions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to revoke sessions"))
 		return
 	}
 
@@ -460,14 +461,14 @@ func (m *AdminSessionMiddleware) HandleRevokeAllSessions(w http.ResponseWriter, 
 func (m *AdminSessionMiddleware) HandleListSessions(w http.ResponseWriter, r *http.Request) {
 	claims := GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	sessions, err := m.listUserSessions(claims.UserID)
 	if err != nil {
 		m.logger.WithError(err).Error("Failed to list sessions")
-		http.Error(w, "Failed to list sessions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list sessions"))
 		return
 	}
 

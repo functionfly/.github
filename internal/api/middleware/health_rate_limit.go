@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type HealthRateLimiter struct {
@@ -50,7 +51,7 @@ func (rl *HealthRateLimiter) Limit(next http.Handler) http.Handler {
 		ip := r.RemoteAddr
 		if ip != "" {
 			if !rl.Allow(ip) {
-				http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+				apierror.WriteError(w, apierror.NewRateLimited("rate limit exceeded"))
 				return
 			}
 		}

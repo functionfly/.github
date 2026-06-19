@@ -14,6 +14,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // BetterAuthProxyConfig holds configuration for the Better Auth proxy
@@ -79,7 +80,7 @@ func NewBetterAuthProxy(authSvc *auth.AuthService) (*BetterAuthProxy, error) {
 	// Error handler for proxy failures
 	proxy.ErrorHandler = func(w http.ResponseWriter, req *http.Request, err error) {
 		logrus.WithError(err).Error("Better Auth proxy error")
-		http.Error(w, `{"message": "Authentication service unavailable"}`, http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Authentication service unavailable"))
 	}
 
 	return &BetterAuthProxy{

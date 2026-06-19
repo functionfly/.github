@@ -8,6 +8,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/versions"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // DeprecationConfig contains deprecation configuration
@@ -247,7 +248,7 @@ func (h *DeprecationHandler) HandleGetEndpointDeprecation(w http.ResponseWriter,
 	}
 
 	if dep == nil {
-		http.Error(w, "No deprecation information found for this endpoint", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No deprecation information found for this endpoint"))
 		return
 	}
 

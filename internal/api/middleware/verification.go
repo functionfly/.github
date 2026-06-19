@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // TrustLevelConfig defines requirements for each trust level
@@ -135,7 +136,7 @@ func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func
 			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get function verification status")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 				return
 			}
 
@@ -210,7 +211,7 @@ func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func
 			allowed, reason, err := verificationSvc.CheckExecutionAllowed(functionVersionID, author)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to check function verification")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 				return
 			}
 			if !allowed {
@@ -228,7 +229,7 @@ func (v *VerificationMiddleware) RequireVerifiedFunction(trustLevel string) func
 				status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 				if err != nil {
 					logrus.WithError(err).Error("Failed to get verification status")
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 					return
 				}
 
@@ -275,7 +276,7 @@ func (v *VerificationMiddleware) RequireApprovalRequired() func(http.Handler) ht
 			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get verification status")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 				return
 			}
 
@@ -286,7 +287,7 @@ func (v *VerificationMiddleware) RequireApprovalRequired() func(http.Handler) ht
 					"approval_status":     status.ApprovalStatus,
 				}).Warn("Function requires approval but is not approved")
 
-				http.Error(w, "Function requires approval and has not been approved", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Function requires approval and has not been approved"))
 				return
 			}
 
@@ -315,14 +316,14 @@ func (v *VerificationMiddleware) RequireMalwareClean() func(http.Handler) http.H
 			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get verification status")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 				return
 			}
 
 			// Block if malware detected
 			if status.MalwareStatus == "malicious" {
 				logrus.WithField("function_version_id", functionVersionID).Warn("Malicious function blocked by middleware")
-				http.Error(w, "Function contains malicious code", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Function contains malicious code"))
 				return
 			}
 
@@ -351,14 +352,14 @@ func (v *VerificationMiddleware) RequireSignatureVerified() func(http.Handler) h
 			status, err := verificationSvc.GetVerificationStatus(r.Context(), functionVersionID)
 			if err != nil {
 				logrus.WithError(err).Error("Failed to get verification status")
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 				return
 			}
 
 			// Require signature verification
 			if !status.SignatureVerified {
 				logrus.WithField("function_version_id", functionVersionID).Warn("Function signature not verified")
-				http.Error(w, "Function signature verification required", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Function signature verification required"))
 				return
 			}
 

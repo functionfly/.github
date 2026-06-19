@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // RecoveryMiddleware recovers from panics in HTTP handlers and returns a 500
@@ -24,7 +25,7 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 					"remote_addr": r.RemoteAddr,
 				}).Error("Panic recovered in HTTP handler")
 
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Internal Server Error"))
 			}
 		}()
 		next.ServeHTTP(w, r)
@@ -46,7 +47,7 @@ func RequireAuthInProduction(authMiddleware *AuthMiddleware) func(http.Handler) 
 			// Production: require a valid JWT
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 				return
 			}
 			// Delegate actual token validation to the existing auth middleware

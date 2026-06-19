@@ -13,6 +13,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // MFARequiredMiddleware enforces MFA for protected routes
@@ -89,7 +90,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		claims := GetUserFromContext(r)
 		if claims == nil {
 			m.logger.Warn("RequireMFA: No claims in context - authentication failed before MFA check")
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -99,7 +100,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 			isProduction := os.Getenv("PRODUCTION_ENV") == "true" || os.Getenv("NODE_ENV") == "production"
 			if isProduction {
 				m.logger.Error("MFA_BYPASS_ENABLED is set in production - rejecting request for security")
-				http.Error(w, "MFA bypass not allowed in production", http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("MFA bypass not allowed in production"))
 				return
 			}
 			m.logger.WithFields(logrus.Fields{"user_id": claims.UserID, "email": claims.Email}).Warn("MFA bypassed via MFA_BYPASS_ENABLED - emergency access only (development mode)")
@@ -116,7 +117,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		// Ensure session exists and is up to date
 		if err := m.ensureSessionExists(r.Context(), r, claims); err != nil {
 			m.logger.WithError(err).Error("Failed to ensure session exists")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 			return
 		}
 
@@ -124,7 +125,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		required, err := m.authSvc.IsMFARequired(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to check MFA requirement")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 			return
 		}
 
@@ -138,7 +139,7 @@ func (m *MFARequiredMiddleware) RequireMFA(next http.HandlerFunc) http.HandlerFu
 		status, err := m.authSvc.GetMFAStatus(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to get MFA status")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 			return
 		}
 
@@ -178,7 +179,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 	return func(w http.ResponseWriter, r *http.Request) {
 		claims := GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 
@@ -186,7 +187,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 		required, err := m.authSvc.IsMFARequired(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to check MFA requirement")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 			return
 		}
 
@@ -199,7 +200,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 		status, err := m.authSvc.GetMFAStatus(ctx, claims.UserID)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to get MFA status")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 			return
 		}
 
@@ -235,7 +236,7 @@ func (m *MFARequiredMiddleware) RequireMFAAndVerify(next http.HandlerFunc) http.
 		verifyResp, err := m.authSvc.VerifyMFA(ctx, verifyReq)
 		if err != nil {
 			m.logger.WithError(err).Error("Failed to verify MFA")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 			return
 		}
 

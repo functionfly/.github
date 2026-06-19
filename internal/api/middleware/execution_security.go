@@ -292,7 +292,7 @@ func (esm *ExecutionSecurityMiddleware) InputValidationMiddleware(functionID uui
 				})
 
 				if schema.IsStrict {
-					esm.respondError(w, http.StatusBadRequest, fmt.Sprintf("Input validation failed: %s", err.Error()))
+					esm.respondError(w, http.StatusBadRequest, "Input validation failed")
 					return
 				}
 				// Log but allow for non-strict validation
