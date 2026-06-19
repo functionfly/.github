@@ -15,10 +15,9 @@ fi
 echo "Validating migrations in: $MIGRATIONS_DIR"
 echo ""
 
-# Check for duplicate versions
+# Check for duplicate versions (compare full migration names, not just the suffix)
 DUPLICATES=$(ls "$MIGRATIONS_DIR"/*.up.sql 2>/dev/null | \
-    awk -F'[_/]' '{print $NF}' | \
-    sed 's/\.up\.sql$//' | \
+    sed 's|.*/||; s|\.up\.sql$||' | \
     sort | \
     uniq -d || true)
 
@@ -37,10 +36,10 @@ if [ -n "$DUPLICATES" ]; then
 fi
 
 # Check for mixed naming conventions (optional warning)
-SEQUENTIAL_COUNT=$(ls "$MIGRATIONS_DIR"/*.up.sql 2>/dev/null | \
-    grep -cE '/[0-9]{6}[^0-9]' || echo "0")
-TIMESTAMP_COUNT=$(ls "$MIGRATIONS_DIR"/*.up.sql 2>/dev/null | \
-    grep -cE '/20[0-9]{12}[^0-9]' || echo "0")
+# 14-digit timestamps: YYYYMMDDHHMMSS (e.g., 20251101000000)
+TIMESTAMP_COUNT=$(cd "$MIGRATIONS_DIR" && ls *.up.sql 2>/dev/null | grep -E '^20[0-9]{12}_' | wc -l)
+# 6-digit sequential: older format (e.g., 000001)
+SEQUENTIAL_COUNT=$(cd "$MIGRATIONS_DIR" && ls *.up.sql 2>/dev/null | grep -E '^[0-9]{6}_' | wc -l)
 
 echo "Naming convention check:"
 echo "  - 6-digit sequential migrations: $SEQUENTIAL_COUNT"

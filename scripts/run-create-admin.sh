@@ -39,7 +39,7 @@ if [ "$DEVELOPMENT" != "true" ]; then
     fi
 fi
 EMAIL="${ADMIN_EMAIL:-admin@functionfly.com}"
-PASSWORD="${ADMIN_PASSWORD:-${ADMIN_CREATE_PASSWORD:-admin123}}"
+PASSWORD="${ADMIN_PASSWORD:-${ADMIN_CREATE_PASSWORD:-}}"
 ROLE="${ADMIN_ROLE:-super_admin}"
 
 if [ $# -ge 1 ]; then

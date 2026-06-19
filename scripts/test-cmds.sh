@@ -22,12 +22,19 @@ else
 fi
 echo ""
 
-# 2. Login (use same credentials as create-admin)
+# 2. Login (use credentials from create-admin or environment variables)
 echo "2. Login"
-echo "   curl -s -X POST $V1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@functionfly.local\",\"password\":\"admin123\"}'"
+EMAIL="${TEST_EMAIL:-admin@functionfly.local}"
+PASSWORD="${TEST_PASSWORD:-}"
+if [ -z "$PASSWORD" ]; then
+  echo "   ERROR: Set TEST_PASSWORD environment variable or pass credentials"
+  echo "   Usage: TEST_EMAIL=user@example.com TEST_PASSWORD=secret ./scripts/test-cmds.sh"
+  exit 1
+fi
+echo "   curl -s -X POST $V1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"$EMAIL\",\"password\":\"***\"}'"
 LOGIN=$(curl -s -X POST "$V1/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@functionfly.local","password":"admin123"}')
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
 if echo "$LOGIN" | grep -q '"token"'; then
   echo -e "   ${GREEN}→ Login OK, token present${NC}"
   TOKEN=$(echo "$LOGIN" | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
@@ -54,5 +61,5 @@ fi
 echo ""
 echo "=== Copy-paste one-liners ==="
 echo "  Health:  curl -s $BASE/health"
-echo "  Login:   curl -s -X POST $V1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@functionfly.local\",\"password\":\"admin123\"}'"
-echo "  (Use the password you set with create-admin if different.)"
+echo "  Login:   TEST_EMAIL=user@example.com TEST_PASSWORD=secret curl -s -X POST $V1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"\$TEST_EMAIL\",\"password\":\"\$TEST_PASSWORD\"}'"
+echo "  (Set TEST_EMAIL and TEST_PASSWORD environment variables)"

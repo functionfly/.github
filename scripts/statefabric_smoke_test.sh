@@ -6,8 +6,15 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://localhost:8080}"
-EMAIL="${EMAIL:-admin@functionfly.local}"
-PASSWORD="${PASSWORD:-admin123}"
+EMAIL="${EMAIL:-}"
+PASSWORD="${PASSWORD:-}"
+
+if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
+    echo "ERROR: EMAIL and PASSWORD environment variables are required."
+    echo "       Usage: EMAIL=admin@example.com PASSWORD=secret ./scripts/statefabric_smoke_test.sh"
+    exit 1
+fi
+
 PG_CONN="${PG_CONN:-postgresql://postgres:postgres@localhost:5432/functionfly?sslmode=require}"
 
 PASS=0

@@ -13,12 +13,19 @@ import (
 )
 
 const (
-	baseURL    = "http://localhost:8080"
-	email      = "admin@functionfly.local"
-	password   = "admin123"
-	duration   = 30 * time.Second
-	workers    = 20
+	baseURL  = "http://localhost:8080"
+	duration = 30 * time.Second
+	workers  = 20
 )
+
+func getEnvOrFail(key, description string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		fmt.Fprintf(os.Stderr, "FATAL: %s (set via %s environment variable)\n", description, key)
+		os.Exit(1)
+	}
+	return val
+}
 
 type Stats struct {
 	total       int64
@@ -57,6 +64,8 @@ func (s *Stats) record(status int, dur time.Duration) {
 }
 
 func login() (string, error) {
+	email := getEnvOrFail("STRESS_TEST_EMAIL", "email is required for stress test")
+	password := getEnvOrFail("STRESS_TEST_PASSWORD", "password is required for stress test")
 	body, _ := json.Marshal(map[string]string{"email": email, "password": password})
 	resp, err := http.Post(baseURL+"/v1/auth/login", "application/json", bytes.NewReader(body))
 	if err != nil {

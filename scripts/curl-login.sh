@@ -14,8 +14,8 @@ if [ "$DEVELOPMENT" != "true" ]; then
     fi
 fi
 
-EMAIL="${1:-admin@functionfly.local}"
-PASSWORD="${2:-admin123}"
+EMAIL="${1:-}"
+PASSWORD="${2:-}"
 # Direct API (use 8080 when orchestrator-api is running)
 BASE="${API_URL:-http://localhost:8080}"
 echo "POST $BASE/v1/auth/login (email=$EMAIL)"

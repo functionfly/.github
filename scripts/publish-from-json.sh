@@ -5,7 +5,7 @@
 #
 # Token: uses JWT from scripts/generate_token (loads .env for JWT_SECRET). If you get 401,
 # use login: PUBLISH_USE_LOGIN=1 ./scripts/publish-from-json.sh examples/stdlib-publish/publish_slugify.json
-# (set PUBLISH_EMAIL and PUBLISH_PASSWORD, or defaults admin@functionfly.local / admin123)
+# (set PUBLISH_EMAIL and PUBLISH_PASSWORD environment variables)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,8 +31,13 @@ fi
 echo "Getting token..."
 TOKEN=""
 if [[ -n "${PUBLISH_USE_LOGIN:-}" ]]; then
-  EMAIL="${PUBLISH_EMAIL:-admin@functionfly.local}"
-  PASS="${PUBLISH_PASSWORD:-admin123}"
+  EMAIL="${PUBLISH_EMAIL:-}"
+  PASS="${PUBLISH_PASSWORD:-}"
+  if [[ -z "$EMAIL" ]] || [[ -z "$PASS" ]]; then
+    echo "Error: PUBLISH_USE_LOGIN=1 requires PUBLISH_EMAIL and PUBLISH_PASSWORD environment variables."
+    echo "       Usage: PUBLISH_EMAIL=admin@example.com PUBLISH_PASSWORD=secret PUBLISH_USE_LOGIN=1 $0"
+    exit 1
+  fi
   LOGIN_RESP=$(curl -s -w "\n%{http_code}" -X POST "$SERVER_URL/v1/auth/login" \
     -H "Content-Type: application/json" \
     -d "{\"email\":\"$EMAIL\",\"password\":\"$PASS\"}" 2>/dev/null || true)

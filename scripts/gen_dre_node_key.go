@@ -21,3 +21,7 @@ func generateKey() {
 func runKeyGen() {
 	generateKey()
 }
+
+func main() {
+	runKeyGen()
+}
