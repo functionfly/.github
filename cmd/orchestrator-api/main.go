@@ -15,6 +15,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/tools/search"
 	"github.com/functionfly/functionfly/internal/agent/tools/search/providers"
 	"github.com/functionfly/functionfly/internal/api"
+	"github.com/functionfly/functionfly/internal/email/templates"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -51,6 +52,9 @@ func main() {
 		}
 	}
 
+	// Initialize email template configuration from environment
+	templates.InitEmailConfigFromEnv()
+
 	// Parse command line flags
 	port := flag.Int("port", 8080, "Port to listen on")
 	skipMigrations := flag.Bool("skip-migrations", false, "Skip database migrations")
@@ -71,7 +75,24 @@ func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{
 		TimestampFormat: time.RFC3339Nano,
 	})
-	logrus.SetLevel(logrus.InfoLevel)
+
+	// Set log level from environment variable
+	if logLevel := os.Getenv("LOG_LEVEL"); logLevel != "" {
+		switch logLevel {
+		case "debug":
+			logrus.SetLevel(logrus.DebugLevel)
+		case "info":
+			logrus.SetLevel(logrus.InfoLevel)
+		case "warn":
+			logrus.SetLevel(logrus.WarnLevel)
+		case "error":
+			logrus.SetLevel(logrus.ErrorLevel)
+		default:
+			logrus.SetLevel(logrus.InfoLevel)
+		}
+	} else {
+		logrus.SetLevel(logrus.InfoLevel)
+	}
 
 	// Check if running in development mode
 	devMode := os.Getenv("DEVELOPMENT") == "true"
