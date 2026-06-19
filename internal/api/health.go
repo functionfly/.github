@@ -14,6 +14,7 @@ import (
 	"github.com/functionfly/functionfly/internal/dna"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // getVersion returns the application version from build info
@@ -39,7 +40,7 @@ func (s *Server) handleEdgeStatus(w http.ResponseWriter, r *http.Request) {
 	stats := monitoring.GetEdgeStats()
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(stats); err != nil {
-		http.Error(w, "failed to encode edge stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to encode edge stats"))
 		return
 	}
 }
@@ -55,7 +56,7 @@ func (s *Server) handleAdminEdgeStatus(w http.ResponseWriter, r *http.Request) {
 		"timestamp": time.Now().Format(time.RFC3339),
 	}
 	if err := json.NewEncoder(w).Encode(body); err != nil {
-		http.Error(w, "failed to encode edge stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to encode edge stats"))
 		return
 	}
 }
@@ -81,7 +82,7 @@ func (s *Server) handleDetailedHealth(w http.ResponseWriter, r *http.Request) {
 	dbHealthy := s.checkDatabaseHealth(ctx)
 	servicesMap, ok := health["services"].(map[string]interface{})
 	if !ok {
-		http.Error(w, "Internal error", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal error"))
 		return
 	}
 	servicesMap["database"] = map[string]interface{}{
@@ -179,7 +180,7 @@ func (s *Server) handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 
 	checkName := r.URL.Query().Get("name")
 	if checkName == "" {
-		http.Error(w, "Missing 'name' query parameter", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Missing 'name' query parameter"))
 		return
 	}
 

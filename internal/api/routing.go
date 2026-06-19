@@ -11,6 +11,7 @@ import (
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // handlePublicRoute handles public routing to deployed applications
@@ -25,7 +26,7 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 
 	if appSlug == "" {
 		logger.Warn("Invalid app slug")
-		http.Error(w, "Invalid app slug", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid app slug"))
 		return
 	}
 
@@ -33,12 +34,12 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	app, err := s.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get app by slug")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get app"))
 		return
 	}
 	if app == nil {
 		logger.Warn("App not found")
-		http.Error(w, "App not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("App not found"))
 		return
 	}
 
@@ -51,12 +52,12 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	tenant, err := s.repo.GetTenantByID(r.Context(), app.TenantID)
 	if err != nil {
 		logger.WithError(err).Error("Failed to get tenant")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 	if tenant == nil {
 		logger.Error("Tenant not found")
-		http.Error(w, "Tenant not found", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Tenant not found"))
 		return
 	}
 
@@ -68,7 +69,7 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	count, err := s.repo.CountRoutingEventsForTenantSince(r.Context(), app.TenantID, startOfMonth)
 	if err != nil {
 		logger.WithError(err).Error("Failed to count routing events")
-		http.Error(w, "Failed to check request limits", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to check request limits"))
 		return
 	}
 
@@ -100,13 +101,13 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 	decision, err := s.routingSvc.SelectBackend(app.ID, r.Method, requestID, tenant.Plan)
 	if err != nil {
 		logger.WithError(err).WithField("method", r.Method).Error("Failed to get routing decision")
-		http.Error(w, "Failed to get routing decision", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get routing decision"))
 		return
 	}
 
 	if decision.SelectedBackend == nil {
 		logger.WithField("reason", decision.Reason).Warn("No backend available for routing")
-		http.Error(w, "No backend available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("No backend available"))
 		return
 	}
 

@@ -22,11 +22,21 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/statefabric"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	advancedsecurity "github.com/functionfly/functionfly/internal/api/middleware/advanced_security"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
+
+func adminServerError(w http.ResponseWriter, r *http.Request, err error) {
+	logrus.WithError(err).WithFields(logrus.Fields{
+		"request_uri": r.RequestURI,
+		"method":      r.Method,
+	}).Error("internal server error")
+	apierror.WriteError(w, apierror.NewInternal("internal server error"))
+}
 
 func registerAdminRoutes(
 	s *Server,
@@ -471,7 +481,7 @@ func registerAdminRoutes(
 	// GET /admin/triggers/stats - Get trigger engine statistics
 	adminRoutes.HandleFunc("/triggers/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.triggerEngine == nil {
-			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			apierror.WriteError(w, apierror.NewServiceUnavailable("trigger engine not initialized"))
 			return
 		}
 		stats := s.triggerEngine.GetStats()
@@ -482,12 +492,12 @@ func registerAdminRoutes(
 	// GET /admin/triggers/queue-stats - Get detailed queue statistics
 	adminRoutes.HandleFunc("/triggers/queue-stats", authMiddleware.RequirePermission(auth.PermSystemRead)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.triggerEngine == nil {
-			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			apierror.WriteError(w, apierror.NewServiceUnavailable("trigger engine not initialized"))
 			return
 		}
 		stats, err := s.triggerEngine.GetQueueStats(r.Context())
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			adminServerError(w, r, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -497,7 +507,7 @@ func registerAdminRoutes(
 	// GET /admin/triggers/dead-letter - List dead letter queue entries
 	adminRoutes.HandleFunc("/triggers/dead-letter", authMiddleware.RequirePermission(auth.PermSystemRead)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.triggerEngine == nil {
-			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			apierror.WriteError(w, apierror.NewServiceUnavailable("trigger engine not initialized"))
 			return
 		}
 		// Parse pagination params
@@ -538,17 +548,17 @@ func registerAdminRoutes(
 	// POST /admin/triggers/dead-letter/{id}/retry - Retry a dead letter entry
 	adminRoutes.HandleFunc("/triggers/dead-letter/{id}/retry", authMiddleware.RequirePermission(auth.PermSystemWrite)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.triggerEngine == nil {
-			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			apierror.WriteError(w, apierror.NewServiceUnavailable("trigger engine not initialized"))
 			return
 		}
 		vars := mux.Vars(r)
 		dlqID, err := uuid.Parse(vars["id"])
 		if err != nil {
-			http.Error(w, `{"error":"invalid dead letter id"}`, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("invalid dead letter id"))
 			return
 		}
 		if err := s.triggerEngine.RetryDeadLetterEvent(r.Context(), dlqID); err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			adminServerError(w, r, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -558,7 +568,7 @@ func registerAdminRoutes(
 	// POST /admin/triggers/purge-completed - Purge old completed events
 	adminRoutes.HandleFunc("/triggers/purge-completed", authMiddleware.RequirePermission(auth.PermSystemWrite)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if s.triggerEngine == nil {
-			http.Error(w, `{"error":"trigger engine not initialized"}`, http.StatusServiceUnavailable)
+			apierror.WriteError(w, apierror.NewServiceUnavailable("trigger engine not initialized"))
 			return
 		}
 		// Default to 30 days retention
@@ -570,7 +580,7 @@ func registerAdminRoutes(
 		}
 		deleted, err := s.triggerEngine.PurgeCompletedEvents(r.Context(), time.Duration(retentionDays)*24*time.Hour)
 		if err != nil {
-			http.Error(w, fmt.Sprintf(`{"error":"%v"}`, err), http.StatusInternalServerError)
+			adminServerError(w, r, err)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

@@ -54,6 +54,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type Server struct {
@@ -1158,7 +1159,7 @@ func (s *Server) serveSPAIndex(w http.ResponseWriter, r *http.Request) {
 	// Check if file exists
 	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
 		logging.Logger().WithError(err).Error("SPA index.html not found")
-		http.Error(w, "SPA not available", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("SPA not available"))
 		return
 	}
 

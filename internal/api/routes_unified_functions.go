@@ -8,6 +8,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware/advanced_security"
 	registryrepo "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // registerUnifiedFunctionRoutes wires /v1/fx/* routes that provide unified access
@@ -36,7 +37,7 @@ func registerUnifiedFunctionRoutes(
 		vars := mux.Vars(r)
 		fn, err := registryRepo.GetFunctionByAuthorName(r.Context(), vars["author"], vars["name"])
 		if err != nil {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		version := vars["version"]

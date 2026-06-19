@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/auth"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // registerRegistryRoutes wires all function registry, playground, documentation,
@@ -64,12 +65,12 @@ func registerRegistryRoutes(
 		vars := mux.Vars(r)
 		app, err := s.repo.GetAppBySlug(r.Context(), vars["appSlug"])
 		if err != nil || app == nil {
-			http.Error(w, "App not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("App not found"))
 			return
 		}
 		fn, err := s.repo.GetFunctionByAppIDAndName(r.Context(), app.ID, vars["functionName"])
 		if err != nil || fn == nil {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		executionSecurityMW.SecureExecution(fn.ID, fn.Version)(appPlaygroundHandler.HandleExecute).ServeHTTP(w, r)
@@ -90,7 +91,7 @@ func registerRegistryRoutes(
 		vars := mux.Vars(r)
 		fn, err := repo.GetFunctionByAuthorName(r.Context(), vars["author"], vars["name"])
 		if err != nil {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 		version := vars["version"]

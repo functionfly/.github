@@ -945,6 +945,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// ── Global middleware wiring ──────────────────────────────────────────────
 	s.router.Use(middleware.RecoveryMiddleware)
+	// ErrorNormalizerMiddleware sanitizes any error response body that bypasses
+	// the apierror package, preventing leak of err.Error() to clients.
+	// Set DISABLE_ERROR_NORMALIZER=true to disable (e.g. for legacy clients).
+	s.router.Use(middleware.ErrorNormalizerMiddleware)
 	s.router.Use(middleware.TracingMiddleware)
 	s.router.Use(maintenanceMiddleware.CheckMaintenanceMode)
 	s.router.Use(middleware.EnvironmentMiddleware)
@@ -956,14 +960,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		return http.HandlerFunc(advancedSecurityMiddleware.CORSMiddleware(http.HandlerFunc(next.ServeHTTP)))
 	})
 
-	// SECURITY FIX: Require explicit PRODUCTION_ENV=true for security middleware
-	// Previously, security was disabled just by setting DEVELOPMENT=true
-	// Now we require PRODUCTION_ENV=true to enable security features
-	isDev := os.Getenv("DEVELOPMENT") == "true"
+	// SECURITY: Advanced security middleware (DDoS, geo-blocking, rate limiting, input validation)
+	// is ONLY applied when PRODUCTION_ENV=true is explicitly set.
+	// This prevents accidental bypass when DEVELOPMENT=true is set in staging/qa/production.
 	productionEnv := os.Getenv("PRODUCTION_ENV") == "true"
 
-	if !isDev || productionEnv {
-		// Apply advanced security middleware when not in dev mode OR when explicitly in production mode
+	if productionEnv {
+		// Apply advanced security middleware ONLY when PRODUCTION_ENV=true is explicitly set.
+		// DEVELOPMENT=true alone does NOT disable security - must explicitly set PRODUCTION_ENV=true.
 		s.router.Use(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(advancedSecurityMiddleware.SecurityHeaders(http.HandlerFunc(next.ServeHTTP)))
 		})
@@ -1354,7 +1358,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/dna", s.handleDNAServiceHealth).Methods("GET", "OPTIONS")
-	s.router.Handle("/metrics", middleware.RequireAuthInProduction(authMiddleware)(promhttp.Handler())).Methods("GET")
+	s.router.Handle("/metrics", middleware.MetricsAuthMiddleware(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
 
 	// ── API Documentation (Swagger/OpenAPI) ────────────────────────────────────
