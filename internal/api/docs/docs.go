@@ -25,6 +25,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // SpecFS embeds the OpenAPI spec files
@@ -55,7 +58,8 @@ func APIInfo() ServerInfo {
 func ServeYAMLSpec(w http.ResponseWriter, r *http.Request) {
 	data, err := SpecFS.ReadFile("swagger.yaml")
 	if err != nil {
-		http.Error(w, "OpenAPI spec not found: "+err.Error(), http.StatusNotFound)
+		logrus.WithError(err).Warn("OpenAPI spec not found")
+		apierror.WriteError(w, apierror.NewNotFound("OpenAPI spec not found"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
@@ -72,7 +76,7 @@ func ServeJSONSpec(w http.ResponseWriter, r *http.Request) {
 		// Fallback: serve YAML with JSON content-type for consumers expecting JSON
 		data, err = SpecFS.ReadFile("swagger.yaml")
 		if err != nil {
-			http.Error(w, "OpenAPI spec not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("OpenAPI spec not found"))
 			return
 		}
 		// Some clients require JSON; for full conversion, use a YAML-to-JSON tool

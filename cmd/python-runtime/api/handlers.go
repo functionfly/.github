@@ -15,6 +15,7 @@ import (
 	"github.com/functionfly/functionfly/cmd/python-runtime/executor"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -190,38 +191,38 @@ func HandleExecute(exec *executor.PythonExecutor, authToken string) http.Handler
 		}()
 
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 			return
 		}
 
 		clientIP := strings.Split(r.RemoteAddr, ":")[0]
 		if !limiter.allow(clientIP) {
-			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 			return
 		}
 
 		if authToken != "" {
 			token := r.Header.Get(authTokenHeader)
 			if !validateAuthToken(token) {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 				return
 			}
 		}
 
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodySizeBytes))
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to read body: %v", err), http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 			return
 		}
 
 		var req ExecuteRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON in request body"))
 			return
 		}
 
 		if req.Code == "" {
-			http.Error(w, "code is required", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("code is required"))
 			return
 		}
 
@@ -249,7 +250,7 @@ func HandleExecute(exec *executor.PythonExecutor, authToken string) http.Handler
 		result, err := exec.Execute(ctx, req.Code, inputBytes, timeoutMs)
 		if err != nil {
 			executionErrorsTotal.Inc()
-			http.Error(w, fmt.Sprintf("Execution failed: %v", err), http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Execution failed"))
 			return
 		}
 
@@ -273,20 +274,20 @@ func HandleExecute(exec *executor.PythonExecutor, authToken string) http.Handler
 func HandleExecuteStream(exec *executor.PythonExecutor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 			return
 		}
 
 		// For streaming, we'll implement chunked responses
 		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 50*1024*1024)) // 50MB limit
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to read body: %v", err), http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 			return
 		}
 
 		var req ExecuteRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON in request body"))
 			return
 		}
 
@@ -332,7 +333,7 @@ func HandleExecuteStream(exec *executor.PythonExecutor) http.HandlerFunc {
 func HandlePoolMaintain(exec *executor.PythonExecutor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 			return
 		}
 

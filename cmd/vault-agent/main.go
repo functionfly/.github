@@ -36,6 +36,7 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // =============================================================================
@@ -307,18 +308,18 @@ func (a *Agent) serve() error {
 func (a *Agent) handleCreds(w http.ResponseWriter, r *http.Request) {
 	credID := strings.TrimPrefix(r.URL.Path, "/v1/creds/")
 	if credID == "" {
-		http.Error(w, "credential id required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("credential id required"))
 		return
 	}
 	dek, ok := a.cache.Get()
 	if !ok {
-		http.Error(w, "DEK not in cache; run 'enroll' first", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("DEK not in cache; run 'enroll' first"))
 		return
 	}
 	// Application just calls GET to receive a fresh lease.
 	lease, err := a.issueCredential(r.Context(), credID, dek, 3600)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to issue credential"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -329,7 +330,7 @@ func (a *Agent) handleTargets(w http.ResponseWriter, r *http.Request) {
 	url := strings.TrimRight(a.cfg.Server, "/") + "/v1/vault/dynamic-secret-targets"
 	req, err := http.NewRequestWithContext(r.Context(), r.Method, url, nil)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create request"))
 		return
 	}
 	if tok := os.Getenv("VAULT_AGENT_DYN_TOKEN"); tok != "" {
@@ -337,7 +338,7 @@ func (a *Agent) handleTargets(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := a.client.Do(req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("failed to fetch targets"))
 		return
 	}
 	defer resp.Body.Close()

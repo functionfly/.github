@@ -10,6 +10,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // AIProxyHandler provides proxy endpoints to the FlyMind AI Service
@@ -40,7 +41,7 @@ func NewAIProxyHandler() *AIProxyHandler {
 func (h *AIProxyHandler) proxyRequest(w http.ResponseWriter, r *http.Request, aiPath string) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *AIProxyHandler) proxyRequest(w http.ResponseWriter, r *http.Request, ai
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to read request body")
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
 	defer r.Body.Close()
@@ -60,7 +61,7 @@ func (h *AIProxyHandler) proxyRequest(w http.ResponseWriter, r *http.Request, ai
 	proxyReq, err := http.NewRequest(r.Method, targetURL, bytes.NewReader(body))
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create proxy request")
-		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create proxy request"))
 		return
 	}
 
@@ -77,7 +78,7 @@ func (h *AIProxyHandler) proxyRequest(w http.ResponseWriter, r *http.Request, ai
 	resp, err := h.httpClient.Do(proxyReq)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to proxy request to AI service")
-		http.Error(w, "AI service unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("AI service unavailable"))
 		return
 	}
 	defer resp.Body.Close()
@@ -107,7 +108,7 @@ func (h *AIProxyHandler) HandleGenerateFunction(w http.ResponseWriter, r *http.R
 func (h *AIProxyHandler) HandleGenerateFunctionStream(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -121,7 +122,7 @@ func (h *AIProxyHandler) HandleGenerateFunctionStream(w http.ResponseWriter, r *
 	proxyReq, err := http.NewRequest(r.Method, targetURL, nil)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create proxy request")
-		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create proxy request"))
 		return
 	}
 
@@ -134,7 +135,7 @@ func (h *AIProxyHandler) HandleGenerateFunctionStream(w http.ResponseWriter, r *
 	resp, err := h.httpClient.Do(proxyReq)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to proxy request to AI service")
-		http.Error(w, "AI service unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("AI service unavailable"))
 		return
 	}
 	defer resp.Body.Close()
@@ -213,7 +214,7 @@ func (h *AIProxyHandler) HandleRefineFunction(w http.ResponseWriter, r *http.Req
 func (h *AIProxyHandler) HandleRefineFunctionStream(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -226,7 +227,7 @@ func (h *AIProxyHandler) HandleRefineFunctionStream(w http.ResponseWriter, r *ht
 	proxyReq, err := http.NewRequest(r.Method, targetURL, nil)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create proxy request")
-		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create proxy request"))
 		return
 	}
 
@@ -239,7 +240,7 @@ func (h *AIProxyHandler) HandleRefineFunctionStream(w http.ResponseWriter, r *ht
 	resp, err := h.httpClient.Do(proxyReq)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to proxy request to AI service")
-		http.Error(w, "AI service unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("AI service unavailable"))
 		return
 	}
 	defer resp.Body.Close()
