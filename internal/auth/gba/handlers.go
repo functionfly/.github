@@ -17,6 +17,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler contains HTTP handlers for GoBetterAuth
@@ -54,26 +55,26 @@ type SignUpResponse struct {
 // HandleSignUp handles user registration
 func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 	if !h.auth.IsEnabled("register") {
-		http.Error(w, `{"message": "Registration is disabled"}`, http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Registration is disabled"))
 		return
 	}
 
 	var req SignUpRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate required fields
 	if req.Email == "" || req.Password == "" {
-		http.Error(w, `{"message": "Email and password are required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email and password are required"))
 		return
 	}
 
 	// Extract tenant context
 	tenantID := h.extractTenantID(r)
 	if tenantID == uuid.Nil {
-		http.Error(w, `{"message": "Tenant context is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant context is required"))
 		return
 	}
 
@@ -89,14 +90,14 @@ func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.auth.hooks.Execute(r.Context(), "before:signup", hookReq); err != nil {
 		h.logger.WithError(err).Warn("Signup hook failed")
-		http.Error(w, `{"message": "`+err.Error()+`"}`, http.StatusBadRequest)
+		respondHookError(w, http.StatusBadRequest, "Signup failed", err)
 		return
 	}
 
 	// Check if user already exists
 	var existingUser User
 	if err := h.db.Where("tenant_id = ? AND email = ?", tenantID, req.Email).First(&existingUser).Error; err == nil {
-		http.Error(w, `{"message": "User already exists"}`, http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("User already exists"))
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to hash password")
-		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 		return
 	}
 
@@ -119,7 +120,7 @@ func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.db.Create(user).Error; err != nil {
 		h.logger.WithError(err).Error("Failed to create user")
-		http.Error(w, `{"message": "Failed to create user"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create user"))
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 	verificationToken, err := generateSessionToken()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate verification token")
-		http.Error(w, `{"message": "Failed to create verification token"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create verification token"))
 		return
 	}
 
@@ -141,7 +142,7 @@ func (h *Handler) HandleSignUp(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.db.Create(tokenRecord).Error; err != nil {
 		h.logger.WithError(err).Error("Failed to create verification token record")
-		http.Error(w, `{"message": "Failed to create verification token"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create verification token"))
 		return
 	}
 
@@ -190,25 +191,25 @@ type SignInResponse struct {
 // HandleSignIn handles user login
 func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 	if !h.auth.IsEnabled("login") {
-		http.Error(w, `{"message": "Login is disabled"}`, http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Login is disabled"))
 		return
 	}
 
 	var req SignInRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Email == "" || req.Password == "" {
-		http.Error(w, `{"message": "Email and password are required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email and password are required"))
 		return
 	}
 
 	// Extract tenant context
 	tenantID := h.extractTenantID(r)
 	if tenantID == uuid.Nil {
-		http.Error(w, `{"message": "Tenant context is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant context is required"))
 		return
 	}
 
@@ -224,20 +225,20 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.auth.hooks.Execute(r.Context(), "before:signin", hookReq); err != nil {
 		h.logger.WithError(err).Warn("Signin hook failed")
-		http.Error(w, `{"message": "`+err.Error()+`"}`, http.StatusForbidden)
+		respondHookError(w, http.StatusForbidden, "Signin failed", err)
 		return
 	}
 
 	// Find user
 	var user User
 	if err := h.db.Where("tenant_id = ? AND email = ?", tenantID, req.Email).First(&user).Error; err != nil {
-		http.Error(w, `{"message": "Invalid credentials"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Invalid credentials"))
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-		http.Error(w, `{"message": "Invalid credentials"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Invalid credentials"))
 		return
 	}
 
@@ -258,7 +259,7 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create session")
-		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 		return
 	}
 
@@ -266,7 +267,7 @@ func (h *Handler) HandleSignIn(w http.ResponseWriter, r *http.Request) {
 	token, err := h.auth.GenerateTokenWithRole(user.ID, tenantID, user.Role)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate token")
-		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 		return
 	}
 
@@ -311,26 +312,26 @@ func (h *Handler) HandleSignOut(w http.ResponseWriter, r *http.Request) {
 // HandleGetSession returns the current session
 func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 	if !h.auth.IsEnabled("session") {
-		http.Error(w, `{"message": "Session validation is disabled"}`, http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Session validation is disabled"))
 		return
 	}
 
 	token := h.auth.sessions.GetSessionTokenFromRequest(r)
 	if token == "" {
-		http.Error(w, `{"message": "No session found"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("No session found"))
 		return
 	}
 
 	session, err := h.auth.sessions.ValidateSession(h.db, token)
 	if err != nil {
-		http.Error(w, `{"message": "Invalid or expired session"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Invalid or expired session"))
 		return
 	}
 
 	// Get user
 	var user User
 	if err := h.db.First(&user, session.UserID).Error; err != nil {
-		http.Error(w, `{"message": "User not found"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("User not found"))
 		return
 	}
 
@@ -345,26 +346,26 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 // HandleOAuthInit initiates OAuth flow
 func (h *Handler) HandleOAuthInit(w http.ResponseWriter, r *http.Request) {
 	if !h.auth.IsEnabled("oauth") {
-		http.Error(w, `{"message": "OAuth is disabled"}`, http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("OAuth is disabled"))
 		return
 	}
 
 	provider := r.URL.Query().Get("provider")
 	if provider == "" {
-		http.Error(w, `{"message": "Provider is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider is required"))
 		return
 	}
 
 	// Generate state (should be stored and validated in callback)
 	state, err := generateSessionToken()
 	if err != nil {
-		http.Error(w, `{"message": "Failed to generate state"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate state"))
 		return
 	}
 
 	authURL, err := h.auth.oauth.GetAuthURL(provider, state)
 	if err != nil {
-		http.Error(w, `{"message": "`+err.Error()+`"}`, http.StatusBadRequest)
+		respondHookError(w, http.StatusBadRequest, "Request failed", err)
 		return
 	}
 
@@ -385,14 +386,14 @@ func (h *Handler) HandleOAuthInit(w http.ResponseWriter, r *http.Request) {
 // HandleOAuthCallback handles OAuth callback
 func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	if !h.auth.IsEnabled("oauth") {
-		http.Error(w, `{"message": "OAuth is disabled"}`, http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("OAuth is disabled"))
 		return
 	}
 
 	// Get provider from URL path
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 2 {
-		http.Error(w, `{"message": "Invalid callback URL"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid callback URL"))
 		return
 	}
 	provider := pathParts[len(pathParts)-1]
@@ -400,7 +401,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	// Validate state
 	stateCookie, err := r.Cookie("oauth_state")
 	if err != nil || stateCookie.Value != r.URL.Query().Get("state") {
-		http.Error(w, `{"message": "Invalid state"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid state"))
 		return
 	}
 
@@ -415,14 +416,14 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	// Exchange code for token
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, `{"message": "Authorization code not provided"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Authorization code not provided"))
 		return
 	}
 
 	oauthToken, err := h.auth.oauth.ExchangeCode(r.Context(), provider, code)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to exchange OAuth code")
-		http.Error(w, `{"message": "Failed to complete OAuth"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to complete OAuth"))
 		return
 	}
 
@@ -430,7 +431,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	userInfo, err := h.auth.oauth.GetUserInfo(r.Context(), provider, oauthToken)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get user info")
-		http.Error(w, `{"message": "Failed to get user info"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user info"))
 		return
 	}
 
@@ -448,7 +449,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.db.Create(newTenant).Error; err != nil {
 		h.logger.WithError(err).Error("Failed to create tenant for new OAuth user")
-		http.Error(w, `{"message": "Failed to create tenant"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create tenant"))
 		return
 	}
 	tenantID = newTenant.ID
@@ -458,7 +459,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	user, err := h.auth.oauth.FindOrCreateUser(h.db, tenantID, userInfo)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to find or create user")
-		http.Error(w, `{"message": "Failed to process user"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to process user"))
 		return
 	}
 
@@ -466,7 +467,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	session, err := h.auth.sessions.CreateSession(h.db, user.ID, tenantID, r.RemoteAddr, r.UserAgent())
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create session")
-		http.Error(w, `{"message": "Failed to create session"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create session"))
 		return
 	}
 
@@ -474,7 +475,7 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 	_, err = h.auth.GenerateTokenWithRole(user.ID, tenantID, user.Role)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate token")
-		http.Error(w, `{"message": "Failed to generate token"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate token"))
 		return
 	}
 
@@ -566,14 +567,14 @@ func (h *Handler) extractHeaders(r *http.Request) map[string]string {
 func (h *Handler) HandleCheckEmailAvailability(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	if email == "" {
-		http.Error(w, `{"message": "Email parameter is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email parameter is required"))
 		return
 	}
 
 	// Extract tenant context
 	tenantID := h.extractTenantID(r)
 	if tenantID == uuid.Nil {
-		http.Error(w, `{"message": "Tenant context is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant context is required"))
 		return
 	}
 
@@ -595,14 +596,14 @@ func (h *Handler) HandleCheckEmailAvailability(w http.ResponseWriter, r *http.Re
 func (h *Handler) HandleCheckUsernameAvailability(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
 	if username == "" {
-		http.Error(w, `{"message": "Username parameter is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Username parameter is required"))
 		return
 	}
 
 	// Extract tenant context
 	tenantID := h.extractTenantID(r)
 	if tenantID == uuid.Nil {
-		http.Error(w, `{"message": "Tenant context is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant context is required"))
 		return
 	}
 
@@ -630,14 +631,14 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	// Get token from query parameter
 	token := r.URL.Query().Get("token")
 	if token == "" {
-		http.Error(w, `{"message": "Verification token is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Verification token is required"))
 		return
 	}
 
 	// Extract tenant context
 	tenantID := h.extractTenantID(r)
 	if tenantID == uuid.Nil {
-		http.Error(w, `{"message": "Tenant context is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant context is required"))
 		return
 	}
 
@@ -651,19 +652,19 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	var verificationToken VerificationToken
 	err := h.db.Where("token = ? AND tenant_id = ? AND expires_at > ?", token, tenantID, time.Now()).First(&verificationToken).Error
 	if err == gorm.ErrRecordNotFound {
-		http.Error(w, `{"message": "Invalid or expired verification token"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid or expired verification token"))
 		return
 	}
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to find verification token")
-		http.Error(w, `{"message": "Failed to verify token"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify token"))
 		return
 	}
 
 	// Find and update the user
 	var user User
 	if err := h.db.Where("tenant_id = ? AND email = ?", tenantID, verificationToken.Identifier).First(&user).Error; err != nil {
-		http.Error(w, `{"message": "User not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -683,7 +684,7 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.db.Save(&user).Error; err != nil {
 		h.logger.WithError(err).Error("Failed to update user verification status")
-		http.Error(w, `{"message": "Failed to verify email"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify email"))
 		return
 	}
 
@@ -723,19 +724,19 @@ type ResendVerificationRequest struct {
 func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Request) {
 	var req ResendVerificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"message": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Email == "" {
-		http.Error(w, `{"message": "Email is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email is required"))
 		return
 	}
 
 	// Extract tenant context
 	tenantID := h.extractTenantID(r)
 	if tenantID == uuid.Nil {
-		http.Error(w, `{"message": "Tenant context is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Tenant context is required"))
 		return
 	}
 
@@ -752,7 +753,7 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 	}
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to find user for verification resend")
-		http.Error(w, `{"message": "Failed to process request"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to process request"))
 		return
 	}
 
@@ -779,14 +780,14 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 
 	if err := h.auth.hooks.Execute(r.Context(), "before:resendVerification", hookReq); err != nil {
 		h.logger.WithError(err).Warn("Resend verification hook failed")
-		http.Error(w, `{"message": "`+err.Error()+`"}`, http.StatusBadRequest)
+		respondHookError(w, http.StatusBadRequest, "Resend verification failed", err)
 		return
 	}
 
 	verificationToken, err := generateSessionToken()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate verification token")
-		http.Error(w, `{"message": "Failed to generate verification token"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to generate verification token"))
 		return
 	}
 
@@ -806,7 +807,7 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 
 	if err := h.db.Create(tokenRecord).Error; err != nil {
 		h.logger.WithError(err).Error("Failed to create verification token record")
-		http.Error(w, `{"message": "Failed to create verification token"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create verification token"))
 		return
 	}
 
@@ -851,14 +852,14 @@ func (h *Handler) shouldRememberDevice(userID uuid.UUID) bool {
 func (h *Handler) HandleTrustedDeviceRequest(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, `{"message": "Unauthorized"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	trustedToken, err := generateTrustedDeviceToken()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to generate trusted device token")
-		http.Error(w, `{"message": "Internal server error"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Internal server error"))
 		return
 	}
 
@@ -877,4 +878,15 @@ func generateTrustedDeviceToken() (string, error) {
 		return "", err
 	}
 	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+// respondHookError logs err server-side (caller is expected to also log via
+// h.logger.WithError) and writes a sanitized, hand-written client message.
+// Use in place of http.Error(w, `{"message": "`+err.Error()+`"}`, status) to
+// prevent leaking internal err text to clients.
+func respondHookError(w http.ResponseWriter, status int, userMsg string, err error) {
+	_ = err
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"message": userMsg})
 }

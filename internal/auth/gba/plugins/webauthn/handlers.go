@@ -113,7 +113,7 @@ func (h *Handler) HandleFinishRegistration(w http.ResponseWriter, r *http.Reques
 	resp, err := h.plugin.FinishRegistration(r.Context(), userID, req)
 	if err != nil {
 		h.logger.WithError(err).Warn("Registration completion failed")
-		h.respondError(w, http.StatusBadRequest, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusBadRequest, "webauthn handler", err)
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *Handler) HandleBeginAuthentication(w http.ResponseWriter, r *http.Reque
 	resp, err := h.plugin.BeginAuthentication(r.Context(), userID)
 	if err != nil {
 		h.logger.WithError(err).Warn("Failed to begin authentication")
-		h.respondError(w, http.StatusBadRequest, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusBadRequest, "webauthn handler", err)
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *Handler) HandleFinishAuthentication(w http.ResponseWriter, r *http.Requ
 	resp, err := h.plugin.FinishAuthentication(r.Context(), req)
 	if err != nil {
 		h.logger.WithError(err).Warn("Authentication completion failed")
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "webauthn handler", err)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *Handler) HandleBeginDiscoverableAuthentication(w http.ResponseWriter, r
 	resp, err := h.plugin.BeginAuthenticationDiscoverable(r.Context())
 	if err != nil {
 		h.logger.WithError(err).Warn("Failed to begin discoverable authentication")
-		h.respondError(w, http.StatusBadRequest, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusBadRequest, "webauthn handler", err)
 		return
 	}
 
@@ -210,7 +210,7 @@ func (h *Handler) HandleFinishDiscoverableAuthentication(w http.ResponseWriter, 
 	resp, err := h.plugin.FinishAuthenticationDiscoverable(r.Context(), req)
 	if err != nil {
 		h.logger.WithError(err).Warn("Discoverable authentication completion failed")
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "webauthn handler", err)
 		return
 	}
 
@@ -266,7 +266,7 @@ func (h *Handler) HandleDeleteCredential(w http.ResponseWriter, r *http.Request)
 	// Delete credential
 	if err := h.plugin.DeleteCredential(r.Context(), credentialID, userID); err != nil {
 		h.logger.WithError(err).Warn("Failed to delete credential")
-		h.respondError(w, http.StatusNotFound, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusNotFound, "webauthn handler", err)
 		return
 	}
 
@@ -314,7 +314,7 @@ func (h *Handler) HandleUpdateCredential(w http.ResponseWriter, r *http.Request)
 	// Update credential
 	if err := h.plugin.UpdateCredentialName(r.Context(), credentialID, userID, req.Name); err != nil {
 		h.logger.WithError(err).Warn("Failed to update credential")
-		h.respondError(w, http.StatusNotFound, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusNotFound, "webauthn handler", err)
 		return
 	}
 
@@ -358,6 +358,51 @@ func (h *Handler) respondError(w http.ResponseWriter, status int, message string
 	h.respondJSON(w, status, map[string]string{
 		"error": message,
 	})
+}
+
+// respondErrorFromErr logs err server-side with context and writes a generic
+// client-visible message. Use in place of h.respondError(w, status, err.Error()).
+func (h *Handler) respondErrorFromErr(r *http.Request, w http.ResponseWriter, status int, contextMsg string, err error) {
+	if err != nil {
+		fields := logrus.Fields{
+			"status":  status,
+			"context": contextMsg,
+			"method":  "",
+			"path":    "",
+		}
+		if r != nil {
+			fields["method"] = r.Method
+			if r.URL != nil {
+				fields["path"] = r.URL.Path
+			}
+		}
+		entry := logrus.WithError(err).WithFields(fields)
+		if status >= 500 {
+			entry.Error("webauthn handler error")
+		} else {
+			entry.Info("webauthn handler client error")
+		}
+	}
+	h.respondError(w, status, sanitizedWebAuthnMessage(status))
+}
+
+func sanitizedWebAuthnMessage(status int) string {
+	if status >= 500 {
+		return "Internal server error"
+	}
+	switch status {
+	case http.StatusBadRequest:
+		return "Invalid request"
+	case http.StatusUnauthorized:
+		return "Unauthorized"
+	case http.StatusForbidden:
+		return "Forbidden"
+	case http.StatusNotFound:
+		return "Not found"
+	case http.StatusConflict:
+		return "Conflict"
+	}
+	return http.StatusText(status)
 }
 
 // getUserIDFromContext extracts the user ID from the request context.

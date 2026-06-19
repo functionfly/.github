@@ -99,7 +99,7 @@ func (h *Handler) authenticate(r *http.Request) (uuid.UUID, error) {
 func (h *Handler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *Handler) HandleListUsers(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -166,7 +166,7 @@ func (h *Handler) HandleCreateUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -192,7 +192,7 @@ func (h *Handler) HandleGetUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -227,7 +227,7 @@ func (h *Handler) HandleUpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandlePatchUser(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -262,7 +262,7 @@ func (h *Handler) HandlePatchUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -289,7 +289,7 @@ func (h *Handler) HandleDeleteUser(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListGroups(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -319,7 +319,7 @@ func (h *Handler) HandleListGroups(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCreateGroup(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -351,7 +351,7 @@ func (h *Handler) HandleCreateGroup(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetGroup(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -376,7 +376,7 @@ func (h *Handler) HandleGetGroup(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -410,7 +410,7 @@ func (h *Handler) HandleUpdateGroup(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandlePatchGroup(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -444,7 +444,7 @@ func (h *Handler) HandlePatchGroup(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteGroup(w http.ResponseWriter, r *http.Request) {
 	tenantID, err := h.authenticate(r)
 	if err != nil {
-		h.respondError(w, http.StatusUnauthorized, err.Error())
+		h.respondErrorFromErr(r, w, http.StatusUnauthorized, "scim auth", err)
 		return
 	}
 
@@ -498,6 +498,51 @@ func (h *Handler) respondError(w http.ResponseWriter, status int, message string
 	h.respondJSON(w, status, map[string]string{
 		"error": message,
 	})
+}
+
+// respondErrorFromErr logs err server-side with context and writes a generic
+// client-visible message. Use in place of h.respondError(w, status, err.Error()).
+func (h *Handler) respondErrorFromErr(r *http.Request, w http.ResponseWriter, status int, contextMsg string, err error) {
+	if err != nil {
+		fields := logrus.Fields{
+			"status":  status,
+			"context": contextMsg,
+			"method":  "",
+			"path":    "",
+		}
+		if r != nil {
+			fields["method"] = r.Method
+			if r.URL != nil {
+				fields["path"] = r.URL.Path
+			}
+		}
+		entry := logrus.WithError(err).WithFields(fields)
+		if status >= 500 {
+			entry.Error("scim handler error")
+		} else {
+			entry.Info("scim handler client error")
+		}
+	}
+	h.respondError(w, status, sanitizedSCIMMessage(status))
+}
+
+func sanitizedSCIMMessage(status int) string {
+	if status >= 500 {
+		return "Internal server error"
+	}
+	switch status {
+	case http.StatusBadRequest:
+		return "Invalid request"
+	case http.StatusUnauthorized:
+		return "Unauthorized"
+	case http.StatusForbidden:
+		return "Forbidden"
+	case http.StatusNotFound:
+		return "Not found"
+	case http.StatusConflict:
+		return "Conflict"
+	}
+	return http.StatusText(status)
 }
 
 // respondSCIMError sends a SCIM-compliant error response

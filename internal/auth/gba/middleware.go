@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	apimiddleware "github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // ContextKey is a type for context keys
@@ -51,21 +52,21 @@ func (m *Middleware) RequirePermission(permission string) func(http.Handler) htt
 
 			token := m.auth.sessions.GetSessionTokenFromRequest(r)
 			if token == "" {
-				http.Error(w, `{"message": "Authentication required"}`, http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 				return
 			}
 
 			session, err := m.auth.sessions.ValidateSession(m.auth.GetDB(), token)
 			if err != nil {
 				m.logger.WithError(err).Debug("Invalid session")
-				http.Error(w, `{"message": "Invalid or expired session"}`, http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Invalid or expired session"))
 				return
 			}
 
 			// Get user to check role and permissions
 			var user User
 			if err := m.auth.GetDB().First(&user, session.UserID).Error; err != nil {
-				http.Error(w, `{"message": "User not found"}`, http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("User not found"))
 				return
 			}
 
@@ -77,7 +78,7 @@ func (m *Middleware) RequirePermission(permission string) func(http.Handler) htt
 					"role":       user.Role,
 					"permission": permission,
 				}).Warn("Permission denied")
-				http.Error(w, `{"message": "Forbidden"}`, http.StatusForbidden)
+				apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 				return
 			}
 
@@ -139,7 +140,7 @@ func (m *Middleware) nextWithLegacyAuth(w http.ResponseWriter, r *http.Request, 
 	w.Header().Set("X-Auth-Mode", "legacy")
 	claims := apimiddleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, `{"message": "Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	isDevelopment := os.Getenv("DEVELOPMENT") == "true" || os.Getenv("NODE_ENV") == "development"
@@ -170,7 +171,7 @@ func (m *Middleware) nextWithLegacyAuth(w http.ResponseWriter, r *http.Request, 
 	m.logger.WithFields(logrus.Fields{
 		"user_id": claims.UserID, "email": claims.Email, "permission": permission,
 	}).Warn("Legacy permission denied")
-	http.Error(w, `{"message": "Forbidden"}`, http.StatusForbidden)
+	apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 }
 
 // ExtractTenant middleware extracts and validates tenant context
