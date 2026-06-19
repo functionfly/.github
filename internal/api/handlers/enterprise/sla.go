@@ -10,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
@@ -34,13 +35,13 @@ func NewSLAHandler(repo storage.Repository) *SLAHandler {
 func (h *SLAHandler) requireEnterprisePlan(w http.ResponseWriter, r *http.Request) bool {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return false
 	}
 	tenant, err := h.repo.GetTenantByID(r.Context(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to get tenant for SLA")
-		http.Error(w, "Failed to verify plan", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify plan"))
 		return false
 	}
 	if tenant == nil || !plans.IsEnterpriseTier(tenant.Plan) {
@@ -74,7 +75,7 @@ func (h *SLAHandler) HandleGetSLAOverview(w http.ResponseWriter, r *http.Request
 	count, err := h.repo.CountIncidentsSince(r.Context(), since)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to count incidents for SLA overview")
-		http.Error(w, "Failed to load SLA overview", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load SLA overview"))
 		return
 	}
 
@@ -115,7 +116,7 @@ func (h *SLAHandler) HandleGetUptimeHistory(w http.ResponseWriter, r *http.Reque
 	dayCounts, err := h.repo.CountIncidentsGroupedByDay(r.Context(), since)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get incident counts by day for uptime history")
-		http.Error(w, "Failed to load uptime history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load uptime history"))
 		return
 	}
 
@@ -177,7 +178,7 @@ func (h *SLAHandler) HandleGetIncidents(w http.ResponseWriter, r *http.Request) 
 	incidents, err := h.repo.ListIncidentsSince(r.Context(), since, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list incidents for SLA")
-		http.Error(w, "Failed to load incidents", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load incidents"))
 		return
 	}
 

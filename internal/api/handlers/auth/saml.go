@@ -70,7 +70,7 @@ func (h *SAMLHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	redirectURL, err := h.samlSvc.InitiateLogin(tenantID, relayState)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to initiate SAML login")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "saml handler", err)
 		return
 	}
 

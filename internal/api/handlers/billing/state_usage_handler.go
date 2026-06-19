@@ -119,7 +119,7 @@ func (h *StateUsageHandler) GetStateUsageHistory(w http.ResponseWriter, r *http.
 	// Parse date range
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid date range: "+err.Error())
+		writeErrorFromMessage(r, w, http.StatusBadRequest, "Invalid date range", "parse state usage date range", err)
 		return
 	}
 
@@ -269,7 +269,7 @@ func (h *StateUsageHandler) AdminListAllStateUsage(w http.ResponseWriter, r *htt
 	// Parse date range
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		writeError(w, http.StatusBadRequest, "Invalid date range: "+err.Error())
+		writeErrorFromMessage(r, w, http.StatusBadRequest, "Invalid date range", "parse state usage date range", err)
 		return
 	}
 

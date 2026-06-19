@@ -9,6 +9,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleGrantPermission handles POST /v1/state/{path}/permissions
@@ -18,13 +19,13 @@ func (h *Handler) HandleGrantPermission(w http.ResponseWriter, r *http.Request) 
 
 	var req GrantPermissionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -32,7 +33,7 @@ func (h *Handler) HandleGrantPermission(w http.ResponseWriter, r *http.Request) 
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -54,7 +55,7 @@ func (h *Handler) HandleGrantPermission(w http.ResponseWriter, r *http.Request) 
 	created, err := h.stateRepo.GrantPermission(r.Context(), perm)
 	if err != nil {
 		logrus.Errorf("failed to grant permission: %v", err)
-		http.Error(w, "failed to grant permission", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to grant permission"))
 		return
 	}
 
@@ -69,7 +70,7 @@ func (h *Handler) HandleGetPermissions(w http.ResponseWriter, r *http.Request) {
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -77,7 +78,7 @@ func (h *Handler) HandleGetPermissions(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -88,7 +89,7 @@ func (h *Handler) HandleGetPermissions(w http.ResponseWriter, r *http.Request) {
 	permissions, err := h.stateRepo.GetPermissions(r.Context(), state.ID)
 	if err != nil {
 		logrus.Errorf("failed to get permissions: %v", err)
-		http.Error(w, "failed to get permissions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get permissions"))
 		return
 	}
 

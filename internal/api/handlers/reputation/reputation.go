@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler handles reputation API requests
@@ -130,7 +131,7 @@ type ReputationStatsResponse struct {
 func (h *Handler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -138,7 +139,7 @@ func (h *Handler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 	profile, err := repo.GetProfile(claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get reputation profile")
-		http.Error(w, "Failed to get reputation profile", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get reputation profile"))
 		return
 	}
 
@@ -147,7 +148,7 @@ func (h *Handler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		profile, err = repo.GetOrCreateProfile(claims.UserID, claims.TenantID)
 		if err != nil {
 			h.logger.WithError(err).Error("Failed to create reputation profile")
-			http.Error(w, "Failed to create reputation profile", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create reputation profile"))
 			return
 		}
 	}
@@ -190,13 +191,13 @@ func (h *Handler) HandleGetProfileByUserID(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 	userIDStr := vars["userId"]
 	if userIDStr == "" {
-		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("user_id required"))
 		return
 	}
 
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid user_id"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id"))
 		return
 	}
 
@@ -204,12 +205,12 @@ func (h *Handler) HandleGetProfileByUserID(w http.ResponseWriter, r *http.Reques
 	profile, err := repo.GetProfile(userID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get reputation profile")
-		http.Error(w, "Failed to get reputation profile", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get reputation profile"))
 		return
 	}
 
 	if profile == nil {
-		http.Error(w, `{"error":"Profile not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Profile not found"))
 		return
 	}
 
@@ -254,7 +255,7 @@ func (h *Handler) HandleGetLeaderboard(w http.ResponseWriter, r *http.Request) {
 	entries, err := repo.GetLeaderboard(pageSize, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get leaderboard")
-		http.Error(w, "Failed to get leaderboard", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get leaderboard"))
 		return
 	}
 
@@ -294,7 +295,7 @@ func (h *Handler) HandleGetLeaderboard(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetReputationEvents(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -313,7 +314,7 @@ func (h *Handler) HandleGetReputationEvents(w http.ResponseWriter, r *http.Reque
 	events, err := repo.GetReputationEvents(claims.UserID, pageSize, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get reputation events")
-		http.Error(w, "Failed to get reputation events", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get reputation events"))
 		return
 	}
 
@@ -350,7 +351,7 @@ func (h *Handler) HandleGetReputationEvents(w http.ResponseWriter, r *http.Reque
 func (h *Handler) HandleAddScore(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -363,7 +364,7 @@ func (h *Handler) HandleAddScore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -379,7 +380,7 @@ func (h *Handler) HandleAddScore(w http.ResponseWriter, r *http.Request) {
 	// Record the score change
 	if err := repo.RecordScoreChange(request.UserID, request.TenantID, request.Component, request.ScoreChange); err != nil {
 		h.logger.WithError(err).Error("Failed to record score change")
-		http.Error(w, "Failed to record score change", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record score change"))
 		return
 	}
 
@@ -406,7 +407,7 @@ func (h *Handler) HandleGetStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := repo.GetReputationStats(r.Context())
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get reputation stats")
-		http.Error(w, "Failed to get reputation stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get reputation stats"))
 		return
 	}
 
@@ -421,7 +422,7 @@ func (h *Handler) HandleGetTrustWeights(w http.ResponseWriter, r *http.Request) 
 	config, err := repo.GetActiveTrustScoreWeights()
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get trust score weights")
-		http.Error(w, "Failed to get trust score weights", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get trust score weights"))
 		return
 	}
 
@@ -448,13 +449,13 @@ func (h *Handler) HandleGetTrustWeights(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleUpdateTrustWeights(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	var req TrustScoreWeightsConfigResponse
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -473,7 +474,7 @@ func (h *Handler) HandleUpdateTrustWeights(w http.ResponseWriter, r *http.Reques
 
 	if err := repo.UpdateTrustScoreWeights(config); err != nil {
 		h.logger.WithError(err).Error("Failed to update trust score weights")
-		http.Error(w, "Failed to update trust score weights", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update trust score weights"))
 		return
 	}
 
@@ -498,7 +499,7 @@ func (h *Handler) HandleGetTrustWeightsHistory(w http.ResponseWriter, r *http.Re
 	configs, total, err := repo.GetTrustScoreWeightsHistory(pageSize, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get trust score weights history")
-		http.Error(w, "Failed to get trust score weights history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get trust score weights history"))
 		return
 	}
 
@@ -539,7 +540,7 @@ func (h *Handler) HandleGetTrustWeightsHistory(w http.ResponseWriter, r *http.Re
 func (h *Handler) HandleGetReputationFarmingAlerts(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil || !claims.HasPermission(auth.PermSystemRead) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -559,7 +560,7 @@ func (h *Handler) HandleGetReputationFarmingAlerts(w http.ResponseWriter, r *htt
 	alerts, total, err := repo.GetReputationFarmingAlerts(status, pageSize, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get reputation farming alerts")
-		http.Error(w, "Failed to get alerts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get alerts"))
 		return
 	}
 
@@ -600,7 +601,7 @@ func (h *Handler) HandleGetReputationFarmingAlerts(w http.ResponseWriter, r *htt
 func (h *Handler) HandleResolveReputationFarmingAlert(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -608,7 +609,7 @@ func (h *Handler) HandleResolveReputationFarmingAlert(w http.ResponseWriter, r *
 	alertIDStr := vars["alertId"]
 	alertID, err := uuid.Parse(alertIDStr)
 	if err != nil {
-		http.Error(w, "Invalid alert_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert_id"))
 		return
 	}
 
@@ -616,14 +617,14 @@ func (h *Handler) HandleResolveReputationFarmingAlert(w http.ResponseWriter, r *
 		Notes string `json:"notes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
 	if err := repo.ResolveReputationFarmingAlert(alertID, claims.UserID, req.Notes); err != nil {
 		h.logger.WithError(err).Error("Failed to resolve alert")
-		http.Error(w, "Failed to resolve alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to resolve alert"))
 		return
 	}
 
@@ -635,7 +636,7 @@ func (h *Handler) HandleResolveReputationFarmingAlert(w http.ResponseWriter, r *
 func (h *Handler) HandleDismissReputationFarmingAlert(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -643,7 +644,7 @@ func (h *Handler) HandleDismissReputationFarmingAlert(w http.ResponseWriter, r *
 	alertIDStr := vars["alertId"]
 	alertID, err := uuid.Parse(alertIDStr)
 	if err != nil {
-		http.Error(w, "Invalid alert_id", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert_id"))
 		return
 	}
 
@@ -651,14 +652,14 @@ func (h *Handler) HandleDismissReputationFarmingAlert(w http.ResponseWriter, r *
 		Notes string `json:"notes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	repo := storage.NewReputationRepository(h.repo.GORM, h.logger)
 	if err := repo.DismissReputationFarmingAlert(alertID, claims.UserID, req.Notes); err != nil {
 		h.logger.WithError(err).Error("Failed to dismiss alert")
-		http.Error(w, "Failed to dismiss alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to dismiss alert"))
 		return
 	}
 
@@ -670,7 +671,7 @@ func (h *Handler) HandleDismissReputationFarmingAlert(w http.ResponseWriter, r *
 func (h *Handler) HandleDetectReputationFarming(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -678,7 +679,7 @@ func (h *Handler) HandleDetectReputationFarming(w http.ResponseWriter, r *http.R
 	alerts, err := repo.DetectReputationFarming(r.Context())
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to detect reputation farming")
-		http.Error(w, "Failed to detect reputation farming", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to detect reputation farming"))
 		return
 	}
 
@@ -715,7 +716,7 @@ func (h *Handler) HandleDetectReputationFarming(w http.ResponseWriter, r *http.R
 func (h *Handler) HandleCleanupTrustHistory(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil || !claims.HasPermission(auth.PermSystemWrite) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -730,7 +731,7 @@ func (h *Handler) HandleCleanupTrustHistory(w http.ResponseWriter, r *http.Reque
 	deleted, err := repo.CleanupOldTrustHistory(r.Context(), req.RetentionDays)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to cleanup trust history")
-		http.Error(w, "Failed to cleanup trust history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to cleanup trust history"))
 		return
 	}
 

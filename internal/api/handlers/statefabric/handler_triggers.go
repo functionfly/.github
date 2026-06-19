@@ -9,6 +9,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
+	"github.com/functionfly/functionfly/internal/apierror"
 	repo "github.com/functionfly/functionfly/internal/storage/statefabric"
 )
 
@@ -41,7 +42,8 @@ func (h *Handler) HandleListTriggers(w http.ResponseWriter, r *http.Request) {
 
 	triggers, err := h.repo.ListFabricTriggers(r.Context(), tenantID, fabricID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).Error("failed to list fabric triggers")
+		apierror.WriteError(w, apierror.NewInternal("failed to list triggers"))
 		return
 	}
 	total := len(triggers)
@@ -76,11 +78,11 @@ func (h *Handler) HandleCreateTrigger(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createFabricTriggerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	if req.TargetFunction == "" && req.TargetFunctionID == nil {
-		http.Error(w, "targetFunction is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("targetFunction is required"))
 		return
 	}
 	created, err := h.repo.CreateFabricTrigger(r.Context(), tenantID, fabricID, repo.FabricTriggerInput{
@@ -96,7 +98,7 @@ func (h *Handler) HandleCreateTrigger(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		logrus.WithError(err).Error("failed to create fabric trigger")
-		http.Error(w, "failed to create trigger", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create trigger"))
 		return
 	}
 	writeJSON(w, http.StatusCreated, created)
@@ -120,7 +122,8 @@ func (h *Handler) HandleDeleteTrigger(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.repo.DeleteFabricTrigger(r.Context(), tenantID, fabricID, triggerID); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		logrus.WithError(err).Error("failed to delete fabric trigger")
+		apierror.WriteError(w, apierror.NewNotFound("trigger not found"))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -145,11 +148,11 @@ func (h *Handler) HandleUpdateTrigger(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createFabricTriggerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	if req.TargetFunction == "" && req.TargetFunctionID == nil {
-		http.Error(w, "targetFunction is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("targetFunction is required"))
 		return
 	}
 	updated, err := h.repo.UpdateFabricTrigger(r.Context(), tenantID, fabricID, triggerID, repo.FabricTriggerInput{
@@ -165,7 +168,7 @@ func (h *Handler) HandleUpdateTrigger(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		logrus.WithError(err).Error("failed to update fabric trigger")
-		http.Error(w, "trigger not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("trigger not found"))
 		return
 	}
 	writeJSON(w, http.StatusOK, updated)

@@ -74,7 +74,7 @@ func (h *Handler) HandleUpsertWrappedDEK(w http.ResponseWriter, r *http.Request)
 		req.KeyVersion = vault.ClientWrapKeyVersion
 	}
 	if err := vault.ValidateClientWrapEnvelope(wrapped, iv, tag); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "vault keys handler")
 		return
 	}
 	k := &vault.VaultTenantKey{
@@ -166,7 +166,7 @@ func (h *Handler) HandleShareDEK(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := vault.ValidateClientWrapEnvelope(wrapped, iv, tag); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "vault keys handler")
 		return
 	}
 	k := &vault.VaultTenantKey{

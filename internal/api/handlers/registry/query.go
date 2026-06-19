@@ -255,7 +255,7 @@ func (h *Handler) HandleListFunctionsWithMCP(w http.ResponseWriter, r *http.Requ
 	functions, total, err := h.repo.ListFunctionsWithMCPSettings(r.Context(), limit, offset)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list functions with MCP settings")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 

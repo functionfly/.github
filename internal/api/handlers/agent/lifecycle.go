@@ -23,7 +23,7 @@ func (h *Handler) HandleAgentHeartbeat(w http.ResponseWriter, r *http.Request) {
 
 	agentID, _, err := h.authenticateAgent(r)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+		writeErrorFromErr(r, w, http.StatusUnauthorized, "UNAUTHORIZED", "authenticate agent", err)
 		return
 	}
 

@@ -286,8 +286,11 @@ func (h *Handler) HandlePurchaseCredits(w http.ResponseWriter, r *http.Request) 
 			"credits_added_usd": req.AmountUSD,
 		})
 		if err != nil {
-			logrus.WithError(err).Warn("credit purchase payment failed")
-			writeError(w, http.StatusPaymentRequired, "PAYMENT_FAILED", err.Error())
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"agent_id":          agentID,
+				"credits_added_usd": req.AmountUSD,
+			}).Warn("credit purchase payment failed")
+			writeErrorFromErr(r, w, http.StatusPaymentRequired, "PAYMENT_FAILED", "credit purchase payment", err)
 			return
 		}
 	} else if req.PaymentMethodID != "" {

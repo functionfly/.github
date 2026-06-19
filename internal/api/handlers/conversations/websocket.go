@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 var convWSUpgrader = websocket.Upgrader{
@@ -263,7 +264,7 @@ func (h *ConversationWebSocketHub) SendToUser(userID uuid.UUID, msg *ConvWSMessa
 func (h *ConversationWebSocketHub) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 

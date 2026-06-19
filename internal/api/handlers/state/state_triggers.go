@@ -11,19 +11,20 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleCreateTrigger handles POST /v1/triggers
 func (h *Handler) HandleCreateTrigger(w http.ResponseWriter, r *http.Request) {
 	var req CreateTriggerRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -32,7 +33,7 @@ func (h *Handler) HandleCreateTrigger(w http.ResponseWriter, r *http.Request) {
 	if req.StatePath != "" {
 		state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, req.StatePath)
 		if err != nil {
-			http.Error(w, "state not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("state not found"))
 			return
 		}
 
@@ -57,7 +58,7 @@ func (h *Handler) HandleCreateTrigger(w http.ResponseWriter, r *http.Request) {
 		created, err := h.stateRepo.CreateTrigger(r.Context(), trigger)
 		if err != nil {
 			logrus.Errorf("failed to create trigger: %v", err)
-			http.Error(w, "failed to create trigger", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("failed to create trigger"))
 			return
 		}
 
@@ -82,7 +83,7 @@ func (h *Handler) HandleCreateTrigger(w http.ResponseWriter, r *http.Request) {
 	created, err := h.stateRepo.CreateTrigger(r.Context(), trigger)
 	if err != nil {
 		logrus.Errorf("failed to create trigger: %v", err)
-		http.Error(w, "failed to create trigger", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create trigger"))
 		return
 	}
 
@@ -96,7 +97,7 @@ func (h *Handler) HandleGetTriggers(w http.ResponseWriter, r *http.Request) {
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -105,7 +106,7 @@ func (h *Handler) HandleGetTriggers(w http.ResponseWriter, r *http.Request) {
 	if statePath != "" {
 		state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, statePath)
 		if err != nil {
-			http.Error(w, "state not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("state not found"))
 			return
 		}
 
@@ -116,7 +117,7 @@ func (h *Handler) HandleGetTriggers(w http.ResponseWriter, r *http.Request) {
 		triggers, err := h.stateRepo.GetTriggers(r.Context(), state.ID)
 		if err != nil {
 			logrus.Errorf("failed to get triggers: %v", err)
-			http.Error(w, "failed to get triggers", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("failed to get triggers"))
 			return
 		}
 
@@ -136,7 +137,7 @@ func (h *Handler) HandleGetTriggers(w http.ResponseWriter, r *http.Request) {
 		triggers, total, err := h.stateRepo.ListTriggersByTenant(r.Context(), tenantID, limit, offset)
 		if err != nil {
 			logrus.Errorf("failed to list triggers: %v", err)
-			http.Error(w, "failed to list triggers", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("failed to list triggers"))
 			return
 		}
 
@@ -157,19 +158,19 @@ func (h *Handler) HandleDeleteTrigger(w http.ResponseWriter, r *http.Request) {
 
 	triggerUUID, err := uuid.Parse(triggerID)
 	if err != nil {
-		http.Error(w, "invalid trigger ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid trigger ID"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	trigger, err := h.stateRepo.GetTrigger(r.Context(), triggerUUID)
 	if err != nil {
-		http.Error(w, "trigger not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("trigger not found"))
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *Handler) HandleDeleteTrigger(w http.ResponseWriter, r *http.Request) {
 	err = h.stateRepo.DeleteTrigger(r.Context(), triggerUUID)
 	if err != nil {
 		logrus.Errorf("failed to delete trigger: %v", err)
-		http.Error(w, "failed to delete trigger", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to delete trigger"))
 		return
 	}
 

@@ -21,6 +21,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler handles feedback-related HTTP requests
@@ -50,7 +51,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 	// Parse multipart form (for file uploads)
 	err := r.ParseMultipartForm(32 << 20) // 32MB max
 	if err != nil {
-		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Failed to parse form"))
 		return
 	}
 
@@ -63,7 +64,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 
 	// Validate required fields
 	if feedbackType == "" || subject == "" || message == "" {
-		http.Error(w, `{"error":"feedbackType, subject, and message are required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("feedbackType, subject, and message are required"))
 		return
 	}
 
@@ -71,23 +72,23 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 	if feedbackType == "launch_waitlist" {
 		email := strings.TrimSpace(r.FormValue("email"))
 		if email != "" && (len(email) > 254 || !strings.Contains(email, "@") || !strings.Contains(email, ".")) {
-			http.Error(w, `{"error":"Invalid email"}`, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid email"))
 			return
 		}
 	} else {
 		// Smart form validation for other types
 		if feedbackType == "bug" && !strings.Contains(strings.ToLower(message), "steps to reproduce") {
-			http.Error(w, `{"error":"Bug reports should include steps to reproduce"}`, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Bug reports should include steps to reproduce"))
 			return
 		}
 		if feedbackType == "feature" && len(message) < 50 {
-			http.Error(w, `{"error":"Feature requests need more detail (minimum 50 characters)"}`, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Feature requests need more detail (minimum 50 characters)"))
 			return
 		}
 	}
 
 	if len(message) > 1000 {
-		http.Error(w, `{"error":"Message must be 1000 characters or less"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Message must be 1000 characters or less"))
 		return
 	}
 
@@ -112,7 +113,7 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 		if err == nil && len(feedbacks) > 0 {
 			lastSubmission := feedbacks[0].CreatedAt
 			if time.Since(lastSubmission) < time.Hour {
-				http.Error(w, `{"error":"Please wait an hour before submitting another feedback"}`, http.StatusTooManyRequests)
+				apierror.WriteError(w, apierror.NewRateLimited("Please wait an hour before submitting another feedback"))
 				return
 			}
 		}
@@ -157,10 +158,10 @@ func (h *Handler) CreateFeedback(w http.ResponseWriter, r *http.Request) {
 		// If DB rejects feedback_type (e.g. launch_waitlist not in CHECK), tell operator to run migration
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23514" && strings.Contains(strings.ToLower(pqErr.Message), "feedback_type") {
-			http.Error(w, `{"error":"Launch waitlist is not enabled. Run migration 20260328000000_feedback_launch_waitlist on the database."}`, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Launch waitlist is not enabled. Run migration 20260328000000_feedback_launch_waitlist on the database."))
 			return
 		}
-		http.Error(w, `{"error":"Failed to create feedback"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create feedback"))
 		return
 	}
 
@@ -240,7 +241,7 @@ func (h *Handler) GetFeedbackHistory(w http.ResponseWriter, r *http.Request) {
 	// Get user context
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -263,7 +264,7 @@ func (h *Handler) GetFeedbackHistory(w http.ResponseWriter, r *http.Request) {
 	// Get feedback history
 	feedbacks, err := h.repo.GetFeedbackByUser(r.Context(), &user.UserID, nil, limit, offset)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to retrieve feedback history"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve feedback history"))
 		return
 	}
 
@@ -307,7 +308,7 @@ func (h *Handler) ListFeedback(w http.ResponseWriter, r *http.Request) {
 	// Get feedback list
 	feedbacks, err := h.repo.ListFeedback(r.Context(), limit, offset, statusFilter, typeFilter)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve feedback"))
 		return
 	}
 
@@ -326,7 +327,7 @@ func (h *Handler) UpdateFeedbackStatus(w http.ResponseWriter, r *http.Request) {
 
 	feedbackID, err := uuid.Parse(feedbackIDStr)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid feedback ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid feedback ID"))
 		return
 	}
 
@@ -335,7 +336,7 @@ func (h *Handler) UpdateFeedbackStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -350,14 +351,14 @@ func (h *Handler) UpdateFeedbackStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !isValid {
-		http.Error(w, `{"error":"Invalid status. Must be one of: submitted, in-review, resolved, closed"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid status. Must be one of: submitted, in-review, resolved, closed"))
 		return
 	}
 
 	// Update status
 	err = h.repo.UpdateFeedbackStatus(feedbackID, req.Status)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to update feedback status"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update feedback status"))
 		return
 	}
 
@@ -370,7 +371,7 @@ func (h *Handler) UpdateFeedbackStatus(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DownloadAttachment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -378,19 +379,19 @@ func (h *Handler) DownloadAttachment(w http.ResponseWriter, r *http.Request) {
 	attachmentIDStr := vars["id"]
 	attachmentID, err := uuid.Parse(attachmentIDStr)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid attachment ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid attachment ID"))
 		return
 	}
 
 	attachment, err := h.repo.GetFeedbackAttachmentByID(r.Context(), attachmentID)
 	if err != nil || attachment == nil {
-		http.Error(w, `{"error":"Attachment not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Attachment not found"))
 		return
 	}
 
 	feedback, err := h.repo.GetFeedbackByID(r.Context(), attachment.FeedbackID)
 	if err != nil || feedback == nil {
-		http.Error(w, `{"error":"Feedback not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Feedback not found"))
 		return
 	}
 
@@ -405,13 +406,13 @@ func (h *Handler) DownloadAttachment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !allowed {
-		http.Error(w, `{"error":"Forbidden"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	rc, err := h.storageService.GetFile(r.Context(), attachment.S3Key)
 	if err != nil {
-		http.Error(w, `{"error":"Failed to load file"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load file"))
 		return
 	}
 	defer rc.Close()
@@ -428,7 +429,7 @@ func (h *Handler) DownloadAttachment(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetFeedbackStats(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.repo.GetFeedbackStats(r.Context())
 	if err != nil {
-		http.Error(w, `{"error":"Failed to retrieve feedback stats"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve feedback stats"))
 		return
 	}
 
@@ -440,7 +441,7 @@ func (h *Handler) GetFeedbackStats(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetFeedbackAnalytics(w http.ResponseWriter, r *http.Request) {
 	analytics, err := h.repo.GetFeedbackAnalytics(r.Context())
 	if err != nil {
-		http.Error(w, `{"error":"Failed to retrieve feedback analytics"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve feedback analytics"))
 		return
 	}
 
@@ -457,7 +458,7 @@ func (h *Handler) ExportFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if format != "json" && format != "csv" {
-		http.Error(w, `{"error":"Invalid format. Must be 'json' or 'csv'"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid format. Must be 'json' or 'csv'"))
 		return
 	}
 
@@ -471,7 +472,7 @@ func (h *Handler) ExportFeedback(w http.ResponseWriter, r *http.Request) {
 	// Get all feedback (admin can see all)
 	feedbacks, err := h.repo.ListFeedback(r.Context(), 10000, 0, nil, nil) // Get up to 10k records
 	if err != nil {
-		http.Error(w, `{"error":"Failed to retrieve feedback"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve feedback"))
 		return
 	}
 

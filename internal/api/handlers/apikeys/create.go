@@ -32,7 +32,8 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 
 	// Validate request
 	if err := h.validateCreateRequest(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "validation_error", err.Error())
+		logrus.WithError(err).Info("apikeys: validation failed")
+		h.writeError(w, http.StatusBadRequest, "validation_error", "Invalid API key request")
 		return
 	}
 

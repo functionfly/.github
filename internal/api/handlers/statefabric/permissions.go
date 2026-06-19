@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/plans"
 	statestore "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 func (h *Handler) requireFabricPermission(
@@ -27,11 +28,11 @@ func (h *Handler) requireFabricPermission(
 	allowed, err := h.repo.UserHasFabricPermission(r.Context(), tenantID, fabricID, userID, permission)
 	if err != nil {
 		logrus.WithError(err).Error("fabric permission check failed")
-		http.Error(w, "permission check failed", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("permission check failed"))
 		return false
 	}
 	if !allowed {
-		http.Error(w, "permission denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("permission denied"))
 		return false
 	}
 	return true
@@ -64,7 +65,7 @@ func (h *Handler) requireFabricQuota(w http.ResponseWriter, r *http.Request, ten
 	count, err := h.repo.CountFabricsByTenant(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).Error("failed to count state fabrics")
-		http.Error(w, "failed to verify fabric quota", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to verify fabric quota"))
 		return false
 	}
 	if count >= maxFabrics {

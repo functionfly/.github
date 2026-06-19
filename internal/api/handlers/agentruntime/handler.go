@@ -237,10 +237,11 @@ func (h *Handler) HandleExecuteFunction(w http.ResponseWriter, r *http.Request) 
 	timeout := 30 * time.Second
 	execResp, err := h.router.Execute(r.Context(), execReq, timeout)
 	if err != nil {
-		// Record failed execution
+		// Record failed execution (server-side only - the err text is for the execution log, not the response)
 		h.recordExecution(r.Context(), agentID, fn.ID, sessionID, req.Input, nil, err.Error(), int(time.Since(startTime).Milliseconds()), 0)
 
-		writeError(w, http.StatusInternalServerError, "EXECUTION_FAILED", err.Error())
+		logrus.WithError(err).Error("agentruntime: execution failed")
+		writeError(w, http.StatusInternalServerError, "EXECUTION_FAILED", "Execution failed. Check server logs for details.")
 		return
 	}
 

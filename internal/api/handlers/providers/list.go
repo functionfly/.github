@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type ProviderMaintenanceStatus struct {
@@ -20,13 +21,13 @@ type ProviderMaintenanceStatus struct {
 func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 	providers, err := h.repo.GetProvidersByUser(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list providers")
-		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list providers"))
 		return
 	}
 
@@ -43,13 +44,13 @@ func (h *Handler) HandleListProviders(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetProviderCredentials(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 	providers, err := h.repo.GetProvidersByUser(r.Context(), claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list providers")
-		http.Error(w, "Failed to list providers", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list providers"))
 		return
 	}
 
@@ -94,7 +95,7 @@ func (h *Handler) HandleGetPlatformProviderStatus(w http.ResponseWriter, r *http
 	settings, err := h.repo.ListProviderSettings(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list provider settings")
-		http.Error(w, "Failed to retrieve provider status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve provider status"))
 		return
 	}
 

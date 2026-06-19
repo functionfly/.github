@@ -13,6 +13,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/types"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/bundler"
 	deployPkg "github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/flypy"
@@ -44,14 +45,14 @@ func NewHandler(repo storage.Repository, deploySvc *deployPkg.Orchestrator, past
 func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	functions, err := h.repo.ListFunctionsByTenant(r.Context(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list functions")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -67,27 +68,27 @@ func (h *Handler) HandleListFunctions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Check if function belongs to user's tenant
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -99,23 +100,23 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCreateFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req types.CreateFunctionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Name == "" {
-		http.Error(w, "Function name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Function name is required"))
 		return
 	}
 
 	if len(req.Providers) == 0 {
-		http.Error(w, "At least one provider is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("At least one provider is required"))
 		return
 	}
 
@@ -132,7 +133,7 @@ func (h *Handler) HandleCreateFunction(w http.ResponseWriter, r *http.Request) {
 	createdFunction, err := h.repo.CreateFunction(r.Context(), function)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create function")
-		http.Error(w, "Failed to create function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create function"))
 		return
 	}
 
@@ -147,32 +148,32 @@ func (h *Handler) HandleCreateFunction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	var req types.UpdateFunctionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Check if function exists and belongs to user
 	existingFunction, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if existingFunction.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -197,7 +198,7 @@ func (h *Handler) HandleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 	updatedFunction, err := h.repo.UpdateFunction(r.Context(), functionID, updates)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update function")
-		http.Error(w, "Failed to update function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update function"))
 		return
 	}
 
@@ -209,33 +210,33 @@ func (h *Handler) HandleUpdateFunction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function exists and belongs to user
 	existingFunction, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if existingFunction.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	err = h.repo.DeleteFunction(r.Context(), functionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to delete function")
-		http.Error(w, "Failed to delete function", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete function"))
 		return
 	}
 
@@ -246,44 +247,44 @@ func (h *Handler) HandleDeleteFunction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeployFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req types.DeployFunctionRequest // Declare request variable
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate function belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), req.FunctionId)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	// Get backend information
 	backendID, err := uuid.Parse(req.BackendID)
 	if err != nil {
-		http.Error(w, "Invalid backend ID format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid backend ID format"))
 		return
 	}
 	backend, err := h.repo.GetBackendByID(r.Context(), backendID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get backend")
-		http.Error(w, "Backend not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Backend not found"))
 		return
 	}
 
 	// Verify backend belongs to same tenant
 	if function.AppID != nil && backend.AppID != *function.AppID {
-		http.Error(w, "Backend does not belong to the same app as the function", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Backend does not belong to the same app as the function"))
 		return
 	}
 
@@ -303,7 +304,7 @@ func (h *Handler) HandleDeployFunction(w http.ResponseWriter, r *http.Request) {
 	createdDeployment, err := h.repo.CreateFunctionDeployment(r.Context(), deployment)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create deployment")
-		http.Error(w, "Failed to create deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create deployment"))
 		return
 	}
 
@@ -337,13 +338,13 @@ func (h *Handler) HandleDeployFunction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleTestFunction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req types.TestFunctionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -351,12 +352,12 @@ func (h *Handler) HandleTestFunction(w http.ResponseWriter, r *http.Request) {
 	if req.FunctionId != nil {
 		function, err := h.repo.GetFunctionByID(r.Context(), *req.FunctionId)
 		if err != nil {
-			http.Error(w, "Function not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 			return
 		}
 
 		if function.TenantID != user.TenantID {
-			http.Error(w, "Forbidden", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 			return
 		}
 	}
@@ -365,7 +366,7 @@ func (h *Handler) HandleTestFunction(w http.ResponseWriter, r *http.Request) {
 	fullUser, err := h.repo.GetUserByID(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get user")
-		http.Error(w, "User not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -373,7 +374,7 @@ func (h *Handler) HandleTestFunction(w http.ResponseWriter, r *http.Request) {
 	response, err := h.executeTestFunction(r.Context(), &req, fullUser)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to execute test function")
-		http.Error(w, fmt.Sprintf("Failed to execute function: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to execute function"))
 		return
 	}
 
@@ -385,26 +386,26 @@ func (h *Handler) HandleTestFunction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetFunctionLogs(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -419,7 +420,7 @@ func (h *Handler) HandleGetFunctionLogs(w http.ResponseWriter, r *http.Request) 
 	logs, err := h.repo.GetFunctionLogs(r.Context(), &functionID, nil, limit, nil, nil)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function logs")
-		http.Error(w, "Failed to get function logs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function logs"))
 		return
 	}
 
@@ -435,26 +436,26 @@ func (h *Handler) HandleGetFunctionLogs(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleGetFunctionDeployments(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -469,7 +470,7 @@ func (h *Handler) HandleGetFunctionDeployments(w http.ResponseWriter, r *http.Re
 	deployments, err := h.repo.ListFunctionDeployments(r.Context(), functionID, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function deployments")
-		http.Error(w, "Failed to get function deployments", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function deployments"))
 		return
 	}
 
@@ -485,37 +486,37 @@ func (h *Handler) HandleGetFunctionDeployments(w http.ResponseWriter, r *http.Re
 func (h *Handler) HandleGetFunctionDeployment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	deploymentID, err := uuid.Parse(vars["deploymentId"])
 	if err != nil {
-		http.Error(w, "Invalid deployment ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid deployment ID"))
 		return
 	}
 
 	deployment, err := h.repo.GetFunctionDeploymentByID(r.Context(), deploymentID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get function deployment")
-		http.Error(w, "Failed to get function deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get function deployment"))
 		return
 	}
 	if deployment == nil {
-		http.Error(w, "Function deployment not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function deployment not found"))
 		return
 	}
 
 	// Verify user has access to the function
 	function, err := h.repo.GetFunctionByID(r.Context(), deployment.FunctionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -845,7 +846,7 @@ func (h *Handler) HandleParseCode(w http.ResponseWriter, r *http.Request) {
 		h.pasteHandler.HandleParseCode(w, r)
 		return
 	}
-	http.Error(w, "Paste handler not available", http.StatusServiceUnavailable)
+	apierror.WriteError(w, apierror.NewServiceUnavailable("Paste handler not available"))
 }
 
 func (h *Handler) HandleCreateFromCode(w http.ResponseWriter, r *http.Request) {
@@ -853,5 +854,5 @@ func (h *Handler) HandleCreateFromCode(w http.ResponseWriter, r *http.Request) {
 		h.pasteHandler.HandleCreateFromCode(w, r)
 		return
 	}
-	http.Error(w, "Paste handler not available", http.StatusServiceUnavailable)
+	apierror.WriteError(w, apierror.NewServiceUnavailable("Paste handler not available"))
 }

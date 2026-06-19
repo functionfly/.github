@@ -12,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/types"
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/routing"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -38,7 +39,7 @@ func NewHandler(repo storage.Repository, routingSvc *routing.Router) *Handler {
 func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -53,11 +54,11 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 	tenant, err := h.repo.GetTenantByID(r.Context(), app.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", app.TenantID).Error("Failed to get tenant")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 	if tenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 
@@ -66,7 +67,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 	backends, err := h.repo.ListBackendsByAppID(r.Context(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
-		http.Error(w, "Failed to list backends", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list backends"))
 		return
 	}
 
@@ -81,26 +82,26 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 
 	var req types.CreateBackendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate required fields
 	if req.Provider == "" || req.Region == "" || req.URL == "" {
-		http.Error(w, "Provider, region, and URL are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider, region, and URL are required"))
 		return
 	}
 
 	// Get adapter for validation
 	adapter := utils.GetAdapterForProvider(req.Provider)
 	if adapter == nil {
-		http.Error(w, "Invalid provider. Must be one of: workers, vercel, fly, deno-deploy, functionfly-edge", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid provider. Must be one of: workers, vercel, fly, deno-deploy, functionfly-edge"))
 		return
 	}
 
 	// Validate region and URL using provider-specific logic
 	if err := adapter.ValidateConfig(req.Region, req.URL); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid configuration: %v", err), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeValidation, "invalid backend configuration")
 		return
 	}
 
@@ -112,7 +113,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 		const length = 32
 		bytes := make([]byte, length)
 		if _, err := rand.Read(bytes); err != nil {
-			http.Error(w, "Failed to generate secure secret", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to generate secure secret"))
 			return
 		}
 		for i, b := range bytes {
@@ -128,7 +129,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 			"provider": req.Provider,
 			"region":   req.Region,
 		}).Error("Failed to create backend")
-		http.Error(w, "Failed to create backend", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create backend"))
 		return
 	}
 
@@ -141,7 +142,7 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListBackends(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -155,7 +156,7 @@ func (h *Handler) HandleListBackends(w http.ResponseWriter, r *http.Request) {
 	backends, err := h.repo.ListBackendsByAppID(r.Context(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
-		http.Error(w, "Failed to list backends", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list backends"))
 		return
 	}
 
@@ -169,7 +170,7 @@ func (h *Handler) HandleListBackends(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetRoute(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -184,11 +185,11 @@ func (h *Handler) HandleGetRoute(w http.ResponseWriter, r *http.Request) {
 	tenant, err := h.repo.GetTenantByID(r.Context(), app.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", app.TenantID).Error("Failed to get tenant")
-		http.Error(w, "Failed to get tenant", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get tenant"))
 		return
 	}
 	if tenant == nil {
-		http.Error(w, "Tenant not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Tenant not found"))
 		return
 	}
 
@@ -207,7 +208,7 @@ func (h *Handler) HandleGetRoute(w http.ResponseWriter, r *http.Request) {
 	decision, err := h.routingSvc.SelectBackend(appID, method, requestID, tenant.Plan)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get routing decision")
-		http.Error(w, "Failed to get routing decision", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get routing decision"))
 		return
 	}
 
@@ -219,7 +220,7 @@ func (h *Handler) HandleGetRoute(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeployBlueGreen(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -241,26 +242,26 @@ func (h *Handler) HandleDeployBlueGreen(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Provider != "workers" {
-		http.Error(w, "Blue/green deployment is only supported for Cloudflare Workers", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Blue/green deployment is only supported for Cloudflare Workers"))
 		return
 	}
 
 	// Get adapter
 	adapter := utils.GetAdapterForProvider(req.Provider)
 	if adapter == nil {
-		http.Error(w, "Invalid provider", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid provider"))
 		return
 	}
 
 	// Check if adapter supports blue/green deployment
 	extendedAdapter, ok := adapter.(common.ExtendedDeploymentAdapter)
 	if !ok {
-		http.Error(w, "Provider does not support blue/green deployment", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider does not support blue/green deployment"))
 		return
 	}
 
@@ -275,7 +276,7 @@ func (h *Handler) HandleDeployBlueGreen(w http.ResponseWriter, r *http.Request) 
 	result, err := extendedAdapter.DeployBlueGreen(r.Context(), spec, req.ZoneID, req.Domain, req.EnableProxied)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Blue/green deployment failed")
-		http.Error(w, fmt.Sprintf("Blue/green deployment failed: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("blue/green deployment failed"))
 		return
 	}
 
@@ -288,7 +289,7 @@ func (h *Handler) HandleDeployBlueGreen(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleLinkProject(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -307,26 +308,26 @@ func (h *Handler) HandleLinkProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Provider != "vercel" {
-		http.Error(w, "Project linking is only supported for Vercel", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Project linking is only supported for Vercel"))
 		return
 	}
 
 	// Get adapter
 	adapter := utils.GetAdapterForProvider(req.Provider)
 	if adapter == nil {
-		http.Error(w, "Invalid provider", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid provider"))
 		return
 	}
 
 	// Check if adapter supports project linking
 	extendedAdapter, ok := adapter.(common.ExtendedDeploymentAdapter)
 	if !ok {
-		http.Error(w, "Provider does not support project linking", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider does not support project linking"))
 		return
 	}
 
@@ -334,7 +335,7 @@ func (h *Handler) HandleLinkProject(w http.ResponseWriter, r *http.Request) {
 	result, err := extendedAdapter.LinkProject(r.Context(), req.ProviderConfig, appID.String(), req.Environment)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Project linking failed")
-		http.Error(w, fmt.Sprintf("Project linking failed: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("project linking failed"))
 		return
 	}
 
@@ -347,7 +348,7 @@ func (h *Handler) HandleLinkProject(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleSetSecrets(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -366,26 +367,26 @@ func (h *Handler) HandleSetSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Provider != "fly" {
-		http.Error(w, "Secret management is only supported for Fly.io", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Secret management is only supported for Fly.io"))
 		return
 	}
 
 	// Get adapter
 	adapter := utils.GetAdapterForProvider(req.Provider)
 	if adapter == nil {
-		http.Error(w, "Invalid provider", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid provider"))
 		return
 	}
 
 	// Check if adapter supports secret management
 	extendedAdapter, ok := adapter.(common.ExtendedDeploymentAdapter)
 	if !ok {
-		http.Error(w, "Provider does not support secret management", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider does not support secret management"))
 		return
 	}
 
@@ -393,7 +394,7 @@ func (h *Handler) HandleSetSecrets(w http.ResponseWriter, r *http.Request) {
 	result, err := extendedAdapter.SetSecrets(r.Context(), req.ProviderConfig, req.Secrets)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to set secrets")
-		http.Error(w, fmt.Sprintf("Failed to set secrets: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to set secrets"))
 		return
 	}
 
@@ -406,7 +407,7 @@ func (h *Handler) HandleSetSecrets(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -424,26 +425,26 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Provider != "fly" {
-		http.Error(w, "Secret management is only supported for Fly.io", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Secret management is only supported for Fly.io"))
 		return
 	}
 
 	// Get adapter
 	adapter := utils.GetAdapterForProvider(req.Provider)
 	if adapter == nil {
-		http.Error(w, "Invalid provider", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid provider"))
 		return
 	}
 
 	// Check if adapter supports secret management
 	extendedAdapter, ok := adapter.(common.ExtendedDeploymentAdapter)
 	if !ok {
-		http.Error(w, "Provider does not support secret management", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider does not support secret management"))
 		return
 	}
 
@@ -451,7 +452,7 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	result, err := extendedAdapter.ListSecrets(r.Context(), req.ProviderConfig)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list secrets")
-		http.Error(w, fmt.Sprintf("Failed to list secrets: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to list secrets"))
 		return
 	}
 
@@ -464,7 +465,7 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteBackend(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -477,32 +478,32 @@ func (h *Handler) HandleDeleteBackend(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	backendIDStr := vars["backendId"]
 	if backendIDStr == "" {
-		http.Error(w, "Backend ID is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Backend ID is required"))
 		return
 	}
 
 	backendID, err := uuid.Parse(backendIDStr)
 	if err != nil {
-		http.Error(w, "Invalid backend ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid backend ID"))
 		return
 	}
 
 	// Verify backend belongs to this app
 	backend, err := h.repo.GetBackendByID(r.Context(), backendID)
 	if err != nil {
-		http.Error(w, "Backend not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Backend not found"))
 		return
 	}
 
 	if backend.AppID != app.ID {
-		http.Error(w, "Backend not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Backend not found"))
 		return
 	}
 
 	// Delete using GORM directly
 	if err := h.repo.DeleteBackend(r.Context(), backendID); err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to delete backend")
-		http.Error(w, "Failed to delete backend", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete backend"))
 		return
 	}
 

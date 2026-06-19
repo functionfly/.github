@@ -124,13 +124,13 @@ func (h *SearchHandler) HandleExecuteTool(w http.ResponseWriter, r *http.Request
 	// Check if tool exists
 	tool, err := h.toolRegistry.Get(req.ToolName)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "TOOL_NOT_FOUND", err.Error())
+		writeErrorFromErr(r, w, http.StatusNotFound, "TOOL_NOT_FOUND", "get search tool", err)
 		return
 	}
 
 	// Validate parameters
 	if err := tool.Validate(req.Parameters); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_PARAMETERS", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_PARAMETERS", "validate search parameters", err)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *SearchHandler) HandleExecuteTool(w http.ResponseWriter, r *http.Request
 	// Execute tool
 	toolResult, err := tool.Execute(r.Context(), req.Parameters, execCtx.AgentID, "", execCtx.SessionID, execCtx.CallDepth)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "EXECUTION_FAILED", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "EXECUTION_FAILED", "execute search tool", err)
 		return
 	}
 
@@ -255,7 +255,7 @@ func (h *SearchHandler) HandleGetExecutionStats(w http.ResponseWriter, r *http.R
 
 	stats, err := h.execRepo.GetStats(r.Context(), toolName, since)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "STATS_FAILED", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "STATS_FAILED", "get search stats", err)
 		return
 	}
 
@@ -297,7 +297,7 @@ func (h *SearchHandler) HandleListExecutions(w http.ResponseWriter, r *http.Requ
 
 	executions, err := h.execRepo.ListByAgent(r.Context(), agentID, limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "LIST_FAILED", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "LIST_FAILED", "list search executions", err)
 		return
 	}
 
@@ -396,4 +396,53 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 		"ok":    false,
 		"error": map[string]string{"code": code, "message": message},
 	})
+}
+
+// writeErrorFromErr logs err server-side with context and writes a generic
+// client-visible message. Use in place of writeError(w, status, code, err.Error()).
+func writeErrorFromErr(r *http.Request, w http.ResponseWriter, status int, code, contextMsg string, err error) {
+	if err != nil {
+		fields := logrus.Fields{
+			"status":  status,
+			"code":    code,
+			"context": contextMsg,
+			"method":  "",
+			"path":    "",
+		}
+		if r != nil {
+			fields["method"] = r.Method
+			if r.URL != nil {
+				fields["path"] = r.URL.Path
+			}
+		}
+		entry := logrus.WithError(err).WithFields(fields)
+		if status >= 500 {
+			entry.Error("search handler error")
+		} else {
+			entry.Info("search handler client error")
+		}
+	}
+	message := sanitizedSearchErrorMessage(status, code, contextMsg)
+	writeError(w, status, code, message)
+}
+
+func sanitizedSearchErrorMessage(status int, code, contextMsg string) string {
+	if status >= 500 {
+		switch code {
+		case "EXECUTION_FAILED":
+			return "Search execution failed. Check server logs for details."
+		case "STATS_FAILED":
+			return "Failed to retrieve search statistics."
+		case "LIST_FAILED":
+			return "Failed to list search tools."
+		}
+		return "Internal server error"
+	}
+	switch code {
+	case "TOOL_NOT_FOUND":
+		return "Search tool not found"
+	case "INVALID_PARAMETERS":
+		return "Invalid search parameters"
+	}
+	return contextMsg
 }

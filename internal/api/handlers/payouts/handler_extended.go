@@ -78,7 +78,7 @@ func (h *ExtendedHandler) HandleRequestPayoutWithFees(w http.ResponseWriter, r *
 			"user_id":      claims.UserID,
 			"amount_cents": payload.AmountCents,
 		}).Error("payouts: failed to request payout")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, "Payout request failed")
 		return
 	}
 
@@ -113,7 +113,7 @@ func (h *ExtendedHandler) HandleCancelPayout(w http.ResponseWriter, r *http.Requ
 
 	if err := h.payoutService.CancelPayout(r.Context(), claims.UserID, payoutID, payload.Reason); err != nil {
 		logrus.WithError(err).WithField("user_id", claims.UserID).Error("payouts: failed to cancel")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, "Payout cancellation failed")
 		return
 	}
 
@@ -465,7 +465,7 @@ func (h *ExtendedHandler) HandleAdminAdjustBalance(w http.ResponseWriter, r *htt
 
 	if err != nil {
 		logrus.WithError(err).Error("admin: failed to adjust balance")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, "Balance adjustment failed")
 		return
 	}
 

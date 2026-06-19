@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleGetFunctionMetrics handles GET /v1/functions/{id}/metrics
@@ -18,24 +19,24 @@ import (
 func (h *Handler) HandleGetFunctionMetrics(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -43,7 +44,7 @@ func (h *Handler) HandleGetFunctionMetrics(w http.ResponseWriter, r *http.Reques
 	deployments, err := h.repo.ListFunctionDeployments(r.Context(), functionID, 0)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list deployments for metrics")
-		http.Error(w, "Failed to retrieve metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve metrics"))
 		return
 	}
 
@@ -51,7 +52,7 @@ func (h *Handler) HandleGetFunctionMetrics(w http.ResponseWriter, r *http.Reques
 	logs, err := h.repo.GetFunctionLogs(r.Context(), &functionID, nil, 500, nil, nil)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to fetch logs for metrics")
-		http.Error(w, "Failed to retrieve metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve metrics"))
 		return
 	}
 

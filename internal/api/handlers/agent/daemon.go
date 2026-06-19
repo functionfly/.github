@@ -155,7 +155,7 @@ func (h *DaemonHandler) UpdateDaemonConfig(w http.ResponseWriter, r *http.Reques
 
 	var config DaemonConfig
 	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode daemon request", err)
 		return
 	}
 

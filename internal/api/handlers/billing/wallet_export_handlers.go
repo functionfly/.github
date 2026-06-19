@@ -81,13 +81,13 @@ func (h *WalletExportHandler) ExportWallets(w http.ResponseWriter, r *http.Reque
 
 	userID, err := h.extractUserID(r)
 	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, "Unauthorized", err.Error())
+		writeErrorFromErr(r, w, http.StatusUnauthorized, "Unauthorized", "wallet export auth", err, h.writeError)
 		return
 	}
 
 	var req ExportWalletsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "wallet export request", err, h.writeError)
 		return
 	}
 
@@ -141,7 +141,7 @@ func (h *WalletExportHandler) ExportOwnWallet(w http.ResponseWriter, r *http.Req
 
 	userID, err := h.extractUserID(r)
 	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, "Unauthorized", err.Error())
+		writeErrorFromErr(r, w, http.StatusUnauthorized, "Unauthorized", "wallet export auth", err, h.writeError)
 		return
 	}
 

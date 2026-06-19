@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler contains status page handlers
@@ -202,7 +203,7 @@ func (h *Handler) HandleGetProviders(w http.ResponseWriter, r *http.Request) {
 	providers, err := h.repo.GetProviderStatus(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get provider status")
-		http.Error(w, "Failed to get provider status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get provider status"))
 		return
 	}
 
@@ -317,7 +318,7 @@ func (h *Handler) HandleListIncidents(w http.ResponseWriter, r *http.Request) {
 	response, err := h.repo.ListIncidents(ctx, query)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list incidents")
-		http.Error(w, "Failed to list incidents", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list incidents"))
 		return
 	}
 
@@ -331,18 +332,18 @@ func (h *Handler) HandleGetIncident(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	incidentID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid incident ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid incident ID"))
 		return
 	}
 
 	incident, err := h.repo.GetIncidentByID(ctx, incidentID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Incident not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Incident not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get incident")
-		http.Error(w, "Failed to get incident", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get incident"))
 		return
 	}
 
@@ -356,38 +357,38 @@ func (h *Handler) HandleCreateIncident(w http.ResponseWriter, r *http.Request) {
 	// Verify admin access
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.isAdmin(user) {
-		http.Error(w, "Admin access required", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Admin access required"))
 		return
 	}
 
 	var req CreateIncidentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate required fields
 	if req.Title == "" || req.Severity == "" || req.Description == "" {
-		http.Error(w, "Title, severity, and description are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Title, severity, and description are required"))
 		return
 	}
 
 	// Validate severity
 	validSeverities := map[string]bool{"critical": true, "high": true, "medium": true, "low": true}
 	if !validSeverities[req.Severity] {
-		http.Error(w, "Invalid severity value", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid severity value"))
 		return
 	}
 
 	incident, err := h.repo.CreateIncident(ctx, &req, user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create incident")
-		http.Error(w, "Failed to create incident", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create incident"))
 		return
 	}
 
@@ -401,25 +402,25 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 	// Verify admin access
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.isAdmin(user) {
-		http.Error(w, "Admin access required", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Admin access required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	incidentID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid incident ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid incident ID"))
 		return
 	}
 
 	var req UpdateIncidentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -427,7 +428,7 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 	if req.Severity != "" {
 		validSeverities := map[string]bool{"critical": true, "high": true, "medium": true, "low": true}
 		if !validSeverities[req.Severity] {
-			http.Error(w, "Invalid severity value", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid severity value"))
 			return
 		}
 	}
@@ -436,7 +437,7 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 	if req.Status != "" {
 		validStatuses := map[string]bool{"investigating": true, "identified": true, "monitoring": true, "resolved": true}
 		if !validStatuses[req.Status] {
-			http.Error(w, "Invalid status value", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid status value"))
 			return
 		}
 	}
@@ -444,11 +445,11 @@ func (h *Handler) HandleUpdateIncident(w http.ResponseWriter, r *http.Request) {
 	incident, err := h.repo.UpdateIncident(ctx, incidentID, &req, user.UserID)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Incident not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Incident not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to update incident")
-		http.Error(w, "Failed to update incident", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update incident"))
 		return
 	}
 
@@ -734,7 +735,7 @@ func (h *Handler) HandleListMaintenance(w http.ResponseWriter, r *http.Request) 
 	response, err := h.repo.ListMaintenance(ctx, query)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list maintenance")
-		http.Error(w, "Failed to list maintenance", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list maintenance"))
 		return
 	}
 
@@ -748,36 +749,36 @@ func (h *Handler) HandleCreateMaintenance(w http.ResponseWriter, r *http.Request
 	// Verify admin access
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.isAdmin(user) {
-		http.Error(w, "Admin access required", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Admin access required"))
 		return
 	}
 
 	var req CreateMaintenanceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate required fields
 	if req.Title == "" || req.ScheduledStart.IsZero() || req.ScheduledEnd.IsZero() {
-		http.Error(w, "Title, scheduled_start, and scheduled_end are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Title, scheduled_start, and scheduled_end are required"))
 		return
 	}
 
 	if req.ScheduledEnd.Before(req.ScheduledStart) {
-		http.Error(w, "scheduled_end must be after scheduled_start", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("scheduled_end must be after scheduled_start"))
 		return
 	}
 
 	maintenance, err := h.repo.CreateMaintenance(ctx, &req, user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create maintenance")
-		http.Error(w, "Failed to create maintenance", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create maintenance"))
 		return
 	}
 

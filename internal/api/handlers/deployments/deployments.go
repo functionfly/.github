@@ -3,13 +3,13 @@ package deployments
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/api/apputil"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/types"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -35,7 +35,7 @@ func NewHandler(repo storage.Repository, deploySvc *deployment.Orchestrator) *Ha
 func (h *Handler) HandleDeploy(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -49,20 +49,20 @@ func (h *Handler) HandleDeploy(w http.ResponseWriter, r *http.Request) {
 
 	var req types.DeployRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate required fields
 	if req.Provider == "" || req.Region == "" || req.Artifact == "" {
-		http.Error(w, "Provider, region, and artifact are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider, region, and artifact are required"))
 		return
 	}
 
 	// Decode base64 artifact
 	artifactData, err := base64.StdEncoding.DecodeString(req.Artifact)
 	if err != nil {
-		http.Error(w, "Invalid artifact data", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid artifact data"))
 		return
 	}
 
@@ -84,7 +84,7 @@ func (h *Handler) HandleDeploy(w http.ResponseWriter, r *http.Request) {
 			"app_id":   appID,
 			"provider": req.Provider,
 		}).Error("Failed to deploy")
-		http.Error(w, fmt.Sprintf("Deployment failed: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("deployment failed"))
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *Handler) HandleDeploy(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 	ctx := r.Context()
@@ -121,7 +121,7 @@ func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) 
 	deployments, err := h.deploySvc.ListDeployments(r.Context(), appID, limit)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list deployments")
-		http.Error(w, "Failed to list deployments", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list deployments"))
 		return
 	}
 
@@ -135,7 +135,7 @@ func (h *Handler) HandleListDeployments(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 	ctx := r.Context()
@@ -144,18 +144,18 @@ func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 	deploymentIDStr := vars["deploymentId"]
 	deploymentID, err := uuid.Parse(deploymentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid deployment ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid deployment ID"))
 		return
 	}
 
 	deployment, err := h.deploySvc.GetDeploymentStatus(r.Context(), deploymentID)
 	if err != nil {
 		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to get deployment")
-		http.Error(w, "Failed to get deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get deployment"))
 		return
 	}
 	if deployment == nil {
-		http.Error(w, "Deployment not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Deployment not found"))
 		return
 	}
 
@@ -163,11 +163,11 @@ func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 	app, err := h.repo.GetAppByID(ctx, deployment.AppID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", deployment.AppID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get app"))
 		return
 	}
 	if app == nil || app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -179,7 +179,7 @@ func (h *Handler) HandleGetDeployment(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 	ctx := r.Context()
@@ -188,7 +188,7 @@ func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 	deploymentIDStr := vars["deploymentId"]
 	deploymentID, err := uuid.Parse(deploymentIDStr)
 	if err != nil {
-		http.Error(w, "Invalid deployment ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid deployment ID"))
 		return
 	}
 
@@ -196,11 +196,11 @@ func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 	deployment, err := h.repo.GetDeploymentByID(ctx, deploymentID)
 	if err != nil {
 		logrus.WithError(err).WithField("deployment_id", deploymentID).Error("Failed to get deployment")
-		http.Error(w, "Failed to get deployment", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get deployment"))
 		return
 	}
 	if deployment == nil {
-		http.Error(w, "Deployment not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Deployment not found"))
 		return
 	}
 
@@ -208,11 +208,11 @@ func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 	app, err := h.repo.GetAppByID(ctx, deployment.AppID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", deployment.AppID).Error("Failed to get app")
-		http.Error(w, "Failed to get app", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get app"))
 		return
 	}
 	if app == nil || app.TenantID != user.TenantID {
-		http.Error(w, "Access denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
 		return
 	}
 
@@ -223,7 +223,7 @@ func (h *Handler) HandleRollback(w http.ResponseWriter, r *http.Request) {
 			"app_id":        deployment.AppID,
 			"deployment_id": deploymentID,
 		}).Error("Failed to rollback")
-		http.Error(w, fmt.Sprintf("Rollback failed: %v", err), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("rollback failed"))
 		return
 	}
 

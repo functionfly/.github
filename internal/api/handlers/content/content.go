@@ -83,7 +83,7 @@ func (h *Handler) HandleListChangelogEntries(w http.ResponseWriter, r *http.Requ
 	entries, err := h.repo.ListChangelogEntries(ctx, limit, offset, publishedOnly)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list changelog entries")
-		http.Error(w, "Failed to list changelog entries", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list changelog entries"))
 		return
 	}
 
@@ -103,7 +103,7 @@ func (h *Handler) HandleGetChangelogEntry(w http.ResponseWriter, r *http.Request
 
 	entryID, err := uuid.Parse(entryIDStr)
 	if err != nil {
-		http.Error(w, "Invalid entry ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid entry ID"))
 		return
 	}
 
@@ -111,9 +111,9 @@ func (h *Handler) HandleGetChangelogEntry(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get changelog entry")
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Changelog entry not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Changelog entry not found"))
 		} else {
-			http.Error(w, "Failed to get changelog entry", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get changelog entry"))
 		}
 		return
 	}
@@ -137,19 +137,19 @@ func (h *Handler) HandleCreateChangelogEntry(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate required fields
 	if req.Version == "" || req.Title == "" || req.Type == "" {
-		http.Error(w, "Version, title, and type are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Version, title, and type are required"))
 		return
 	}
 
 	// Validate type
 	if req.Type != "major" && req.Type != "minor" && req.Type != "patch" {
-		http.Error(w, "Type must be major, minor, or patch", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Type must be major, minor, or patch"))
 		return
 	}
 
@@ -168,7 +168,7 @@ func (h *Handler) HandleCreateChangelogEntry(w http.ResponseWriter, r *http.Requ
 	created, err := h.repo.CreateChangelogEntry(r.Context(), entry)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create changelog entry")
-		http.Error(w, "Failed to create changelog entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create changelog entry"))
 		return
 	}
 
@@ -184,13 +184,13 @@ func (h *Handler) HandleUpdateChangelogEntry(w http.ResponseWriter, r *http.Requ
 
 	entryID, err := uuid.Parse(entryIDStr)
 	if err != nil {
-		http.Error(w, "Invalid entry ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid entry ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -198,7 +198,7 @@ func (h *Handler) HandleUpdateChangelogEntry(w http.ResponseWriter, r *http.Requ
 	if typeVal, ok := updates["type"]; ok {
 		if typeStr, ok := typeVal.(string); ok {
 			if typeStr != "major" && typeStr != "minor" && typeStr != "patch" {
-				http.Error(w, "Type must be major, minor, or patch", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("Type must be major, minor, or patch"))
 				return
 			}
 		}
@@ -208,9 +208,9 @@ func (h *Handler) HandleUpdateChangelogEntry(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update changelog entry")
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Changelog entry not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Changelog entry not found"))
 		} else {
-			http.Error(w, "Failed to update changelog entry", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update changelog entry"))
 		}
 		return
 	}
@@ -226,13 +226,13 @@ func (h *Handler) HandleDeleteChangelogEntry(w http.ResponseWriter, r *http.Requ
 
 	entryID, err := uuid.Parse(entryIDStr)
 	if err != nil {
-		http.Error(w, "Invalid entry ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid entry ID"))
 		return
 	}
 
 	if err := h.repo.DeleteChangelogEntry(r.Context(), entryID); err != nil {
 		logrus.WithError(err).Error("Failed to delete changelog entry")
-		http.Error(w, "Failed to delete changelog entry", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete changelog entry"))
 		return
 	}
 
@@ -246,7 +246,7 @@ func (h *Handler) HandleCreateChangelogChange(w http.ResponseWriter, r *http.Req
 
 	entryID, err := uuid.Parse(entryIDStr)
 	if err != nil {
-		http.Error(w, "Invalid entry ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid entry ID"))
 		return
 	}
 
@@ -257,12 +257,12 @@ func (h *Handler) HandleCreateChangelogChange(w http.ResponseWriter, r *http.Req
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if req.Category == "" || req.Icon == "" || len(req.Items) == 0 {
-		http.Error(w, "Category, icon, and items are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Category, icon, and items are required"))
 		return
 	}
 
@@ -276,7 +276,7 @@ func (h *Handler) HandleCreateChangelogChange(w http.ResponseWriter, r *http.Req
 	created, err := h.repo.CreateChangelogChange(r.Context(), change)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create changelog change")
-		http.Error(w, "Failed to create changelog change", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create changelog change"))
 		return
 	}
 
@@ -292,20 +292,20 @@ func (h *Handler) HandleUpdateChangelogChange(w http.ResponseWriter, r *http.Req
 
 	changeID, err := uuid.Parse(changeIDStr)
 	if err != nil {
-		http.Error(w, "Invalid change ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid change ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	updated, err := h.repo.UpdateChangelogChange(r.Context(), changeID, updates)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update changelog change")
-		http.Error(w, "Failed to update changelog change", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update changelog change"))
 		return
 	}
 
@@ -320,13 +320,13 @@ func (h *Handler) HandleDeleteChangelogChange(w http.ResponseWriter, r *http.Req
 
 	changeID, err := uuid.Parse(changeIDStr)
 	if err != nil {
-		http.Error(w, "Invalid change ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid change ID"))
 		return
 	}
 
 	if err := h.repo.DeleteChangelogChange(r.Context(), changeID); err != nil {
 		logrus.WithError(err).Error("Failed to delete changelog change")
-		http.Error(w, "Failed to delete changelog change", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete changelog change"))
 		return
 	}
 
@@ -406,7 +406,7 @@ func (h *Handler) HandleGetBlogPost(w http.ResponseWriter, r *http.Request) {
 
 	postID, err := uuid.Parse(postIDStr)
 	if err != nil {
-		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid post ID"))
 		return
 	}
 
@@ -414,9 +414,9 @@ func (h *Handler) HandleGetBlogPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog post")
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Blog post not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Blog post not found"))
 		} else {
-			http.Error(w, "Failed to get blog post", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get blog post"))
 		}
 		return
 	}
@@ -432,7 +432,7 @@ func (h *Handler) HandleGetBlogPostBySlug(w http.ResponseWriter, r *http.Request
 	slug := vars["slug"]
 
 	if slug == "" {
-		http.Error(w, "Slug is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Slug is required"))
 		return
 	}
 
@@ -440,9 +440,9 @@ func (h *Handler) HandleGetBlogPostBySlug(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog post by slug")
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Blog post not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Blog post not found"))
 		} else {
-			http.Error(w, "Failed to get blog post", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get blog post"))
 		}
 		return
 	}
@@ -467,13 +467,13 @@ func (h *Handler) HandleCreateBlogPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate required fields
 	if req.Title == "" || req.Slug == "" || req.Content == "" || req.Author == "" {
-		http.Error(w, "Title, slug, content, and author are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Title, slug, content, and author are required"))
 		return
 	}
 
@@ -493,7 +493,7 @@ func (h *Handler) HandleCreateBlogPost(w http.ResponseWriter, r *http.Request) {
 	created, err := h.repo.CreateBlogPost(r.Context(), post)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create blog post")
-		http.Error(w, "Failed to create blog post", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create blog post"))
 		return
 	}
 
@@ -509,13 +509,13 @@ func (h *Handler) HandleUpdateBlogPost(w http.ResponseWriter, r *http.Request) {
 
 	postID, err := uuid.Parse(postIDStr)
 	if err != nil {
-		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid post ID"))
 		return
 	}
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
@@ -523,9 +523,9 @@ func (h *Handler) HandleUpdateBlogPost(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update blog post")
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Blog post not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Blog post not found"))
 		} else {
-			http.Error(w, "Failed to update blog post", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update blog post"))
 		}
 		return
 	}
@@ -541,13 +541,13 @@ func (h *Handler) HandleDeleteBlogPost(w http.ResponseWriter, r *http.Request) {
 
 	postID, err := uuid.Parse(postIDStr)
 	if err != nil {
-		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid post ID"))
 		return
 	}
 
 	if err := h.repo.DeleteBlogPost(r.Context(), postID); err != nil {
 		logrus.WithError(err).Error("Failed to delete blog post")
-		http.Error(w, "Failed to delete blog post", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete blog post"))
 		return
 	}
 
@@ -570,7 +570,7 @@ func (h *Handler) HandleGetPublishedChangelogEntries(w http.ResponseWriter, r *h
 	entries, err := h.repo.ListChangelogEntries(ctx, limit, 0, true)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get published changelog entries")
-		http.Error(w, "Failed to get changelog entries", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get changelog entries"))
 		return
 	}
 
@@ -618,7 +618,7 @@ func (h *Handler) HandleGetPublishedBlogPosts(w http.ResponseWriter, r *http.Req
 	posts, err := h.repo.ListBlogPosts(ctx, limit, offset, true, tagFilter)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list published blog posts")
-		http.Error(w, "Failed to load blog posts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load blog posts"))
 		return
 	}
 	if posts == nil {
@@ -640,7 +640,7 @@ func (h *Handler) HandleGetPublishedBlogPostBySlug(w http.ResponseWriter, r *htt
 	slug := vars["slug"]
 
 	if slug == "" {
-		http.Error(w, "Slug is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Slug is required"))
 		return
 	}
 
@@ -648,16 +648,16 @@ func (h *Handler) HandleGetPublishedBlogPostBySlug(w http.ResponseWriter, r *htt
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog post by slug")
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Blog post not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Blog post not found"))
 		} else {
-			http.Error(w, "Failed to get blog post", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get blog post"))
 		}
 		return
 	}
 
 	// Only return published posts
 	if !post.IsPublished {
-		http.Error(w, "Blog post not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Blog post not found"))
 		return
 	}
 
@@ -670,7 +670,7 @@ func (h *Handler) HandleGetBlogCategories(w http.ResponseWriter, r *http.Request
 	list, err := h.repo.ListBlogCategories(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list blog categories")
-		http.Error(w, "Failed to list categories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list categories"))
 		return
 	}
 	if list == nil {
@@ -685,7 +685,7 @@ func (h *Handler) HandleGetBlogAuthors(w http.ResponseWriter, r *http.Request) {
 	list, err := h.repo.ListBlogAuthors(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list blog authors")
-		http.Error(w, "Failed to list authors", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list authors"))
 		return
 	}
 	if list == nil {
@@ -702,7 +702,7 @@ func (h *Handler) HandleListAdminCategories(w http.ResponseWriter, r *http.Reque
 	list, err := h.repo.ListBlogCategories(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list blog categories")
-		http.Error(w, "Failed to list blog categories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list blog categories"))
 		return
 	}
 	if list == nil {
@@ -723,11 +723,11 @@ func (h *Handler) HandleCreateAdminCategory(w http.ResponseWriter, r *http.Reque
 		Order       int    `json:"order"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	if strings.TrimSpace(req.Title) == "" {
-		http.Error(w, "Title is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Title is required"))
 		return
 	}
 	slug := strings.TrimSpace(req.Slug)
@@ -779,16 +779,16 @@ func (h *Handler) HandleGetAdminCategory(w http.ResponseWriter, r *http.Request)
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid category ID"))
 		return
 	}
 	c, err := h.repo.GetBlogCategoryByID(r.Context(), id)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Category not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Category not found"))
 		} else {
 			logrus.WithError(err).Error("Failed to get blog category")
-			http.Error(w, "Failed to get blog category", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get blog category"))
 		}
 		return
 	}
@@ -801,21 +801,21 @@ func (h *Handler) HandleUpdateAdminCategory(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid category ID"))
 		return
 	}
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	updated, err := h.repo.UpdateBlogCategory(r.Context(), id, updates)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Category not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Category not found"))
 		} else {
 			logrus.WithError(err).Error("Failed to update blog category")
-			http.Error(w, "Failed to update blog category", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update blog category"))
 		}
 		return
 	}
@@ -828,12 +828,12 @@ func (h *Handler) HandleDeleteAdminCategory(w http.ResponseWriter, r *http.Reque
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid category ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid category ID"))
 		return
 	}
 	if err := h.repo.DeleteBlogCategory(r.Context(), id); err != nil {
 		logrus.WithError(err).Error("Failed to delete blog category")
-		http.Error(w, "Failed to delete blog category", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete blog category"))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -846,7 +846,7 @@ func (h *Handler) HandleListAdminAuthors(w http.ResponseWriter, r *http.Request)
 	list, err := h.repo.ListBlogAuthors(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list blog authors")
-		http.Error(w, "Failed to list blog authors", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list blog authors"))
 		return
 	}
 	if list == nil {
@@ -870,11 +870,11 @@ func (h *Handler) HandleCreateAdminAuthor(w http.ResponseWriter, r *http.Request
 		Active      bool                   `json:"active"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Slug) == "" {
-		http.Error(w, "Name and slug are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Name and slug are required"))
 		return
 	}
 	a := &storage.BlogAuthor{
@@ -891,7 +891,7 @@ func (h *Handler) HandleCreateAdminAuthor(w http.ResponseWriter, r *http.Request
 	created, err := h.repo.CreateBlogAuthor(r.Context(), a)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to create blog author")
-		http.Error(w, "Failed to create blog author", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create blog author"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -904,16 +904,16 @@ func (h *Handler) HandleGetAdminAuthor(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid author ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid author ID"))
 		return
 	}
 	a, err := h.repo.GetBlogAuthorByID(r.Context(), id)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Author not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Author not found"))
 		} else {
 			logrus.WithError(err).Error("Failed to get blog author")
-			http.Error(w, "Failed to get blog author", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to get blog author"))
 		}
 		return
 	}
@@ -926,21 +926,21 @@ func (h *Handler) HandleUpdateAdminAuthor(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid author ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid author ID"))
 		return
 	}
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	updated, err := h.repo.UpdateBlogAuthor(r.Context(), id, updates)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, "Author not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Author not found"))
 		} else {
 			logrus.WithError(err).Error("Failed to update blog author")
-			http.Error(w, "Failed to update blog author", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update blog author"))
 		}
 		return
 	}
@@ -953,12 +953,12 @@ func (h *Handler) HandleDeleteAdminAuthor(w http.ResponseWriter, r *http.Request
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid author ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid author ID"))
 		return
 	}
 	if err := h.repo.DeleteBlogAuthor(r.Context(), id); err != nil {
 		logrus.WithError(err).Error("Failed to delete blog author")
-		http.Error(w, "Failed to delete blog author", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete blog author"))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -968,7 +968,7 @@ func (h *Handler) HandleDeleteAdminAuthor(w http.ResponseWriter, r *http.Request
 func (h *Handler) HandleSyncGitHubReleases(w http.ResponseWriter, r *http.Request) {
 	if err := h.githubService.SyncReleases(r.Context(), h.repo); err != nil {
 		logrus.WithError(err).Error("Failed to sync GitHub releases")
-		http.Error(w, "Failed to sync GitHub releases", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to sync GitHub releases"))
 		return
 	}
 
@@ -1035,11 +1035,11 @@ func callOpenRouter(ctx context.Context, prompt string, maxTokens int) (string, 
 // Uses Open Router to generate title and description from version/type/topic.
 func (h *Handler) HandleGenerateChangelogContent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 	if os.Getenv("OPENROUTER_API_KEY") == "" {
-		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Open Router API key not configured (OPENROUTER_API_KEY)"))
 		return
 	}
 
@@ -1049,7 +1049,7 @@ func (h *Handler) HandleGenerateChangelogContent(w http.ResponseWriter, r *http.
 		Topic   string `json:"topic"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	body.Version = strings.TrimSpace(body.Version)
@@ -1071,7 +1071,7 @@ func (h *Handler) HandleGenerateChangelogContent(w http.ResponseWriter, r *http.
 	out, err := callOpenRouter(r.Context(), prompt, 200)
 	if err != nil {
 		logrus.WithError(err).Error("Open Router request failed for changelog generate")
-		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Open Router request failed"))
 		return
 	}
 	title, description := "", ""
@@ -1091,11 +1091,11 @@ func (h *Handler) HandleGenerateChangelogContent(w http.ResponseWriter, r *http.
 // Uses Open Router to generate title, description, and excerpt from topic.
 func (h *Handler) HandleGenerateBlogContent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 	if os.Getenv("OPENROUTER_API_KEY") == "" {
-		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Open Router API key not configured (OPENROUTER_API_KEY)"))
 		return
 	}
 
@@ -1104,13 +1104,13 @@ func (h *Handler) HandleGenerateBlogContent(w http.ResponseWriter, r *http.Reque
 		Title string `json:"title"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	body.Topic = strings.TrimSpace(body.Topic)
 	body.Title = strings.TrimSpace(body.Title)
 	if body.Topic == "" && body.Title == "" {
-		http.Error(w, "topic or title is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("topic or title is required"))
 		return
 	}
 
@@ -1126,7 +1126,7 @@ func (h *Handler) HandleGenerateBlogContent(w http.ResponseWriter, r *http.Reque
 	out, err := callOpenRouter(r.Context(), prompt, 300)
 	if err != nil {
 		logrus.WithError(err).Error("Open Router request failed for blog generate")
-		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Open Router request failed"))
 		return
 	}
 	title, description, excerpt := "", "", ""
@@ -1153,11 +1153,11 @@ func (h *Handler) HandleGenerateBlogContent(w http.ResponseWriter, r *http.Reque
 // Uses Open Router to generate a short author bio from name/role.
 func (h *Handler) HandleGenerateAuthorContent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 	if os.Getenv("OPENROUTER_API_KEY") == "" {
-		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Open Router API key not configured (OPENROUTER_API_KEY)"))
 		return
 	}
 
@@ -1166,13 +1166,13 @@ func (h *Handler) HandleGenerateAuthorContent(w http.ResponseWriter, r *http.Req
 		Role string `json:"role"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	body.Name = strings.TrimSpace(body.Name)
 	body.Role = strings.TrimSpace(body.Role)
 	if body.Name == "" {
-		http.Error(w, "name is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("name is required"))
 		return
 	}
 
@@ -1185,7 +1185,7 @@ func (h *Handler) HandleGenerateAuthorContent(w http.ResponseWriter, r *http.Req
 	out, err := callOpenRouter(r.Context(), prompt, 150)
 	if err != nil {
 		logrus.WithError(err).Error("Open Router request failed for author generate")
-		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Open Router request failed"))
 		return
 	}
 
@@ -1197,11 +1197,11 @@ func (h *Handler) HandleGenerateAuthorContent(w http.ResponseWriter, r *http.Req
 // Uses Open Router to generate a category description from title.
 func (h *Handler) HandleGenerateCategoryContent(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 	if os.Getenv("OPENROUTER_API_KEY") == "" {
-		http.Error(w, "Open Router API key not configured (OPENROUTER_API_KEY)", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Open Router API key not configured (OPENROUTER_API_KEY)"))
 		return
 	}
 
@@ -1209,12 +1209,12 @@ func (h *Handler) HandleGenerateCategoryContent(w http.ResponseWriter, r *http.R
 		Title string `json:"title"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 	body.Title = strings.TrimSpace(body.Title)
 	if body.Title == "" {
-		http.Error(w, "title is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("title is required"))
 		return
 	}
 
@@ -1223,7 +1223,7 @@ func (h *Handler) HandleGenerateCategoryContent(w http.ResponseWriter, r *http.R
 	out, err := callOpenRouter(r.Context(), prompt, 100)
 	if err != nil {
 		logrus.WithError(err).Error("Open Router request failed for category generate")
-		http.Error(w, "Open Router request failed", http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Open Router request failed"))
 		return
 	}
 
@@ -1236,7 +1236,7 @@ func (h *Handler) HandleGetBlogSettings(w http.ResponseWriter, r *http.Request) 
 	settings, err := h.repo.GetBlogSettings(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog settings")
-		http.Error(w, "Failed to get blog settings", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get blog settings"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -1247,14 +1247,14 @@ func (h *Handler) HandleGetBlogSettings(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleUpdateBlogSettings(w http.ResponseWriter, r *http.Request) {
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	settings, err := h.repo.UpdateBlogSettings(r.Context(), updates)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to update blog settings")
-		http.Error(w, "Failed to update blog settings", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update blog settings"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -1270,7 +1270,7 @@ func (h *Handler) HandleRecordBlogView(w http.ResponseWriter, r *http.Request) {
 	postIDStr := vars["postId"]
 	postID, err := uuid.Parse(postIDStr)
 	if err != nil {
-		http.Error(w, "Invalid post ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid post ID"))
 		return
 	}
 
@@ -1303,7 +1303,7 @@ func (h *Handler) HandleRecordBlogView(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.contentRepo.RecordBlogPageView(r.Context(), view); err != nil {
 		logrus.WithError(err).Error("Failed to record blog view")
-		http.Error(w, "Failed to record view", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record view"))
 		return
 	}
 
@@ -1323,7 +1323,7 @@ func (h *Handler) HandleGetBlogAnalyticsSummary(w http.ResponseWriter, r *http.R
 	summary, err := h.contentRepo.GetBlogAnalyticsSummary(r.Context(), days)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog analytics summary")
-		http.Error(w, "Failed to get analytics summary", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get analytics summary"))
 		return
 	}
 
@@ -1344,7 +1344,7 @@ func (h *Handler) HandleGetBlogViewsTimeSeries(w http.ResponseWriter, r *http.Re
 	series, err := h.contentRepo.GetBlogViewsTimeSeries(r.Context(), days)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get blog views time series")
-		http.Error(w, "Failed to get time series", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get time series"))
 		return
 	}
 
@@ -1376,7 +1376,7 @@ func (h *Handler) HandleGetTopBlogPosts(w http.ResponseWriter, r *http.Request) 
 	posts, err := h.contentRepo.GetTopBlogPosts(r.Context(), days, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get top blog posts")
-		http.Error(w, "Failed to get top posts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get top posts"))
 		return
 	}
 

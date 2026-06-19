@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler handles monitoring API requests
@@ -65,7 +66,7 @@ func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics, err := h.monitoringSvc.GetMetrics(r.Context(), metricType, tenantID, since)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get metrics")
-		http.Error(w, "Failed to get metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get metrics"))
 		return
 	}
 
@@ -87,7 +88,7 @@ func (h *Handler) HandleGetAlerts(w http.ResponseWriter, r *http.Request) {
 	alerts, err := h.monitoringSvc.GetActiveAlerts(r.Context(), tenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get alerts")
-		http.Error(w, "Failed to get alerts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get alerts"))
 		return
 	}
 
@@ -101,7 +102,7 @@ func (h *Handler) HandleGetSystemHealth(w http.ResponseWriter, r *http.Request) 
 	health, err := h.monitoringSvc.GetSystemHealthStatus(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get system health")
-		http.Error(w, "Failed to get system health", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get system health"))
 		return
 	}
 
@@ -115,7 +116,7 @@ func (h *Handler) HandleResolveAlert(w http.ResponseWriter, r *http.Request) {
 
 	alertID, err := uuid.Parse(alertIDStr)
 	if err != nil {
-		http.Error(w, "Invalid alert ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid alert ID"))
 		return
 	}
 
@@ -123,14 +124,14 @@ func (h *Handler) HandleResolveAlert(w http.ResponseWriter, r *http.Request) {
 	userClaims := middleware.GetUserFromContext(r)
 	if userClaims == nil {
 		logrus.Warn("No authenticated user found in context for alert resolution")
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	resolvedBy := userClaims.UserID
 
 	if err := h.monitoringSvc.ResolveAlert(r.Context(), alertID, resolvedBy); err != nil {
 		logrus.WithError(err).WithField("alert_id", alertID).Error("Failed to resolve alert")
-		http.Error(w, "Failed to resolve alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to resolve alert"))
 		return
 	}
 
@@ -166,7 +167,7 @@ func (h *Handler) HandleRealtimeConnection(w http.ResponseWriter, r *http.Reques
 						conn.Close()
 					}
 				} else {
-					http.Error(w, "Authentication required", http.StatusUnauthorized)
+					apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 				}
 				return
 			}
@@ -182,7 +183,7 @@ func (h *Handler) HandleRealtimeConnection(w http.ResponseWriter, r *http.Reques
 					conn.Close()
 				}
 			} else {
-				http.Error(w, "Authentication required", http.StatusUnauthorized)
+				apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 			}
 			return
 		}
@@ -212,13 +213,13 @@ func (h *Handler) HandleGetRealtimeStats(w http.ResponseWriter, r *http.Request)
 func (h *Handler) HandleCreateAlert(w http.ResponseWriter, r *http.Request) {
 	var alert storage.Alert
 	if err := json.NewDecoder(r.Body).Decode(&alert); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if err := h.monitoringSvc.RecordAlert(r.Context(), &alert); err != nil {
 		logrus.WithError(err).Error("Failed to create alert")
-		http.Error(w, "Failed to create alert", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create alert"))
 		return
 	}
 
@@ -231,13 +232,13 @@ func (h *Handler) HandleCreateAlert(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRecordMetric(w http.ResponseWriter, r *http.Request) {
 	var metric storage.PerformanceMetric
 	if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if err := h.monitoringSvc.RecordPerformanceMetric(r.Context(), &metric); err != nil {
 		logrus.WithError(err).Error("Failed to record metric")
-		http.Error(w, "Failed to record metric", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record metric"))
 		return
 	}
 
@@ -254,7 +255,7 @@ func (h *Handler) HandleGetDashboardConfig(w http.ResponseWriter, r *http.Reques
 	userClaims := middleware.GetUserFromContext(r)
 	if userClaims == nil {
 		logrus.Warn("No authenticated user found in context for dashboard config")
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -262,7 +263,7 @@ func (h *Handler) HandleGetDashboardConfig(w http.ResponseWriter, r *http.Reques
 	userConfigs, err := h.monitoringSvc.GetDashboardConfigsByUser(userClaims.UserID)
 	if err != nil {
 		logrus.WithError(err).WithField("user_id", userClaims.UserID).Error("Failed to get user dashboard configs")
-		http.Error(w, "Failed to retrieve dashboard configuration", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve dashboard configuration"))
 		return
 	}
 
@@ -272,7 +273,7 @@ func (h *Handler) HandleGetDashboardConfig(w http.ResponseWriter, r *http.Reques
 		tenantConfigs, err := h.monitoringSvc.GetDashboardConfigsByTenant(userClaims.TenantID)
 		if err != nil {
 			logrus.WithError(err).WithField("tenant_id", userClaims.TenantID).Error("Failed to get tenant dashboard configs")
-			http.Error(w, "Failed to retrieve dashboard configuration", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to retrieve dashboard configuration"))
 			return
 		}
 		configs = tenantConfigs
@@ -319,13 +320,13 @@ func (h *Handler) HandleGetDashboardConfig(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleRecordHealthCheck(w http.ResponseWriter, r *http.Request) {
 	var check storage.SystemHealthCheck
 	if err := json.NewDecoder(r.Body).Decode(&check); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	if err := h.monitoringSvc.RecordSystemHealthCheck(r.Context(), &check); err != nil {
 		logrus.WithError(err).Error("Failed to record health check")
-		http.Error(w, "Failed to record health check", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record health check"))
 		return
 	}
 
@@ -342,7 +343,7 @@ func (h *Handler) HandleGetMonitoringEvents(w http.ResponseWriter, r *http.Reque
 	userClaims := middleware.GetUserFromContext(r)
 	if userClaims == nil {
 		logrus.Warn("No authenticated user found in context for monitoring events")
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -379,7 +380,7 @@ func (h *Handler) HandleGetMonitoringEvents(w http.ResponseWriter, r *http.Reque
 	events, err := h.repo.QueryMonitoringEvents(r.Context(), eventType, &userClaims.TenantID, since, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to query monitoring events")
-		http.Error(w, "Failed to query monitoring events", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to query monitoring events"))
 		return
 	}
 
@@ -393,7 +394,7 @@ func (h *Handler) HandleGetDatabaseHealth(w http.ResponseWriter, r *http.Request
 	health, err := h.monitoringSvc.GetDatabaseHealth(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get database health")
-		http.Error(w, "Failed to get database health", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get database health"))
 		return
 	}
 
@@ -423,7 +424,7 @@ func (h *Handler) HandleGetDatabaseMetrics(w http.ResponseWriter, r *http.Reques
 	metrics, err := h.monitoringSvc.GetDatabaseMetrics(r.Context(), timeRange)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get database metrics")
-		http.Error(w, "Failed to get database metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get database metrics"))
 		return
 	}
 
@@ -437,7 +438,7 @@ func (h *Handler) HandleGetDatabaseAlerts(w http.ResponseWriter, r *http.Request
 	alerts, err := h.monitoringSvc.GetDatabaseAlerts(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get database alerts")
-		http.Error(w, "Failed to get database alerts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get database alerts"))
 		return
 	}
 
@@ -533,7 +534,7 @@ func (h *Handler) HandleSubscribeToDatabaseChanges(w http.ResponseWriter, r *htt
 	userClaims := middleware.GetUserFromContext(r)
 	if userClaims == nil {
 		logrus.Warn("No authenticated user found in context for database change subscription")
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -563,7 +564,7 @@ func (h *Handler) HandleSubscribeToDatabaseChanges(w http.ResponseWriter, r *htt
 	}
 
 	if !validTables[table] {
-		http.Error(w, "Invalid table name", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid table name"))
 		return
 	}
 
@@ -621,7 +622,7 @@ func (h *Handler) HandleGetLocalRuntimeMetrics(w http.ResponseWriter, r *http.Re
 	aggregatedMetrics, err := h.repo.GetAggregatedLocalRuntimeMetrics(r.Context(), since)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get aggregated local runtime metrics")
-		http.Error(w, "Failed to get local runtime metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get local runtime metrics"))
 		return
 	}
 

@@ -68,7 +68,7 @@ func (h *ProjectsHandler) HandleSaveWorkspaceSession(w http.ResponseWriter, r *h
 
 	if err := h.repo.SaveWorkspaceSession(r.Context(), scope, req.ActiveProjectID, req.ActiveFileID); err != nil {
 		logrus.WithError(err).Warn("studio projects: failed to save workspace session")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, "Failed to save workspace session")
 		return
 	}
 
@@ -279,7 +279,7 @@ func (h *ProjectsHandler) HandleDeleteFile(w http.ResponseWriter, r *http.Reques
 
 	if err := h.repo.DeleteFile(r.Context(), scope, projectID, fileID); err != nil {
 		logrus.WithError(err).Warn("studio projects: failed to delete file")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONError(w, http.StatusBadRequest, "Failed to delete file")
 		return
 	}
 

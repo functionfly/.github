@@ -126,7 +126,7 @@ func (h *SwarmHandler) SpawnChild(w http.ResponseWriter, r *http.Request) {
 
 	var req SpawnChildRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *SwarmHandler) SpawnChild(w http.ResponseWriter, r *http.Request) {
 
 	agent, apiKey, err := h.swarmService.SpawnChild(r.Context(), spawnReq)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -164,7 +164,7 @@ func (h *SwarmHandler) GetChildren(w http.ResponseWriter, r *http.Request) {
 
 	children, err := h.swarmService.GetChildren(r.Context(), agentID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -183,7 +183,7 @@ func (h *SwarmHandler) GetParent(w http.ResponseWriter, r *http.Request) {
 
 	parent, err := h.swarmService.GetParent(r.Context(), agentID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -207,7 +207,7 @@ func (h *SwarmHandler) ReassignRole(w http.ResponseWriter, r *http.Request) {
 
 	var req ReassignRoleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *SwarmHandler) ReassignRole(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.swarmService.ReassignRole(r.Context(), agentID, req.SwarmRole); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -242,7 +242,7 @@ func (h *SwarmHandler) ReshapeSwarm(w http.ResponseWriter, r *http.Request) {
 
 	var req ReshapeSwarmRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
@@ -252,7 +252,7 @@ func (h *SwarmHandler) ReshapeSwarm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.swarmService.ReshapeSwarm(r.Context(), agentID, req.Topology); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -290,14 +290,14 @@ func (h *SwarmHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	var msg identity.AgentMessage
 	if err := json.NewDecoder(r.Body).Decode(&msg); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
 	msg.FromAgentID = fromAgentID
 
 	if err := h.messageService.SendMessage(r.Context(), &msg, signingKey); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -317,7 +317,7 @@ func (h *SwarmHandler) GetInbox(w http.ResponseWriter, r *http.Request) {
 
 	messages, err := h.messageService.GetInbox(r.Context(), agentID, 50)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -341,7 +341,7 @@ func (h *SwarmHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
 
 	wallet, err := h.walletService.GetOrCreateWallet(r.Context(), agentID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 	if h.financialTxRepo != nil {
@@ -369,7 +369,7 @@ func (h *SwarmHandler) GetWallet(w http.ResponseWriter, r *http.Request) {
 func (h *SwarmHandler) CreateListing(w http.ResponseWriter, r *http.Request) {
 	var req marketplace.CreateAgentListingRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 	if req.AgentID == "" {
@@ -382,7 +382,7 @@ func (h *SwarmHandler) CreateListing(w http.ResponseWriter, r *http.Request) {
 
 	listing, err := h.marketplaceService.ListingAgent(r.Context(), &req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -518,7 +518,7 @@ func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 
 	results, total, err := h.marketplaceService.SearchAgents(r.Context(), &req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -560,13 +560,13 @@ func (h *SwarmHandler) ProposeEvolution(w http.ResponseWriter, r *http.Request) 
 
 	analysis, err := h.evolutionService.AnalyzePerformance(r.Context(), agentID, 24*7*time.Hour)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
 	proposal, err := h.evolutionService.ProposeEvolution(r.Context(), agentID, analysis)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -586,14 +586,14 @@ func (h *SwarmHandler) CreateSchedule(w http.ResponseWriter, r *http.Request) {
 
 	var schedule identity.AutonomySchedule
 	if err := json.NewDecoder(r.Body).Decode(&schedule); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
 	schedule.AgentID = agentID
 
 	if err := h.autonomyService.CreateSchedule(r.Context(), &schedule); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -612,7 +612,7 @@ func (h *SwarmHandler) GetSchedules(w http.ResponseWriter, r *http.Request) {
 
 	schedules, err := h.autonomyService.GetSchedules(r.Context(), agentID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -639,7 +639,7 @@ func (h *SwarmHandler) AnalyzeAgent(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.analyzer.AnalyzePatterns(r.Context(), agentID, timeWindow)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -658,7 +658,7 @@ func (h *SwarmHandler) OptimizeAgent(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.optimizer.AutoOptimize(r.Context(), agentID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -679,21 +679,21 @@ func (h *SwarmHandler) GetInsights(w http.ResponseWriter, r *http.Request) {
 	// Get active patterns
 	patterns, err := h.analyzer.GetActivePatterns(r.Context(), agentID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
 	// Get optimizations
 	optimizations, err := h.optimizer.GetOptimizations(r.Context(), agentID, "")
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
 	// Get memory stats
 	memories, total, err := h.learningRepo.GetMemories(r.Context(), agentID, "", 100, 0)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -723,7 +723,7 @@ func (h *SwarmHandler) SearchMemories(w http.ResponseWriter, r *http.Request) {
 
 	memories, err := h.learningRepo.SearchMemories(r.Context(), agentID, query, limit)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -744,7 +744,7 @@ func (h *SwarmHandler) GenerateCode(w http.ResponseWriter, r *http.Request) {
 
 	var req deployment.GenerationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
@@ -752,7 +752,7 @@ func (h *SwarmHandler) GenerateCode(w http.ResponseWriter, r *http.Request) {
 
 	generated, err := h.generator.Generate(r.Context(), &req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -784,7 +784,7 @@ func (h *SwarmHandler) GetGenerations(w http.ResponseWriter, r *http.Request) {
 
 	generations, total, err := h.generator.GetGenerations(r.Context(), agentID, limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -806,7 +806,7 @@ func (h *SwarmHandler) PublishFunction(w http.ResponseWriter, r *http.Request) {
 
 	var req deployment.PublishRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
@@ -814,7 +814,7 @@ func (h *SwarmHandler) PublishFunction(w http.ResponseWriter, r *http.Request) {
 
 	published, err := h.publisher.Publish(r.Context(), &req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -846,7 +846,7 @@ func (h *SwarmHandler) GetPublishedFunctions(w http.ResponseWriter, r *http.Requ
 
 	functions, total, err := h.publisher.GetPublishedFunctions(r.Context(), agentID, limit, offset)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -868,7 +868,7 @@ func (h *SwarmHandler) HireAgent(w http.ResponseWriter, r *http.Request) {
 		BudgetUSD   float64        `json:"budget_usd"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
@@ -908,7 +908,7 @@ func (h *SwarmHandler) HireAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.identityRepo.CreateAgentHiring(r.Context(), hiring); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -951,7 +951,7 @@ func (h *SwarmHandler) PurchaseFunction(w http.ResponseWriter, r *http.Request) 
 		MaxPriceUSD    float64 `json:"max_price_usd"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm request", err)
 		return
 	}
 
@@ -1055,7 +1055,7 @@ func (h *SwarmHandler) PurchaseFunction(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.identityRepo.CreateFunctionPurchase(r.Context(), purchase); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -1085,7 +1085,7 @@ func (h *SwarmHandler) TriggerKillSwitch(w http.ResponseWriter, r *http.Request)
 
 	result, err := h.securityService.TriggerKillSwitch(r.Context(), agentID, req.Reason)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 
@@ -1114,7 +1114,7 @@ func (h *SwarmHandler) CheckSwarmHealth(w http.ResponseWriter, r *http.Request) 
 	// Detect anomalies
 	anomalies, err := h.securityService.DetectAnomaly(r.Context(), agentID, timeWindow)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm handler", err)
 		return
 	}
 

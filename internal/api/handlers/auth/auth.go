@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/sirupsen/logrus"
 )
 
 // Handler contains authentication handlers
@@ -42,6 +43,55 @@ func writeJSONErrorDetail(w http.ResponseWriter, status int, message, detail str
 		body["detail"] = detail
 	}
 	_ = json.NewEncoder(w).Encode(body)
+}
+
+// writeJSONErrorFromErr logs err server-side with context and writes a
+// sanitized, generic client-visible message. Use in place of
+// `writeJSONError(w, status, err.Error())` to prevent leaking internal err
+// text (SQL errors, file paths, library names, etc.) to clients.
+func writeJSONErrorFromErr(r *http.Request, w http.ResponseWriter, status int, contextMsg string, err error) {
+	if err != nil {
+		fields := logrus.Fields{
+			"status":  status,
+			"context": contextMsg,
+			"method":  "",
+			"path":    "",
+		}
+		if r != nil {
+			fields["method"] = r.Method
+			if r.URL != nil {
+				fields["path"] = r.URL.Path
+			}
+		}
+		entry := logrus.WithError(err).WithFields(fields)
+		if status >= 500 {
+			entry.Error("auth handler error")
+		} else {
+			entry.Info("auth handler client error")
+		}
+	}
+	writeJSONError(w, status, sanitizedAuthMessage(status))
+}
+
+func sanitizedAuthMessage(status int) string {
+	if status >= 500 {
+		return "Internal server error"
+	}
+	switch status {
+	case http.StatusBadRequest:
+		return "Invalid request"
+	case http.StatusUnauthorized:
+		return "Unauthorized"
+	case http.StatusForbidden:
+		return "Forbidden"
+	case http.StatusNotFound:
+		return "Not found"
+	case http.StatusConflict:
+		return "Conflict"
+	case http.StatusUnprocessableEntity:
+		return "Validation error"
+	}
+	return http.StatusText(status)
 }
 
 // isLoginInternalError returns true if the error is a server-side failure (DB, token, etc.) rather than bad credentials.

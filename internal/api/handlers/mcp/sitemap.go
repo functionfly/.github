@@ -9,6 +9,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/gorilla/mux"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleSitemap serves a Google-News-compatible XML sitemap containing one
@@ -23,7 +24,7 @@ import (
 // /v1/mcp/sitemap-index.xml and link to per-page files.
 func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 	if h.Disabled {
-		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("MCP registry is temporarily unavailable"))
 		return
 	}
 
@@ -36,7 +37,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 
 	rows, _, err := h.Store.ListEnabledMCPSettings(r.Context(), "", "", 0, size, offset)
 	if err != nil {
-		http.Error(w, "failed to list", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to list"))
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *Handler) HandleSitemap(w http.ResponseWriter, r *http.Request) {
 // dividing by the page size. Cached for the same duration as the index.
 func (h *Handler) HandleSitemapIndex(w http.ResponseWriter, r *http.Request) {
 	if h.Disabled {
-		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("MCP registry is temporarily unavailable"))
 		return
 	}
 	size := atoiDefault(r.URL.Query().Get("size"), 1000)
@@ -114,7 +115,7 @@ func (h *Handler) HandleSitemapIndex(w http.ResponseWriter, r *http.Request) {
 	_, total, err := h.Store.ListEnabledMCPSettings(r.Context(), "", "", 0, 1, 0)
 	_ = total
 	if err != nil {
-		http.Error(w, "failed to count", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to count"))
 		return
 	}
 	// Cheap full count via a separate call (limit = 1, offset = 0 returns total).

@@ -31,7 +31,7 @@ func (h *Handler) HandleCreateTarget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := validateCreateTarget(&req); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "vault dynamic credential")
 		return
 	}
 
@@ -175,7 +175,7 @@ func (h *Handler) HandleTestTarget(w http.ResponseWriter, r *http.Request) {
 	}
 	lease, material, err := svc.Issue(r.Context(), cred, target, 60*time.Second, &claims.UserID, getClientIP(r))
 	if err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest("Target connection test failed: "+err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "vault target connection test")
 		return
 	}
 	if err := svc.Revoke(r.Context(), lease, target, "test"); err != nil {
@@ -346,7 +346,7 @@ func (h *Handler) HandleGenerateCredential(w http.ResponseWriter, r *http.Reques
 		r.Context(), cred, target, ttl, &claims.UserID, getClientIP(r),
 	)
 	if err != nil {
-		apierror.WriteError(w, apierror.NewInternal("Failed to generate credential: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "vault generate credential")
 		return
 	}
 	h.logAudit(r.Context(), claims.TenantID, nil, claims.UserID.String(),
@@ -475,7 +475,7 @@ func (h *Handler) HandleRenewLease(w http.ResponseWriter, r *http.Request) {
 	}
 	newExpires, err := h.DynamicService.Renew(r.Context(), lease, target, ttl)
 	if err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest("Renew failed: "+err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "vault renew credential")
 		return
 	}
 	h.logAudit(r.Context(), claims.TenantID, nil, claims.UserID.String(),
@@ -522,7 +522,7 @@ func (h *Handler) HandleRevokeLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.DynamicService.Revoke(r.Context(), lease, target, "manual_lease_revoke"); err != nil {
-		apierror.WriteError(w, apierror.NewInternal("Revoke failed: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "vault revoke credential")
 		return
 	}
 	h.logAudit(r.Context(), claims.TenantID, nil, claims.UserID.String(),

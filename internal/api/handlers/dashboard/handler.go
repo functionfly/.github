@@ -8,6 +8,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler handles dashboard API requests (tenant-scoped metrics and activity).
@@ -25,7 +26,7 @@ func NewHandler(repo storage.Repository) *Handler {
 func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -39,7 +40,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 	data, err := h.repo.GetUsageByDay(r.Context(), user.TenantID, days)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get dashboard usage")
-		http.Error(w, "Failed to get usage", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get usage"))
 		return
 	}
 
@@ -61,7 +62,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetExecutionRate(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -96,7 +97,7 @@ func (h *Handler) HandleGetExecutionRate(w http.ResponseWriter, r *http.Request)
 func (h *Handler) HandleGetActivity(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -110,7 +111,7 @@ func (h *Handler) HandleGetActivity(w http.ResponseWriter, r *http.Request) {
 	items, err := h.repo.GetRecentActivityForTenant(r.Context(), user.TenantID, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get dashboard activity")
-		http.Error(w, "Failed to get activity", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get activity"))
 		return
 	}
 
@@ -123,14 +124,14 @@ func (h *Handler) HandleGetActivity(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetMetrics(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	metrics, err := h.repo.GetDashboardMetrics(r.Context(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get dashboard metrics")
-		http.Error(w, "Failed to get metrics", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get metrics"))
 		return
 	}
 

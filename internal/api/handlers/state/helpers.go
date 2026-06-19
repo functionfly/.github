@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Helper function to convert string to pointer
@@ -82,11 +83,11 @@ func (h *Handler) requirePermission(w http.ResponseWriter, r *http.Request, stat
 	hasPermission, err := h.checkPermission(r.Context(), stateID, userID, permission)
 	if err != nil {
 		logrus.Errorf("failed to check permission: %v", err)
-		http.Error(w, "permission check failed", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("permission check failed"))
 		return false
 	}
 	if !hasPermission {
-		http.Error(w, "permission denied", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("permission denied"))
 		return false
 	}
 	return true

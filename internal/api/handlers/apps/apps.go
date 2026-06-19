@@ -13,6 +13,7 @@ import (
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler contains app management handlers
@@ -31,14 +32,14 @@ func NewHandler(repo storage.Repository) *Handler {
 func (h *Handler) HandleListApps(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	apps, err := h.repo.ListAppsByTenant(context.Background(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to list apps")
-		http.Error(w, "Failed to list apps", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list apps"))
 		return
 	}
 
@@ -60,24 +61,24 @@ func (h *Handler) HandleListApps(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req types.CreateAppRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Name == "" || req.Slug == "" {
-		http.Error(w, "Name and slug are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Name and slug are required"))
 		return
 	}
 
 	// Validate slug format (lowercase, no spaces, etc.)
 	if strings.Contains(req.Slug, " ") || strings.ToLower(req.Slug) != req.Slug {
-		http.Error(w, "Slug must be lowercase with no spaces", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Slug must be lowercase with no spaces"))
 		return
 	}
 
@@ -88,7 +89,7 @@ func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 		apps, err := h.repo.ListAppsByTenant(context.Background(), user.TenantID)
 		if err != nil {
 			logrus.WithError(err).WithField("tenant_id", user.TenantID).Error("Failed to list apps")
-			http.Error(w, "Failed to check app limit", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to check app limit"))
 			return
 		}
 		if len(apps) >= maxApps {
@@ -104,7 +105,7 @@ func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 			"slug":      req.Slug,
 			"tenant_id": user.TenantID,
 		}).Error("Failed to create app")
-		http.Error(w, "Failed to create app", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create app"))
 		return
 	}
 
@@ -117,7 +118,7 @@ func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetApp(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -135,7 +136,7 @@ func (h *Handler) HandleGetApp(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetAppStatus(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -151,7 +152,7 @@ func (h *Handler) HandleGetAppStatus(w http.ResponseWriter, r *http.Request) {
 	backendStatuses, err := h.repo.GetBackendStatusByAppID(context.Background(), appID)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get backend status")
-		http.Error(w, "Failed to get backend status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get backend status"))
 		return
 	}
 

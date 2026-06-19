@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler handles conversation (DM) and message API requests.
@@ -80,25 +81,25 @@ func (h *Handler) SetWebSocketHub(hub *ConversationWebSocketHub) {
 func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	userIDStr := vars["user_id"]
 	if userIDStr == "" {
-		http.Error(w, `{"error":"user_id required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("user_id required"))
 		return
 	}
 	targetUserID, err := uuid.Parse(userIDStr)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid user_id"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id"))
 		return
 	}
 
 	// Verify target user exists
 	targetUser, err := h.users.GetUserByID(r.Context(), targetUserID)
 	if err != nil {
-		http.Error(w, `{"error":"User not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("User not found"))
 		return
 	}
 
@@ -214,17 +215,17 @@ func (h *Handler) GetCollaborationProfile(w http.ResponseWriter, r *http.Request
 func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	fn := r.URL.Query().Get("function")
 	if fn == "" {
-		http.Error(w, `{"error":"function query required (e.g. author/name)"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("function query required (e.g. author/name)"))
 		return
 	}
 
 	if h.registryRepo == nil {
-		http.Error(w, `{"error":"Registry not available","code":"REGISTRY_UNAVAILABLE","message":"Function context lookup is not available"}`, http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Function context lookup is not available"))
 		return
 	}
 
@@ -237,14 +238,14 @@ func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request)
 		name = strings.TrimSpace(parts[1])
 	}
 	if author == "" || name == "" {
-		http.Error(w, `{"error":"function must be author/name (e.g. author/name)"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("function must be author/name (e.g. author/name)"))
 		return
 	}
 
 	fnRecord, err := h.registryRepo.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		h.logger.WithError(err).WithField("function", fn).Error("GetFunctionByAuthorName failed")
-		http.Error(w, `{"error":"Failed to lookup function","code":"LOOKUP_FAILED","message":"Unable to retrieve function information"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Unable to retrieve function information"))
 		return
 	}
 	if fnRecord == nil {
@@ -295,7 +296,7 @@ func (h *Handler) GetConversationContext(w http.ResponseWriter, r *http.Request)
 func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -303,7 +304,7 @@ func (h *Handler) ListConversations(w http.ResponseWriter, r *http.Request) {
 	list, err := h.repo.ListConversationsForUser(r.Context(), user.UserID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("List conversations failed")
-		http.Error(w, `{"error":"Failed to list conversations"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list conversations"))
 		return
 	}
 	if list == nil {
@@ -331,17 +332,17 @@ type CreateFromThreadRequest struct {
 func (h *Handler) CreateFromThread(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	var req CreateFromThreadRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	threadID, err := uuid.Parse(req.ThreadID)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid thread_id"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid thread_id"))
 		return
 	}
 	// Create conversation with current user and thread reference; participants would be filled by caller or lookup
@@ -354,7 +355,7 @@ func (h *Handler) CreateFromThread(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.CreateConversation(r.Context(), c); err != nil {
 		h.logger.WithError(err).Error("Create from thread failed")
-		http.Error(w, `{"error":"Failed to create conversation"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create conversation"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -366,12 +367,12 @@ func (h *Handler) CreateFromThread(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	var req CreateConversationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	// Ensure current user is in participants
@@ -409,7 +410,7 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.CreateConversation(r.Context(), c); err != nil {
 		h.logger.WithError(err).Error("Create conversation failed")
-		http.Error(w, `{"error":"Failed to create conversation"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create conversation"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -421,28 +422,28 @@ func (h *Handler) CreateConversation(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	c, err := h.repo.GetConversationByID(r.Context(), id)
 	if err != nil {
 		h.logger.WithError(err).Error("Get conversation failed")
-		http.Error(w, `{"error":"Failed to get conversation"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get conversation"))
 		return
 	}
 	if c == nil {
-		http.Error(w, `{"error":"Conversation not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Conversation not found"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -453,18 +454,18 @@ func (h *Handler) GetConversation(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -472,7 +473,7 @@ func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	list, err := h.repo.ListMessages(r.Context(), id, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("List messages failed")
-		http.Error(w, `{"error":"Failed to list messages"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list messages"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -484,23 +485,23 @@ func (h *Handler) ListMessages(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) MarkConversationRead(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	if err := h.repo.MarkConversationRead(r.Context(), id, user.UserID); err != nil {
 		h.logger.WithError(err).Error("Mark conversation read failed")
-		http.Error(w, `{"error":"Failed to update read state"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update read state"))
 		return
 	}
 
@@ -529,23 +530,23 @@ type ValidateMessageRequest struct {
 func (h *Handler) ValidateMessage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	var req ValidateMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	scan := security.ScanMessageContent(req.Content)
@@ -583,23 +584,23 @@ type CreateMessageRequest struct {
 func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	var req CreateMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if req.Embeddings == nil {
@@ -609,12 +610,12 @@ func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	// Server-side message content length validation
 	if req.Content == "" {
 		w.Header().Set("Content-Type", "application/json")
-		http.Error(w, `{"error":"message content is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("message content is required"))
 		return
 	}
 	if len(req.Content) > 10000 {
 		w.Header().Set("Content-Type", "application/json")
-		http.Error(w, `{"error":"message content exceeds maximum length"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("message content exceeds maximum length"))
 		return
 	}
 	m := &conversations.ConversationMessage{
@@ -625,7 +626,7 @@ func (h *Handler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.CreateMessage(r.Context(), m); err != nil {
 		h.logger.WithError(err).Error("Create message failed")
-		http.Error(w, `{"error":"Failed to send message"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to send message"))
 		return
 	}
 
@@ -654,37 +655,37 @@ type ResolveConversationRequest struct {
 func (h *Handler) ResolveConversation(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	var req ResolveConversationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	var messageID *uuid.UUID
 	if req.MessageID != "" {
 		parsed, err := uuid.Parse(req.MessageID)
 		if err != nil {
-			http.Error(w, `{"error":"Invalid message_id"}`, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid message_id"))
 			return
 		}
 		messageID = &parsed
 	}
 	if err := h.repo.ResolveConversation(r.Context(), id, user.UserID, messageID); err != nil {
 		h.logger.WithError(err).Error("Resolve conversation failed")
-		http.Error(w, `{"error":"Failed to resolve conversation"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to resolve conversation"))
 		return
 	}
 	c, _ := h.repo.GetConversationByID(r.Context(), id)
@@ -713,24 +714,24 @@ func (h *Handler) ResolveConversation(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListBounties(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	list, err := h.repo.ListBountiesForConversation(r.Context(), id)
 	if err != nil {
 		h.logger.WithError(err).Error("List bounties failed")
-		http.Error(w, `{"error":"Failed to list bounties"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list bounties"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -748,23 +749,23 @@ type CreateBountyRequest struct {
 func (h *Handler) CreateBounty(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), id, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	var req CreateBountyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if req.AmountReputation < 0 {
@@ -782,7 +783,7 @@ func (h *Handler) CreateBounty(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.CreateBounty(r.Context(), b); err != nil {
 		h.logger.WithError(err).Error("Create bounty failed")
-		http.Error(w, `{"error":"Failed to attach bounty"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to attach bounty"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -794,37 +795,37 @@ func (h *Handler) CreateBounty(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ClaimBounty(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	conversationID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	bountyID, err := uuid.Parse(vars["bounty_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid bounty ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid bounty ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), conversationID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	b, err := h.repo.GetBountyByID(r.Context(), bountyID)
 	if err != nil || b == nil || b.ConversationID != conversationID {
-		http.Error(w, `{"error":"Bounty not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Bounty not found"))
 		return
 	}
 	if b.ClaimedBy != nil {
-		http.Error(w, `{"error":"Bounty already claimed"}`, http.StatusConflict)
+		apierror.WriteError(w, apierror.NewConflict("Bounty already claimed"))
 		return
 	}
 	if err := h.repo.ClaimBounty(r.Context(), bountyID, user.UserID); err != nil {
 		h.logger.WithError(err).Error("Claim bounty failed")
-		http.Error(w, `{"error":"Failed to claim bounty"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to claim bounty"))
 		return
 	}
 	b.ClaimedBy = &user.UserID
@@ -843,47 +844,47 @@ type EditMessageRequest struct {
 func (h *Handler) EditMessage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	if msg.AuthorID != user.UserID {
-		http.Error(w, `{"error":"Can only edit your own messages"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Can only edit your own messages"))
 		return
 	}
 	var req EditMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if strings.TrimSpace(req.Content) == "" {
-		http.Error(w, `{"error":"Content cannot be empty"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Content cannot be empty"))
 		return
 	}
 	updated, err := h.repo.EditMessage(r.Context(), msgID, req.Content)
 	if err != nil {
 		h.logger.WithError(err).Error("Edit message failed")
-		http.Error(w, `{"error":"Failed to edit message"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to edit message"))
 		return
 	}
 
@@ -899,37 +900,37 @@ func (h *Handler) EditMessage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	if msg.AuthorID != user.UserID {
-		http.Error(w, `{"error":"Can only delete your own messages"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Can only delete your own messages"))
 		return
 	}
 	if err := h.repo.SoftDeleteMessage(r.Context(), msgID); err != nil {
 		h.logger.WithError(err).Error("Delete message failed")
-		http.Error(w, `{"error":"Failed to delete message"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete message"))
 		return
 	}
 
@@ -945,33 +946,33 @@ func (h *Handler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetMessage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil {
 		h.logger.WithError(err).Error("Get message failed")
-		http.Error(w, `{"error":"Failed to get message"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get message"))
 		return
 	}
 	if msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	attachments, _ := h.repo.ListAttachmentsForMessage(r.Context(), msgID)
@@ -989,34 +990,34 @@ func (h *Handler) GetMessage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListAttachments(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	attachments, err := h.repo.ListAttachmentsForMessage(r.Context(), msgID)
 	if err != nil {
 		h.logger.WithError(err).Error("List attachments failed")
-		http.Error(w, `{"error":"Failed to list attachments"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list attachments"))
 		return
 	}
 	if attachments == nil {
@@ -1030,23 +1031,23 @@ func (h *Handler) ListAttachments(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetAttachment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	attachmentID, err := uuid.Parse(vars["attachment_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid attachment ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid attachment ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	// Fetch all attachments for messages in this conversation, then filter by ID
@@ -1054,11 +1055,11 @@ func (h *Handler) GetAttachment(w http.ResponseWriter, r *http.Request) {
 	attachment, err := h.repo.GetAttachmentByID(r.Context(), attachmentID)
 	if err != nil {
 		h.logger.WithError(err).Error("Get attachment failed")
-		http.Error(w, `{"error":"Failed to get attachment"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get attachment"))
 		return
 	}
 	if attachment == nil || attachment.ConversationID != convID {
-		http.Error(w, `{"error":"Attachment not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Attachment not found"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -1069,12 +1070,12 @@ func (h *Handler) GetAttachment(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) SearchMessages(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	q := r.URL.Query().Get("q")
 	if strings.TrimSpace(q) == "" {
-		http.Error(w, `{"error":"q query parameter required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("q query parameter required"))
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -1089,7 +1090,7 @@ func (h *Handler) SearchMessages(w http.ResponseWriter, r *http.Request) {
 	results, err := h.repo.SearchMessages(r.Context(), user.UserID, q, convID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("Search messages failed")
-		http.Error(w, `{"error":"Search failed"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Search failed"))
 		return
 	}
 	if results == nil {
@@ -1103,28 +1104,28 @@ func (h *Handler) SearchMessages(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) UploadAttachment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	var req struct {
@@ -1135,11 +1136,11 @@ func (h *Handler) UploadAttachment(w http.ResponseWriter, r *http.Request) {
 		ThumbnailURL *string `json:"thumbnail_url,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if req.Filename == "" || req.StorageURL == "" {
-		http.Error(w, `{"error":"filename and storage_url are required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("filename and storage_url are required"))
 		return
 	}
 	if req.ContentType == "" {
@@ -1157,7 +1158,7 @@ func (h *Handler) UploadAttachment(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.CreateAttachment(r.Context(), att); err != nil {
 		h.logger.WithError(err).Error("Create attachment failed")
-		http.Error(w, `{"error":"Failed to create attachment"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create attachment"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -1169,28 +1170,28 @@ func (h *Handler) UploadAttachment(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteAttachment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	attachmentID, err := uuid.Parse(vars["attachment_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid attachment ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid attachment ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	if err := h.repo.DeleteAttachment(r.Context(), attachmentID, user.UserID); err != nil {
 		h.logger.WithError(err).Error("Delete attachment failed")
-		http.Error(w, `{"error":"Failed to delete attachment"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete attachment"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -1206,43 +1207,43 @@ type AddReactionRequest struct {
 func (h *Handler) AddReaction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	var req AddReactionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if strings.TrimSpace(req.Reaction) == "" {
-		http.Error(w, `{"error":"Reaction cannot be empty"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Reaction cannot be empty"))
 		return
 	}
 	rxn, err := h.repo.AddReaction(r.Context(), msgID, user.UserID, req.Reaction)
 	if err != nil {
 		h.logger.WithError(err).Error("Add reaction failed")
-		http.Error(w, `{"error":"Failed to add reaction"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to add reaction"))
 		return
 	}
 
@@ -1268,38 +1269,38 @@ func (h *Handler) AddReaction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) RemoveReaction(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	reaction := vars["reaction"]
 	if reaction == "" {
-		http.Error(w, `{"error":"Reaction is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Reaction is required"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	if err := h.repo.RemoveReaction(r.Context(), msgID, user.UserID, reaction); err != nil {
 		h.logger.WithError(err).Error("Remove reaction failed")
-		http.Error(w, `{"error":"Failed to remove reaction"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to remove reaction"))
 		return
 	}
 
@@ -1324,34 +1325,34 @@ func (h *Handler) RemoveReaction(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListReactions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	summary, err := h.repo.GetMessageReactionSummary(r.Context(), msgID)
 	if err != nil {
 		h.logger.WithError(err).Error("List reactions failed")
-		http.Error(w, `{"error":"Failed to list reactions"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list reactions"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -1362,33 +1363,33 @@ func (h *Handler) ListReactions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) MarkMessageRead(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	if err := h.repo.MarkMessageRead(r.Context(), msgID, user.UserID); err != nil {
 		h.logger.WithError(err).Error("Mark message read failed")
-		http.Error(w, `{"error":"Failed to mark message read"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to mark message read"))
 		return
 	}
 
@@ -1412,34 +1413,34 @@ func (h *Handler) MarkMessageRead(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetMessageReadReceipts(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 	vars := mux.Vars(r)
 	convID, err := uuid.Parse(vars["conversation_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid conversation ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid conversation ID"))
 		return
 	}
 	msgID, err := uuid.Parse(vars["message_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid message ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid message ID"))
 		return
 	}
 	ok, err := h.repo.IsParticipant(r.Context(), convID, user.UserID)
 	if err != nil || !ok {
-		http.Error(w, `{"error":"Not a participant"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Not a participant"))
 		return
 	}
 	msg, err := h.repo.GetMessageByID(r.Context(), msgID)
 	if err != nil || msg == nil || msg.ConversationID != convID {
-		http.Error(w, `{"error":"Message not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Message not found"))
 		return
 	}
 	receipts, err := h.repo.GetMessageReadReceipts(r.Context(), msgID)
 	if err != nil {
 		h.logger.WithError(err).Error("Get message read receipts failed")
-		http.Error(w, `{"error":"Failed to get read receipts"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get read receipts"))
 		return
 	}
 	if receipts == nil {

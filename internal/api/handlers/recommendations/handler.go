@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler handles recommendation API requests
@@ -37,7 +38,7 @@ func (h *Handler) HandleGetRecommendations(w http.ResponseWriter, r *http.Reques
 	if fid := r.URL.Query().Get("function_id"); fid != "" {
 		id, err := uuid.Parse(fid)
 		if err != nil {
-			http.Error(w, "Invalid function_id format", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid function_id format"))
 			return
 		}
 		functionID = &id
@@ -57,7 +58,7 @@ func (h *Handler) HandleGetRecommendations(w http.ResponseWriter, r *http.Reques
 	if uid := r.URL.Query().Get("user_id"); uid != "" {
 		id, err := uuid.Parse(uid)
 		if err != nil {
-			http.Error(w, "Invalid user_id format", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid user_id format"))
 			return
 		}
 		userID = &id
@@ -101,7 +102,7 @@ func (h *Handler) HandleGetRecommendations(w http.ResponseWriter, r *http.Reques
 	result, err := h.service.GetRecommendations(r.Context(), req)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get recommendations")
-		http.Error(w, "Failed to get recommendations", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get recommendations"))
 		return
 	}
 
@@ -119,7 +120,7 @@ func (h *Handler) HandleGetRelatedFunctions(w http.ResponseWriter, r *http.Reque
 	name := vars["name"]
 
 	if author == "" || name == "" {
-		http.Error(w, "Author and name are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Author and name are required"))
 		return
 	}
 
@@ -134,14 +135,14 @@ func (h *Handler) HandleGetRelatedFunctions(w http.ResponseWriter, r *http.Reque
 	fn, err := h.service.GetRegistryRepository().GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{"author": author, "name": name}).Warn("Function not found for related functions lookup")
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	results, err := h.service.GetRelatedFunctions(r.Context(), fn.ID, limit)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", fn.ID).Error("Failed to get related functions")
-		http.Error(w, "Failed to get related functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get related functions"))
 		return
 	}
 
@@ -175,13 +176,13 @@ func (h *Handler) HandleRecordInteraction(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	functionID, err := uuid.Parse(req.FunctionID)
 	if err != nil {
-		http.Error(w, "Invalid function_id format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function_id format"))
 		return
 	}
 
@@ -217,14 +218,14 @@ func (h *Handler) HandleRecordInteraction(w http.ResponseWriter, r *http.Request
 		recommendations.InteractionTypeShare:
 		// Valid types
 	default:
-		http.Error(w, "Invalid interaction_type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid interaction_type"))
 		return
 	}
 
 	err = h.service.RecordInteraction(r.Context(), userID, functionID, interactionType, sessionID, referrerFunctionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to record interaction")
-		http.Error(w, "Failed to record interaction", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record interaction"))
 		return
 	}
 
@@ -249,18 +250,18 @@ func (h *Handler) HandleRecordExecution(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	functionID, err := uuid.Parse(req.FunctionID)
 	if err != nil {
-		http.Error(w, "Invalid function_id format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function_id format"))
 		return
 	}
 
 	if req.SessionID == "" {
-		http.Error(w, "session_id is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("session_id is required"))
 		return
 	}
 
@@ -275,7 +276,7 @@ func (h *Handler) HandleRecordExecution(w http.ResponseWriter, r *http.Request) 
 	err = h.service.RecordExecution(r.Context(), userID, functionID, req.SessionID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to record execution")
-		http.Error(w, "Failed to record execution", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record execution"))
 		return
 	}
 
@@ -302,19 +303,19 @@ func (h *Handler) HandleRecordFeedback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	functionID, err := uuid.Parse(req.FunctionID)
 	if err != nil {
-		http.Error(w, "Invalid function_id format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function_id format"))
 		return
 	}
 
 	recommendedFunctionID, err := uuid.Parse(req.RecommendedFunctionID)
 	if err != nil {
-		http.Error(w, "Invalid recommended_function_id format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid recommended_function_id format"))
 		return
 	}
 
@@ -323,7 +324,7 @@ func (h *Handler) HandleRecordFeedback(w http.ResponseWriter, r *http.Request) {
 	case "clicked", "executed", "dismissed", "not_relevant", "helpful":
 		// Valid types
 	default:
-		http.Error(w, "Invalid feedback_type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid feedback_type"))
 		return
 	}
 
@@ -343,7 +344,7 @@ func (h *Handler) HandleRecordFeedback(w http.ResponseWriter, r *http.Request) {
 	err = h.service.RecordFeedback(r.Context(), userID, functionID, recommendedFunctionID, req.FeedbackType, recommendationType)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to record feedback")
-		http.Error(w, "Failed to record feedback", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record feedback"))
 		return
 	}
 
@@ -366,7 +367,7 @@ func (h *Handler) HandleRefreshRecommendations(w http.ResponseWriter, r *http.Re
 	err := h.service.RefreshAllRecommendations(r.Context())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to refresh recommendations")
-		http.Error(w, "Failed to refresh recommendations", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to refresh recommendations"))
 		return
 	}
 
@@ -395,12 +396,12 @@ func (h *Handler) HandleTripleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Query == "" {
-		http.Error(w, "query is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("query is required"))
 		return
 	}
 
@@ -424,7 +425,7 @@ func (h *Handler) HandleTripleSearch(w http.ResponseWriter, r *http.Request) {
 	results, err := h.service.SearchByTripleEmbedding(r.Context(), req.Query, weights, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed triple search")
-		http.Error(w, "Failed to perform triple search", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to perform triple search"))
 		return
 	}
 
@@ -444,7 +445,7 @@ func (h *Handler) HandleFindComposable(w http.ResponseWriter, r *http.Request) {
 
 	functionID, err := uuid.Parse(functionIDStr)
 	if err != nil {
-		http.Error(w, "Invalid function_id format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function_id format"))
 		return
 	}
 
@@ -459,7 +460,7 @@ func (h *Handler) HandleFindComposable(w http.ResponseWriter, r *http.Request) {
 	results, err := h.service.FindComposableFunctions(r.Context(), functionID, limit)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to find composable functions")
-		http.Error(w, "Failed to find composable functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to find composable functions"))
 		return
 	}
 

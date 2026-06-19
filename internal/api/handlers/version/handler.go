@@ -1629,8 +1629,7 @@ func (h *Handler) HandleCompareVersions(w http.ResponseWriter, r *http.Request) 
 
 	diff, err := h.repo.CompareVersions(r.Context(), functionID, v1, v2)
 	if err != nil {
-		logrus.WithError(err).Error("Failed to compare versions")
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "compare versions")
 		return
 	}
 

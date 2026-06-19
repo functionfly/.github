@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleGetHistory handles GET /v1/state/{path}/history
@@ -20,7 +21,7 @@ func (h *Handler) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -28,7 +29,7 @@ func (h *Handler) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -48,7 +49,7 @@ func (h *Handler) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 	events, total, err := h.stateRepo.GetStateHistory(r.Context(), state.ID, key, limit, offset)
 	if err != nil {
 		logrus.Errorf("failed to get history: %v", err)
-		http.Error(w, "failed to get history", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get history"))
 		return
 	}
 
@@ -71,7 +72,7 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -79,7 +80,7 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -90,7 +91,7 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	snapshot, err := h.stateRepo.CreateSnapshot(r.Context(), state.ID, req.Label)
 	if err != nil {
 		logrus.Errorf("failed to create snapshot: %v", err)
-		http.Error(w, "failed to create snapshot", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create snapshot"))
 		return
 	}
 
@@ -105,7 +106,7 @@ func (h *Handler) HandleListSnapshots(w http.ResponseWriter, r *http.Request) {
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -113,7 +114,7 @@ func (h *Handler) HandleListSnapshots(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -133,7 +134,7 @@ func (h *Handler) HandleListSnapshots(w http.ResponseWriter, r *http.Request) {
 	snapshots, total, err := h.stateRepo.ListSnapshots(r.Context(), state.ID, limit, offset)
 	if err != nil {
 		logrus.Errorf("failed to list snapshots: %v", err)
-		http.Error(w, "failed to list snapshots", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to list snapshots"))
 		return
 	}
 
@@ -153,13 +154,13 @@ func (h *Handler) HandleRestoreSnapshot(w http.ResponseWriter, r *http.Request) 
 
 	var req RestoreSnapshotRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -167,7 +168,7 @@ func (h *Handler) HandleRestoreSnapshot(w http.ResponseWriter, r *http.Request) 
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -178,7 +179,7 @@ func (h *Handler) HandleRestoreSnapshot(w http.ResponseWriter, r *http.Request) 
 	err = h.stateRepo.RestoreSnapshot(r.Context(), state.ID, req.SnapshotVersion, "user", claims.UserID.String())
 	if err != nil {
 		logrus.Errorf("failed to restore snapshot: %v", err)
-		http.Error(w, "failed to restore snapshot", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to restore snapshot"))
 		return
 	}
 
@@ -193,25 +194,25 @@ func (h *Handler) HandleTimeTravel(w http.ResponseWriter, r *http.Request) {
 
 	timestampStr := r.URL.Query().Get("at")
 	if timestampStr == "" {
-		http.Error(w, "timestamp required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("timestamp required"))
 		return
 	}
 
 	timestamp, err := time.Parse(time.RFC3339, timestampStr)
 	if err != nil {
-		http.Error(w, "invalid timestamp format", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid timestamp format"))
 		return
 	}
 
 	user := r.Context().Value("user")
 	if user == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -219,7 +220,7 @@ func (h *Handler) HandleTimeTravel(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -230,7 +231,7 @@ func (h *Handler) HandleTimeTravel(w http.ResponseWriter, r *http.Request) {
 	data, err := h.stateRepo.TimeTravelQuery(r.Context(), state.ID, timestamp)
 	if err != nil {
 		logrus.Errorf("failed to time travel: %v", err)
-		http.Error(w, "failed to time travel", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to time travel"))
 		return
 	}
 

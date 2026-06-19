@@ -16,6 +16,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	statestorage "github.com/functionfly/functionfly/internal/storage/state"
@@ -197,31 +198,31 @@ type RebuildIndexResponse struct {
 func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.write permission
 	if !checkMemoryWrite(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
 	var req CreateMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	if req.AgentID == "" || req.MemoryType == "" {
-		http.Error(w, "agent_id and memory_type are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("agent_id and memory_type are required"))
 		return
 	}
 
 	// Validate embedding if provided
 	if len(req.Embedding) > 0 {
 		if err := validateEmbedding(req.Embedding); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeValidation, "invalid embedding")
 			return
 		}
 	}
@@ -245,7 +246,7 @@ func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.R
 	created, err := h.createMemory(r.Context(), memory)
 	if err != nil {
 		logrus.Errorf("failed to create memory: %v", err)
-		http.Error(w, "failed to create memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create memory"))
 		return
 	}
 
@@ -267,13 +268,13 @@ func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.R
 func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.read permission
 	if !checkMemoryRead(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
@@ -305,7 +306,7 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 
 	if err != nil {
 		logrus.Errorf("failed to list memories: %v", err)
-		http.Error(w, "failed to list memories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to list memories"))
 		return
 	}
 
@@ -332,13 +333,13 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 func (h *AgentMemoryHandler) HandleGetMemory(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.read permission
 	if !checkMemoryRead(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
@@ -347,13 +348,13 @@ func (h *AgentMemoryHandler) HandleGetMemory(w http.ResponseWriter, r *http.Requ
 
 	memoryUUID, err := uuid.Parse(memoryID)
 	if err != nil {
-		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid memory ID"))
 		return
 	}
 
 	memory, err := h.getMemory(r.Context(), claims.TenantID, memoryUUID)
 	if err != nil {
-		http.Error(w, "memory not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("memory not found"))
 		return
 	}
 
@@ -372,13 +373,13 @@ func (h *AgentMemoryHandler) HandleGetMemory(w http.ResponseWriter, r *http.Requ
 func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.write permission
 	if !checkMemoryWrite(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
@@ -387,20 +388,20 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 
 	memoryUUID, err := uuid.Parse(memoryID)
 	if err != nil {
-		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid memory ID"))
 		return
 	}
 
 	var req UpdateMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	// Validate embedding if provided
 	if req.Embedding != nil && len(req.Embedding) > 0 {
 		if err := validateEmbedding(req.Embedding); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeValidation, "invalid embedding")
 			return
 		}
 	}
@@ -408,7 +409,7 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 	// Get existing memory
 	memory, err := h.getMemory(r.Context(), claims.TenantID, memoryUUID)
 	if err != nil {
-		http.Error(w, "memory not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("memory not found"))
 		return
 	}
 
@@ -429,7 +430,7 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 	updated, err := h.updateMemory(r.Context(), memory)
 	if err != nil {
 		logrus.Errorf("failed to update memory: %v", err)
-		http.Error(w, "failed to update memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to update memory"))
 		return
 	}
 
@@ -449,13 +450,13 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.write permission
 	if !checkMemoryWrite(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
@@ -464,14 +465,14 @@ func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.R
 
 	memoryUUID, err := uuid.Parse(memoryID)
 	if err != nil {
-		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid memory ID"))
 		return
 	}
 
 	err = h.deleteMemory(r.Context(), claims.TenantID, memoryUUID)
 	if err != nil {
 		logrus.Errorf("failed to delete memory: %v", err)
-		http.Error(w, "failed to delete memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to delete memory"))
 		return
 	}
 
@@ -487,13 +488,13 @@ func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.R
 func (h *AgentMemoryHandler) HandleMarkAccessed(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.read permission (marking as accessed is a read operation)
 	if !checkMemoryRead(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
@@ -502,14 +503,14 @@ func (h *AgentMemoryHandler) HandleMarkAccessed(w http.ResponseWriter, r *http.R
 
 	memoryUUID, err := uuid.Parse(memoryID)
 	if err != nil {
-		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid memory ID"))
 		return
 	}
 
 	// Verify memory exists and belongs to tenant
 	_, err = h.getMemory(r.Context(), claims.TenantID, memoryUUID)
 	if err != nil {
-		http.Error(w, "memory not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("memory not found"))
 		return
 	}
 
@@ -517,7 +518,7 @@ func (h *AgentMemoryHandler) HandleMarkAccessed(w http.ResponseWriter, r *http.R
 	err = h.markMemoryAccessed(r.Context(), memoryUUID)
 	if err != nil {
 		logrus.Errorf("failed to mark memory accessed: %v", err)
-		http.Error(w, "failed to update access count", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to update access count"))
 		return
 	}
 
@@ -536,26 +537,26 @@ func (h *AgentMemoryHandler) HandleMarkAccessed(w http.ResponseWriter, r *http.R
 func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.read permission
 	if !checkMemoryRead(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
 	var req SearchMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	// Validate embedding if provided
 	if len(req.Embedding) > 0 {
 		if err := validateEmbedding(req.Embedding); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeValidation, "invalid embedding")
 			return
 		}
 	}
@@ -580,7 +581,7 @@ func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http
 
 	if err != nil {
 		logrus.Errorf("failed to search memories: %v", err)
-		http.Error(w, "failed to search memories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to search memories"))
 		return
 	}
 
@@ -609,28 +610,28 @@ func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http
 func (h *AgentMemoryHandler) HandleRebuildIndex(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check memory.write permission (rebuilding index is a write operation)
 	if !checkMemoryWrite(claims) {
-		http.Error(w, "forbidden: insufficient permissions", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("forbidden: insufficient permissions"))
 		return
 	}
 
 	var req RebuildIndexRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	if req.AgentID == "" {
-		http.Error(w, "agent_id is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("agent_id is required"))
 		return
 	}
 	if req.MemoryType == "" {
-		http.Error(w, "memory_type is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("memory_type is required"))
 		return
 	}
 
@@ -639,7 +640,7 @@ func (h *AgentMemoryHandler) HandleRebuildIndex(w http.ResponseWriter, r *http.R
 	index, err := h.rebuildIndex(r.Context(), claims.TenantID, req.AgentID, req.MemoryType)
 	if err != nil {
 		logrus.Errorf("failed to rebuild index: %v", err)
-		http.Error(w, "failed to rebuild index", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to rebuild index"))
 		return
 	}
 

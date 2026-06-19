@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleOGImage serves a dynamically generated 1200×630 PNG suitable for
@@ -27,23 +28,23 @@ import (
 // (no cairo, no chrome-headless) so the orchestrator stays a single binary.
 func (h *Handler) HandleOGImage(w http.ResponseWriter, r *http.Request) {
 	if h.Disabled {
-		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("MCP registry is temporarily unavailable"))
 		return
 	}
 	author := r.URL.Query().Get("author")
 	name := r.URL.Query().Get("name")
 	if author == "" || name == "" {
-		http.Error(w, "missing author or name", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("missing author or name"))
 		return
 	}
 	fn, err := h.Store.GetFunctionByAuthorName(r.Context(), author, name)
 	if err != nil || fn == nil {
-		http.Error(w, "function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("function not found"))
 		return
 	}
 	settings, err := h.Store.GetMCPSettings(r.Context(), fn.ID)
 	if err != nil || settings == nil {
-		http.Error(w, "not MCP-enabled", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("not MCP-enabled"))
 		return
 	}
 

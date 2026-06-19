@@ -63,7 +63,8 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.ValidateURL(req.URL); err != nil {
-		h.writeError(w, http.StatusBadRequest, err.Error(), "invalid_url")
+		logrus.WithError(err).WithField("url", req.URL).Info("function_webhooks: invalid URL")
+		h.writeError(w, http.StatusBadRequest, "Invalid webhook URL", "invalid_url")
 		return
 	}
 
@@ -227,7 +228,8 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 
 	if req.URL != "" {
 		if err := h.service.ValidateURL(req.URL); err != nil {
-			h.writeError(w, http.StatusBadRequest, err.Error(), "invalid_url")
+			logrus.WithError(err).WithField("url", req.URL).Info("function_webhooks: invalid URL on update")
+			h.writeError(w, http.StatusBadRequest, "Invalid webhook URL", "invalid_url")
 			return
 		}
 		sub.URL = req.URL

@@ -44,7 +44,7 @@ func (h *UnfairAdvantageHandler) RegisterRoutes(router *mux.Router, basePath str
 func (h *UnfairAdvantageHandler) HandleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	dashboard, err := h.engine.GetDashboard(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 
@@ -58,7 +58,7 @@ func (h *UnfairAdvantageHandler) HandleGetDashboard(w http.ResponseWriter, r *ht
 func (h *UnfairAdvantageHandler) HandleGetValueReport(w http.ResponseWriter, r *http.Request) {
 	report, err := h.engine.GetValueReport(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 
@@ -99,7 +99,7 @@ func (h *UnfairAdvantageHandler) HandleListInternalOpportunities(w http.Response
 
 	opportunities, total, err := h.engine.ListInternalOpportunities(r.Context(), filter)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 
@@ -115,7 +115,7 @@ func (h *UnfairAdvantageHandler) HandleListInternalOpportunities(w http.Response
 func (h *UnfairAdvantageHandler) HandleSeedOpportunity(w http.ResponseWriter, r *http.Request) {
 	var req swarm.SeedOpportunityRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode unfair advantage request", err)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (h *UnfairAdvantageHandler) HandleSeedOpportunity(w http.ResponseWriter, r 
 
 	opportunity, err := h.engine.SeedInternalOpportunity(r.Context(), &req)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 
@@ -140,7 +140,7 @@ func (h *UnfairAdvantageHandler) HandleSeedOpportunity(w http.ResponseWriter, r 
 func (h *UnfairAdvantageHandler) HandleSeedCustomOpportunity(w http.ResponseWriter, r *http.Request) {
 	var seed swarm.CustomOpportunitySeed
 	if err := json.NewDecoder(r.Body).Decode(&seed); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode unfair advantage request", err)
 		return
 	}
 
@@ -151,7 +151,7 @@ func (h *UnfairAdvantageHandler) HandleSeedCustomOpportunity(w http.ResponseWrit
 
 	opportunity, err := h.engine.SeedCustomOpportunity(r.Context(), &seed)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 
@@ -165,7 +165,7 @@ func (h *UnfairAdvantageHandler) HandleSeedCustomOpportunity(w http.ResponseWrit
 func (h *UnfairAdvantageHandler) HandleRunRDLab(w http.ResponseWriter, r *http.Request) {
 	run, err := h.engine.RunInternalRDLab(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 
@@ -182,7 +182,7 @@ func (h *UnfairAdvantageHandler) HandleGenerateInternalFunction(w http.ResponseW
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode unfair advantage request", err)
 		return
 	}
 
@@ -194,7 +194,7 @@ func (h *UnfairAdvantageHandler) HandleGenerateInternalFunction(w http.ResponseW
 
 	function, err := h.engine.GenerateInternalFunction(r.Context(), oppID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 
@@ -216,7 +216,7 @@ func (h *UnfairAdvantageHandler) HandleListInternalFunctions(w http.ResponseWrit
 func (h *UnfairAdvantageHandler) HandleRunStealthPipeline(w http.ResponseWriter, r *http.Request) {
 	var cfg swarm.StealthConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode unfair advantage request", err)
 		return
 	}
 
@@ -235,7 +235,7 @@ func (h *UnfairAdvantageHandler) HandleRunStealthPipeline(w http.ResponseWriter,
 
 	run, err := h.engine.RunStealthPipeline(r.Context(), &cfg)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "unfair advantage handler", err)
 		return
 	}
 

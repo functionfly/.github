@@ -225,7 +225,7 @@ func (h *Handler) HandleUpdateEmbedConfig(w http.ResponseWriter, r *http.Request
 
 	// Validate allowed origins — must be valid origin format (scheme + host) or wildcard
 	if err := validateAllowedOrigins(cfg.AllowedOrigins); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "registry embed handler")
 		return
 	}
 

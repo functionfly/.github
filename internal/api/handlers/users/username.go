@@ -99,7 +99,7 @@ func (h *Handler) HandleChangeUsernameMe(w http.ResponseWriter, r *http.Request)
 	resp, err := h.authSvc.ChangeUsername(r.Context(), claims.UserID, req, ipAddress, userAgent)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Username change failed")
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "username handler")
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *Handler) HandleChangeUsernameByUsername(w http.ResponseWriter, r *http.
 	resp, err := h.authSvc.ChangeUsername(r.Context(), claims.UserID, req, ipAddress, userAgent)
 	if err != nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Username change failed")
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "username handler")
 		return
 	}
 

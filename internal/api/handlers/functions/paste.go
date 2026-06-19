@@ -13,6 +13,7 @@ import (
 	registryrepo "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 func nullString(s string) sql.NullString {
@@ -157,17 +158,17 @@ func languageTags(language string) ([]byte, error) {
 func (h *PasteHandler) HandleParseCode(w http.ResponseWriter, r *http.Request) {
 	var req ParseCodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Code == "" {
-		http.Error(w, "Code is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Code is required"))
 		return
 	}
 
 	if len(req.Code) > 102400 {
-		http.Error(w, "Code exceeds maximum size of 100KB", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Code exceeds maximum size of 100KB"))
 		return
 	}
 
@@ -175,14 +176,14 @@ func (h *PasteHandler) HandleParseCode(w http.ResponseWriter, r *http.Request) {
 	if language == "" || language == "auto" {
 		language = ""
 	} else if !codeparser.IsValidLanguage(language) {
-		http.Error(w, "Invalid language specified", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid language specified"))
 		return
 	}
 
 	result, err := codeparser.Parse(req.Code, language)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to parse code")
-		http.Error(w, "Failed to parse code: "+err.Error(), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to parse code. Check server logs for details."))
 		return
 	}
 
@@ -206,7 +207,7 @@ func (h *PasteHandler) HandleParseCode(w http.ResponseWriter, r *http.Request) {
 func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -214,22 +215,22 @@ func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Reque
 
 	var req CreateFromCodeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if len(req.Functions) == 0 {
-		http.Error(w, "At least one function is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("At least one function is required"))
 		return
 	}
 
 	if len(req.Functions) > 50 {
-		http.Error(w, "Maximum 50 functions can be created at once", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Maximum 50 functions can be created at once"))
 		return
 	}
 
 	if req.Visibility != "private" && req.Visibility != "public" {
-		http.Error(w, "Visibility must be 'private' or 'public'", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Visibility must be 'private' or 'public'"))
 		return
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type notificationRateLimiter struct {
@@ -125,12 +126,12 @@ type UpdatePreferencesRequest struct {
 func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
@@ -157,7 +158,7 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 	notifications, err := h.service.ListNotifications(r.Context(), user.UserID, opts)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list notifications")
-		http.Error(w, "Failed to list notifications", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list notifications"))
 		return
 	}
 
@@ -181,26 +182,26 @@ func (h *Handler) HandleListNotifications(w http.ResponseWriter, r *http.Request
 func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
 	totalCount, err := h.service.GetTotalCount(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get total count")
-		http.Error(w, "Failed to get notification counts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get notification counts"))
 		return
 	}
 
 	unreadCount, err := h.service.GetUnreadCount(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get unread count")
-		http.Error(w, "Failed to get notification counts", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get notification counts"))
 		return
 	}
 
@@ -231,7 +232,7 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		logrus.WithError(err).Error("Failed to encode notification counts response")
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to encode response"))
 		return
 	}
 }
@@ -240,36 +241,36 @@ func (h *Handler) HandleGetUnreadCount(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleMarkAsRead(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	notificationID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid notification ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid notification ID"))
 		return
 	}
 
 	n, err := h.service.GetNotification(r.Context(), notificationID)
 	if err != nil {
-		http.Error(w, "Notification not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Notification not found"))
 		return
 	}
 
 	if n.UserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	if err := h.service.MarkAsRead(r.Context(), notificationID); err != nil {
 		logrus.WithError(err).Error("Failed to mark notification as read")
-		http.Error(w, "Failed to mark as read", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to mark as read"))
 		return
 	}
 
@@ -285,18 +286,18 @@ func (h *Handler) HandleMarkAsRead(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleMarkAllAsRead(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
 	if err := h.service.MarkAllAsRead(r.Context(), user.UserID); err != nil {
 		logrus.WithError(err).Error("Failed to mark all notifications as read")
-		http.Error(w, "Failed to mark all as read", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to mark all as read"))
 		return
 	}
 
@@ -317,36 +318,36 @@ type patchNotificationRequest struct {
 func (h *Handler) HandlePatchNotification(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	notificationID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid notification ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid notification ID"))
 		return
 	}
 
 	n, err := h.service.GetNotification(r.Context(), notificationID)
 	if err != nil {
-		http.Error(w, "Notification not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Notification not found"))
 		return
 	}
 
 	if n.UserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	var req patchNotificationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -354,12 +355,12 @@ func (h *Handler) HandlePatchNotification(w http.ResponseWriter, r *http.Request
 	case "archived":
 		if err := h.service.ArchiveNotification(r.Context(), notificationID); err != nil {
 			logrus.WithError(err).Error("Failed to archive notification")
-			http.Error(w, "Failed to archive notification", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to archive notification"))
 			return
 		}
 		h.auditLogger.log(user.UserID, "archive", notificationID, getClientIP(r), getUserAgent(r), true, nil)
 	default:
-		http.Error(w, "Unsupported status", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Unsupported status"))
 		return
 	}
 
@@ -371,36 +372,36 @@ func (h *Handler) HandlePatchNotification(w http.ResponseWriter, r *http.Request
 func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	notificationID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid notification ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid notification ID"))
 		return
 	}
 
 	n, err := h.service.GetNotification(r.Context(), notificationID)
 	if err != nil {
-		http.Error(w, "Notification not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Notification not found"))
 		return
 	}
 
 	if n.UserID != user.UserID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	if err := h.service.DeleteNotification(r.Context(), notificationID); err != nil {
 		logrus.WithError(err).Error("Failed to delete notification")
-		http.Error(w, "Failed to delete notification", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete notification"))
 		return
 	}
 
@@ -416,19 +417,19 @@ func (h *Handler) HandleDeleteNotification(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleGetPreferences(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
 	prefs, err := h.service.GetPreferences(r.Context(), user.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get notification preferences")
-		http.Error(w, "Failed to get preferences", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get preferences"))
 		return
 	}
 
@@ -442,23 +443,23 @@ func (h *Handler) HandleGetPreferences(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.rateLimiter.Allow(user.UserID.String()) {
-		http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+		apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded"))
 		return
 	}
 
 	var req UpdatePreferencesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if len(req.Preferences) == 0 {
-		http.Error(w, "No preferences provided", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("No preferences provided"))
 		return
 	}
 
@@ -502,7 +503,7 @@ func (h *Handler) HandleUpdatePreferences(w http.ResponseWriter, r *http.Request
 		pref.UserID = user.UserID
 		if err := h.service.SavePreference(r.Context(), &pref); err != nil {
 			logrus.WithError(err).Error("Failed to save preference")
-			http.Error(w, "Failed to save preferences", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to save preferences"))
 			return
 		}
 		h.auditLogger.log(user.UserID, "update_preference", uuid.Nil, getClientIP(r), getUserAgent(r), true, nil)

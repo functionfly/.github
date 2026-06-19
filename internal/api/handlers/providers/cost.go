@@ -5,26 +5,27 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleEstimateCost provides cost estimation for function deployment
 func (h *Handler) HandleEstimateCost(w http.ResponseWriter, r *http.Request) {
 	var req CostEstimationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	provider, _ := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, req.Provider)
 
 	if provider.Status != "active" {
-		http.Error(w, "Provider not active", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Provider not active"))
 		return
 	}
 

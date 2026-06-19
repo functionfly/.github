@@ -10,26 +10,27 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleCreateTeamInvite creates team invitations during onboarding
 func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request) {
 	var req TeamInviteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	user, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 	if err != nil || user == nil {
 		logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to get user for team invite")
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -42,7 +43,7 @@ func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 		}
 		if err := h.repo.CreateTeam(r.Context(), team); err != nil {
 			logrus.WithError(err).Error("Failed to create team")
-			http.Error(w, "Failed to create team", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to create team"))
 			return
 		}
 
@@ -53,7 +54,7 @@ func (h *Handler) HandleCreateTeamInvite(w http.ResponseWriter, r *http.Request)
 		}
 		if err := h.repo.AddTeamMember(r.Context(), teamMember); err != nil {
 			logrus.WithError(err).Error("Failed to add user to team")
-			http.Error(w, "Failed to setup team", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to setup team"))
 			return
 		}
 	}
@@ -113,33 +114,33 @@ func (h *Handler) HandleShareProvider(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	provider, err := h.repo.GetProviderByID(r.Context(), providerID)
 	if err != nil {
-		http.Error(w, "Provider not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
 		return
 	}
 
 	if provider.UserID != claims.UserID {
 		isAdmin, err := h.repo.IsTeamAdmin(r.Context(), claims.UserID, req.TeamID)
 		if err != nil || !isAdmin {
-			http.Error(w, "Unauthorized", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("Unauthorized"))
 			return
 		}
 	}
 
 	if err := h.repo.ShareProviderWithTeam(r.Context(), providerID, req.TeamID); err != nil {
 		logrus.WithError(err).Error("Failed to share provider")
-		http.Error(w, "Failed to share provider", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to share provider"))
 		return
 	}
 

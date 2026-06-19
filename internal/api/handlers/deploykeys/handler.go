@@ -59,7 +59,7 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	key, err := h.repo.Create(r.Context(), claims.TenantID, req.Name, req.PublicKey, &claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create deploy key")
-		h.writeError(w, http.StatusInternalServerError, "Failed to create deploy key: "+err.Error(), "internal_error")
+		h.writeError(w, http.StatusInternalServerError, "Failed to create deploy key. Check server logs for details.", "internal_error")
 		return
 	}
 
@@ -203,7 +203,8 @@ func (h *Handler) HandleVerify(w http.ResponseWriter, r *http.Request) {
 
 	key, err := h.repo.VerifyKey(r.Context(), keyID, claims.TenantID)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Deploy key verification failed: "+err.Error(), "verification_failed")
+		h.logger.WithError(err).Warn("Deploy key verification failed")
+		h.writeError(w, http.StatusBadRequest, "Deploy key verification failed", "verification_failed")
 		return
 	}
 

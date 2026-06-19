@@ -139,7 +139,8 @@ func (h *Handler) HandleCreateExtension(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := validateExtensionRequest(req.Name, req.Version, req.Manifest); err != nil {
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		logrus.WithError(err).WithField("name", req.Name).Info("extension validation failed")
+		writeJSONError(w, http.StatusBadRequest, "Invalid extension request")
 		return
 	}
 

@@ -10,6 +10,7 @@ import (
 	"github.com/functionfly/functionfly/internal/verification"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 // HandleTriggerVerification triggers verification for a function
@@ -88,9 +89,10 @@ func (h *Handler) HandleTriggerVerification(w http.ResponseWriter, r *http.Reque
 
 	result, err := pipeline.Run(r.Context(), functionID, versionID, level)
 	if err != nil {
-		// Update job as failed
+		// Update job as failed (server-side only - this is for the job record, not the client response)
 		_ = h.repo.UpdateVerificationJobStatus(job.ID, "failed", "failed", nil, err.Error())
-		h.writeError(w, http.StatusInternalServerError, "VERIFICATION_FAILED", "Verification failed: "+err.Error())
+		logrus.WithError(err).Error("registry: verification pipeline failed")
+		h.writeError(w, http.StatusInternalServerError, "VERIFICATION_FAILED", "Verification failed. Check server logs for details.")
 		return
 	}
 

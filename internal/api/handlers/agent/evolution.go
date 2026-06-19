@@ -126,8 +126,11 @@ func (h *EvolutionHandler) ApproveSuggestion(w http.ResponseWriter, r *http.Requ
 
 	proposal, err := h.evolutionSvc.ApproveProposal(r.Context(), suggestionID, approverID)
 	if err != nil {
-		logrus.WithError(err).Error("failed to approve evolution suggestion")
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"suggestion_id": suggestionID,
+			"approver_id":   approverID,
+		}).Error("failed to approve evolution suggestion")
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "approve evolution suggestion", err)
 		return
 	}
 
@@ -166,8 +169,11 @@ func (h *EvolutionHandler) RejectSuggestion(w http.ResponseWriter, r *http.Reque
 
 	proposal, err := h.evolutionSvc.RejectProposal(r.Context(), suggestionID, rejectedBy)
 	if err != nil {
-		logrus.WithError(err).Error("failed to reject evolution suggestion")
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"suggestion_id": suggestionID,
+			"rejected_by":   rejectedBy,
+		}).Error("failed to reject evolution suggestion")
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "reject evolution suggestion", err)
 		return
 	}
 
@@ -190,7 +196,7 @@ func (h *EvolutionHandler) ToggleEvolutionMode(w http.ResponseWriter, r *http.Re
 		Enabled bool `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode evolution config request", err)
 		return
 	}
 

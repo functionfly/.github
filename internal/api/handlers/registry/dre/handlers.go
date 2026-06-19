@@ -297,7 +297,7 @@ func (h *Handler) HandleAnchorCertificate(w http.ResponseWriter, r *http.Request
 
 	// Check if anchoring service is configured
 	if h.anchoringService == nil || !h.anchoringService.IsConfigured() {
-		writeError(w, http.StatusNotImplemented, "anchoring is not configured on this server (no signing key set)")
+		writeError(w, http.StatusServiceUnavailable, "anchoring requires an HSM (Hardware Security Module) with a configured signing key. To enable blockchain anchoring, set the following environment variables: ANCHOR_SIGNING_KEY, ANCHOR_RPC_<CHAIN>, ANCHOR_CONTRACT_<CHAIN>. See documentation for setup instructions.")
 		return
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleCreateState handles POST /v1/state
@@ -21,14 +22,14 @@ func (h *Handler) HandleCreateState(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		monitoring.RecordStateOperation("", "create", "unauthorized")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	var req CreateStateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		monitoring.RecordStateOperation(claims.TenantID.String(), "create", "bad_request")
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
@@ -60,7 +61,7 @@ func (h *Handler) HandleCreateState(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Errorf("failed to create state: %v", err)
 		monitoring.RecordStateOperation(tenantID.String(), "create", "error")
-		http.Error(w, "failed to create state", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create state"))
 		return
 	}
 
@@ -80,7 +81,7 @@ func (h *Handler) HandleGetState(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		monitoring.RecordStateOperation("", "read", "unauthorized")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -90,7 +91,7 @@ func (h *Handler) HandleGetState(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Errorf("failed to get state: %v", err)
 		monitoring.RecordStateOperation(tenantID.String(), "read", "not_found")
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -111,7 +112,7 @@ func (h *Handler) HandleGetState(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListStates(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -129,7 +130,7 @@ func (h *Handler) HandleListStates(w http.ResponseWriter, r *http.Request) {
 	states, total, err := h.stateRepo.ListStatesByTenant(r.Context(), tenantID, limit, offset)
 	if err != nil {
 		logrus.Errorf("failed to list states: %v", err)
-		http.Error(w, "failed to list states", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to list states"))
 		return
 	}
 
@@ -151,7 +152,7 @@ func (h *Handler) HandleDeleteState(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		monitoring.RecordStateOperation("", "delete", "unauthorized")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -160,7 +161,7 @@ func (h *Handler) HandleDeleteState(w http.ResponseWriter, r *http.Request) {
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
 		monitoring.RecordStateOperation(tenantID.String(), "delete", "not_found")
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -174,7 +175,7 @@ func (h *Handler) HandleDeleteState(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Errorf("failed to delete state: %v", err)
 		monitoring.RecordStateOperation(tenantID.String(), "delete", "error")
-		http.Error(w, "failed to delete state", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to delete state"))
 		return
 	}
 
@@ -193,14 +194,14 @@ func (h *Handler) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		monitoring.RecordStateOperation("", "update", "unauthorized")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	var req UpdateStateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		monitoring.RecordStateOperation(claims.TenantID.String(), "update", "bad_request")
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
@@ -209,7 +210,7 @@ func (h *Handler) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
 		monitoring.RecordStateOperation(tenantID.String(), "update", "not_found")
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -246,7 +247,7 @@ func (h *Handler) HandleUpdateState(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Errorf("failed to update state: %v", err)
 		monitoring.RecordStateOperation(tenantID.String(), "update", "error")
-		http.Error(w, "failed to update state", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to update state"))
 		return
 	}
 

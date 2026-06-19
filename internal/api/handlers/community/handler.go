@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler serves community forum API endpoints.
@@ -33,7 +34,7 @@ func (h *Handler) ListCategories(w http.ResponseWriter, r *http.Request) {
 	cats, err := h.repo.ListCategories(r.Context())
 	if err != nil {
 		h.logger.WithError(err).Error("list community categories failed")
-		http.Error(w, `{"error":"Failed to list categories"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list categories"))
 		return
 	}
 	if cats == nil {
@@ -61,7 +62,7 @@ func (h *Handler) ListPosts(w http.ResponseWriter, r *http.Request) {
 	posts, err := h.repo.ListPosts(r.Context(), opts)
 	if err != nil {
 		h.logger.WithError(err).Error("list community posts failed")
-		http.Error(w, `{"error":"Failed to list posts"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list posts"))
 		return
 	}
 	if posts == nil {
@@ -74,7 +75,7 @@ func (h *Handler) ListPosts(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 	id, err := parseUUID(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid post ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid post ID"))
 		return
 	}
 
@@ -86,11 +87,11 @@ func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 	post, err := h.repo.GetPostByID(r.Context(), id, viewerID)
 	if err != nil {
 		h.logger.WithError(err).Error("get community post failed")
-		http.Error(w, `{"error":"Failed to load post"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load post"))
 		return
 	}
 	if post == nil {
-		http.Error(w, `{"error":"Post not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Post not found"))
 		return
 	}
 
@@ -99,7 +100,7 @@ func (h *Handler) GetPost(w http.ResponseWriter, r *http.Request) {
 	comments, err := h.repo.ListCommentsForPost(r.Context(), id, viewerID)
 	if err != nil {
 		h.logger.WithError(err).Error("list community comments failed")
-		http.Error(w, `{"error":"Failed to load comments"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load comments"))
 		return
 	}
 	if comments == nil {
@@ -120,13 +121,13 @@ type createPostRequest struct {
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req createPostRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -135,21 +136,21 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 	req.CategorySlug = strings.TrimSpace(req.CategorySlug)
 
 	if req.Title == "" || req.Body == "" || req.CategorySlug == "" {
-		http.Error(w, `{"error":"category_slug, title, and body are required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("category_slug, title, and body are required"))
 		return
 	}
 	if len(req.Title) > 300 {
-		http.Error(w, `{"error":"Title must be 300 characters or less"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Title must be 300 characters or less"))
 		return
 	}
 	if len(req.Body) > 10000 {
-		http.Error(w, `{"error":"Body must be 10000 characters or less"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Body must be 10000 characters or less"))
 		return
 	}
 
 	cat, err := h.repo.GetCategoryBySlug(r.Context(), req.CategorySlug)
 	if err != nil || cat == nil {
-		http.Error(w, `{"error":"Invalid category"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid category"))
 		return
 	}
 
@@ -167,7 +168,7 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.CreatePost(r.Context(), post); err != nil {
 		h.logger.WithError(err).Error("create community post failed")
-		http.Error(w, `{"error":"Failed to create post"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create post"))
 		return
 	}
 
@@ -185,45 +186,45 @@ type createCommentRequest struct {
 func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	postID, err := parseUUID(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid post ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid post ID"))
 		return
 	}
 
 	post, err := h.repo.GetPostByID(r.Context(), postID, nil)
 	if err != nil || post == nil {
-		http.Error(w, `{"error":"Post not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Post not found"))
 		return
 	}
 	if post.Status == comm.StatusLocked {
-		http.Error(w, `{"error":"This thread is locked"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("This thread is locked"))
 		return
 	}
 
 	var req createCommentRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	req.Body = strings.TrimSpace(req.Body)
 	if req.Body == "" {
-		http.Error(w, `{"error":"body is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("body is required"))
 		return
 	}
 	if len(req.Body) > 8000 {
-		http.Error(w, `{"error":"Comment must be 8000 characters or less"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Comment must be 8000 characters or less"))
 		return
 	}
 
 	if req.ParentID != nil {
 		parent, err := h.repo.GetCommentByID(r.Context(), *req.ParentID)
 		if err != nil || parent == nil || parent.PostID != postID {
-			http.Error(w, `{"error":"Invalid parent comment"}`, http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid parent comment"))
 			return
 		}
 	}
@@ -237,7 +238,7 @@ func (h *Handler) CreateComment(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.CreateComment(r.Context(), comment); err != nil {
 		h.logger.WithError(err).Error("create community comment failed")
-		http.Error(w, `{"error":"Failed to create comment"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create comment"))
 		return
 	}
 
@@ -256,32 +257,32 @@ type voteRequest struct {
 func (h *Handler) Vote(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req voteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	targetType := comm.VoteTargetType(req.TargetType)
 	if targetType != comm.VoteTargetPost && targetType != comm.VoteTargetComment {
-		http.Error(w, `{"error":"target_type must be post or comment"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("target_type must be post or comment"))
 		return
 	}
 
 	targetID, err := uuid.Parse(req.TargetID)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid target_id"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid target_id"))
 		return
 	}
 
 	score, err := h.repo.UpsertVote(r.Context(), user.UserID, targetType, targetID, req.Value)
 	if err != nil {
 		h.logger.WithError(err).Error("community vote failed")
-		http.Error(w, `{"error":"Failed to record vote"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to record vote"))
 		return
 	}
 
@@ -292,40 +293,40 @@ func (h *Handler) Vote(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) AcceptComment(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	postID, err := parseUUID(mux.Vars(r)["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid post ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid post ID"))
 		return
 	}
 	commentID, err := parseUUID(mux.Vars(r)["comment_id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid comment ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid comment ID"))
 		return
 	}
 
 	post, err := h.repo.GetPostByID(r.Context(), postID, nil)
 	if err != nil || post == nil {
-		http.Error(w, `{"error":"Post not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Post not found"))
 		return
 	}
 	if post.AuthorID != user.UserID {
-		http.Error(w, `{"error":"Only the thread author can accept an answer"}`, http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Only the thread author can accept an answer"))
 		return
 	}
 
 	comment, err := h.repo.GetCommentByID(r.Context(), commentID)
 	if err != nil || comment == nil || comment.PostID != postID {
-		http.Error(w, `{"error":"Comment not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Comment not found"))
 		return
 	}
 
 	if err := h.repo.AcceptComment(r.Context(), postID, commentID); err != nil {
 		h.logger.WithError(err).Error("accept community comment failed")
-		http.Error(w, `{"error":"Failed to accept answer"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to accept answer"))
 		return
 	}
 

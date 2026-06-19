@@ -10,13 +10,14 @@ import (
 	"github.com/functionfly/functionfly/internal/api/utils"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleRunFailoverTest runs a failover test to verify automatic failover works.
 func (h *Handler) HandleRunFailoverTest(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -28,7 +29,7 @@ func (h *Handler) HandleRunFailoverTest(w http.ResponseWriter, r *http.Request) 
 
 	var req FailoverTestRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 

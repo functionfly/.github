@@ -51,7 +51,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	// 1. Authenticate agent (via X-Agent-API-Key header or JWT)
 	agentID, tenantID, err := h.authenticateAgent(r)
 	if err != nil {
-		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+		writeErrorFromErr(r, w, http.StatusUnauthorized, "UNAUTHORIZED", "authenticate agent for execute", err)
 		return
 	}
 
@@ -82,7 +82,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	// 4. Acquire concurrency slot
 	pool, err := h.scheduler.AcquireSlot(r.Context(), agentID, agent.PlanTier)
 	if err != nil {
-		writeError(w, http.StatusTooManyRequests, "CONCURRENCY_EXCEEDED", err.Error())
+		writeErrorFromErr(r, w, http.StatusTooManyRequests, "CONCURRENCY_EXCEEDED", "acquire concurrency slot", err)
 		return
 	}
 	defer pool.Release()
@@ -98,7 +98,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		if qErr, ok := err.(*agentquota.QuotaViolationError); ok {
 			writeError(w, http.StatusTooManyRequests, string(qErr.Code), qErr.Message)
 		} else {
-			writeError(w, http.StatusTooManyRequests, "QUOTA_EXCEEDED", err.Error())
+			writeErrorFromErr(r, w, http.StatusTooManyRequests, "QUOTA_EXCEEDED", "check quota", err)
 		}
 		return
 	}

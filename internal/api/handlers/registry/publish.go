@@ -65,7 +65,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 
 	// Validate semver format
 	if err := functionregistry.ValidateSemVer(req.Version); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "validate semver")
 		return
 	}
 
@@ -108,8 +108,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	// Check if function already exists
 	existingFn, err := h.repo.GetFunctionByAuthorName(context.Background(), req.Author, req.Name)
 	if err != nil && !isRecordNotFound(err) {
-		logrus.WithError(err).Error("Failed to check existing function")
-		apierror.WriteError(w, apierror.NewInternal("Failed to check function: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "check existing function")
 		return
 	}
 
@@ -148,8 +147,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := h.repo.CreateFunction(context.Background(), fn); err != nil {
-			logrus.WithError(err).Error("Failed to create function")
-			apierror.WriteError(w, apierror.NewInternal("Failed to create function: "+err.Error()))
+			apierror.LogAndInternal(w, r, err, "create function")
 			return
 		}
 		fnID = fn.ID
@@ -209,8 +207,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 				// Use unified wallet service
 				userWallet, err := h.walletSvc.GetOrCreateUserWallet(r.Context(), user.UserID)
 				if err != nil {
-					logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
-					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
+					apierror.LogAndInternal(w, r, err, "get or create user wallet for platform fee")
 					return
 				}
 				walletID = userWallet.ID
@@ -219,8 +216,7 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 				// Fall back to legacy platform fee repo
 				wallet, err := h.platformFeeRepo.GetOrCreateWallet(r.Context(), user.UserID)
 				if err != nil {
-					logrus.WithError(err).Error("Failed to get or create wallet for platform fee")
-					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
+					apierror.LogAndInternal(w, r, err, "get or create wallet for platform fee (legacy)")
 					return
 				}
 				walletBalance = wallet.BalanceUSD
@@ -238,15 +234,13 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 				// Use unified wallet service for debit
 				_, err := h.walletSvc.DebitForFeePayment(r.Context(), walletID, feeAmountUSD, feeType, description)
 				if err != nil {
-					logrus.WithError(err).Error("Failed to debit wallet for platform fee")
-					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
+					apierror.LogAndInternal(w, r, err, "debit wallet for platform fee")
 					return
 				}
 			} else {
 				// Fall back to legacy platform fee repo
 				if err := h.platformFeeRepo.DebitWallet(r.Context(), user.UserID, feeAmountUSD, description); err != nil {
-					logrus.WithError(err).Error("Failed to debit wallet for platform fee")
-					apierror.WriteError(w, apierror.NewInternal("Failed to process payment: "+err.Error()))
+					apierror.LogAndInternal(w, r, err, "debit wallet for platform fee (legacy)")
 					return
 				}
 			}

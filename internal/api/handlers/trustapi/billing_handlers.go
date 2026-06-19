@@ -228,7 +228,7 @@ func (h *BillingHandler) HandleEnrollFounderMode(w http.ResponseWriter, r *http.
 	if err := h.service.EnrollFounderMode(r.Context(), partner.ID, req.UsageThreshold, req.FreeDays); err != nil {
 		logrus.WithError(err).WithField("partner_id", partner.ID).Error("Failed to enroll in founder mode")
 		if err.Error() == "partner is already in founder mode" {
-			apierror.WriteError(w, apierror.NewConflict(err.Error()))
+			apierror.WriteError(w, apierror.NewConflict("Partner is already enrolled in founder mode"))
 			return
 		}
 		apierror.WriteError(w, apierror.NewInternal("Failed to enroll in founder mode"))

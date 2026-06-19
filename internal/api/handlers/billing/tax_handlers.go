@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -147,7 +148,7 @@ func (h *Handler) HandleUpdateTaxSettings(w http.ResponseWriter, r *http.Request
 			writeJSONError(w, http.StatusBadRequest, ve.Message)
 			return
 		}
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		apierror.LogAndBadRequest(w, r, err, "validate tax request")
 		return
 	}
 

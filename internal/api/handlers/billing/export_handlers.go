@@ -87,7 +87,7 @@ func (h *ExportHandler) CreateExportConfiguration(w http.ResponseWriter, r *http
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "export handler request", err, h.writeError)
 		return
 	}
 
@@ -298,7 +298,7 @@ func (h *ExportHandler) UpdateExportConfiguration(w http.ResponseWriter, r *http
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "export handler request", err, h.writeError)
 		return
 	}
 
@@ -446,7 +446,7 @@ func (h *ExportHandler) ExecuteExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "export handler request", err, h.writeError)
 		return
 	}
 
@@ -476,7 +476,7 @@ func (h *ExportHandler) ExecuteExport(w http.ResponseWriter, r *http.Request) {
 	result, err := h.exportSvc.ExecuteExport(r.Context(), config, "manual")
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to execute export")
-		h.writeError(w, http.StatusInternalServerError, "Internal Error", "Failed to execute export: "+err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "Internal Error", "execute export", err, h.writeError)
 		return
 	}
 
@@ -722,7 +722,7 @@ func (h *ExportHandler) CreateConfigurationFromTemplate(w http.ResponseWriter, r
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "export handler request", err, h.writeError)
 		return
 	}
 

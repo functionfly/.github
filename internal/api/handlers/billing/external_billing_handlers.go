@@ -77,7 +77,7 @@ func (h *ExternalBillingHandler) CreateExternalBillingSystem(w http.ResponseWrit
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "external billing handler", err, h.writeError)
 		return
 	}
 
@@ -269,7 +269,7 @@ func (h *ExternalBillingHandler) UpdateExternalBillingSystem(w http.ResponseWrit
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "external billing handler", err, h.writeError)
 		return
 	}
 
@@ -513,7 +513,7 @@ func (h *ExternalBillingHandler) TriggerBillingSync(w http.ResponseWriter, r *ht
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "external billing handler", err, h.writeError)
 		return
 	}
 

@@ -418,7 +418,8 @@ func (h *Handler) CreateGraph(w http.ResponseWriter, r *http.Request) {
 
 	created, err := h.frgRepo.CreateDefinition(ctx, def)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: failed to create definition")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -441,7 +442,10 @@ func (h *Handler) GetGraph(w http.ResponseWriter, r *http.Request) {
 
 	def, err := h.frgRepo.GetDefinitionByName(ctx, author, name, version)
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"author": author, "name": name, "version": version,
+		}).Info("frg: definition lookup failed")
+		respondError(w, http.StatusNotFound, "Graph definition not found")
 		return
 	}
 
@@ -464,7 +468,8 @@ func (h *Handler) ListGraphs(w http.ResponseWriter, r *http.Request) {
 
 	defs, err := h.frgRepo.ListDefinitions(ctx, filter)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -495,7 +500,8 @@ func (h *Handler) UpdateGraph(w http.ResponseWriter, r *http.Request) {
 	// Get existing graph
 	def, err := h.frgRepo.GetDefinitionByName(ctx, author, name, "v1")
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).Info("frg: not found")
+		respondError(w, http.StatusNotFound, "Not found")
 		return
 	}
 
@@ -523,7 +529,8 @@ func (h *Handler) UpdateGraph(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.frgRepo.UpdateDefinition(ctx, def); err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		logrus.WithError(err).Info("frg: bad request")
+		respondError(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
@@ -549,7 +556,8 @@ func (h *Handler) PublishGraphVersion(w http.ResponseWriter, r *http.Request) {
 	// Get existing graph
 	def, err := h.frgRepo.GetDefinitionByName(ctx, author, name, "v1")
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).Info("frg: not found")
+		respondError(w, http.StatusNotFound, "Not found")
 		return
 	}
 
@@ -561,7 +569,8 @@ func (h *Handler) PublishGraphVersion(w http.ResponseWriter, r *http.Request) {
 
 	// Publish
 	if err := h.frgRepo.PublishVersion(ctx, def.ID); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -586,7 +595,8 @@ func (h *Handler) DeleteGraph(w http.ResponseWriter, r *http.Request) {
 	// Get existing graph
 	def, err := h.frgRepo.GetDefinitionByName(ctx, author, name, "v1")
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).Info("frg: not found")
+		respondError(w, http.StatusNotFound, "Not found")
 		return
 	}
 
@@ -598,7 +608,8 @@ func (h *Handler) DeleteGraph(w http.ResponseWriter, r *http.Request) {
 
 	// Delete
 	if err := h.frgRepo.DeleteDefinition(ctx, def.ID); err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		logrus.WithError(err).Info("frg: bad request")
+		respondError(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
@@ -648,7 +659,8 @@ func (h *Handler) ExecuteGraph(w http.ResponseWriter, r *http.Request) {
 		def, err = h.frgRepo.GetDefinitionByName(ctx, author, name, version)
 	}
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).Info("frg: not found")
+		respondError(w, http.StatusNotFound, "Not found")
 		return
 	}
 
@@ -734,7 +746,8 @@ func (h *Handler) ExecuteGraph(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			monitoring.RecordFRGGraphExecution(user.TenantID.String(), graphID, "execute", "error")
-			respondError(w, http.StatusInternalServerError, err.Error())
+			logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
 
@@ -758,7 +771,8 @@ func (h *Handler) ExecuteGraph(w http.ResponseWriter, r *http.Request) {
 		instance, err := h.engine.ExecuteAsync(execCtx, def, req.Input)
 		if err != nil {
 			monitoring.RecordFRGGraphExecution(user.TenantID.String(), graphID, "execute_async", "error")
-			respondError(w, http.StatusInternalServerError, err.Error())
+			logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 			return
 		}
 
@@ -786,7 +800,8 @@ func (h *Handler) GetInstanceStatus(w http.ResponseWriter, r *http.Request) {
 
 	instance, err := h.frgRepo.GetInstanceByID(ctx, id)
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).Info("frg: not found")
+		respondError(w, http.StatusNotFound, "Not found")
 		return
 	}
 
@@ -803,7 +818,8 @@ func (h *Handler) ListInstances(w http.ResponseWriter, r *http.Request) {
 	// Get graph to find definition ID
 	def, err := h.frgRepo.GetLatestVersion(ctx, author, name)
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).Info("frg: not found")
+		respondError(w, http.StatusNotFound, "Not found")
 		return
 	}
 
@@ -815,7 +831,8 @@ func (h *Handler) ListInstances(w http.ResponseWriter, r *http.Request) {
 
 	instances, err := h.frgRepo.ListInstances(ctx, filter)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -843,13 +860,15 @@ func (h *Handler) StopInstance(w http.ResponseWriter, r *http.Request) {
 
 	// Stop the instance
 	if err := h.engine.StopInstance(id); err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		logrus.WithError(err).Info("frg: bad request")
+		respondError(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
 	// Update database
 	if err := h.frgRepo.UpdateInstanceStatus(ctx, id, frg.InstanceStatusCompleted); err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -878,7 +897,8 @@ func (h *Handler) ResumeInstance(w http.ResponseWriter, r *http.Request) {
 
 	// Resume the instance
 	if err := h.engine.ResumeInstance(id); err != nil {
-		respondError(w, http.StatusBadRequest, err.Error())
+		logrus.WithError(err).Info("frg: bad request")
+		respondError(w, http.StatusBadRequest, "Invalid request")
 		return
 	}
 
@@ -914,7 +934,8 @@ func (h *Handler) RemixGraph(w http.ResponseWriter, r *http.Request) {
 	// Fork the graph
 	forked, err := h.frgRepo.ForkGraph(ctx, author, name, "v1", user.Username, req.NewName, &user.UserID)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -1111,7 +1132,8 @@ func (h *Handler) SemanticSearch(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 
@@ -1211,7 +1233,8 @@ func (h *Handler) GenerateFunction(w http.ResponseWriter, r *http.Request) {
 		Error string `json:"error"`
 	}
 	if err := json.Unmarshal(bodyBytes, &genResp); err != nil {
-		respondError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to parse generation response: %s", err.Error()))
+		logrus.WithError(err).Error("frg: failed to parse generation response")
+		respondError(w, http.StatusInternalServerError, "Failed to parse AI generation response")
 		return
 	}
 
@@ -1304,13 +1327,15 @@ func (h *Handler) GetOptimizations(w http.ResponseWriter, r *http.Request) {
 
 	def, err := h.frgRepo.GetLatestVersion(ctx, author, name)
 	if err != nil {
-		respondError(w, http.StatusNotFound, err.Error())
+		logrus.WithError(err).Info("frg: not found")
+		respondError(w, http.StatusNotFound, "Not found")
 		return
 	}
 
 	suggestions, err := h.frgRepo.GetOptimizationSuggestions(ctx, def.ID, false)
 	if err != nil {
-		respondError(w, http.StatusInternalServerError, err.Error())
+		logrus.WithError(err).Error("frg: internal error")
+		respondError(w, http.StatusInternalServerError, "Internal server error")
 		return
 	}
 

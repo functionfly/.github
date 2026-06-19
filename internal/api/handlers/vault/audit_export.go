@@ -77,7 +77,7 @@ func (h *Handler) HandleExportAudit(w http.ResponseWriter, r *http.Request) {
 	signingKey := h.auditSigningKey(claims.TenantID)
 	result, err := h.repo.ExportAudit(r.Context(), q, signingKey)
 	if err != nil {
-		apierror.WriteError(w, apierror.NewInternal("Failed to export audit log: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "vault export audit log")
 		return
 	}
 	filename := fmt.Sprintf("vault-audit-%s.%s",

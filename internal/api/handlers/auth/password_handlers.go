@@ -79,7 +79,7 @@ func (h *Handler) HandlePasswordResetConfirm(w http.ResponseWriter, r *http.Requ
 			logrus.WithError(logErr).Warn("Failed to log password reset confirmation failure")
 		}
 
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "password handler", err)
 		return
 	}
 

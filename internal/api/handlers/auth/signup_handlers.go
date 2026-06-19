@@ -54,7 +54,7 @@ func (h *Handler) HandleSignup(w http.ResponseWriter, r *http.Request) {
 			logrus.WithError(logErr).Warn("Failed to log signup failure")
 		}
 
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "signup handler", err)
 		return
 	}
 
@@ -194,7 +194,7 @@ func (h *Handler) HandleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 	err := h.authSvc.VerifyEmail(r.Context(), token)
 	if err != nil {
 		logrus.WithError(err).Warn("Email verification failed")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "signup handler", err)
 		return
 	}
 
@@ -232,7 +232,7 @@ func (h *Handler) HandleResendVerification(w http.ResponseWriter, r *http.Reques
 	err := h.authSvc.ResendVerificationEmail(r.Context(), req.Email)
 	if err != nil {
 		logrus.WithError(err).WithField("email", req.Email).Warn("Resend verification failed")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "signup handler", err)
 		return
 	}
 
@@ -255,7 +255,7 @@ func (h *Handler) HandleCheckUsernameAvailability(w http.ResponseWriter, r *http
 	available, err := h.authSvc.CheckUsernameAvailability(r.Context(), username)
 	if err != nil {
 		logrus.WithError(err).WithField("username", username).Warn("Username availability check failed")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "signup handler", err)
 		return
 	}
 

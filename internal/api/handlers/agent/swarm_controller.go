@@ -68,7 +68,7 @@ func (h *SwarmControllerHandler) RegisterRoutes(router *mux.Router, basePath str
 func (h *SwarmControllerHandler) HandleGetSwarmStatus(w http.ResponseWriter, r *http.Request) {
 	status, err := h.platformController.GetStatus(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *SwarmControllerHandler) HandleGetSwarmStatus(w http.ResponseWriter, r *
 
 func (h *SwarmControllerHandler) HandleTriggerDiscovery(w http.ResponseWriter, r *http.Request) {
 	if err := h.platformController.TriggerDiscoveryScan(r.Context()); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -94,7 +94,7 @@ func (h *SwarmControllerHandler) HandleTriggerDiscovery(w http.ResponseWriter, r
 
 func (h *SwarmControllerHandler) HandleTriggerGeneration(w http.ResponseWriter, r *http.Request) {
 	if err := h.platformController.TriggerGeneration(r.Context()); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -111,7 +111,7 @@ func (h *SwarmControllerHandler) HandleTriggerScan(w http.ResponseWriter, r *htt
 	}
 
 	if err := decodeBody(r, &req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode swarm controller request", err)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *SwarmControllerHandler) HandleTriggerScan(w http.ResponseWriter, r *htt
 func (h *SwarmControllerHandler) HandleGetDailyMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics, err := h.metricsCollector.CollectDailyMetrics(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -156,7 +156,7 @@ func (h *SwarmControllerHandler) HandleGetDailyMetrics(w http.ResponseWriter, r 
 func (h *SwarmControllerHandler) HandleGetWeeklyMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics, err := h.metricsCollector.GetWeeklyMetrics(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -176,7 +176,7 @@ func (h *SwarmControllerHandler) HandleGetTopFunctions(w http.ResponseWriter, r 
 
 	topFunctions, err := h.metricsCollector.GetTopPerformingFunctions(r.Context(), limit)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -190,7 +190,7 @@ func (h *SwarmControllerHandler) HandleGetTopFunctions(w http.ResponseWriter, r 
 func (h *SwarmControllerHandler) HandleGetProductivityScore(w http.ResponseWriter, r *http.Request) {
 	score, err := h.metricsCollector.GetProductivityScore(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -203,7 +203,7 @@ func (h *SwarmControllerHandler) HandleGetProductivityScore(w http.ResponseWrite
 
 func (h *SwarmControllerHandler) HandleRecordSnapshot(w http.ResponseWriter, r *http.Request) {
 	if err := h.metricsCollector.RecordMetricsSnapshot(r.Context()); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -217,7 +217,7 @@ func (h *SwarmControllerHandler) HandleRecordSnapshot(w http.ResponseWriter, r *
 func (h *SwarmControllerHandler) HandleGetChildren(w http.ResponseWriter, r *http.Request) {
 	status, err := h.platformController.GetStatus(r.Context())
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 
@@ -236,7 +236,7 @@ func (h *SwarmControllerHandler) HandleChildHeartbeat(w http.ResponseWriter, r *
 	}
 
 	if err := h.platformController.SendHeartbeat(r.Context(), agentID); err != nil {
-		writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
+		writeErrorFromErr(r, w, http.StatusInternalServerError, "INTERNAL_ERROR", "swarm controller handler", err)
 		return
 	}
 

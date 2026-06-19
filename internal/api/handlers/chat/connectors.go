@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type Connector interface {
@@ -101,19 +102,19 @@ type RegisterConnectorRequest struct {
 func (h *ConnectorHandler) RegisterConnector(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req RegisterConnectorRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	connector := h.registry.Get(req.Type)
 	if connector == nil {
-		http.Error(w, `{"error":"Unknown connector type"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Unknown connector type"))
 		return
 	}
 
@@ -127,7 +128,7 @@ func (h *ConnectorHandler) RegisterConnector(w http.ResponseWriter, r *http.Requ
 
 	if err := h.repo.CreateConnector(r.Context(), conn); err != nil {
 		h.logger.WithError(err).Error("Failed to save connector")
-		http.Error(w, `{"error":"Failed to register connector"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to register connector"))
 		return
 	}
 
@@ -139,14 +140,14 @@ func (h *ConnectorHandler) RegisterConnector(w http.ResponseWriter, r *http.Requ
 func (h *ConnectorHandler) ListConnectors(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	connectors, err := h.repo.ListConnectors(r.Context(), user.TenantID, user.UserID, 50, 0)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to list connectors")
-		http.Error(w, `{"error":"Failed to list connectors"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list connectors"))
 		return
 	}
 
@@ -157,20 +158,20 @@ func (h *ConnectorHandler) ListConnectors(w http.ResponseWriter, r *http.Request
 func (h *ConnectorHandler) DeleteConnector(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	id := mux.Vars(r)["id"]
 	connID, err := uuid.Parse(id)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid connector ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid connector ID"))
 		return
 	}
 
 	if err := h.repo.DeleteConnector(r.Context(), connID, user.TenantID, user.UserID); err != nil {
 		h.logger.WithError(err).Error("Failed to delete connector")
-		http.Error(w, `{"error":"Failed to delete connector"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete connector"))
 		return
 	}
 
@@ -181,26 +182,26 @@ func (h *ConnectorHandler) DeleteConnector(w http.ResponseWriter, r *http.Reques
 func (h *ConnectorHandler) TestConnector(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	id := mux.Vars(r)["id"]
 	connID, err := uuid.Parse(id)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid connector ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid connector ID"))
 		return
 	}
 
 	conn, err := h.repo.GetConnector(r.Context(), connID)
 	if err != nil || conn == nil {
-		http.Error(w, `{"error":"Connector not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Connector not found"))
 		return
 	}
 
 	connector := h.registry.Get(conn.Type)
 	if connector == nil {
-		http.Error(w, `{"error":"Connector implementation not found"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Connector implementation not found"))
 		return
 	}
 

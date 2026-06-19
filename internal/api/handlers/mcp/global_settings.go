@@ -8,6 +8,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // MCPSettingsGlobal represents platform-wide MCP configuration defaults.
@@ -105,17 +106,18 @@ func (h *GlobalHandler) HandleGetMCPSettings(w http.ResponseWriter, r *http.Requ
 func (h *GlobalHandler) HandleUpdateMCPSettings(w http.ResponseWriter, r *http.Request) {
 	var input MCPSettingsGlobal
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest)
+		logrus.WithError(err).Info("mcp: invalid JSON in update settings")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
 		return
 	}
 
 	// Validate inputs
 	if input.DefaultRateLimit < 1 || input.DefaultRateLimit > 10000 {
-		http.Error(w, "default_rate_limit must be between 1 and 10000", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("default_rate_limit must be between 1 and 10000"))
 		return
 	}
 	if input.RateLimitMultiplier < 1 || input.RateLimitMultiplier > 100 {
-		http.Error(w, "rate_limit_multiplier must be between 1 and 100", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("rate_limit_multiplier must be between 1 and 100"))
 		return
 	}
 

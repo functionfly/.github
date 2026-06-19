@@ -9,6 +9,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleSetValue handles PUT /v1/state/{path}
@@ -23,13 +24,13 @@ func (h *Handler) HandleSetValue(w http.ResponseWriter, r *http.Request) {
 
 	var req SetValueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -37,7 +38,7 @@ func (h *Handler) HandleSetValue(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -57,7 +58,7 @@ func (h *Handler) HandleSetValue(w http.ResponseWriter, r *http.Request) {
 	value, err := h.stateRepo.SetStateValue(r.Context(), state.ID, key, req.Value, "user", claims.UserID.String())
 	if err != nil {
 		logrus.Errorf("failed to set value: %v", err)
-		http.Error(w, "failed to set value", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to set value"))
 		return
 	}
 
@@ -83,7 +84,7 @@ func (h *Handler) HandleGetValue(w http.ResponseWriter, r *http.Request) {
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *Handler) HandleGetValue(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -102,7 +103,7 @@ func (h *Handler) HandleGetValue(w http.ResponseWriter, r *http.Request) {
 
 	value, err := h.stateRepo.GetStateValue(r.Context(), state.ID, key)
 	if err != nil {
-		http.Error(w, "value not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("value not found"))
 		return
 	}
 
@@ -122,7 +123,7 @@ func (h *Handler) HandleDeleteValue(w http.ResponseWriter, r *http.Request) {
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -130,7 +131,7 @@ func (h *Handler) HandleDeleteValue(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -150,7 +151,7 @@ func (h *Handler) HandleDeleteValue(w http.ResponseWriter, r *http.Request) {
 	err = h.stateRepo.DeleteStateValue(r.Context(), state.ID, key, "user", claims.UserID.String())
 	if err != nil {
 		logrus.Errorf("failed to delete value: %v", err)
-		http.Error(w, "failed to delete value", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to delete value"))
 		return
 	}
 
@@ -174,18 +175,18 @@ func (h *Handler) HandlePatchValue(w http.ResponseWriter, r *http.Request) {
 
 	var req PatchValueRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	if len(req.Patch) == 0 {
-		http.Error(w, "patch operations required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("patch operations required"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -193,7 +194,7 @@ func (h *Handler) HandlePatchValue(w http.ResponseWriter, r *http.Request) {
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -241,7 +242,7 @@ func (h *Handler) HandlePatchValue(w http.ResponseWriter, r *http.Request) {
 			// Test operation - verify value matches
 			value := op["value"]
 			if !testNestedValue(currentMap, patchPath, value) {
-				http.Error(w, "test operation failed: value mismatch", http.StatusBadRequest)
+				apierror.WriteError(w, apierror.NewBadRequest("test operation failed: value mismatch"))
 				return
 			}
 		}
@@ -251,7 +252,7 @@ func (h *Handler) HandlePatchValue(w http.ResponseWriter, r *http.Request) {
 	value, err := h.stateRepo.SetStateValue(r.Context(), state.ID, key, currentMap, "user", claims.UserID.String())
 	if err != nil {
 		logrus.Errorf("failed to patch value: %v", err)
-		http.Error(w, "failed to patch value", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to patch value"))
 		return
 	}
 

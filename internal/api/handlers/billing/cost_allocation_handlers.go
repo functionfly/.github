@@ -64,7 +64,7 @@ func (h *CostAllocationHandler) GetCostSummary(w http.ResponseWriter, r *http.Re
 
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "cost allocation handler", err, h.writeError)
 		return
 	}
 
@@ -133,7 +133,7 @@ func (h *CostAllocationHandler) GetCostByFunction(w http.ResponseWriter, r *http
 
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "cost allocation handler", err, h.writeError)
 		return
 	}
 
@@ -215,7 +215,7 @@ func (h *CostAllocationHandler) GetCostByPeriod(w http.ResponseWriter, r *http.R
 
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "cost allocation handler", err, h.writeError)
 		return
 	}
 
@@ -284,7 +284,7 @@ func (h *CostAllocationHandler) GetCostByRegion(w http.ResponseWriter, r *http.R
 
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "cost allocation handler", err, h.writeError)
 		return
 	}
 
@@ -476,7 +476,7 @@ func (h *CostAllocationHandler) GetChargebackReport(w http.ResponseWriter, r *ht
 	// This endpoint is for admin/internal use
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "cost allocation handler", err, h.writeError)
 		return
 	}
 
@@ -540,7 +540,7 @@ func (h *CostAllocationHandler) AdminGetTenantCostSummary(w http.ResponseWriter,
 
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "cost allocation handler", err, h.writeError)
 		return
 	}
 

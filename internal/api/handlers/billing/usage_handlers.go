@@ -138,7 +138,7 @@ func (h *UsageHandler) GetUsageHistory(w http.ResponseWriter, r *http.Request) {
 	// Parse date range
 	start, end, err := h.parseDateRange(r)
 	if err != nil {
-		h.writeError(w, http.StatusBadRequest, "Invalid Request", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "Invalid Request", "usage handler request", err, h.writeError)
 		return
 	}
 

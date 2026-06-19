@@ -97,13 +97,16 @@ func (h *Handler) HandleRegisterAgent(w http.ResponseWriter, r *http.Request) {
 
 	agent, apiKey, signingKey, err := h.identityRepo.CreateAgent(r.Context(), claims.TenantID, &req)
 	if err != nil {
-		logrus.WithError(err).Error("failed to register agent")
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"tenant_id": claims.TenantID,
+			"agent_id":  req.AgentID,
+		}).Error("failed to register agent")
 		errStr := err.Error()
 		if errors.Is(err, gorm.ErrDuplicatedKey) || strings.Contains(errStr, "duplicate key") || strings.Contains(errStr, "unique constraint") {
 			writeError(w, http.StatusConflict, "AGENT_ID_TAKEN", "This agent ID is already in use.")
 			return
 		}
-		writeError(w, http.StatusInternalServerError, "REGISTRATION_FAILED", err.Error())
+		writeError(w, http.StatusInternalServerError, "REGISTRATION_FAILED", "Failed to register agent. Check server logs for details.")
 		return
 	}
 
@@ -636,6 +639,63 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 		"ok":    false,
 		"error": map[string]string{"code": code, "message": message},
 	})
+}
+
+func writeErrorFromErr(r *http.Request, w http.ResponseWriter, status int, code, contextMsg string, err error) {
+	if err != nil {
+		fields := logrus.Fields{
+			"status":  status,
+			"code":    code,
+			"context": contextMsg,
+			"method":  "",
+			"path":    "",
+		}
+		if r != nil {
+			fields["method"] = r.Method
+			if r.URL != nil {
+				fields["path"] = r.URL.Path
+			}
+		}
+		entry := logrus.WithError(err).WithFields(fields)
+		if status >= 500 {
+			entry.Error("agent handler error")
+		} else {
+			entry.Info("agent handler client error")
+		}
+	}
+	message := sanitizedAgentErrorMessage(status, code, contextMsg)
+	writeError(w, status, code, message)
+}
+
+func sanitizedAgentErrorMessage(status int, code, contextMsg string) string {
+	if status >= 500 {
+		switch code {
+		case "INTERNAL_ERROR":
+			return "Internal server error"
+		case "REGISTRATION_FAILED":
+			return "Failed to register agent. Check server logs for details."
+		case "SESSION_FAILED":
+			return "Failed to start session. Check server logs for details."
+		case "EXECUTION_FAILED":
+			return "Failed to execute agent. Check server logs for details."
+		case "STATS_FAILED":
+			return "Failed to retrieve statistics."
+		case "DELETE_FAILED":
+			return "Failed to delete agent."
+		case "UPDATE_FAILED":
+			return "Failed to update agent."
+		case "LIST_FAILED":
+			return "Failed to list agents."
+		}
+		return "Internal server error"
+	}
+	switch code {
+	case "INVALID_REQUEST":
+		return "Invalid request body"
+	case "INVALID_PARAMETERS":
+		return "Invalid parameters"
+	}
+	return contextMsg
 }
 
 func generateSessionID() string {

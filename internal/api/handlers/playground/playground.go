@@ -11,6 +11,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler contains playground handlers
@@ -62,27 +63,27 @@ func (h *Handler) HandlePlaygroundUI(w http.ResponseWriter, r *http.Request) {
 	// Get app by slug
 	app, err := h.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
-		http.Error(w, "App not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("App not found"))
 		return
 	}
 
 	// Get function by app ID and name
 	function, err := h.repo.GetFunctionByAppIDAndName(r.Context(), app.ID, functionName)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Check if playground is enabled
 	if !function.PlaygroundEnabled {
-		http.Error(w, "Playground is not enabled for this function", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Playground is not enabled for this function"))
 		return
 	}
 
 	// Get active deployment
 	deployment, err := h.repo.GetActiveDeploymentForFunction(r.Context(), function.ID)
 	if err != nil || deployment == nil || deployment.DeployedURL == nil {
-		http.Error(w, "Function is not deployed", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Function is not deployed"))
 		return
 	}
 
@@ -101,20 +102,20 @@ func (h *Handler) HandleGetFunctionInfo(w http.ResponseWriter, r *http.Request) 
 	// Get app by slug
 	app, err := h.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
-		http.Error(w, "App not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("App not found"))
 		return
 	}
 
 	// Get function by app ID and name
 	function, err := h.repo.GetFunctionByAppIDAndName(r.Context(), app.ID, functionName)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Check if playground is enabled
 	if !function.PlaygroundEnabled {
-		http.Error(w, "Playground is not enabled for this function", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Playground is not enabled for this function"))
 		return
 	}
 
@@ -162,34 +163,34 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	// Get app by slug
 	app, err := h.repo.GetAppBySlug(r.Context(), appSlug)
 	if err != nil {
-		http.Error(w, "App not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("App not found"))
 		return
 	}
 
 	// Get function by app ID and name
 	function, err := h.repo.GetFunctionByAppIDAndName(r.Context(), app.ID, functionName)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	// Check if playground is enabled
 	if !function.PlaygroundEnabled {
-		http.Error(w, "Playground is not enabled for this function", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Playground is not enabled for this function"))
 		return
 	}
 
 	// Get active deployment
 	deployment, err := h.repo.GetActiveDeploymentForFunction(r.Context(), function.ID)
 	if err != nil || deployment == nil || deployment.DeployedURL == nil {
-		http.Error(w, "Function is not deployed", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Function is not deployed"))
 		return
 	}
 
 	// Parse request body
 	var execReq ExecuteRequest
 	if err := json.NewDecoder(r.Body).Decode(&execReq); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -205,7 +206,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 
 	proxyReq, err := http.NewRequestWithContext(r.Context(), "POST", targetURL, bytes.NewReader(inputBytes))
 	if err != nil {
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create request"))
 		return
 	}
 

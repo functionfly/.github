@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler contains security-related handlers
@@ -479,24 +480,24 @@ func (h *Handler) HandleUpdateSecurityMeasureEnabled(w http.ResponseWriter, r *h
 	vars := mux.Vars(r)
 	idStr := vars["id"]
 	if idStr == "" {
-		http.Error(w, `{"error":"missing measure id"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("missing measure id"))
 		return
 	}
 	id, err := uuid.Parse(idStr)
 	if err != nil {
-		http.Error(w, `{"error":"invalid measure id"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid measure id"))
 		return
 	}
 	var body struct {
 		Enabled *bool `json:"enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Enabled == nil {
-		http.Error(w, `{"error":"body must include \"enabled\": true or false"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("body must include \"enabled\": true or false"))
 		return
 	}
 	if err := h.repo.UpdateFeatureMeasureEnabled(r.Context(), id, *body.Enabled); err != nil {
 		logrus.WithError(err).WithField("measure_id", id).Warn("UpdateFeatureMeasureEnabled failed")
-		http.Error(w, `{"error":"failed to update measure"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to update measure"))
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

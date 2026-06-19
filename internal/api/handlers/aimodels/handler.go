@@ -16,6 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const catalogCacheKey = "ai:catalog:v1"
@@ -63,14 +64,14 @@ type CatalogModel struct {
 func (h *Handler) HandleGetCatalog(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	models, err := h.getCatalog(r.Context(), r.URL.Query())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get AI model catalog")
-		http.Error(w, "Failed to retrieve model catalog", http.StatusBadGateway)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve model catalog"))
 		return
 	}
 
@@ -95,13 +96,13 @@ func (h *Handler) HandleGetCatalog(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetPreferences(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	prefs, err := h.prefsRepo.GetTenantAIPreferences(r.Context(), claims.TenantID)
 	if err != nil {
-		http.Error(w, "Failed to load preferences", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to load preferences"))
 		return
 	}
 	prefs.Defaults = modelprofiles.EffectiveDefaults(prefs.Profile, prefs.Defaults)
@@ -111,18 +112,18 @@ func (h *Handler) HandleGetPreferences(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandlePutPreferences(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	if !h.isTenantAdmin(r.Context(), claims.TenantID, claims.UserID) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	var req storage.TenantAIPreferencesUpdate
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if req.Profile == "" {
@@ -148,7 +149,7 @@ func (h *Handler) HandlePutPreferences(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.prefsRepo.UpsertTenantAIPreferences(r.Context(), claims.TenantID, claims.UserID, req)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to upsert tenant ai preferences")
-		http.Error(w, "Failed to save preferences", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to save preferences"))
 		return
 	}
 
@@ -172,11 +173,11 @@ func (h *Handler) HandlePutPreferences(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRefreshCatalog(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 	if !h.isTenantAdmin(r.Context(), claims.TenantID, claims.UserID) {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 	if h.redisClient != nil {

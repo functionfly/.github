@@ -12,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // WebAuthnHandler handles WebAuthn/Passkey-related API endpoints
@@ -38,14 +39,14 @@ func NewWebAuthnHandler(webAuthnSvc *auth.WebAuthnService, authSvc *auth.AuthSer
 // POST /auth/webauthn/register/begin
 func (h *WebAuthnHandler) HandleWebAuthnRegisterBegin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -56,7 +57,7 @@ func (h *WebAuthnHandler) HandleWebAuthnRegisterBegin(w http.ResponseWriter, r *
 	options, sessionData, err := h.webAuthnSvc.BeginRegistration(claims.UserID, displayName, claims.Email)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to begin WebAuthn registration")
-		http.Error(w, "Failed to begin registration", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to begin registration"))
 		return
 	}
 
@@ -81,7 +82,7 @@ func (h *WebAuthnHandler) HandleWebAuthnRegisterBegin(w http.ResponseWriter, r *
 	sessionID, err := h.sessionStore.Create(ctx, session)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create WebAuthn session")
-		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create session"))
 		return
 	}
 
@@ -99,14 +100,14 @@ func (h *WebAuthnHandler) HandleWebAuthnRegisterBegin(w http.ResponseWriter, r *
 // POST /auth/webauthn/register/complete
 func (h *WebAuthnHandler) HandleWebAuthnRegisterComplete(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -118,12 +119,12 @@ func (h *WebAuthnHandler) HandleWebAuthnRegisterComplete(w http.ResponseWriter, 
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.logger.WithError(err).Error("Failed to parse request body")
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.SessionID == "" {
-		http.Error(w, "Session ID required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Session ID required"))
 		return
 	}
 
@@ -132,25 +133,25 @@ func (h *WebAuthnHandler) HandleWebAuthnRegisterComplete(w http.ResponseWriter, 
 	session, err := h.sessionStore.Get(ctx, req.SessionID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to retrieve WebAuthn session")
-		http.Error(w, "Failed to retrieve session", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to retrieve session"))
 		return
 	}
 
 	if session == nil {
-		http.Error(w, "Session not found or expired", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Session not found or expired"))
 		return
 	}
 
 	// Verify the session belongs to this user
 	if session.UserID != claims.UserID.String() {
 		h.logger.Warn("Session user ID mismatch")
-		http.Error(w, "Invalid session", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session"))
 		return
 	}
 
 	// Verify this is a registration session
 	if session.Operation != "registration" {
-		http.Error(w, "Invalid session operation", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session operation"))
 		return
 	}
 
@@ -169,7 +170,7 @@ func (h *WebAuthnHandler) HandleWebAuthnRegisterComplete(w http.ResponseWriter, 
 		h.logger.WithError(err).Error("Failed to complete WebAuthn registration")
 		// Delete the session
 		h.sessionStore.Delete(ctx, req.SessionID)
-		http.Error(w, "Failed to complete registration: "+err.Error(), http.StatusBadRequest)
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "webauthn registration", err)
 		return
 	}
 
@@ -188,7 +189,7 @@ func (h *WebAuthnHandler) HandleWebAuthnRegisterComplete(w http.ResponseWriter, 
 // POST /auth/webauthn/login/begin
 func (h *WebAuthnHandler) HandleWebAuthnLoginBegin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
@@ -198,7 +199,7 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginBegin(w http.ResponseWriter, r *htt
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -209,14 +210,14 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginBegin(w http.ResponseWriter, r *htt
 		// If user ID provided, use it (for initial login)
 		userID, err = uuid.Parse(*req.UserID)
 		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid user ID"))
 			return
 		}
 	} else {
 		// Get user from context (set by auth middleware for re-authentication)
 		claims := middleware.GetUserFromContext(r)
 		if claims == nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 			return
 		}
 		userID = claims.UserID
@@ -226,7 +227,7 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginBegin(w http.ResponseWriter, r *htt
 	options, sessionData, err := h.webAuthnSvc.BeginLogin(userID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to begin WebAuthn login")
-		http.Error(w, "Failed to begin login: "+err.Error(), http.StatusInternalServerError)
+		writeJSONErrorFromErr(r, w, http.StatusInternalServerError, "webauthn begin login", err)
 		return
 	}
 
@@ -251,7 +252,7 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginBegin(w http.ResponseWriter, r *htt
 	sessionID, err := h.sessionStore.Create(ctx, session)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to create WebAuthn session")
-		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create session"))
 		return
 	}
 
@@ -460,14 +461,14 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 // GET /auth/webauthn/credentials
 func (h *WebAuthnHandler) HandleListWebAuthnCredentials(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -475,7 +476,7 @@ func (h *WebAuthnHandler) HandleListWebAuthnCredentials(w http.ResponseWriter, r
 	credentials, err := h.webAuthnSvc.GetCredentialsForUser(claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get WebAuthn credentials")
-		http.Error(w, "Failed to get credentials", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get credentials"))
 		return
 	}
 
@@ -511,27 +512,27 @@ func (h *WebAuthnHandler) HandleListWebAuthnCredentials(w http.ResponseWriter, r
 // DELETE /auth/webauthn/credentials/{id}
 func (h *WebAuthnHandler) HandleDeleteWebAuthnCredential(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	// Get credential ID from URL
 	credentialIDStr := r.URL.Query().Get("id")
 	if credentialIDStr == "" {
-		http.Error(w, "Credential ID required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Credential ID required"))
 		return
 	}
 
 	credentialID, err := uuid.Parse(credentialIDStr)
 	if err != nil {
-		http.Error(w, "Invalid credential ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid credential ID"))
 		return
 	}
 
@@ -539,7 +540,7 @@ func (h *WebAuthnHandler) HandleDeleteWebAuthnCredential(w http.ResponseWriter, 
 	credentials, err := h.webAuthnSvc.GetCredentialsForUser(claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get WebAuthn credentials")
-		http.Error(w, "Failed to verify credentials", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify credentials"))
 		return
 	}
 
@@ -553,14 +554,14 @@ func (h *WebAuthnHandler) HandleDeleteWebAuthnCredential(w http.ResponseWriter, 
 	}
 
 	if !belongsToUser {
-		http.Error(w, "Credential not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Credential not found"))
 		return
 	}
 
 	// Delete the credential
 	if err := h.webAuthnSvc.DeleteCredential(credentialID); err != nil {
 		h.logger.WithError(err).Error("Failed to delete WebAuthn credential")
-		http.Error(w, "Failed to delete credential", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete credential"))
 		return
 	}
 

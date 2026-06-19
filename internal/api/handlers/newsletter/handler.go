@@ -12,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type Handler struct {
@@ -42,18 +43,18 @@ type SubscribeRequest struct {
 func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	var req SubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	emailAddr := strings.ToLower(strings.TrimSpace(req.Email))
 	if emailAddr == "" {
-		http.Error(w, `{"error": "Email is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email is required"))
 		return
 	}
 
 	if !isValidEmail(emailAddr) {
-		http.Error(w, `{"error": "Invalid email format"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid email format"))
 		return
 	}
 
@@ -65,18 +66,18 @@ func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	confirmationToken, err := generateConfirmationToken()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to generate confirmation token")
-		http.Error(w, `{"error": "Failed to process subscription"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to process subscription"))
 		return
 	}
 
 	_, err = h.repo.CreatePendingNewsletterSubscriber(r.Context(), emailAddr, name, source, ipAddress, userAgent, confirmationToken)
 	if err != nil {
 		if err == storage.ErrSubscriberExists {
-			http.Error(w, `{"error": "Email is already subscribed"}`, http.StatusConflict)
+			apierror.WriteError(w, apierror.NewConflict("Email is already subscribed"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to create newsletter subscriber")
-		http.Error(w, `{"error": "Failed to subscribe"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to subscribe"))
 		return
 	}
 
@@ -101,7 +102,7 @@ type ConfirmRequest struct {
 func (h *Handler) ConfirmSubscription(w http.ResponseWriter, r *http.Request) {
 	var req ConfirmRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -109,23 +110,23 @@ func (h *Handler) ConfirmSubscription(w http.ResponseWriter, r *http.Request) {
 	emailAddr := strings.ToLower(strings.TrimSpace(req.Email))
 
 	if token == "" || emailAddr == "" {
-		http.Error(w, `{"error": "Token and email are required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Token and email are required"))
 		return
 	}
 
 	if !isValidEmail(emailAddr) {
-		http.Error(w, `{"error": "Invalid email format"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid email format"))
 		return
 	}
 
 	subscriber, err := h.repo.GetNewsletterSubscriberByEmail(r.Context(), emailAddr)
 	if err != nil {
 		if err == storage.ErrSubscriberNotFound {
-			http.Error(w, `{"error": "Subscriber not found"}`, http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Subscriber not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to get newsletter subscriber")
-		http.Error(w, `{"error": "Failed to confirm subscription"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to confirm subscription"))
 		return
 	}
 
@@ -140,18 +141,18 @@ func (h *Handler) ConfirmSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if subscriber.Status != "pending" {
-		http.Error(w, `{"error": "Invalid subscription status"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid subscription status"))
 		return
 	}
 
 	if subscriber.ConfirmationToken == nil || *subscriber.ConfirmationToken != token {
-		http.Error(w, `{"error": "Invalid confirmation token"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Invalid confirmation token"))
 		return
 	}
 
 	if err := h.repo.ConfirmNewsletterSubscription(r.Context(), emailAddr); err != nil {
 		logrus.WithError(err).Error("Failed to confirm newsletter subscription")
-		http.Error(w, `{"error": "Failed to confirm subscription"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to confirm subscription"))
 		return
 	}
 
@@ -174,23 +175,23 @@ type UnsubscribeRequest struct {
 func (h *Handler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 	var req UnsubscribeRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	emailAddr := strings.ToLower(strings.TrimSpace(req.Email))
 	if emailAddr == "" {
-		http.Error(w, `{"error": "Email is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Email is required"))
 		return
 	}
 
 	if err := h.repo.UnsubscribeNewsletterSubscriber(r.Context(), emailAddr); err != nil {
 		if err == storage.ErrSubscriberNotFound {
-			http.Error(w, `{"error": "Subscriber not found"}`, http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("Subscriber not found"))
 			return
 		}
 		logrus.WithError(err).Error("Failed to unsubscribe newsletter subscriber")
-		http.Error(w, `{"error": "Failed to unsubscribe"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to unsubscribe"))
 		return
 	}
 

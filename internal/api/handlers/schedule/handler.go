@@ -3,7 +3,6 @@ package schedule
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler contains schedule management handlers
@@ -45,38 +45,39 @@ func (h *Handler) RegisterExecutor(executor ScheduleExecutor) {
 func (h *Handler) HandleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function exists and belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	var req CreateScheduleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	// Validate cron expression
 	if err := scheduler.ValidateCronExpression(req.Cron); err != nil {
-		http.Error(w, "Invalid cron expression: "+err.Error(), http.StatusBadRequest)
+		logrus.WithError(err).WithField("cron", req.Cron).Info("schedule: invalid cron expression")
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid cron expression"))
 		return
 	}
 
@@ -95,7 +96,7 @@ func (h *Handler) HandleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 	// Add schedule to scheduler
 	if err := h.scheduler.AddSchedule(r.Context(), functionID, config); err != nil {
 		logrus.WithError(err).Error("Failed to create schedule")
-		http.Error(w, "Failed to create schedule", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create schedule"))
 		return
 	}
 
@@ -138,32 +139,32 @@ func (h *Handler) HandleCreateSchedule(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetSchedule(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function exists and belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	schedule := function.Schedule
 	if schedule == nil {
-		http.Error(w, "No schedule found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No schedule found"))
 		return
 	}
 
@@ -188,45 +189,46 @@ func (h *Handler) HandleGetSchedule(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateSchedule(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function exists and belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	var req UpdateScheduleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	currentSchedule := function.Schedule
 	if currentSchedule == nil {
-		http.Error(w, "No schedule found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("No schedule found"))
 		return
 	}
 
 	// Update cron if provided
 	if req.Cron != "" {
 		if err := scheduler.ValidateCronExpression(req.Cron); err != nil {
-			http.Error(w, "Invalid cron expression: "+err.Error(), http.StatusBadRequest)
+			logrus.WithError(err).WithField("cron", req.Cron).Info("schedule: invalid cron expression on update")
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid cron expression"))
 			return
 		}
 		currentSchedule.Cron = req.Cron
@@ -250,7 +252,7 @@ func (h *Handler) HandleUpdateSchedule(w http.ResponseWriter, r *http.Request) {
 			Enabled:   currentSchedule.Enabled,
 		}); err != nil {
 			logrus.WithError(err).Error("Failed to update schedule")
-			http.Error(w, "Failed to update schedule", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update schedule"))
 			return
 		}
 	} else {
@@ -295,26 +297,26 @@ func (h *Handler) HandleUpdateSchedule(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleDeleteSchedule(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function exists and belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -340,7 +342,7 @@ func (h *Handler) HandleDeleteSchedule(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListSchedules(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -348,7 +350,7 @@ func (h *Handler) HandleListSchedules(w http.ResponseWriter, r *http.Request) {
 	functions, err := h.repo.ListFunctionsByTenant(r.Context(), user.TenantID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list functions")
-		http.Error(w, "Failed to list functions", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list functions"))
 		return
 	}
 
@@ -394,33 +396,33 @@ func (h *Handler) HandleGetPresets(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	functionID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "Invalid function ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid function ID"))
 		return
 	}
 
 	// Check if function exists and belongs to user
 	function, err := h.repo.GetFunctionByID(r.Context(), functionID)
 	if err != nil {
-		http.Error(w, "Function not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Function not found"))
 		return
 	}
 
 	if function.TenantID != user.TenantID {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
 	// Validate that we have an executor registered
 	if h.executor == nil {
 		logrus.Error("No executor registered for manual trigger")
-		http.Error(w, "Execution service not available", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Execution service not available"))
 		return
 	}
 
@@ -428,7 +430,7 @@ func (h *Handler) HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 	var triggerReq TriggerRequest
 	if r.ContentLength > 0 {
 		if err := json.NewDecoder(r.Body).Decode(&triggerReq); err != nil {
-			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 			return
 		}
 	}
@@ -452,7 +454,7 @@ func (h *Handler) HandleTriggerManual(w http.ResponseWriter, r *http.Request) {
 	result, err := h.executor.ExecuteFunction(ctx, functionID, inputJSON)
 	if err != nil {
 		logrus.WithError(err).WithField("function_id", functionID).Error("Manual trigger execution failed")
-		http.Error(w, fmt.Sprintf("Execution failed: %s", err.Error()), http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Execution failed. Check server logs for details."))
 		return
 	}
 

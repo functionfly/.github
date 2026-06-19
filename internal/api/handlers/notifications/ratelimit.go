@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type NotificationRateLimiter struct {
@@ -118,7 +119,7 @@ func (r *NotificationRateLimiter) Middleware(next http.Handler) http.Handler {
 				retryAfterSec = 1
 			}
 			w.Header().Set("Retry-After", strconv.Itoa(retryAfterSec))
-			http.Error(w, "Rate limit exceeded. Please try again later.", http.StatusTooManyRequests)
+			apierror.WriteError(w, apierror.NewRateLimited("Rate limit exceeded. Please try again later."))
 			r.logger.WithFields(logrus.Fields{
 				"user_id":     userID.String(),
 				"retry_after": retryAfterSec,

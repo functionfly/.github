@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	atlaspkg "github.com/functionfly/functionfly/internal/atlas"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type Handler struct {
@@ -130,24 +131,24 @@ type UpdateConfigRequest struct {
 func (h *Handler) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	var req CreateRunRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	if req.AgentID == "" || req.AgentType == "" {
-		http.Error(w, "agent_id and agent_type are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("agent_id and agent_type are required"))
 		return
 	}
 
 	validAgentTypes := map[string]bool{"flymind": true, "agent": true, "workflow": true, "team": true}
 	if !validAgentTypes[req.AgentType] {
-		http.Error(w, "invalid agent_type", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid agent_type"))
 		return
 	}
 
@@ -165,7 +166,7 @@ func (h *Handler) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 	atlasRunID, err := h.atlasClient.CreateRun(r.Context(), metadata)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to create Atlas run")
-		http.Error(w, "failed to create observability run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create observability run"))
 		return
 	}
 
@@ -198,7 +199,7 @@ func (h *Handler) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.CreateRun(r.Context(), run); err != nil {
 		h.logger.WithError(err).Error("failed to create run in database")
-		http.Error(w, "failed to create run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create run"))
 		return
 	}
 
@@ -210,7 +211,7 @@ func (h *Handler) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListRuns(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -229,7 +230,7 @@ func (h *Handler) HandleListRuns(w http.ResponseWriter, r *http.Request) {
 	runs, total, err := h.repo.ListRuns(r.Context(), claims.TenantID, agentID, status, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to list runs")
-		http.Error(w, "failed to list runs", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to list runs"))
 		return
 	}
 
@@ -250,25 +251,25 @@ func (h *Handler) HandleListRuns(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetRun(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
@@ -279,25 +280,25 @@ func (h *Handler) HandleGetRun(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
@@ -310,7 +311,7 @@ func (h *Handler) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
 	events, err := h.atlasClient.Replay(r.Context(), run.AtlasRunID, afterSeq)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to get events from Atlas")
-		http.Error(w, "failed to get events", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get events"))
 		return
 	}
 
@@ -341,25 +342,25 @@ func (h *Handler) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
@@ -371,7 +372,7 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 	events, err := h.atlasClient.Replay(r.Context(), run.AtlasRunID, afterSeq)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to replay events")
-		http.Error(w, "failed to replay events", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to replay events"))
 		return
 	}
 
@@ -402,25 +403,25 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleStreamEvents(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
@@ -469,32 +470,32 @@ func (h *Handler) HandleStreamEvents(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetStats(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
 	stats, err := h.atlasClient.GetStats(r.Context(), run.AtlasRunID)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to get stats from Atlas")
-		http.Error(w, "failed to get stats", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get stats"))
 		return
 	}
 
@@ -516,14 +517,14 @@ func (h *Handler) HandleGetStats(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
@@ -536,18 +537,18 @@ func (h *Handler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
 	graph, err := h.atlasClient.GetGraph(r.Context(), run.AtlasRunID, eventID, maxDepth)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to get graph from Atlas")
-		http.Error(w, "failed to get graph", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get graph"))
 		return
 	}
 
@@ -580,14 +581,14 @@ func (h *Handler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleEndRun(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
@@ -595,7 +596,7 @@ func (h *Handler) HandleEndRun(w http.ResponseWriter, r *http.Request) {
 		Status string `json:"status"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
@@ -604,18 +605,18 @@ func (h *Handler) HandleEndRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Status != "completed" && req.Status != "failed" {
-		http.Error(w, "invalid status", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid status"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
@@ -625,7 +626,7 @@ func (h *Handler) HandleEndRun(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.EndRun(r.Context(), runID, req.Status); err != nil {
 		h.logger.WithError(err).Error("failed to end run in database")
-		http.Error(w, "failed to end run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to end run"))
 		return
 	}
 
@@ -636,14 +637,14 @@ func (h *Handler) HandleEndRun(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleCreateSpan(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
@@ -652,23 +653,23 @@ func (h *Handler) HandleCreateSpan(w http.ResponseWriter, r *http.Request) {
 		ParentSpanID string `json:"parent_span_id,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	if req.SpanID == "" {
-		http.Error(w, "span_id is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("span_id is required"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
@@ -694,32 +695,32 @@ func (h *Handler) HandleCreateSpan(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleListSpans(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	runID, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, "invalid run ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid run ID"))
 		return
 	}
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			http.Error(w, "run not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("run not found"))
 			return
 		}
 		h.logger.WithError(err).Error("failed to get run")
-		http.Error(w, "failed to get run", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get run"))
 		return
 	}
 
 	events, err := h.atlasClient.Replay(r.Context(), run.AtlasRunID, 0)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to get events from Atlas")
-		http.Error(w, "failed to get spans", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get spans"))
 		return
 	}
 
@@ -758,14 +759,14 @@ func (h *Handler) HandleListSpans(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleGetConfig(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	config, err := h.repo.GetConfig(r.Context(), claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to get config")
-		http.Error(w, "failed to get config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get config"))
 		return
 	}
 
@@ -782,20 +783,20 @@ func (h *Handler) HandleGetConfig(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleUpdateConfig(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	var req UpdateConfigRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	config, err := h.repo.GetConfig(r.Context(), claims.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to get config")
-		http.Error(w, "failed to get config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get config"))
 		return
 	}
 
@@ -817,7 +818,7 @@ func (h *Handler) HandleUpdateConfig(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.UpsertConfig(r.Context(), config); err != nil {
 		h.logger.WithError(err).Error("failed to update config")
-		http.Error(w, "failed to update config", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to update config"))
 		return
 	}
 

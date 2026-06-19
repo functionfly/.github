@@ -5,8 +5,10 @@ import (
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/agent/browser"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 // Handler handles browser-related HTTP requests.
@@ -65,7 +67,7 @@ func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 
 	session, err := h.browserSvc.CreateSession(ctx, agentID, req.Isolated)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -81,7 +83,7 @@ func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 
 	sessions, err := h.browserSvc.ListSessions(ctx, agentID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -94,13 +96,13 @@ func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	sessionID, err := uuid.Parse(vars["session_id"])
 	if err != nil {
-		http.Error(w, "invalid session ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid session ID"))
 		return
 	}
 
 	session, err := h.browserSvc.GetSession(r.Context(), sessionID)
 	if err != nil {
-		http.Error(w, "session not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("session not found"))
 		return
 	}
 
@@ -116,7 +118,7 @@ func (h *Handler) CloseSession(w http.ResponseWriter, r *http.Request) {
 
 	err := h.browserSvc.CloseSession(r.Context(), agentID, sessionID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -138,7 +140,7 @@ func (h *Handler) Navigate(w http.ResponseWriter, r *http.Request) {
 
 	var req NavigateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "invalid request body")
 		return
 	}
 
@@ -152,7 +154,7 @@ func (h *Handler) Navigate(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.browserSvc.Navigate(ctx, agentID, req.URL, sessionID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -174,13 +176,13 @@ func (h *Handler) Click(w http.ResponseWriter, r *http.Request) {
 
 	var req ClickRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "invalid request body")
 		return
 	}
 
 	err := h.browserSvc.Click(ctx, agentID, req.SessionID, req.ElementRef)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -203,13 +205,13 @@ func (h *Handler) Fill(w http.ResponseWriter, r *http.Request) {
 
 	var req FillRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "invalid request body")
 		return
 	}
 
 	err := h.browserSvc.Fill(ctx, agentID, req.SessionID, req.ElementRef, req.Value)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -231,13 +233,13 @@ func (h *Handler) Extract(w http.ResponseWriter, r *http.Request) {
 
 	var req ExtractRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "invalid request body")
 		return
 	}
 
 	content, err := h.browserSvc.Extract(ctx, agentID, req.SessionID, req.Selector)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -258,13 +260,13 @@ func (h *Handler) Screenshot(w http.ResponseWriter, r *http.Request) {
 
 	var req ScreenshotRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "invalid request body")
 		return
 	}
 
 	screenshot, err := h.browserSvc.Screenshot(ctx, agentID, req.SessionID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -291,7 +293,7 @@ func (h *Handler) StoreCredential(w http.ResponseWriter, r *http.Request) {
 
 	var req StoreCredentialRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "invalid request body")
 		return
 	}
 
@@ -303,7 +305,7 @@ func (h *Handler) StoreCredential(w http.ResponseWriter, r *http.Request) {
 
 	credential, err := h.browserSvc.StoreCredential(ctx, agentID, req.Name, req.Domain, data)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -319,7 +321,7 @@ func (h *Handler) ListCredentials(w http.ResponseWriter, r *http.Request) {
 
 	credentials, err := h.browserSvc.ListCredentials(r.Context(), agentID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -335,7 +337,7 @@ func (h *Handler) GetCredential(w http.ResponseWriter, r *http.Request) {
 
 	credential, err := h.browserSvc.GetCredential(r.Context(), agentID, credentialID)
 	if err != nil {
-		http.Error(w, "credential not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("credential not found"))
 		return
 	}
 
@@ -351,7 +353,7 @@ func (h *Handler) DeleteCredential(w http.ResponseWriter, r *http.Request) {
 
 	err := h.browserSvc.DeleteCredential(r.Context(), agentID, credentialID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -366,7 +368,7 @@ func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 
 	perm, err := h.browserSvc.GetPermission(r.Context(), agentID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -392,7 +394,7 @@ func (h *Handler) UpsertConfig(w http.ResponseWriter, r *http.Request) {
 
 	var req UpsertConfigRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeBadRequest, "invalid request body")
 		return
 	}
 
@@ -408,7 +410,7 @@ func (h *Handler) UpsertConfig(w http.ResponseWriter, r *http.Request) {
 
 	err := h.browserSvc.UpsertPermission(ctx, perm)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
@@ -424,16 +426,28 @@ func (h *Handler) GetUsage(w http.ResponseWriter, r *http.Request) {
 
 	svc, ok := h.browserSvc.(*browser.Service)
 	if !ok {
-		http.Error(w, "service not available", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("service not available"))
 		return
 	}
 
 	stats, err := svc.GetUsageStats(ctx, agentID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w, r, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(stats)
+}
+
+func serverError(w http.ResponseWriter, r *http.Request, err error) {
+	logrus.WithError(err).WithFields(logrus.Fields{
+		"request_uri": r.RequestURI,
+		"method":      r.Method,
+	}).Error("internal server error")
+	apierror.WriteError(w, apierror.NewInternal("internal server error"))
+}
+
+func clientError(w http.ResponseWriter, r *http.Request, err error) {
+	apierror.LogAndBadRequest(w, r, err, "browser client error")
 }

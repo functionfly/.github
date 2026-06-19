@@ -37,7 +37,7 @@ func (h *OptimizationHandler) ReceiveOptimizationSuggestion(w http.ResponseWrite
 
 	var suggestion RuntimeOptimizationSuggestion
 	if err := json.NewDecoder(r.Body).Decode(&suggestion); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode optimization suggestion", err)
 		return
 	}
 

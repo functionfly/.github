@@ -50,7 +50,8 @@ func (h *WebhookHandler) HandleCreateWebhook(w http.ResponseWriter, r *http.Requ
 
 	// Validate URL
 	if err := h.service.ValidateWebhookURL(req.URL); err != nil {
-		h.writeError(w, http.StatusBadRequest, err.Error(), "invalid_url")
+		logrus.WithError(err).WithField("url", req.URL).Info("trustapi webhook: invalid URL")
+		h.writeError(w, http.StatusBadRequest, "Invalid webhook URL", "invalid_url")
 		return
 	}
 
@@ -269,7 +270,8 @@ func (h *WebhookHandler) HandleUpdateWebhook(w http.ResponseWriter, r *http.Requ
 	}
 	if req.URL != "" {
 		if err := h.service.ValidateWebhookURL(req.URL); err != nil {
-			h.writeError(w, http.StatusBadRequest, err.Error(), "invalid_url")
+			logrus.WithError(err).WithField("url", req.URL).Info("trustapi webhook: invalid URL on update")
+			h.writeError(w, http.StatusBadRequest, "Invalid webhook URL", "invalid_url")
 			return
 		}
 		webhook.URL = req.URL

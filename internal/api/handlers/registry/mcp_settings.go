@@ -92,11 +92,11 @@ func (h *Handler) HandleUpdateMCPSettings(w http.ResponseWriter, r *http.Request
 
 	var in registry.MCPSettingsInput
 	if err := json.Unmarshal(body, &in); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON: "+err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "registry decode MCP settings JSON")
 		return
 	}
 	if err := in.Validate(); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest("Invalid MCP settings: "+err.Error()))
+		apierror.LogAndBadRequest(w, r, err, "registry parse MCP settings")
 		return
 	}
 

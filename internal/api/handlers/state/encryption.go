@@ -13,25 +13,26 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleMigrateEncryption handles POST /v1/state/encrypt - Encrypt existing state values at rest
 func (h *Handler) HandleMigrateEncryption(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check if encryption is enabled server-side
 	if !h.stateRepo.IsEncryptionEnabled() {
-		http.Error(w, "server-side encryption not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("server-side encryption not configured"))
 		return
 	}
 
 	var req EncryptionMigrationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
@@ -57,19 +58,19 @@ func (h *Handler) HandleMigrateEncryption(w http.ResponseWriter, r *http.Request
 	if req.StateID != "" {
 		stateUUID, err := uuid.Parse(req.StateID)
 		if err != nil {
-			http.Error(w, "invalid state ID", http.StatusBadRequest)
+			apierror.WriteError(w, apierror.NewBadRequest("invalid state ID"))
 			return
 		}
 
 		state, err := h.stateRepo.GetStateByID(r.Context(), stateUUID)
 		if err != nil {
-			http.Error(w, "state not found", http.StatusNotFound)
+			apierror.WriteError(w, apierror.NewNotFound("state not found"))
 			return
 		}
 
 		// Verify tenant ownership
 		if state.TenantID != tenantID {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			apierror.WriteError(w, apierror.NewForbidden("forbidden"))
 			return
 		}
 
@@ -81,7 +82,7 @@ func (h *Handler) HandleMigrateEncryption(w http.ResponseWriter, r *http.Request
 		states, _, err := h.stateRepo.ListStatesByTenant(r.Context(), tenantID, 1000, 0)
 		if err != nil {
 			logrus.Errorf("failed to list states for encryption migration: %v", err)
-			http.Error(w, "failed to list states", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("failed to list states"))
 			return
 		}
 
@@ -145,7 +146,7 @@ func (h *Handler) migrateStateEncryption(ctx context.Context, state *staterepo.S
 func (h *Handler) HandleGetEncryptionStats(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -155,7 +156,7 @@ func (h *Handler) HandleGetEncryptionStats(w http.ResponseWriter, r *http.Reques
 	states, _, err := h.stateRepo.ListStatesByTenant(r.Context(), tenantID, 1000, 0)
 	if err != nil {
 		logrus.Errorf("failed to list states for encryption stats: %v", err)
-		http.Error(w, "failed to get states", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to get states"))
 		return
 	}
 
@@ -204,13 +205,13 @@ func (h *Handler) HandleEnableEncryption(w http.ResponseWriter, r *http.Request)
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check if encryption is enabled server-side
 	if !h.stateRepo.IsEncryptionEnabled() {
-		http.Error(w, "server-side encryption not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("server-side encryption not configured"))
 		return
 	}
 
@@ -218,7 +219,7 @@ func (h *Handler) HandleEnableEncryption(w http.ResponseWriter, r *http.Request)
 
 	state, err := h.stateRepo.GetStateByPath(r.Context(), tenantID, path)
 	if err != nil {
-		http.Error(w, "state not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("state not found"))
 		return
 	}
 
@@ -243,7 +244,7 @@ func (h *Handler) HandleEnableEncryption(w http.ResponseWriter, r *http.Request)
 	updated, err := h.stateRepo.UpdateState(r.Context(), state)
 	if err != nil {
 		logrus.Errorf("failed to enable encryption for state: %v", err)
-		http.Error(w, "failed to enable encryption", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to enable encryption"))
 		return
 	}
 
@@ -272,13 +273,13 @@ func (h *Handler) HandleEnableEncryption(w http.ResponseWriter, r *http.Request)
 func (h *Handler) HandleRotateEncryptionKey(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	// Check if encryption is enabled
 	if !h.stateRepo.IsEncryptionEnabled() {
-		http.Error(w, "server-side encryption not configured", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("server-side encryption not configured"))
 		return
 	}
 
@@ -290,7 +291,7 @@ func (h *Handler) HandleRotateEncryptionKey(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 

@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // HandleConnectProvider validates an API token for the given provider and, if valid, saves
@@ -21,7 +22,7 @@ import (
 func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -38,11 +39,11 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 		APIKey     string `json:"apiKey"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if req.ProviderID == "" {
-		http.Error(w, "providerId is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("providerId is required"))
 		return
 	}
 
@@ -93,7 +94,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 			}
 			if err := h.apikeyRepo.CreatePreGenerated(ctx, apiKeyRecord); err != nil {
 				logrus.WithError(err).Error("Failed to store Edge API key")
-				http.Error(w, "Failed to store API key", http.StatusInternalServerError)
+				apierror.WriteError(w, apierror.NewInternal("Failed to store API key"))
 				return
 			}
 			edgeAPIKeyID = keyID.String()
@@ -110,7 +111,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 		}
 		if err := h.repo.CreateProvider(r.Context(), provider); err != nil {
 			logrus.WithError(err).Error("Failed to store functionfly-edge provider")
-			http.Error(w, "Failed to enable provider", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to enable provider"))
 			return
 		}
 
@@ -136,7 +137,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if req.APIKey == "" {
-		http.Error(w, "apiKey is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("apiKey is required"))
 		return
 	}
 
@@ -158,7 +159,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 			"status": "active",
 		}); err != nil {
 			logrus.WithError(err).Error("Failed to update existing provider")
-			http.Error(w, "Failed to update provider", http.StatusInternalServerError)
+			apierror.WriteError(w, apierror.NewInternal("Failed to update provider"))
 			return
 		}
 		existing.Status = "active"
@@ -199,7 +200,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 	}
 	if err := h.repo.CreateProvider(r.Context(), provider); err != nil {
 		logrus.WithError(err).Error("Failed to store provider")
-		http.Error(w, "Failed to save provider", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to save provider"))
 		return
 	}
 
@@ -222,7 +223,7 @@ func (h *Handler) HandleConnectProvider(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -237,7 +238,7 @@ func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 	vars := mux.Vars(r)
 	providerID := vars["providerId"]
 	if providerID == "" {
-		http.Error(w, "providerId is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("providerId is required"))
 		return
 	}
 
@@ -253,7 +254,7 @@ func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 			"error":       err.Error(),
 		}, nil, false)
 
-		http.Error(w, "Failed to disconnect provider", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to disconnect provider"))
 		return
 	}
 
@@ -290,7 +291,7 @@ func (h *Handler) HandleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 func (h *Handler) HandleTestConnection(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -327,7 +328,7 @@ func (h *Handler) HandleTestConnection(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRotateProvider(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -342,7 +343,7 @@ func (h *Handler) HandleRotateProvider(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	providerID := vars["providerId"]
 	if providerID == "" {
-		http.Error(w, "providerId is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("providerId is required"))
 		return
 	}
 
@@ -350,11 +351,11 @@ func (h *Handler) HandleRotateProvider(w http.ResponseWriter, r *http.Request) {
 		APIKey string `json:"apiKey"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 	if req.APIKey == "" {
-		http.Error(w, "apiKey is required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("apiKey is required"))
 		return
 	}
 
@@ -366,7 +367,7 @@ func (h *Handler) HandleRotateProvider(w http.ResponseWriter, r *http.Request) {
 
 	existing, err := h.repo.GetProviderByUserAndType(r.Context(), claims.UserID, providerID)
 	if err != nil || existing == nil {
-		http.Error(w, "Provider not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Provider not found"))
 		return
 	}
 

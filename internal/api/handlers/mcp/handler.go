@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // =============================================================================
@@ -143,7 +144,7 @@ type ManifestStats struct {
 // HandleManifest serves GET /v1/mcp/manifest. Public, cacheable.
 func (h *Handler) HandleManifest(w http.ResponseWriter, r *http.Request) {
 	if h.Disabled {
-		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("MCP registry is temporarily unavailable"))
 		return
 	}
 
@@ -191,7 +192,7 @@ func (h *Handler) HandleManifest(w http.ResponseWriter, r *http.Request) {
 // crawlers and the /registry page can index it without parsing JSON-RPC.
 func (h *Handler) HandleToolsIndex(w http.ResponseWriter, r *http.Request) {
 	if h.Disabled {
-		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("MCP registry is temporarily unavailable"))
 		return
 	}
 	if r.Method == http.MethodOptions {
@@ -244,7 +245,7 @@ func (h *Handler) HandleToolsIndex(w http.ResponseWriter, r *http.Request) {
 // Returns aggregate MCP registry metrics for the marketing page.
 func (h *Handler) HandleStats(w http.ResponseWriter, r *http.Request) {
 	if h.Disabled {
-		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("MCP registry is temporarily unavailable"))
 		return
 	}
 	if r.Method == http.MethodOptions {
@@ -275,7 +276,7 @@ func (h *Handler) HandleStats(w http.ResponseWriter, r *http.Request) {
 // Returns all MCP-enabled categories with function counts.
 func (h *Handler) HandleCategories(w http.ResponseWriter, r *http.Request) {
 	if h.Disabled {
-		http.Error(w, "MCP registry is temporarily unavailable", http.StatusServiceUnavailable)
+		apierror.WriteError(w, apierror.NewServiceUnavailable("MCP registry is temporarily unavailable"))
 		return
 	}
 	if r.Method == http.MethodOptions {

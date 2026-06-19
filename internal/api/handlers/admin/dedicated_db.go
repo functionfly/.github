@@ -153,7 +153,7 @@ func (h *Handler) HandleProvisionTenantDedicatedDB(w http.ResponseWriter, r *htt
 
 	if err := h.tenantDBService.ProvisionForTenant(ctx, tenantID); err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to provision dedicated database")
-		apierror.WriteError(w, apierror.NewInternal("Failed to provision dedicated database: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "admin provision dedicated database")
 		return
 	}
 
@@ -206,7 +206,7 @@ func (h *Handler) HandleSuspendTenantDedicatedDB(w http.ResponseWriter, r *http.
 
 	if err := h.tenantDBService.SuspendTenant(ctx, tenantID); err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to suspend dedicated database")
-		apierror.WriteError(w, apierror.NewInternal("Failed to suspend dedicated database: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "admin suspend dedicated database")
 		return
 	}
 
@@ -258,7 +258,7 @@ func (h *Handler) HandleResumeTenantDedicatedDB(w http.ResponseWriter, r *http.R
 
 	if err := h.tenantDBService.ResumeTenant(ctx, tenantID); err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to resume dedicated database")
-		apierror.WriteError(w, apierror.NewInternal("Failed to resume dedicated database: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "admin resume dedicated database")
 		return
 	}
 
@@ -310,7 +310,7 @@ func (h *Handler) HandleDeprovisionTenantDedicatedDB(w http.ResponseWriter, r *h
 
 	if err := h.tenantDBService.DeprovisionForTenant(ctx, tenantID); err != nil {
 		logrus.WithError(err).WithField("tenant_id", tenantID).Error("Failed to deprovision dedicated database")
-		apierror.WriteError(w, apierror.NewInternal("Failed to deprovision dedicated database: "+err.Error()))
+		apierror.LogAndInternal(w, r, err, "admin deprovision dedicated database")
 		return
 	}
 

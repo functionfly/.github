@@ -141,7 +141,7 @@ func (h *SEBGHandler) DecideProposal(w http.ResponseWriter, r *http.Request) {
 		Decision string `json:"decision"` // approved / rejected
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode sebg request", err)
 		return
 	}
 	if req.Decision != "approved" && req.Decision != "rejected" {
@@ -222,7 +222,7 @@ func (h *SEBGHandler) UpdateTier(w http.ResponseWriter, r *http.Request) {
 		Tier string `json:"tier"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", err.Error())
+		writeErrorFromErr(r, w, http.StatusBadRequest, "INVALID_REQUEST", "decode sebg request", err)
 		return
 	}
 	if req.Tier != sebg.TierManual && req.Tier != sebg.TierAssisted && req.Tier != sebg.TierFullyAutonomous {

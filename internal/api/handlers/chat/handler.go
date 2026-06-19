@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type Handler struct {
@@ -47,13 +48,13 @@ type CreateSessionResponse struct {
 func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req CreateSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -74,7 +75,7 @@ func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.CreateSession(r.Context(), session); err != nil {
 		h.logger.WithError(err).Error("Create session failed")
-		http.Error(w, `{"error":"Failed to create session"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to create session"))
 		return
 	}
 
@@ -91,7 +92,7 @@ func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
@@ -104,7 +105,7 @@ func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	sessions, err := h.repo.ListSessions(r.Context(), user.TenantID, user.UserID, limit, offset)
 	if err != nil {
 		h.logger.WithError(err).Error("List sessions failed")
-		http.Error(w, `{"error":"Failed to list sessions"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to list sessions"))
 		return
 	}
 
@@ -115,25 +116,25 @@ func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid session ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session ID"))
 		return
 	}
 
 	session, err := h.repo.GetSession(r.Context(), id, user.TenantID)
 	if err != nil {
 		h.logger.WithError(err).Error("Get session failed")
-		http.Error(w, `{"error":"Failed to get session"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get session"))
 		return
 	}
 	if session == nil || session.TenantID != user.TenantID {
-		http.Error(w, `{"error":"Session not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Session not found"))
 		return
 	}
 
@@ -149,20 +150,20 @@ func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) DeleteSession(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid session ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session ID"))
 		return
 	}
 
 	if err := h.repo.DeleteSession(r.Context(), id, user.TenantID, user.UserID); err != nil {
 		h.logger.WithError(err).Error("Delete session failed")
-		http.Error(w, `{"error":"Failed to delete session"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to delete session"))
 		return
 	}
 
@@ -178,20 +179,20 @@ type UpdateSessionRequest struct {
 func (h *Handler) UpdateSession(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	vars := mux.Vars(r)
 	id, err := uuid.Parse(vars["id"])
 	if err != nil {
-		http.Error(w, `{"error":"Invalid session ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session ID"))
 		return
 	}
 
 	var req UpdateSessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -204,13 +205,13 @@ func (h *Handler) UpdateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(updates) == 0 {
-		http.Error(w, `{"error":"No fields to update"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("No fields to update"))
 		return
 	}
 
 	if err := h.repo.UpdateSession(r.Context(), id, user.TenantID, updates); err != nil {
 		h.logger.WithError(err).Error("Update session failed")
-		http.Error(w, `{"error":"Failed to update session"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to update session"))
 		return
 	}
 
@@ -234,30 +235,30 @@ type SendMessageResponse struct {
 func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
-		http.Error(w, `{"error":"Authentication required"}`, http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
 
 	var req SendMessageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error":"Invalid request body"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
 	if req.Content == "" {
-		http.Error(w, `{"error":"Content is required"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Content is required"))
 		return
 	}
 
 	sessionID, err := uuid.Parse(req.SessionID)
 	if err != nil {
-		http.Error(w, `{"error":"Invalid session ID"}`, http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid session ID"))
 		return
 	}
 
 	session, err := h.repo.GetSession(r.Context(), sessionID, user.TenantID)
 	if err != nil || session == nil || session.TenantID != user.TenantID {
-		http.Error(w, `{"error":"Session not found"}`, http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("Session not found"))
 		return
 	}
 
@@ -270,7 +271,7 @@ func (h *Handler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.repo.CreateMessage(r.Context(), userMsg); err != nil {
 		h.logger.WithError(err).Error("Create user message failed")
-		http.Error(w, `{"error":"Failed to save message"}`, http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to save message"))
 		return
 	}
 

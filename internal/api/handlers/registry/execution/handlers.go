@@ -134,7 +134,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		tenantPlan := getTenantPlanFromContext(h.BackendRepo, *fn.TenantID)
 		if err := validateRuntimeForPlan(tenantPlan, fnVersion.Runtime); err != nil {
 			logrus.WithError(err).Warn("Runtime validation failed")
-			h.writeError(w, http.StatusForbidden, functionregistry.ErrCodeInvalidInput, err.Error())
+			h.writeError(w, http.StatusForbidden, functionregistry.ErrCodeInvalidInput, "Runtime not allowed for this plan")
 			return
 		}
 	}
@@ -827,7 +827,7 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 			"author": author,
 			"name":   name,
 		}).Error("Function test failed")
-		h.writeError(w, http.StatusBadRequest, functionregistry.ErrCodeRuntimeError, "Function test failed: "+err.Error())
+		h.writeError(w, http.StatusBadRequest, functionregistry.ErrCodeRuntimeError, "Function test failed. Check server logs for details.")
 		return
 	}
 

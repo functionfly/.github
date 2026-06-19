@@ -104,11 +104,11 @@ func serverError(w http.ResponseWriter, r *http.Request, err error) {
 		"request_uri": r.RequestURI,
 		"method":      r.Method,
 	}).Error("internal server error")
-	http.Error(w, "an internal error occurred", http.StatusInternalServerError)
+	apierror.WriteError(w, apierror.NewInternal("an internal error occurred"))
 }
 
-func clientError(w http.ResponseWriter, err error) {
-	http.Error(w, err.Error(), http.StatusBadRequest)
+func clientError(w http.ResponseWriter, r *http.Request, err error) {
+	apierror.LogAndBadRequest(w, r, err, "statefabric handler")
 }
 
 type auditInfo struct {
@@ -171,7 +171,7 @@ func getClaims(r *http.Request) (*middleware.AuthMiddleware, *uuid.UUID, *uuid.U
 func tenantAndUser(r *http.Request, w http.ResponseWriter) (uuid.UUID, uuid.UUID, bool) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return uuid.Nil, uuid.Nil, false
 	}
 	return claims.TenantID, claims.UserID, true
@@ -234,7 +234,7 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	var req createFabricRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), "", "create", "bad_request")
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	item, err := h.repo.CreateFabric(r.Context(), tenantID, req.Name, req.Description, req.Type, req.Settings)
@@ -305,7 +305,7 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 	var req updateFabricRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), fabricID.String(), "update", "bad_request")
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	updates := map[string]interface{}{}
@@ -420,7 +420,7 @@ func (h *Handler) HandleCreateStore(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createStoreRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	switch req.Type {
@@ -481,7 +481,7 @@ func (h *Handler) HandleCreatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createPipelineRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	pipeline, err := h.repo.CreatePipeline(r.Context(), tenantID, fabricID, req.Name, req.Description, req.Steps)
@@ -508,7 +508,7 @@ func (h *Handler) HandleUpdatePipeline(w http.ResponseWriter, r *http.Request) {
 	}
 	var req updatePipelineRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	updates := map[string]interface{}{}
@@ -570,7 +570,7 @@ func (h *Handler) HandleExecutePipeline(w http.ResponseWriter, r *http.Request) 
 	}
 	var input map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	result, err := h.repo.ExecutePipeline(r.Context(), tenantID, fabricID, pipelineID, input)
@@ -669,7 +669,7 @@ func (h *Handler) HandleCreateSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createSnapshotRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	item, err := h.repo.CreateSnapshot(r.Context(), tenantID, fabricID, req.Name)
@@ -735,7 +735,7 @@ func (h *Handler) HandleCreateReplay(w http.ResponseWriter, r *http.Request) {
 	}
 	var req createReplayRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 	item, err := h.repo.CreateReplay(r.Context(), tenantID, fabricID, repo.ReplayCreateRequest(req))
@@ -799,7 +799,7 @@ func (h *Handler) HandleResumeReplay(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if strings.Contains(err.Error(), "can only resume") {
-			apierror.WriteError(w, apierror.NewBadRequest(err.Error()))
+			apierror.LogAndBadRequest(w, r, err, "statefabric handler")
 			return
 		}
 		serverError(w, r, err)
@@ -872,7 +872,7 @@ func (h *Handler) HandleReplayProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !isFeatureEnabled("statefabric_replay_streaming") {
-		http.Error(w, "replay progress streaming not enabled", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("replay progress streaming not enabled"))
 		return
 	}
 	vars := mux.Vars(r)
@@ -895,7 +895,7 @@ func (h *Handler) HandleReplayProgress(w http.ResponseWriter, r *http.Request) {
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("streaming not supported"))
 		return
 	}
 

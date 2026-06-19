@@ -15,6 +15,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	storagestate "github.com/functionfly/functionfly/internal/storage/state"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type AgentMemory = storagestate.AgentMemory
@@ -56,18 +57,18 @@ type SearchMemoryRequest struct {
 func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	var req CreateMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	if req.AgentID == "" || req.MemoryType == "" {
-		http.Error(w, "agent_id and memory_type are required", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("agent_id and memory_type are required"))
 		return
 	}
 
@@ -90,7 +91,7 @@ func (h *AgentMemoryHandler) HandleCreateMemory(w http.ResponseWriter, r *http.R
 	created, err := h.memoryRepo.CreateMemory(r.Context(), memory)
 	if err != nil {
 		logrus.Errorf("failed to create memory: %v", err)
-		http.Error(w, "failed to create memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to create memory"))
 		return
 	}
 
@@ -104,19 +105,19 @@ func (h *AgentMemoryHandler) HandleGetMemory(w http.ResponseWriter, r *http.Requ
 
 	memoryUUID, err := uuid.Parse(memoryID)
 	if err != nil {
-		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid memory ID"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	memory, err := h.memoryRepo.GetMemory(r.Context(), claims.TenantID, memoryUUID)
 	if err != nil {
-		http.Error(w, "memory not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("memory not found"))
 		return
 	}
 
@@ -130,25 +131,25 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 
 	memoryUUID, err := uuid.Parse(memoryID)
 	if err != nil {
-		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid memory ID"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	var req UpdateMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
 	memory, err := h.memoryRepo.GetMemory(r.Context(), claims.TenantID, memoryUUID)
 	if err != nil {
-		http.Error(w, "memory not found", http.StatusNotFound)
+		apierror.WriteError(w, apierror.NewNotFound("memory not found"))
 		return
 	}
 
@@ -168,7 +169,7 @@ func (h *AgentMemoryHandler) HandleUpdateMemory(w http.ResponseWriter, r *http.R
 	updated, err := h.memoryRepo.UpdateMemory(r.Context(), memory)
 	if err != nil {
 		logrus.Errorf("failed to update memory: %v", err)
-		http.Error(w, "failed to update memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to update memory"))
 		return
 	}
 
@@ -182,20 +183,20 @@ func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.R
 
 	memoryUUID, err := uuid.Parse(memoryID)
 	if err != nil {
-		http.Error(w, "invalid memory ID", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid memory ID"))
 		return
 	}
 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	err = h.memoryRepo.DeleteMemory(r.Context(), claims.TenantID, memoryUUID)
 	if err != nil {
 		logrus.Errorf("failed to delete memory: %v", err)
-		http.Error(w, "failed to delete memory", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to delete memory"))
 		return
 	}
 
@@ -205,7 +206,7 @@ func (h *AgentMemoryHandler) HandleDeleteMemory(w http.ResponseWriter, r *http.R
 func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
@@ -232,7 +233,7 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 
 	if err != nil {
 		logrus.Errorf("failed to list memories: %v", err)
-		http.Error(w, "failed to list memories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to list memories"))
 		return
 	}
 
@@ -248,13 +249,13 @@ func (h *AgentMemoryHandler) HandleListMemories(w http.ResponseWriter, r *http.R
 func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
 		return
 	}
 
 	var req SearchMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
 		return
 	}
 
@@ -265,7 +266,7 @@ func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http
 	memories, err := h.memoryRepo.SearchMemories(r.Context(), claims.TenantID, req.AgentID, req.MemoryType, req.Embedding, req.Limit, req.Threshold)
 	if err != nil {
 		logrus.Errorf("failed to search memories: %v", err)
-		http.Error(w, "failed to search memories", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("failed to search memories"))
 		return
 	}
 

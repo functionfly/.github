@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // MFAHandler handles MFA-related API endpoints
@@ -30,14 +31,14 @@ func NewMFAHandler(authSvc *auth.AuthService, rateLimiter *middleware.MFARateLim
 // SetupMFA handles MFA setup requests
 func (h *MFAHandler) SetupMFA(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
@@ -48,7 +49,7 @@ func (h *MFAHandler) SetupMFA(w http.ResponseWriter, r *http.Request) {
 	response, err := h.authSvc.SetupMFA(r.Context(), req)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to setup MFA")
-		http.Error(w, "Failed to setup MFA", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to setup MFA"))
 		return
 	}
 
@@ -59,20 +60,20 @@ func (h *MFAHandler) SetupMFA(w http.ResponseWriter, r *http.Request) {
 // VerifyMFA handles MFA verification requests
 func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req auth.MFAVerifyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -96,7 +97,7 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 			h.logger.WithError(logErr).WithField("userID", claims.UserID).Warn("Failed to log MFA verification failure")
 		}
 
-		http.Error(w, "Failed to verify MFA", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to verify MFA"))
 		return
 	}
 
@@ -138,21 +139,21 @@ func (h *MFAHandler) VerifyMFA(w http.ResponseWriter, r *http.Request) {
 // EnableMFA handles MFA enable requests (after successful verification)
 func (h *MFAHandler) EnableMFA(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	err := h.authSvc.EnableMFA(r.Context(), claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to enable MFA")
-		http.Error(w, "Failed to enable MFA", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to enable MFA"))
 		return
 	}
 
@@ -163,20 +164,20 @@ func (h *MFAHandler) EnableMFA(w http.ResponseWriter, r *http.Request) {
 // DisableMFA handles MFA disable requests
 func (h *MFAHandler) DisableMFA(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	var req auth.MFADisableRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -186,7 +187,7 @@ func (h *MFAHandler) DisableMFA(w http.ResponseWriter, r *http.Request) {
 	err := h.authSvc.DisableMFA(r.Context(), req)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to disable MFA")
-		http.Error(w, "Failed to disable MFA", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to disable MFA"))
 		return
 	}
 
@@ -197,21 +198,21 @@ func (h *MFAHandler) DisableMFA(w http.ResponseWriter, r *http.Request) {
 // GetMFAStatus returns the current MFA status for the user
 func (h *MFAHandler) GetMFAStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	status, err := h.authSvc.GetMFAStatus(r.Context(), claims.UserID)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to get MFA status")
-		http.Error(w, "Failed to get MFA status", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to get MFA status"))
 		return
 	}
 
@@ -222,20 +223,20 @@ func (h *MFAHandler) GetMFAStatus(w http.ResponseWriter, r *http.Request) {
 // AdminForceDisableMFA allows admins to force disable MFA for users (emergency access)
 func (h *MFAHandler) AdminForceDisableMFA(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		apierror.WriteError(w, apierror.NewBadRequest("Method not allowed"))
 		return
 	}
 
 	// Get user from context (set by auth middleware)
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
 	}
 
 	// Check if user is admin
 	if claims.Role != "admin" && claims.Role != "super_admin" {
-		http.Error(w, "Forbidden", http.StatusForbidden)
+		apierror.WriteError(w, apierror.NewForbidden("Forbidden"))
 		return
 	}
 
@@ -244,7 +245,7 @@ func (h *MFAHandler) AdminForceDisableMFA(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
 		return
 	}
 
@@ -252,7 +253,7 @@ func (h *MFAHandler) AdminForceDisableMFA(w http.ResponseWriter, r *http.Request
 	err := h.authSvc.Repo().UpdateUserMFA(r.Context(), req.UserID, nil, false, nil, nil)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to force disable MFA")
-		http.Error(w, "Failed to force disable MFA", http.StatusInternalServerError)
+		apierror.WriteError(w, apierror.NewInternal("Failed to force disable MFA"))
 		return
 	}
 

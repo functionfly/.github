@@ -52,7 +52,7 @@ func (h *Handler) HandleGetOAuthURL(w http.ResponseWriter, r *http.Request) {
 	url, err := h.authSvc.GetOAuthURL(provider, redirectURI, inviteCode, loginHint, deviceFingerprint, tenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("provider", provider).Warn("Failed to get OAuth URL")
-		writeJSONError(w, http.StatusBadRequest, err.Error())
+		writeJSONErrorFromErr(r, w, http.StatusBadRequest, "oauth handler", err)
 		return
 	}
 
