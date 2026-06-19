@@ -12,9 +12,23 @@ from typing import Dict, Optional
 import threading
 
 from ..services.redis_client import RedisClient
-from .rate_limiter import RateLimitExceeded
+from ..config import settings
+from .rate_limiter import RateLimitExceeded, RateLimitConfig
 
 logger = logging.getLogger(__name__)
+
+
+def _get_rate_limit_config() -> RateLimitConfig:
+    """Get rate limit config from settings."""
+    return RateLimitConfig(
+        requests_per_minute=60,
+        requests_per_hour=1000,
+        requests_per_day=10000,
+        burst_size=10,
+        enabled=True,
+        embed_tokens_per_minute=settings.embed_tokens_per_minute,
+        embed_cost_per_day=settings.embed_cost_per_day,
+    )
 
 
 @dataclass
@@ -107,9 +121,17 @@ class RedisRateLimiter:
         burst_key = self._get_key(tenant_id, "burst")
 
         try:
+<<<<<<< Updated upstream
             # Use pipeline if available, fall back to individual commands
             try:
                 pipe = redis._client.pipeline()
+=======
+            pipe = redis._client.pipeline() if hasattr(redis._client, 'pipeline') else None
+
+            config = _get_rate_limit_config()
+
+            if pipe:
+>>>>>>> Stashed changes
                 pipe.incr(minute_key)
                 pipe.expire(minute_key, 60)
                 pipe.incr(hour_key)
@@ -130,32 +152,59 @@ class RedisRateLimiter:
                 day_count = await redis._client.incr(day_key)
                 await redis._client.expire(day_key, 86400)
 
+<<<<<<< Updated upstream
             if minute_count > self.minute_limit:
                 retry_after = 60 - (now % 60)
                 raise RateLimitExceeded(
                     f"Rate limit exceeded: {self.minute_limit} requests per minute",
                     tenant_id=tenant_id,
                     limit=self.minute_limit,
+=======
+            if minute_count > config.requests_per_minute:
+                retry_after = 60 - (now % 60)
+                raise RateLimitExceeded(
+                    f"Rate limit exceeded: {config.requests_per_minute} requests per minute",
+                    tenant_id=tenant_id,
+                    limit=config.requests_per_minute,
+>>>>>>> Stashed changes
                     window_seconds=60,
                     retry_after=int(retry_after) + 1,
                 )
 
+<<<<<<< Updated upstream
             if hour_count > self.hour_limit:
                 retry_after = 3600 - (now % 3600)
                 raise RateLimitExceeded(
                     f"Rate limit exceeded: {self.hour_limit} requests per hour",
                     tenant_id=tenant_id,
                     limit=self.hour_limit,
+=======
+            if hour_count > config.requests_per_hour:
+                retry_after = 3600 - (now % 3600)
+                raise RateLimitExceeded(
+                    f"Rate limit exceeded: {config.requests_per_hour} requests per hour",
+                    tenant_id=tenant_id,
+                    limit=config.requests_per_hour,
+>>>>>>> Stashed changes
                     window_seconds=3600,
                     retry_after=int(retry_after) + 1,
                 )
 
+<<<<<<< Updated upstream
             if day_count > self.day_limit:
                 retry_after = 86400 - (now % 86400)
                 raise RateLimitExceeded(
                     f"Rate limit exceeded: {self.day_limit} requests per day",
                     tenant_id=tenant_id,
                     limit=self.day_limit,
+=======
+            if day_count > config.requests_per_day:
+                retry_after = 86400 - (now % 86400)
+                raise RateLimitExceeded(
+                    f"Rate limit exceeded: {config.requests_per_day} requests per day",
+                    tenant_id=tenant_id,
+                    limit=config.requests_per_day,
+>>>>>>> Stashed changes
                     window_seconds=86400,
                     retry_after=int(retry_after) + 1,
                 )
@@ -178,6 +227,8 @@ class RedisRateLimiter:
 
         This is used when Redis is unavailable. Not suitable for multi-instance deployments.
         """
+        config = _get_rate_limit_config()
+
         with self._lock:
             if tenant_id not in self._local_fallback:
                 self._local_fallback[tenant_id] = {
@@ -204,32 +255,32 @@ class RedisRateLimiter:
                 state["day_count"] = 0
                 state["day_reset"] = now + 86400
 
-            if state["minute_count"] >= 60:
+            if state["minute_count"] >= config.requests_per_minute:
                 retry_after = int(state["minute_reset"] - now) + 1
                 raise RateLimitExceeded(
-                    f"Rate limit exceeded: 60 requests per minute",
+                    f"Rate limit exceeded: {config.requests_per_minute} requests per minute",
                     tenant_id=tenant_id,
-                    limit=60,
+                    limit=config.requests_per_minute,
                     window_seconds=60,
                     retry_after=retry_after,
                 )
 
-            if state["hour_count"] >= 1000:
+            if state["hour_count"] >= config.requests_per_hour:
                 retry_after = int(state["hour_reset"] - now) + 1
                 raise RateLimitExceeded(
-                    f"Rate limit exceeded: 1000 requests per hour",
+                    f"Rate limit exceeded: {config.requests_per_hour} requests per hour",
                     tenant_id=tenant_id,
-                    limit=1000,
+                    limit=config.requests_per_hour,
                     window_seconds=3600,
                     retry_after=retry_after,
                 )
 
-            if state["day_count"] >= 10000:
+            if state["day_count"] >= config.requests_per_day:
                 retry_after = int(state["day_reset"] - now) + 1
                 raise RateLimitExceeded(
-                    f"Rate limit exceeded: 10000 requests per day",
+                    f"Rate limit exceeded: {config.requests_per_day} requests per day",
                     tenant_id=tenant_id,
-                    limit=10000,
+                    limit=config.requests_per_day,
                     window_seconds=86400,
                     retry_after=retry_after,
                 )
@@ -260,6 +311,7 @@ class RedisRateLimiter:
             RateLimitExceeded: If limit exceeded
         """
         redis = await self._get_redis()
+        config = _get_rate_limit_config()
 
         if not redis:
             return await self._check_embed_limits_local(tenant_id, tokens, cost_usd)
@@ -273,11 +325,11 @@ class RedisRateLimiter:
             if token_count == 1:
                 await redis._client.expire(token_minute_key, 60)
 
-            if token_count + tokens > 100000:
+            if token_count + tokens > config.embed_tokens_per_minute:
                 raise RateLimitExceeded(
-                    f"Embedding token limit exceeded: 100000 tokens per minute",
+                    f"Embedding token limit exceeded: {config.embed_tokens_per_minute} tokens per minute",
                     tenant_id=tenant_id,
-                    limit=100000,
+                    limit=config.embed_tokens_per_minute,
                     window_seconds=60,
                     retry_after=60,
                 )
@@ -285,11 +337,11 @@ class RedisRateLimiter:
             current_cost_str = await redis.get(cost_day_key)
             current_cost = float(current_cost_str) if current_cost_str else 0.0
 
-            if current_cost + cost_usd > 50.0:
+            if current_cost + cost_usd > config.embed_cost_per_day:
                 raise RateLimitExceeded(
-                    f"Embedding cost limit exceeded: $50.00 per day",
+                    f"Embedding cost limit exceeded: ${config.embed_cost_per_day:.2f} per day",
                     tenant_id=tenant_id,
-                    limit=50,
+                    limit=int(config.embed_cost_per_day),
                     window_seconds=86400,
                     retry_after=86400 - int(now % 86400),
                 )
@@ -312,6 +364,8 @@ class RedisRateLimiter:
         cost_usd: float = 0.0,
     ) -> bool:
         """Local fallback for embedding limits."""
+        config = _get_rate_limit_config()
+
         with self._lock:
             if tenant_id not in self._local_fallback:
                 self._local_fallback[tenant_id] = {
@@ -332,20 +386,20 @@ class RedisRateLimiter:
                 state["embed_cost_day"] = 0.0
                 state["day_reset"] = now + 86400
 
-            if state["embed_tokens_minute"] + tokens > 100000:
+            if state["embed_tokens_minute"] + tokens > config.embed_tokens_per_minute:
                 raise RateLimitExceeded(
-                    f"Embedding token limit exceeded: 100000 tokens per minute",
+                    f"Embedding token limit exceeded: {config.embed_tokens_per_minute} tokens per minute",
                     tenant_id=tenant_id,
-                    limit=100000,
+                    limit=config.embed_tokens_per_minute,
                     window_seconds=60,
                     retry_after=60,
                 )
 
-            if state["embed_cost_day"] + cost_usd > 50.0:
+            if state["embed_cost_day"] + cost_usd > config.embed_cost_per_day:
                 raise RateLimitExceeded(
-                    f"Embedding cost limit exceeded: $50.00 per day",
+                    f"Embedding cost limit exceeded: ${config.embed_cost_per_day:.2f} per day",
                     tenant_id=tenant_id,
-                    limit=50,
+                    limit=int(config.embed_cost_per_day),
                     window_seconds=86400,
                     retry_after=int(state["day_reset"] - now),
                 )
@@ -365,6 +419,7 @@ class RedisRateLimiter:
             Dictionary with usage statistics
         """
         redis = await self._get_redis()
+        config = _get_rate_limit_config()
 
         if not redis:
             return await self._get_usage_local(tenant_id)
@@ -382,9 +437,9 @@ class RedisRateLimiter:
                 "minute": int(minute_count) if minute_count else 0,
                 "hour": int(hour_count) if hour_count else 0,
                 "day": int(day_count) if day_count else 0,
-                "limit_minute": 60,
-                "limit_hour": 1000,
-                "limit_day": 10000,
+                "limit_minute": config.requests_per_minute,
+                "limit_hour": config.requests_per_hour,
+                "limit_day": config.requests_per_day,
             }
         except Exception as e:
             self._logger.warning(f"Redis get_usage failed, falling back to local: {e}")
@@ -392,15 +447,17 @@ class RedisRateLimiter:
 
     async def _get_usage_local(self, tenant_id: str) -> Dict[str, int]:
         """Local fallback for get_usage."""
+        config = _get_rate_limit_config()
+
         with self._lock:
             state = self._local_fallback.get(tenant_id, {})
             return {
                 "minute": state.get("minute_count", 0),
                 "hour": state.get("hour_count", 0),
                 "day": state.get("day_count", 0),
-                "limit_minute": 60,
-                "limit_hour": 1000,
-                "limit_day": 10000,
+                "limit_minute": config.requests_per_minute,
+                "limit_hour": config.requests_per_hour,
+                "limit_day": config.requests_per_day,
             }
 
     async def reset(self, tenant_id: str) -> None:

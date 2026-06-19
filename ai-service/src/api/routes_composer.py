@@ -1,5 +1,6 @@
 """AI Composer endpoints for function generation."""
 
+import os
 import uuid
 import json
 import time as pytime
@@ -15,6 +16,7 @@ from ..security.auth import (
     APIKeyInfo,
     KeyScope,
 )
+from ..utils.security import sanitize_error_message
 from ..config import settings
 from ..models.schemas import (
     ChatMessage,
@@ -217,6 +219,7 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
         )
 
 
+<<<<<<< Updated upstream
 # Internal endpoint that bypasses auth - used by FRG backend
 # SECURITY: This endpoint is protected by network-level restrictions.
 # Only allow internal service-to-service calls (from known IPs/orchestrator)
@@ -244,6 +247,36 @@ async def internal_generate_function(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid internal credentials",
+=======
+# Internal endpoint with internal API key auth - used by FRG backend
+@router.post("/internal/composer/generate", response_model=FunctionGenerationResponse)
+async def internal_generate_function(
+    request: FunctionGenerationRequest,
+    x_internal_key: Optional[str] = Header(None, alias="X-Internal-Key"),
+):
+    """Internal function generation endpoint for FRG system use.
+
+    This endpoint requires internal API key authentication via X-Internal-Key header
+    and is intended for internal service-to-service communication only.
+    DO NOT expose this endpoint publicly - it should only be accessible from
+    internal networks or through a properly restricted network policy.
+    """
+    # Validate internal API key
+    internal_key = settings.internal_api_key or os.environ.get("INTERNAL_API_KEY", "")
+    if not internal_key:
+        logger.error("Internal endpoint called but INTERNAL_API_KEY not configured")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Internal authentication not configured",
+        )
+
+    if not x_internal_key or x_internal_key != internal_key:
+        logger.warning(f"Internal endpoint access attempt with invalid key")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid internal API key",
+            headers={"WWW-Authenticate": "ApiKey"},
+>>>>>>> Stashed changes
         )
 
     generation_id = str(uuid.uuid4())
@@ -264,6 +297,7 @@ async def internal_generate_function(
                 detail="AI generation service not available",
             )
 
+        # Build the prompt for function generation
         runtime_prompts = {
             "python": "Generate Python 3.11+ code. Use type hints, docstrings, and modern Python patterns.",
             "nodejs": "Generate Node.js 20+ JavaScript code. Use async/await and modern patterns.",
@@ -368,7 +402,11 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
         latency_ms = (pytime.time() - start_time) * 1000
         return FunctionGenerationResponse(
             success=False,
+<<<<<<< Updated upstream
             error="Function generation failed. Please try again.",
+=======
+            error=str(e),
+>>>>>>> Stashed changes
             generation_id=generation_id,
             latency_ms=latency_ms,
         )
@@ -430,12 +468,13 @@ The code should be self-contained and production-ready."""
                     temperature=0.2,
                     max_tokens=4000,
                 ):
-                    escaped = chunk.replace('"', '\\"').replace("\n", "\\n")
+                    escaped = chunk.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
                     yield f'{{"type": "chunk", "content": "{escaped}"}}\n\n'
 
                 yield f'{{"type": "complete"}}\n\n'
             except Exception as e:
-                yield f'{{"type": "error", "error": "{str(e)}"}}\n\n'
+                error_json = json.dumps({"type": "error", "error": str(e)})
+                yield f'{error_json}\n\n'
 
         return StreamingResponse(
             generate(),
@@ -551,7 +590,7 @@ async def generate_function_optimized(
         logger.error(f"Optimized generation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Optimized generation failed: {str(e)}",
+            detail=sanitize_error_message(e, include_details=settings.debug),
         )
 
 

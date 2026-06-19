@@ -49,16 +49,32 @@ class RedisClient:
         import redis.asyncio as redis
 
         try:
+            # Build Redis URL with password if provided
+            redis_url = settings.redis_url
+            if settings.redis_password:
+                # Parse URL and insert password
+                if "://" in redis_url:
+                    parts = redis_url.split("://", 1)
+                    auth_part = f":{settings.redis_password}@"
+                    redis_url = parts[0] + "://" + auth_part + parts[1]
+                else:
+                    redis_url = f"redis://:{settings.redis_password}@{redis_url.replace('redis://', '')}"
+
             client = redis.from_url(
-                settings.redis_url,
+                redis_url,
                 encoding="utf-8",
                 decode_responses=True,
                 ssl=settings.redis_use_tls,
             )
             await client.ping()
+<<<<<<< Updated upstream
             logger.info(f"Using standard Redis (TLS: {settings.redis_use_tls})")
             instance._client = client
             return instance
+=======
+            logger.info("Using standard Redis" + (" with password" if settings.redis_password else ""))
+            return cls(client)
+>>>>>>> Stashed changes
         except Exception as e:
             logger.warning(f"Failed to connect to Redis: {e}")
             return instance

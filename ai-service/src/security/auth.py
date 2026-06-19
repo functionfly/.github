@@ -25,6 +25,123 @@ logger = logging.getLogger(__name__)
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
+class AuthRateLimiter:
+    """Rate limiter for failed authentication attempts.
+
+    Implements progressive delay to prevent brute force attacks on API keys.
+    """
+
+    MAX_LOCKOUT_MINUTES = 15
+    PROGRESSIVE_DELAYS = [
+        (3, 1),    # 3 failures -> 1 second delay
+        (5, 5),    # 5 failures -> 5 second delay
+        (10, 30),   # 10 failures -> 30 second delay
+        (20, 60),   # 20 failures -> 60 second delay
+    ]
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._attempts: Dict[str, Dict] = {}  # key_hash -> {"count": int, "last_attempt": float, "locked_until": float}
+
+    def _get_key_hash(self, api_key: str) -> str:
+        """Get a hash of the API key for tracking."""
+        return hashlib.sha256(api_key.encode()).hexdigest()[:16]
+
+    def _get_delay(self, failures: int) -> int:
+        """Get delay in seconds based on failure count."""
+        for threshold, delay in self.PROGRESSIVE_DELAYS:
+            if failures < threshold:
+                return 0
+        return self.PROGRESSIVE_DELAYS[-1][1]
+
+    def record_failure(self, api_key: str) -> int:
+        """Record a failed auth attempt and return delay in seconds before retry.
+
+        Args:
+            api_key: The API key that failed
+
+        Returns:
+            Delay in seconds before retry (0 if not locked out)
+        """
+        key_hash = self._get_key_hash(api_key)
+        now = time.time()
+
+        with self._lock:
+            if key_hash not in self._attempts:
+                self._attempts[key_hash] = {"count": 0, "last_attempt": now, "locked_until": 0}
+
+            entry = self._attempts[key_hash]
+
+            # Reset if last attempt was > 15 minutes ago
+            if now - entry["last_attempt"] > 900:
+                entry["count"] = 0
+
+            entry["count"] += 1
+            entry["last_attempt"] = now
+
+            delay = self._get_delay(entry["count"])
+
+            if delay > 0:
+                entry["locked_until"] = now + delay
+                logger.warning(f"Auth rate limit: key hash {key_hash[:8]} locked for {delay}s after {entry['count']} failures")
+
+            return delay
+
+    def record_success(self, api_key: str) -> None:
+        """Clear failure count on successful auth.
+
+        Args:
+            api_key: The API key that succeeded
+        """
+        key_hash = self._get_key_hash(api_key)
+
+        with self._lock:
+            if key_hash in self._attempts:
+                del self._attempts[key_hash]
+
+    def check_lockout(self, api_key: str) -> tuple[bool, int]:
+        """Check if key is locked out.
+
+        Args:
+            api_key: The API key to check
+
+        Returns:
+            Tuple of (is_locked, retry_after_seconds)
+        """
+        key_hash = self._get_key_hash(api_key)
+        now = time.time()
+
+        with self._lock:
+            if key_hash not in self._attempts:
+                return False, 0
+
+            entry = self._attempts[key_hash]
+
+            if now < entry.get("locked_until", 0):
+                return True, int(entry["locked_until"] - now) + 1
+
+            return False, 0
+
+    def get_stats(self) -> Dict[str, int]:
+        """Get rate limiter statistics."""
+        with self._lock:
+            return {
+                "tracked_keys": len(self._attempts),
+            }
+
+
+# Global auth rate limiter instance
+_auth_rate_limiter: Optional[AuthRateLimiter] = None
+
+
+def get_auth_rate_limiter() -> AuthRateLimiter:
+    """Get the global auth rate limiter instance."""
+    global _auth_rate_limiter
+    if _auth_rate_limiter is None:
+        _auth_rate_limiter = AuthRateLimiter()
+    return _auth_rate_limiter
+
+
 class KeyStatus(str, Enum):
     """API key status."""
     ACTIVE = "active"
@@ -99,6 +216,7 @@ class APIKeyValidator:
         orchestrator_url: str = "http://localhost:8080",
         orchestrator_api_key: Optional[str] = None,
         cache_ttl_seconds: int = 60,
+        reject_in_degraded_mode: bool = True,
     ):
         """Initialize the validator.
 
@@ -106,14 +224,36 @@ class APIKeyValidator:
             orchestrator_url: URL of the Go orchestrator API
             orchestrator_api_key: Optional API key for orchestrator authentication
             cache_ttl_seconds: How long to cache validation results
+            reject_in_degraded_mode: If True, reject all requests when orchestrator is unreachable
         """
         self._orchestrator_url = orchestrator_url.rstrip("/")
         self._orchestrator_api_key = orchestrator_api_key
         self._cache_ttl = cache_ttl_seconds
+        self._reject_in_degraded_mode = reject_in_degraded_mode
 
         self._lock = threading.Lock()
         self._cache: Dict[str, tuple[Optional[APIKeyInfo], float]] = {}  # key_hash -> (info, expiry)
+<<<<<<< Updated upstream
         self._failed_attempts: Dict[str, tuple[int, float]] = {}  # key_hash -> (attempts, first_failure_time)
+=======
+        self._is_degraded = False
+
+    def set_degraded(self, degraded: bool) -> None:
+        """Set the degraded mode flag.
+
+        Args:
+            degraded: True if running in degraded mode (orchestrator unreachable)
+        """
+        self._is_degraded = degraded
+        if degraded:
+            logger.warning("API key validator is now in DEGRADED mode")
+        else:
+            logger.info("API key validator recovered from degraded mode")
+
+    def is_degraded(self) -> bool:
+        """Check if validator is in degraded mode."""
+        return self._is_degraded
+>>>>>>> Stashed changes
 
     def _get_cache_key(self, key: str) -> str:
         """Generate a cache key from the API key."""
@@ -216,6 +356,11 @@ class APIKeyValidator:
         without nesting event loops. Prefer validate_key_async in async contexts.
         """
         import asyncio
+
+        # In degraded mode with reject enabled, refuse to validate
+        if self._is_degraded and self._reject_in_degraded_mode:
+            logger.warning("Rejecting auth request in degraded mode")
+            return None
 
         cache_key = self._get_cache_key(key)
 
@@ -336,6 +481,7 @@ def get_api_key_validator() -> APIKeyValidator:
         _validator_instance = APIKeyValidator(
             orchestrator_url=settings.orchestrator_url,
             orchestrator_api_key=settings.orchestrator_api_key,
+            reject_in_degraded_mode=getattr(settings, 'reject_auth_in_degraded_mode', True),
         )
 
     return _validator_instance
@@ -346,7 +492,8 @@ async def initialize_api_key_validator() -> bool:
 
     Returns:
         True if orchestrator is reachable, False otherwise.
-        The service will start in degraded mode if orchestrator is unreachable.
+        When orchestrator is unreachable, the service enters degraded mode.
+        In degraded mode with reject_in_degraded_mode=True, all auth requests are rejected.
     """
     global _validator_instance
 
@@ -355,18 +502,32 @@ async def initialize_api_key_validator() -> bool:
     _validator_instance = APIKeyValidator(
         orchestrator_url=settings.orchestrator_url,
         orchestrator_api_key=settings.orchestrator_api_key,
+        reject_in_degraded_mode=getattr(settings, 'reject_auth_in_degraded_mode', True),
     )
 
     healthy = await _validator_instance.initialize()
     if not healthy:
+        _validator_instance.set_degraded(True)
         logger.warning(
             f"Orchestrator not reachable at {settings.orchestrator_url}. "
-            "API key validation will operate in degraded mode."
+            "API key validation entering DEGRADED mode - "
+            f"auth requests will be {'REJECTED' if _validator_instance._reject_in_degraded_mode else 'ALLOWED with cached keys'}."
         )
         return False
 
     logger.info("API key validator initialized (orchestrator-backed)")
     return True
+
+
+def set_auth_degraded(degraded: bool) -> None:
+    """Manually set the auth degraded mode flag.
+
+    Args:
+        degraded: True to enter degraded mode, False to recover
+    """
+    global _validator_instance
+    if _validator_instance is not None:
+        _validator_instance.set_degraded(degraded)
 
 
 # FastAPI dependency functions
@@ -390,6 +551,91 @@ async def require_api_key(
             detail="API key required. Provide X-API-Key header.",
             headers={"WWW-Authenticate": "ApiKey"},
         )
+
+    # Check if key is locked out due to too many failures
+    rate_limiter = get_auth_rate_limiter()
+    is_locked, retry_after = rate_limiter.check_lockout(x_api_key)
+    if is_locked:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many auth failures. Retry after {retry_after} seconds.",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    validator = get_api_key_validator()
+    info = validator.validate_key_sync(x_api_key)
+
+    if not info:
+        # Record failure
+        delay = rate_limiter.record_failure(x_api_key)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired API key",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+
+    # Clear failures on success
+    rate_limiter.record_success(x_api_key)
+    return info
+
+
+def require_api_key_with_scope(scope: KeyScope):
+    """Create a FastAPI dependency that requires a specific scope.
+
+    Usage:
+        @router.post("/api/embed")
+        async def embed(request: EmbeddingRequest, api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.EMBED_WRITE)):
+            ...
+
+    Args:
+        scope: Required scope
+
+    Returns:
+        Dependency function
+    """
+    async def dependency(
+        x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    ) -> APIKeyInfo:
+        if not x_api_key:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="API key required. Provide X-API-Key header.",
+                headers={"WWW-Authenticate": "ApiKey"},
+            )
+
+        # Check if key is locked out
+        rate_limiter = get_auth_rate_limiter()
+        is_locked, retry_after = rate_limiter.check_lockout(x_api_key)
+        if is_locked:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Too many auth failures. Retry after {retry_after} seconds.",
+                headers={"Retry-After": str(retry_after)},
+            )
+
+        validator = get_api_key_validator()
+        info = validator.validate_key_sync(x_api_key)
+
+        if not info:
+            delay = rate_limiter.record_failure(x_api_key)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired API key",
+                headers={"WWW-Authenticate": "ApiKey"},
+            )
+
+        # Clear failures on success
+        rate_limiter.record_success(x_api_key)
+
+        if not info.has_scope(scope):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required scope: {scope.value}",
+            )
+
+        return info
+
+    return dependency
 
     validator = get_api_key_validator()
     info = await validator.validate_key_async(x_api_key)
