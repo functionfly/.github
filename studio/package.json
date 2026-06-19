@@ -17,7 +17,7 @@
     "bun": "^1.0.0",
     "electron": "^42.1.0",
     "electron-builder": "^26.0.0",
-    "typescript": "^5.8.3"
+    "typescript": "^6.0.3"
   },
   "build": {
     "appId": "com.functionfly.studio",

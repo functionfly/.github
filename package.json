@@ -33,11 +33,11 @@
     "i18n:ollama": "bun scripts/sync-translations.ts --write --backend=ollama"
   },
   "devDependencies": {
-    "@nx/eslint": "^22.6.5",
-    "@nx/jest": "^22.6.5",
-    "@nx/js": "^22.6.5",
-    "@nx/vite": "^22.6.5",
-    "nx": "^22.6.5",
+    "@nx/eslint": "^22.7.5",
+    "@nx/jest": "^22.7.5",
+    "@nx/js": "^22.7.5",
+    "@nx/vite": "^22.7.5",
+    "nx": "^22.7.5",
     "typescript": "^6.0.3"
   },
   "engines": {
@@ -46,24 +46,24 @@
   },
   "dependencies": {
     "@astrojs/partytown": "^2.1.7",
-    "ajv": "^8.18.0",
-    "astro": "^6.0.0",
+    "ajv": "^8.20.0",
+    "astro": "^6.4.8",
     "astro-compress": "^2.4.1",
     "astro-critters": "^2.2.1",
-    "devalue": "^5.7.1",
-    "dompurify": "^3.3.3",
-    "esbuild": "^0.28.0",
-    "fastify": "^5.8.4",
+    "devalue": "^5.8.1",
+    "dompurify": "^3.4.11",
+    "esbuild": "^0.28.1",
+    "fastify": "^5.8.5",
     "file-type": "^22.0.1",
     "flatted": "^3.4.2",
     "idb": "^8.0.3",
     "jspdf": "^4.2.1",
     "minimatch": "^10.2.5",
-    "next": "^16.2.3",
-    "react-router-dom": "^7.14.0",
-    "undici": "^8.0.3",
+    "next": "^16.2.9",
+    "react-router-dom": "^7.18.0",
+    "undici": "^8.5.0",
     "vercel": "^50.44.0",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "overrides": {
     "dompurify": "^3.3.3",
@@ -81,10 +81,5 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.2",
     "scheduler": "^0.27.0"
-  },
-  "workspaces": [
-    "web/*",
-    "packages/*",
-    "."
-  ]
+  }
 }

@@ -81,7 +81,7 @@ func main() {
 				tenantID := fmt.Sprintf("tenant-%d", rand.Intn(*tenants))
 				input := make([]byte, *payload)
 				resp, err := cli.Execute(ctx, &wasmpoolv1.ExecuteRequest{
-					TenantId: tenantID,
+					TenantID: tenantID,
 					Runtime:  "python",
 					Input:    input,
 					TimeoutMs: 5000,
