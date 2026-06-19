@@ -153,36 +153,51 @@ export const stateApi = {
     );
   },
 
-  // Get encryption statistics
-  getEncryptionStats: async (path: string): Promise<{
-    encrypted: boolean;
-    algorithm?: string;
-    keyId?: string;
-    lastRotated?: number;
+  // Get encryption statistics (tenant-level, no path needed)
+  getEncryptionStats: async (): Promise<{
+    total_states: number;
+    encrypted_states: number;
+    unencrypted_states: number;
+    total_values: number;
+    encrypted_values: number;
+    unencrypted_values: number;
+    encryption_enabled: boolean;
   }> => {
     return apiClient.get<{
-      encrypted: boolean;
-      algorithm?: string;
-      keyId?: string;
-      lastRotated?: number;
-    }>(`/v1/state/${encodeURIComponent(path)}/encryption/stats`);
+      total_states: number;
+      encrypted_states: number;
+      unencrypted_states: number;
+      total_values: number;
+      encrypted_values: number;
+      unencrypted_values: number;
+      encryption_enabled: boolean;
+    }>(`/v1/state/encryption-stats`);
   },
 
-  // Migrate encryption
+  // Migrate encryption (encrypt existing values)
   migrateEncryption: async (
     path: string,
-    data: { algorithm: string; keyId?: string }
-  ): Promise<{ migrated: boolean }> => {
-    return apiClient.post<{ migrated: boolean }>(
-      `/v1/state/${encodeURIComponent(path)}/encryption/migrate`,
-      data
-    );
+    data: { state_id?: string; batch_size?: number; dry_run?: boolean; force_rotate?: boolean }
+  ): Promise<{
+    states_processed: number;
+    values_encrypted: number;
+    values_skipped: number;
+    errors: string[];
+    completed: boolean;
+  }> => {
+    return apiClient.post<{
+      states_processed: number;
+      values_encrypted: number;
+      values_skipped: number;
+      errors: string[];
+      completed: boolean;
+    }>(`/v1/state/encrypt`, { state_id: path, ...data });
   },
 
   // Rotate encryption key
-  rotateEncryptionKey: async (path: string): Promise<{ rotated: boolean; keyId: string }> => {
+  rotateEncryptionKey: async (): Promise<{ rotated: boolean; keyId: string }> => {
     return apiClient.post<{ rotated: boolean; keyId: string }>(
-      `/v1/state/${encodeURIComponent(path)}/encryption/rotate`,
+      `/v1/state/rotate-key`,
       {}
     );
   },

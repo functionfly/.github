@@ -1,4 +1,4 @@
-import { NeuralExecutionMap } from "@functionfly/ui-visualization";
+import { NeuralExecutionMap, type NeuralNode, type NeuralConnection } from "@functionfly/ui-visualization";
 import { Maximize2, Minimize2, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { VisualizationPanelSkeleton } from "../components/StudioPanelsSkeleton";
@@ -68,8 +68,8 @@ export function VisualizationPanel({ nodes, edges, isLoading }: VisualizationPan
           </div>
         ) : (
           <NeuralExecutionMap
-            nodes={nodes}
-            connections={edges}
+            nodes={nodes as unknown as NeuralNode[]}
+            connections={edges as unknown as NeuralConnection[]}
           />
         )}
       </div>

@@ -268,19 +268,19 @@ export function useEnableEncryption(path: string) {
   });
 }
 
-// Get encryption statistics
-export function useEncryptionStats(path: string) {
+// Get encryption statistics (tenant-level)
+export function useEncryptionStats(_path?: string) {
   return useQuery({
-    queryKey: [...stateKeys.detail(path), 'encryption'] as const,
-    queryFn: () => stateApi.getEncryptionStats(path),
-    enabled: isPathValidForFetch(path),
+    queryKey: ['state', 'encryption', 'stats'] as const,
+    queryFn: () => stateApi.getEncryptionStats(),
   });
 }
 
 // Migrate encryption
 export function useMigrateEncryption(path: string) {
   return useMutation({
-    mutationFn: (data: { algorithm: string; keyId?: string }) => stateApi.migrateEncryption(path, data),
+    mutationFn: (data: { batch_size?: number; dry_run?: boolean; force_rotate?: boolean }) =>
+      stateApi.migrateEncryption(path, data),
     onSuccess: () => {
       toast.success("Encryption migrated");
     },
@@ -291,9 +291,9 @@ export function useMigrateEncryption(path: string) {
 }
 
 // Rotate encryption key
-export function useRotateEncryptionKey(path: string) {
+export function useRotateEncryptionKey() {
   return useMutation({
-    mutationFn: () => stateApi.rotateEncryptionKey(path),
+    mutationFn: () => stateApi.rotateEncryptionKey(),
     onSuccess: () => {
       toast.success("Encryption key rotated");
     },

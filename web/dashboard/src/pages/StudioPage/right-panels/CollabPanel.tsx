@@ -210,22 +210,10 @@ export function CollabPanel({
     [commentsData]
   );
 
-  const adaptedAnnotations = useMemo<Annotation[]>(() =>
-    (annotationsData || []).map(ev => ({
-      id: ev.id,
-      type: 'comment' as const,
-      content: ev.metadata?.content || "",
-      author: ev.metadata?.user_name || "Unknown",
-      timestamp: new Date(ev.created_at).getTime(),
-      createdAt: new Date(ev.created_at).getTime(),
-      position: { line: 1, column: 1 },
-      resolved: ev.metadata?.resolved,
-    })),
-    [annotationsData]
-  );
+  const adaptedAnnotations: Annotation[] = annotationsData || [];
 
   const adaptedBookmarks = useMemo<ExecutionBookmark[]>(() =>
-    adaptExecutionToBookmarks(executions),
+    adaptExecutionToBookmarks(executions) as unknown as ExecutionBookmark[],
     [executions]
   );
 

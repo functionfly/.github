@@ -324,6 +324,13 @@ export const frgApi = {
   },
 
   /**
+   * Resume a paused or failed instance
+   */
+  resumeInstance: async (instanceId: string): Promise<{ status: string }> => {
+    return apiClient.post<{ status: string }>(`/frg/instances/${instanceId}/resume`, {});
+  },
+
+  /**
    * List instances for a graph
    */
   listInstances: async (

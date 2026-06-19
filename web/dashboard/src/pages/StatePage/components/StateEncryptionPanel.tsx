@@ -19,7 +19,7 @@ interface StateEncryptionPanelProps {
 
 export function StateEncryptionPanel({ statePath, compact = false }: StateEncryptionPanelProps) {
   const { data: stats, isLoading, error, refetch } = useEncryptionStats();
-  const migrate = useMigrateEncryption();
+  const migrate = useMigrateEncryption(statePath ?? '');
   const rotateKey = useRotateEncryptionKey();
   const enableEncryption = useEnableEncryption(statePath ?? '');
 
@@ -43,9 +43,9 @@ export function StateEncryptionPanel({ statePath, compact = false }: StateEncryp
   if (!stats) return null;
 
   const stateCoverage =
-    stats.totalStates > 0 ? (stats.encryptedStates / stats.totalStates) * 100 : 0;
+    stats.total_states > 0 ? (stats.encrypted_states / stats.total_states) * 100 : 0;
   const valueCoverage =
-    stats.totalValues > 0 ? (stats.encryptedValues / stats.totalValues) * 100 : 0;
+    stats.total_values > 0 ? (stats.encrypted_values / stats.total_values) * 100 : 0;
 
   return (
     <div className="space-y-4">
@@ -61,12 +61,12 @@ export function StateEncryptionPanel({ statePath, compact = false }: StateEncryp
             </p>
           )}
         </div>
-        <Badge variant={stats.encryptionEnabled ? 'default' : 'secondary'}>
-          {stats.encryptionEnabled ? 'Enabled' : 'Not configured'}
+        <Badge variant={stats.encryption_enabled ? 'default' : 'secondary'}>
+          {stats.encryption_enabled ? 'Enabled' : 'Not configured'}
         </Badge>
       </div>
 
-      {!stats.encryptionEnabled ? (
+      {!stats.encryption_enabled ? (
         <Card className="border-dashed">
           <CardContent className="py-6 text-center text-text-muted text-sm">
             Server-side encryption is not configured on this deployment.
@@ -83,7 +83,7 @@ export function StateEncryptionPanel({ statePath, compact = false }: StateEncryp
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
-                  {stats.encryptedStates} / {stats.totalStates}
+                  {stats.encrypted_states} / {stats.total_states}
                 </p>
                 <Progress value={stateCoverage} className="h-2 mt-2" />
               </CardContent>
@@ -96,7 +96,7 @@ export function StateEncryptionPanel({ statePath, compact = false }: StateEncryp
               </CardHeader>
               <CardContent>
                 <p className="text-2xl font-bold">
-                  {stats.encryptedValues} / {stats.totalValues}
+                  {stats.encrypted_values} / {stats.total_values}
                 </p>
                 <Progress value={valueCoverage} className="h-2 mt-2" />
               </CardContent>
@@ -107,8 +107,8 @@ export function StateEncryptionPanel({ statePath, compact = false }: StateEncryp
             <Button
               variant="outline"
               size="sm"
-              onClick={() => migrate.mutate({ dryRun: false })}
-              disabled={migrate.isPending || stats.unencryptedValues === 0}
+              onClick={() => migrate.mutate({ dry_run: false })}
+              disabled={migrate.isPending || stats.unencrypted_values === 0}
             >
               {migrate.isPending ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

@@ -132,14 +132,14 @@ export function TeamsPage() {
     mutationFn: (name: string) => teamsApi.create({ name }),
     onSuccess: (data) => {
       // Optimistically add the new team to the cache with the creator as owner
-      const newTeam = {
+      const newTeam: Team = {
         ...data.team,
         members: [
           {
             id: '',
             user_id: user?.id ?? '',
             team_id: data.team.id,
-            role: 'owner',
+            role: 'owner' as const,
             created_at: new Date().toISOString(),
             user: user
               ? { id: user.id, email: user.email, name: user.name, username: user.username }

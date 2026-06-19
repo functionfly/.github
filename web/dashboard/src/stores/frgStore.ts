@@ -888,8 +888,8 @@ export const useFRGStore = create<FRGState>()(
           if (activeInstance?.id) {
             try {
               await frgApi.resumeInstance(activeInstance.id);
-            } catch {
-              // Resume API may not be available; fall through to polling
+            } catch (err) {
+              console.error('Failed to resume instance:', err);
             }
             set({ executionStatus: 'running' });
             get().pollInstanceStatus();

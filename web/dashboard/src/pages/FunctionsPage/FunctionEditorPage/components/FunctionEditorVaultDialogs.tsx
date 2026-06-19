@@ -54,12 +54,12 @@ export function FunctionEditorVaultDialogs({ editor }: Props) {
           </DialogHeader>
           <ScrollArea className="max-h-[280px] rounded-md border border-border-subtle">
             <div className="p-2 space-y-1">
-              {!vaultSecrets?.length && (
+              {!vaultSecrets?.secrets?.length && (
                 <p className="text-sm text-text-secondary py-4 text-center">
                   {t('funcEditor.noSecretsInVault')}
                 </p>
               )}
-              {vaultSecrets?.map((secret) => (
+              {vaultSecrets?.secrets?.map((secret) => (
                 <button
                   key={secret.id}
                   type="button"

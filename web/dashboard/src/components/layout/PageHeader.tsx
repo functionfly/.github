@@ -18,6 +18,7 @@ interface ActionButton {
   size?: 'sm' | 'md' | 'lg';
   icon?: React.ComponentType<{ className?: string }>;
   disabled?: boolean;
+  className?: string;
 }
 
 // Enhanced badge types
@@ -33,6 +34,7 @@ interface PageBadge {
     | 'enterprise'
     | 'warning';
   icon?: React.ComponentType<{ className?: string }>;
+  className?: string;
 }
 
 interface PageHeaderProps {

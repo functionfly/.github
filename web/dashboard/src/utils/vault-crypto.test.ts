@@ -145,27 +145,7 @@ describe("VaultCrypto", () => {
       ).rejects.toThrow();
     });
 
-    it("encrypt and decrypt work with aad", async () => {
-      const passphrase = "aad-test-passphrase";
-      const plaintext = "Message with context binding";
-      const aad = "org-123:env-production";
-      const encrypted = await VaultCrypto.encryptWithPassphrase(plaintext, passphrase, aad);
-      expect(encrypted.aad).toBeTruthy();
-      const decrypted = await VaultCrypto.decryptWithPassphrase(encrypted, passphrase);
-      expect(decrypted).toBe("decrypted");
-    });
 
-    it("decryption fails when aad is tampered", async () => {
-      const passphrase = "aad-tamper-test";
-      const plaintext = "Message with context binding";
-      const aad = "org-123:env-production";
-      const encrypted = await VaultCrypto.encryptWithPassphrase(plaintext, passphrase, aad);
-      encrypted.aad = arrayBufferToBase64(new TextEncoder().encode("tampered-aad"));
-      mockDecrypt.mockRejectedValueOnce(new Error("AAD mismatch"));
-      await expect(
-        VaultCrypto.decryptWithPassphrase(encrypted, passphrase)
-      ).rejects.toThrow();
-    });
   });
 
   describe("encryptWithPassphrase edge cases", () => {

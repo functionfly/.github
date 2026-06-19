@@ -52,6 +52,14 @@ export interface DraftData {
   updatedAt: number;
   status: 'draft' | 'generating' | 'complete' | 'error';
   constraints?: string;
+  runtime?: string;
+}
+
+export interface StoredDraft {
+  description?: string;
+  constraints?: string;
+  runtime?: string;
+  timestamp?: number;
 }
 
 export interface StreamChunk {

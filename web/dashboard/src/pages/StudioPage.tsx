@@ -798,7 +798,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                             id: n.id,
                             label: n.label,
                             type: n.type,
-                            status: n.status,
+                            status: (n.status === 'idle' ? 'pending' : n.status) as 'pending' | 'running' | 'success' | 'error',
                           }))}
                           edges={canvasEdges.map((e) => ({ source: e.source, target: e.target, strength: 0.8 }))}
                           isLoading={isLoadingGraph}
@@ -824,7 +824,7 @@ const collabActivity = (collabActivityData?.activities || []) as CollabEvent[];
                             promptVersionsData={promptVersionsData}
                             pairSessionsData={pairSessionsData}
                             commentsData={commentsData}
-                            annotationsData={annotationsData}
+                            annotationsData={annotationsData as any}
                             graphEditsData={graphEditsData}
                             conflictsData={conflictsData}
                             teamMemories={teamMemories?.memories || []}

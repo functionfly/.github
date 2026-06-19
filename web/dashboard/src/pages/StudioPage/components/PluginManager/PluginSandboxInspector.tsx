@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { GlassCard, Badge, Button, Spinner, Slider, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@functionfly/ui-core";
 import { Activity, Cpu, MemoryStick, Clock, Globe, Shield, DollarSign, Zap, Save } from "lucide-react";
-import { type Plugin, usePluginSandbox, useUpdateSandbox, type SandboxTier } from "@/hooks/usePlugin";
+import { type Plugin, usePluginSandbox, useUpdateSandbox } from "@/hooks/usePlugin";
+import { type SandboxTier } from "@/api/plugins";
 import { useQueryClient } from "@tanstack/react-query";
 import { pluginKeys } from "@/hooks/usePlugin";
 import { cn } from "@/lib/utils";

@@ -20,7 +20,7 @@ import {
   MonetizationOptimizer,
   MarketplaceTrendRadar,
 } from '@functionfly/ui-marketplace-economy/components'
-import { useMarketplaceEconomyStore } from '@/stores/marketplaceEconomyStore'
+import { useMarketplaceEconomyStore, type MarketplaceView } from '@/stores/marketplaceEconomyStore'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -76,12 +76,12 @@ export function MarketplaceEconomyPage() {
 
   useEffect(() => {
     if (panel && Object.keys(VIEW_LABELS).includes(panel)) {
-      setActiveView(panel as keyof typeof VIEW_LABELS)
+      setActiveView(panel as MarketplaceView)
     }
   }, [panel, setActiveView])
 
   const handleViewChange = (view: string) => {
-    setActiveView(view as keyof typeof VIEW_LABELS)
+    setActiveView(view as MarketplaceView)
     setSearchParams({ panel: view })
   }
 

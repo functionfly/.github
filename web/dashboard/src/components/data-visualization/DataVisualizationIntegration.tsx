@@ -121,6 +121,7 @@ export function DataVisualizationIntegration() {
               label: `P${i}`,
               cluster: String(Math.floor(Math.random() * 3)),
             }))}
+            clusters={[]}
             className="aviation-chart-cluster"
           />
         );

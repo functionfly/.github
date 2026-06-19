@@ -75,7 +75,7 @@ export class TokenVault {
           const keyData = this.base64ToUint8Array(storedKeyMaterial);
           this.encryptionKey = await crypto.subtle.importKey(
             'raw',
-            keyData,
+            keyData.buffer as ArrayBuffer,
             { name: 'AES-GCM' },
             true,
             ['encrypt', 'decrypt']

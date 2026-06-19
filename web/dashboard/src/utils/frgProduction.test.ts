@@ -139,7 +139,7 @@ describe('frgTemplates', () => {
   it('rejects templates when the library is too small', () => {
     const result = applyFrgTemplate('ai-pipeline', mockLibrary.slice(0, 1));
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (!result.ok && 'reason' in result) {
       expect(result.reason).toBe('insufficient_functions');
     }
   });
@@ -147,7 +147,7 @@ describe('frgTemplates', () => {
   it('returns unknown template errors', () => {
     const result = applyFrgTemplate('missing', mockLibrary);
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (!result.ok && 'reason' in result) {
       expect(result.reason).toBe('unknown_template');
     }
   });

@@ -12,6 +12,7 @@ import type {
   Skill,
   FunctionCardData,
 } from "@/types";
+import type { PublicBadge } from "@/api/certification";
 import { subDays, format } from "date-fns";
 
 // ============================================================================
@@ -571,6 +572,26 @@ export const mockUserProfile: UserProfile = {
 
   achievements: mockAchievements,
   recentActivity: mockActivities,
+  certifications: [
+    {
+      tier_slug: "verified-developer",
+      tier_name: "Verified Developer",
+      tier_color: "#22c55e",
+      tier_icon: "badge-check",
+      credential_number: "FF-2024-00142",
+      issued_at: "2024-01-15T00:00:00Z",
+      expires_at: "2025-01-15T00:00:00Z",
+    },
+    {
+      tier_slug: "top-publisher",
+      tier_name: "Top Publisher",
+      tier_color: "#8b5cf6",
+      tier_icon: "star",
+      credential_number: "FF-2024-00089",
+      issued_at: "2024-02-20T00:00:00Z",
+      expires_at: "2025-02-20T00:00:00Z",
+    },
+  ] as PublicBadge[],
   publishedFunctions: mockFunctions,
 };
 
@@ -644,5 +665,6 @@ export const emptyUserProfile: UserProfile = {
   },
   achievements: [],
   recentActivity: [],
+  certifications: [],
   publishedFunctions: [],
 };

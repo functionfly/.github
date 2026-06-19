@@ -635,7 +635,10 @@ export const useCollaborationStore = create<CollaborationState>()(
       set((state) => {
         const task = state.tasks.find((t) => t.id === taskId)
         if (task?.suggestedAssignee) {
-          task.assignees.push(task.suggestedAssignee as TaskAssignee)
+          task.assignees.push({
+            ...task.suggestedAssignee,
+            type: 'human' as const,
+          } as TaskAssignee)
           task.suggestedAssignee = undefined
         }
       }),

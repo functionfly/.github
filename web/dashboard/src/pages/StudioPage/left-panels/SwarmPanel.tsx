@@ -19,8 +19,8 @@ export function SwarmPanel() {
         : agent.status === "pending"
           ? "idle"
           : agent.status === "terminating" || agent.status === "terminated"
-            ? "stopped"
-            : (agent.status as "running" | "idle" | "paused" | "stopped" | "error"),
+            ? "terminated"
+            : (agent.status as "running" | "idle" | "paused" | "terminated" | "error"),
     memoryUsage: 0,
     memoryLimit: 512 * 1024 * 1024,
     executionBudget: 10.0,
@@ -36,7 +36,7 @@ export function SwarmPanel() {
     lastHeartbeat: agent.lastActivity || new Date().toISOString(),
     createdAt: new Date().toISOString(),
     description: `Agent ${agent.name}`,
-    tags: [],
+    tags: [] as string[],
   }));
 
   return (

@@ -183,8 +183,8 @@ export function ComposerOutputPanel({
                 )}
                 <ConfidenceDisplay score={confidenceScore} />
                 <ModelUsedBadge
-                  modelUsed={generatedFunction?.model_used}
-                  costUsd={generatedFunction?.cost_usd}
+                  modelUsed={(generatedFunction as any)?.model_used}
+                  costUsd={(generatedFunction as any)?.cost_usd}
                 />
               </div>
               <div className="flex items-center gap-2">

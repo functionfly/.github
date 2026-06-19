@@ -159,6 +159,8 @@ export const FuturisticIntegration: React.FC = () => {
                   status: e.status,
                   position: { x: i * 50, y: i * 30, z: 0 },
                 })),
+                connections: [],
+                timestamp: Date.now(),
               }}
               isAnimating={true}
             />

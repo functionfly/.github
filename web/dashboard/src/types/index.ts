@@ -401,6 +401,8 @@ export interface ConnectProviderRequest {
 
 export interface ConnectProviderResponse {
   provider: ConnectedProvider;
+  apiKey?: string;
+  apiKeyId?: string;
 }
 
 // Admin types

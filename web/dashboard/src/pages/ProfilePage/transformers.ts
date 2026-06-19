@@ -148,6 +148,7 @@ export function transformToUserProfile(
     },
     achievements: [], // Will be populated from separate API call
     recentActivity: [], // Will be populated from separate API call
+    certifications: [], // Will be populated from separate API call
     publishedFunctions,
   };
 }

@@ -59,12 +59,17 @@ export function MarketplacePanel({
   const subscriptions = [
     {
       id: "sub-1",
+      customerId: "cust-1",
       customerName: currentUserName,
+      customerEmail: `${currentUserName.toLowerCase().replace(/\s+/g, '-')}@example.com`,
       plan: "Pro",
       amount: 29,
       billingCycle: "month",
+      currency: "USD",
       status: "active" as const,
+      currentPeriodStart: new Date("2026-06-01").toISOString(),
       currentPeriodEnd: new Date("2026-06-18").toISOString(),
+      cancelAtPeriodEnd: false,
     },
   ];
 
@@ -80,6 +85,7 @@ export function MarketplacePanel({
       saleAmount: 1172.5,
       saleDate: new Date("2026-05-15").toISOString(),
       paidOut: false,
+      currency: "USD",
     },
     {
       id: "royalty-2",
@@ -92,6 +98,7 @@ export function MarketplacePanel({
       saleAmount: 1045.2,
       saleDate: new Date("2026-05-10").toISOString(),
       paidOut: true,
+      currency: "USD",
     },
   ];
 
@@ -102,11 +109,11 @@ export function MarketplacePanel({
   ];
 
   const revenueData = [
-    { month: "Jan", revenue: 120 },
-    { month: "Feb", revenue: 156 },
-    { month: "Mar", revenue: 189 },
-    { month: "Apr", revenue: 210 },
-    { month: "May", revenue: 234 },
+    { month: "Jan", revenue: 120, timestamp: new Date("2026-01-01").toISOString(), subscription: 80, oneTime: 20, royalty: 20 },
+    { month: "Feb", revenue: 156, timestamp: new Date("2026-02-01").toISOString(), subscription: 100, oneTime: 30, royalty: 26 },
+    { month: "Mar", revenue: 189, timestamp: new Date("2026-03-01").toISOString(), subscription: 120, oneTime: 40, royalty: 29 },
+    { month: "Apr", revenue: 210, timestamp: new Date("2026-04-01").toISOString(), subscription: 140, oneTime: 40, royalty: 30 },
+    { month: "May", revenue: 234, timestamp: new Date("2026-05-01").toISOString(), subscription: 160, oneTime: 44, royalty: 30 },
   ];
 
   return (
@@ -164,7 +171,7 @@ export function MarketplacePanel({
         />
 
         <SubscriptionManager
-          subscriptions={subscriptions}
+          subscriptions={subscriptions as any}
           activeCount={1}
           cancelledCount={0}
           pastDueCount={0}
@@ -174,7 +181,7 @@ export function MarketplacePanel({
 
         <div className="grid grid-cols-2 gap-2 mt-3">
           <FunctionRoyaltiesPanel
-            royalties={royalties}
+            royalties={royalties as any}
             totalEarned={391.28}
             totalPending={234.5}
             currency="USD"
@@ -192,10 +199,10 @@ export function MarketplacePanel({
         </div>
 
         <RevenueAnalytics
-          data={revenueData}
+          data={revenueData as any}
           totalRevenue={909}
-          revenueByCategory={{}}
-          revenueByPeriod={{}}
+          period="30d"
+          onPeriodChange={() => {}}
           className="bg-bg-primary rounded-lg border border-border-subtle p-3 mt-3"
         />
 

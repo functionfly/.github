@@ -2,7 +2,8 @@ import { useState } from "react";
 import { GlassCard, Badge, Button, Spinner } from "@functionfly/ui-core";
 import { X, Star, Download, Shield, Clock, GitBranch, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { type Extension, marketplaceApi } from "@/api/marketplace";
-import { useInstallPlugin, type InstallPluginRequest, type PluginType } from "@/hooks/usePlugin";
+import { type InstallPluginRequest, type PluginType } from "@/api/plugins";
+import { useInstallPlugin } from "@/hooks/usePlugin";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -36,14 +37,14 @@ export function PluginDetailsModal({ extension, onClose, onInstall }: PluginDeta
       await onInstall({
         extension_id: extension.id,
         manifest: extension.manifest || { name: extension.name, version: selectedVersion },
-        plugin_type: (extension.category as PluginType) || "ui",
+        plugin_type: (extension.category || "custom") as PluginType,
         name: extension.name,
         version: selectedVersion,
         description: extension.description,
         author_name: extension.creator_id,
         category: extension.category,
         size_bytes: 0,
-      });
+      } as any);
       onClose();
     } catch (error) {
       console.error("Failed to install:", error);

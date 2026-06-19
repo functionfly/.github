@@ -33,7 +33,7 @@ import {
   Lightbulb,
   Settings2,
 } from 'lucide-react';
-import type { UserSkillLevel } from '@functionfly/ui-adaptive-ux';
+type LocalUserSkillLevel = 'beginner' | 'intermediate' | 'expert';
 
 const viewTabs = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -51,7 +51,7 @@ const viewTabs = [
 
 type ViewTab = (typeof viewTabs)[number]['id'];
 
-const skillLevels: UserSkillLevel[] = ['beginner', 'intermediate', 'expert'];
+const skillLevels: LocalUserSkillLevel[] = ['beginner', 'intermediate', 'expert'];
 
 function OverviewView() {
   const store = useAdaptiveUXStore();

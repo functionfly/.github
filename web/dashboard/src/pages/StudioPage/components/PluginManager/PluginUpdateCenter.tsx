@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { GlassCard, Badge, Button, Spinner, Input } from "@functionfly/ui-core";
 import { Search, Download, Star, Shield, Clock, TrendingUp, Grid, List, Filter, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { type InstallPluginRequest, type PluginType } from "@/hooks/usePlugin";
+import { type InstallPluginRequest, type PluginType } from "@/api/plugins";
 import { useQuery } from "@tanstack/react-query";
 import { marketplaceApi, type Extension, type MarketplaceFilters } from "@/api/marketplace";
 import { PluginDetailsModal } from "./PluginDetailsModal";
@@ -146,14 +146,14 @@ export function PluginUpdateCenter({ onInstall, installedPlugins = [] }: PluginU
     await onInstall({
       extension_id: extension.id,
       manifest: extension.manifest || { name: extension.name, version: extension.version },
-      plugin_type: (extension.category as PluginType) || "ui",
+      plugin_type: (extension.category || "custom") as PluginType,
       name: extension.name,
       version: extension.version,
       description: extension.description,
       author_name: extension.creator_id,
       category: extension.category,
       size_bytes: 0,
-    });
+    } as any);
   };
 
   const categoryBadges: { value: CategoryFilter; label: string; icon: React.ReactNode }[] = [

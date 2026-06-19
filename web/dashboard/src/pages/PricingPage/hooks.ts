@@ -18,7 +18,7 @@ export function useScrollAnimation(threshold = 0.1, triggerOnce = true) {
     }
   }, [inView, hasAnimated]);
 
-  return { ref, inView: hasAnimated };
+  return { ref, inView: hasAnimated || inView };
 }
 
 // Custom hook for card gesture interactions
@@ -29,8 +29,9 @@ export function useCardGestures(planName?: string) {
   const [scale, setScale] = useState(1);
   const [hasShownHoverToast, setHasShownHoverToast] = useState(false);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const bind = useGesture({
-    onHover: ({ hovering }) => {
+    onHover: ({ hovering }: any) => {
       const wasHovered = isHovered;
       setIsHovered(hovering ?? false);
 
@@ -41,24 +42,25 @@ export function useCardGestures(planName?: string) {
           style: {
             background: '#1a1a1a',
             color: '#fff',
-            border: '1px solid #6366f1',
+            border: '#1px solid #6366f1',
           },
           icon: '👀',
         });
         setHasShownHoverToast(true);
       }
     },
-    onDrag: ({ active, movement: [x, y], tap }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onDrag: ({ active, movement }: any) => {
       setIsDragging(active);
       if (active) {
-        setDragOffset({ x, y });
+        setDragOffset({ x: movement[0], y: movement[1] });
         setScale(1.05);
         toast(`Dragging ${planName || 'plan'} card!`, {
           duration: 1500,
           style: {
             background: '#1a1a1a',
             color: '#fff',
-            border: '1px solid #06b6d4',
+            border: '#1px solid #06b6d4',
           },
           icon: '🎯',
         });

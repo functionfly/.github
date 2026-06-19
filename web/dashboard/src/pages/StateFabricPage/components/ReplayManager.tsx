@@ -74,7 +74,7 @@ const statusConfig: Record<
 function ReplayDetailRow({ fabricId, replay }: { fabricId: string; replay: ReplaySession }) {
   const [expanded, setExpanded] = useState(false);
   const isActive = replay.status === 'pending' || replay.status === 'running';
-  const { data: liveReplay } = useStateFabricReplay(fabricId, replay.id, isActive || expanded);
+  const { data: liveReplay } = useStateFabricReplay(fabricId, replay.id);
   const detail = liveReplay ?? replay;
   const cfg = statusConfig[detail.status];
 

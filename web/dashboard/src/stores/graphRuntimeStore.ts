@@ -424,7 +424,7 @@ export const useGraphRuntimeStore = create<GraphRuntimeState>()(
       state.nodeVersions[nodeId].push({
         ...version,
         id: `v-${Date.now()}`,
-      })
+      } as any)
     }),
     restoreNodeVersion: (nodeId, version) => set((state) => {
       const versions = state.nodeVersions[nodeId]

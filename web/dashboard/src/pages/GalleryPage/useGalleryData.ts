@@ -23,13 +23,6 @@ export interface GalleryStats {
 }
 
 export function useGalleryStats(functions: GalleryFunction[] = []): GalleryStats {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['gallery', 'stats'],
-    queryFn: () => galleryApi.getStats(),
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
-
   const pageDistinctRuntimes = useMemo(
     () => new Set(functions.map((f) => f.runtime).filter(Boolean)).size,
     [functions]
@@ -39,12 +32,10 @@ export function useGalleryStats(functions: GalleryFunction[] = []): GalleryStats
     [functions]
   );
 
-  const useFallback = isError || (!isLoading && data == null);
-
   return {
-    totalRemixes: data?.total_remixes ?? (useFallback ? pageTotalRemixes : 0),
-    distinctRuntimes: data?.distinct_runtimes ?? (useFallback ? pageDistinctRuntimes : 0),
-    isLoading,
+    totalRemixes: pageTotalRemixes,
+    distinctRuntimes: pageDistinctRuntimes,
+    isLoading: false,
   };
 }
 

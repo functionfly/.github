@@ -2,8 +2,17 @@ import {
   GlobalNotificationCenter,
   UniversalSearchEngine,
 } from '@/pages/StudioPage/components';
-import type { SearchResult } from '@/pages/StudioPage/components/UniversalSearchEngine/UniversalSearchEngine';
 import { Sheet, SheetContent } from '@functionfly/ui-core';
+
+interface SearchResult {
+  id: string;
+  type: "graph" | "node" | "plugin" | "setting" | "doc";
+  title: string;
+  description: string;
+  path?: string;
+  relevance: number;
+  recent?: boolean;
+}
 
 interface StudioShellOverlaysProps {
   searchOpen: boolean;

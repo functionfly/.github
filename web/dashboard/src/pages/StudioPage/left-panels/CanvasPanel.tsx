@@ -248,8 +248,8 @@ export function CanvasPanel({
           </TabsList>
           <TabsContent value="design" className="mt-0">
             <FunctionCanvas
-              nodes={canvasNodes}
-              edges={canvasEdges}
+              nodes={canvasNodes as NodeData[]}
+              edges={canvasEdges as EdgeData[]}
               viewMode="design"
               onNodeSelect={onNodeSelect}
               onNodeDoubleClick={onNodeDoubleClick}

@@ -812,7 +812,6 @@ export const UserProfile: React.FC<UserProfileProps> = ({
               query="handleClick"
               results={mockSearchResults}
               searchType="semantic"
-              isSearching={false}
               className="h-full"
             />
           )}

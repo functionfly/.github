@@ -63,7 +63,7 @@ export function ExtensionInstallFlow({ extension, onInstall, onCancel }: Extensi
   const handleInstall = async () => {
     setIsInstalling(true);
     try {
-      onInstall(extension.id, { tier: sandboxTier });
+      onInstall(extension.id, { tier: sandboxTier as 'free' | 'enterprise' | 'pro' | 'basic' } as any);
     } finally {
       setIsInstalling(false);
     }

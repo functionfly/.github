@@ -184,7 +184,6 @@ export function StudioEditor({
           showLineNumbers={true}
           showMinimap={true}
           fontSize={13}
-          wordWrap="on"
           className="h-full"
         />
       </div>

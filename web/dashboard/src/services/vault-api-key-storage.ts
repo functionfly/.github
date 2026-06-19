@@ -83,8 +83,8 @@ export async function findApiKeySecretInVault(
   apiKeyId: string
 ): Promise<SecretMetadata | null> {
   try {
-    const secrets = await vaultApi.listSecrets();
-    return secrets.find((s) => {
+    const secretsResponse = await vaultApi.listSecrets();
+    return secretsResponse.secrets.find((s) => {
       const meta = s.metadata as Record<string, unknown> | undefined;
       return meta?.apiKeyId === apiKeyId;
     }) || null;
@@ -183,8 +183,8 @@ export async function findEdgeApiKeySecretInVault(
   apiKeyId: string
 ): Promise<SecretMetadata | null> {
   try {
-    const secrets = await vaultApi.listSecrets();
-    return secrets.find((s) => {
+    const secretsResponse = await vaultApi.listSecrets();
+    return secretsResponse.secrets.find((s) => {
       const meta = s.metadata as Record<string, unknown> | undefined;
       return meta?.apiKeyId === apiKeyId && meta?.keyType === 'functionfly-edge';
     }) || null;

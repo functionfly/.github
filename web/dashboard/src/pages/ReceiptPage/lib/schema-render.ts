@@ -111,7 +111,7 @@ export function flattenSchema(schema: unknown): RenderedSchemaLine[] {
   const root = normalize(schema);
   if (!root) return [];
   const lines: RenderedSchemaLine[] = [];
-  walk(root, lines, 0);
+  walk(root, lines, 0, '');
   return lines;
 }
 

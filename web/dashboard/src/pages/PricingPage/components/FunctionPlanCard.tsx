@@ -69,7 +69,7 @@ export function FunctionPlanCard({
   return (
     <motion.div
       ref={ref}
-      {...gestures.bind()}
+      {...(gestures.bind as any)}
       initial={{ opacity: 0, y: 30, scale: 0.95 }}
       animate={inView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 30, scale: 0.95 }}
       transition={{

@@ -15,25 +15,27 @@ export function SkillsPanel() {
         ? "running"
         : agent.status === "pending"
           ? "idle"
-          : agent.status === "terminating" || agent.status === "terminated"
-            ? "stopped"
-            : (agent.status as "running" | "idle" | "paused" | "stopped" | "error"),
+          : agent.status === "terminating"
+            ? "terminated"
+            : agent.status === "terminated"
+              ? "terminated"
+              : (agent.status as "running" | "idle" | "paused" | "terminated" | "error"),
     memoryUsage: 0,
     memoryLimit: 512 * 1024 * 1024,
     executionBudget: 10.0,
     executionBudgetUsed: 0,
     permissions: [],
     tools: [],
+    skills: [],
     runtime: "wasm",
     model: "gpt-4o",
     uptime: 0,
     tasksCompleted: 0,
     tasksFailed: 0,
     avgLatency: 0,
-    lastHeartbeat: agent.lastActivity || new Date().toISOString(),
+    lastHeartbeat: new Date().toISOString(),
     createdAt: new Date().toISOString(),
-    description: `Agent ${agent.name}`,
-    tags: [],
+    tags: [] as string[],
   }));
 
   return (
@@ -63,7 +65,7 @@ export function SkillsPanel() {
           <Wand2 className="size-4 text-brand-400" />
           <span className="text-xs font-medium">Skill Graph</span>
         </div>
-        <AgentSkillGraph agents={agents} onSkillClick={() => {}} />
+        <AgentSkillGraph agents={agents as any} onSkillClick={() => {}} />
       </div>
 
       <div className="border-t border-border-subtle pt-4">
@@ -71,7 +73,7 @@ export function SkillsPanel() {
           <Link2 className="size-4 text-success" />
           <span className="text-xs font-medium">Dependency Map</span>
         </div>
-        <AgentDependencyMap agents={agents} onDependencyClick={() => {}} />
+        <AgentDependencyMap agents={agents as any} onDependencyClick={() => {}} />
       </div>
     </div>
   );

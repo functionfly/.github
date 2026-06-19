@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DRAFT_KEY } from '../constants';
-import type { DraftData } from '../types';
+import type { DraftData, StoredDraft } from '../types';
 
 interface UseComposerDraftOptions {
   description: string;
@@ -44,7 +44,7 @@ export function useComposerDraft({
   useEffect(() => {
     const saveDraft = () => {
       if (description || constraints) {
-        const draft: DraftData = {
+        const draft: StoredDraft = {
           description,
           constraints,
           runtime,

@@ -1,5 +1,5 @@
 import { useStudioRuntimes } from "@/hooks/useStudio";
-import type { RuntimeSelection } from "@functionfly/ui-runtime";
+import type { RuntimeSelection, RuntimeDescriptor } from "@functionfly/ui-runtime";
 import {
   RuntimeCapabilityMatrix,
   RuntimeTargetSelector,
@@ -44,14 +44,14 @@ export function RuntimePanel({ selectedRuntime, onSelect }: RuntimePanelProps) {
       ) : (
         <>
           <RuntimeTargetSelector
-            runtimes={runtimes}
+            runtimes={runtimes as RuntimeDescriptor[]}
             selectedId={selectedRuntime?.runtimeId}
             onSelect={onSelect}
             className="mb-4"
           />
 
           <RuntimeCapabilityMatrix
-            runtimes={runtimes}
+            runtimes={runtimes as RuntimeDescriptor[]}
             features={[
               "sandboxed",
               "fast-cold-start",

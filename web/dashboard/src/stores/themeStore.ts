@@ -62,9 +62,10 @@ interface ThemeStoreState {
 export const useThemeStore = create<ThemeStoreState>()((set, get) => {
   let initialized = false;
 
-  const handleExternalChange = (state: ThemeState) => {
-    const resolved = getResolvedTheme(state.theme);
-    set({ theme: state.theme, resolvedTheme: resolved, isDarkMode: resolved === 'dark' });
+  const handleExternalChange = (state: ThemeState & { theme?: Theme }) => {
+    const theme = state.theme ?? 'system';
+    const resolved = getResolvedTheme(theme);
+    set({ theme, resolvedTheme: resolved, isDarkMode: resolved === 'dark' });
     applyThemeToDocument(resolved);
   };
 
@@ -72,8 +73,8 @@ export const useThemeStore = create<ThemeStoreState>()((set, get) => {
     if (initialized || typeof window === 'undefined') return;
     initialized = true;
 
-    const initial = initTheme();
-    applyThemeToDocument(initial.resolvedTheme);
+    const initial = initTheme() as ReturnType<typeof initTheme> & { resolvedTheme?: 'light' | 'dark' };
+    applyThemeToDocument(initial.resolvedTheme ?? 'dark');
     subscribe(handleExternalChange);
   };
 
