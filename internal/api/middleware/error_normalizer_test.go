@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -139,6 +140,81 @@ func TestErrorNormalizer_PreservesExistingJSONCode(t *testing.T) {
 
 	if code, ok := resp["code"].(string); !ok || code != "CUSTOM_CODE" {
 		t.Errorf("Expected code CUSTOM_CODE, got %v", resp["code"])
+	}
+}
+
+// TestErrorNormalizer_SanitizesErrErrorLeak verifies that the dangerous
+// http.Error(w, err.Error(), ...) pattern does not leak internal err text
+// (e.g. SQL errors, stack traces, library names) to the client.
+func TestErrorNormalizer_SanitizesErrErrorLeak(t *testing.T) {
+	const internalMsg = "pq: duplicate key value violates unique constraint \"users_email_key\""
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, internalMsg, http.StatusInternalServerError)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := httptest.NewRecorder()
+
+	ErrorNormalizerMiddleware(handler).ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("Expected status %d, got %d", http.StatusInternalServerError, rr.Code)
+	}
+
+	body := rr.Body.String()
+	if strings.Contains(body, internalMsg) {
+		t.Fatalf("INTERNAL ERROR LEAK: response body contains err text: %s", body)
+	}
+	if strings.Contains(body, "pq:") {
+		t.Fatalf("INTERNAL ERROR LEAK: response body contains driver prefix: %s", body)
+	}
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal([]byte(body), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+	if code, ok := resp["code"].(string); !ok || code != "INTERNAL_ERROR" {
+		t.Errorf("Expected code INTERNAL_ERROR, got %v", resp["code"])
+	}
+}
+
+// TestErrorNormalizer_SanitizesPanicStack verifies that a panic stack trace
+// flowing through the recovery middleware does not leak goroutine details.
+func TestErrorNormalizer_SanitizesPanicStack(t *testing.T) {
+	const panicMsg = "goroutine 47 [running]:\npanic: runtime error: invalid memory address or nil pointer dereference"
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, panicMsg, http.StatusInternalServerError)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := httptest.NewRecorder()
+
+	ErrorNormalizerMiddleware(handler).ServeHTTP(rr, req)
+
+	body := rr.Body.String()
+	if strings.Contains(body, "goroutine") || strings.Contains(body, "panic") {
+		t.Fatalf("PANIC STACK LEAK: %s", body)
+	}
+}
+
+// TestErrorNormalizer_PreservesSafe4xxMessage verifies that hand-written
+// 4xx messages (e.g. "User not found", "Invalid API version") are preserved.
+func TestErrorNormalizer_PreservesSafe4xxMessage(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "User not found", http.StatusNotFound)
+	})
+
+	req := httptest.NewRequest("GET", "/test", nil)
+	rr := httptest.NewRecorder()
+
+	ErrorNormalizerMiddleware(handler).ServeHTTP(rr, req)
+
+	var resp map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("Failed to parse response: %v", err)
+	}
+	if msg, _ := resp["message"].(string); msg != "User not found" {
+		t.Errorf("Expected message 'User not found', got %q", msg)
 	}
 }
 

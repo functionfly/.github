@@ -122,13 +122,18 @@ func ErrorNormalizerMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// statusCodeToAPIError converts an HTTP status code and optional body to an APIError
+// statusCodeToAPIError converts an HTTP status code and optional body to an APIError.
+// For 5xx responses, the body is treated as untrusted (often raw err.Error() text)
+// and a generic message is always returned. For 4xx responses, the body is usually
+// a hand-written client-visible message and is passed through unless it looks
+// like raw error output.
 func statusCodeToAPIError(status int, body string) *apierror.APIError {
-	// Try to parse body as JSON first
+	body = strings.TrimSpace(body)
+
+	// Try to parse body as JSON first - this is the trusted path
 	if body != "" {
 		var parsed map[string]interface{}
 		if err := json.Unmarshal([]byte(body), &parsed); err == nil {
-			// If body already has a code field, use it
 			if code, ok := parsed["code"].(string); ok {
 				message := ""
 				if m, ok := parsed["message"].(string); ok {
@@ -142,6 +147,9 @@ func statusCodeToAPIError(status int, body string) *apierror.APIError {
 				if f, ok := parsed["field"].(string); ok {
 					field = f
 				}
+				if status >= 500 && message != "" {
+					message = genericMessageForStatus(status)
+				}
 				return &apierror.APIError{
 					Status:  status,
 					Code:    apierror.ErrorCode(code),
@@ -153,46 +161,145 @@ func statusCodeToAPIError(status int, body string) *apierror.APIError {
 		}
 	}
 
-	// Generate default error based on status code
+	// 5xx: body is untrusted err text - always use generic message
+	if status >= 500 {
+		return genericAPIError(status)
+	}
+
+	// 4xx: body is usually a hand-written client-visible message.
+	// Pass through, but sanitize if it looks like raw err output.
+	safeBody := sanitizeClientMessage(body)
 	switch status {
 	case http.StatusBadRequest:
-		return apierror.NewBadRequest(getMessage(body, "Bad request"))
+		return apierror.NewBadRequest(orDefault(safeBody, "Bad request"))
 	case http.StatusUnauthorized:
-		return apierror.NewUnauthorized(getMessage(body, "Unauthorized"))
+		return apierror.NewUnauthorized(orDefault(safeBody, "Unauthorized"))
 	case http.StatusForbidden:
-		return apierror.NewForbidden(getMessage(body, "Forbidden"))
+		return apierror.NewForbidden(orDefault(safeBody, "Forbidden"))
 	case http.StatusNotFound:
-		return apierror.NewNotFound(getMessage(body, "Not found"))
+		return apierror.NewNotFound(orDefault(safeBody, "Not found"))
 	case http.StatusConflict:
-		return apierror.NewConflict(getMessage(body, "Conflict"))
+		return apierror.NewConflict(orDefault(safeBody, "Conflict"))
 	case http.StatusUnprocessableEntity:
-		return apierror.NewValidation(getMessage(body, "Validation error"))
+		return apierror.NewValidation(orDefault(safeBody, "Validation error"))
 	case http.StatusTooManyRequests:
-		return apierror.NewRateLimited(getMessage(body, "Rate limit exceeded"))
+		return apierror.NewRateLimited(orDefault(safeBody, "Rate limit exceeded"))
 	case http.StatusLocked:
-		return apierror.NewLocked(getMessage(body, "Resource locked"))
+		return apierror.NewLocked(orDefault(safeBody, "Resource locked"))
 	case http.StatusPreconditionRequired:
-		return apierror.NewPreconditionFailed(getMessage(body, "Precondition failed"))
-	case http.StatusInternalServerError:
-		return apierror.NewInternal(getMessage(body, "Internal server error"))
-	case http.StatusServiceUnavailable:
-		return apierror.NewServiceUnavailable(getMessage(body, "Service unavailable"))
-	case http.StatusNotImplemented:
-		return apierror.NewNotImplemented(getMessage(body, "Not implemented"))
+		return apierror.NewPreconditionFailed(orDefault(safeBody, "Precondition failed"))
 	default:
 		return &apierror.APIError{
 			Status:  status,
 			Code:    apierror.ErrorCode("HTTP_" + strconv.Itoa(status)),
-			Message: getMessage(body, http.StatusText(status)),
+			Message: orDefault(safeBody, http.StatusText(status)),
 		}
 	}
 }
 
-// getMessage extracts a message from the body, stripping trailing newlines
-func getMessage(body, fallback string) string {
-	body = strings.TrimSpace(body)
+// genericAPIError returns a generic APIError for a 5xx status code.
+func genericAPIError(status int) *apierror.APIError {
+	switch status {
+	case http.StatusInternalServerError:
+		return apierror.NewInternal("Internal server error")
+	case http.StatusBadGateway:
+		return apierror.NewInternal("Bad gateway")
+	case http.StatusServiceUnavailable:
+		return apierror.NewServiceUnavailable("Service unavailable")
+	case http.StatusGatewayTimeout:
+		return &apierror.APIError{Status: status, Code: apierror.ErrCodeGatewayTimeout, Message: "Gateway timeout"}
+	default:
+		return &apierror.APIError{
+			Status:  status,
+			Code:    apierror.ErrorCode("HTTP_" + strconv.Itoa(status)),
+			Message: genericMessageForStatus(status),
+		}
+	}
+}
+
+// genericMessageForStatus returns a generic human-readable message for a 5xx status.
+func genericMessageForStatus(status int) string {
+	switch status {
+	case http.StatusInternalServerError:
+		return "Internal server error"
+	case http.StatusBadGateway:
+		return "Bad gateway"
+	case http.StatusServiceUnavailable:
+		return "Service unavailable"
+	case http.StatusGatewayTimeout:
+		return "Gateway timeout"
+	case http.StatusNotImplemented:
+		return "Not implemented"
+	default:
+		return http.StatusText(status)
+	}
+}
+
+// errLeakPrefixes are substrings that indicate the body is a raw error message
+// (e.g. SQL driver output, Go panic output, JSON parse errors) that must not
+// be forwarded to the client.
+var errLeakPrefixes = []string{
+	"pq:",
+	"sql:",
+	"pgx:",
+	"json:",
+	"yaml:",
+	"xml:",
+	"goroutine ",
+	"panic:",
+	"runtime error:",
+	"stack overflow",
+	"connection refused",
+	"dial tcp",
+	"no such host",
+	"tls:",
+	"x509:",
+	"context deadline exceeded",
+	"context canceled",
+	"invalid character",
+	"unexpected end of JSON",
+	"unmarshal",
+	"redis:",
+	"nats:",
+	"kafka:",
+	"s3:",
+	"r2:",
+	"open ",
+	"read ",
+	"write ",
+	"stat ",
+	"/Users/",
+	"/home/",
+	"/var/",
+	"/etc/",
+	"\\Users\\",
+	"\\home\\",
+}
+
+// sanitizeClientMessage returns the body if it looks like a safe, hand-written
+// client-visible message; otherwise returns an empty string so the caller falls
+// back to a generic message.
+func sanitizeClientMessage(body string) string {
 	if body == "" {
-		return fallback
+		return ""
+	}
+	lower := strings.ToLower(body)
+	for _, prefix := range errLeakPrefixes {
+		if strings.Contains(lower, strings.ToLower(prefix)) {
+			return ""
+		}
+	}
+	if len(body) > 200 {
+		return ""
 	}
 	return body
 }
+
+// orDefault returns s if non-empty, otherwise fallback.
+func orDefault(s, fallback string) string {
+	if s == "" {
+		return fallback
+	}
+	return s
+}
+
