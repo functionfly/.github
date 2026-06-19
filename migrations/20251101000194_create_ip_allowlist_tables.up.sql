@@ -2,7 +2,7 @@
 -- Migration: 20260307000002_create_ip_allowlist_tables.up.sql
 
 -- Main IP allowlist table
-CREATE TABLE ip_allowlists (
+CREATE TABLE IF NOT EXISTS ip_allowlists (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id UUID NOT NULL REFERENCES tenants(id),
     name VARCHAR(255) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE ip_allowlists (
 );
 
 -- IP allowlist entries table
-CREATE TABLE ip_allowlist_entries (
+CREATE TABLE IF NOT EXISTS ip_allowlist_entries (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     allowlist_id UUID NOT NULL REFERENCES ip_allowlists(id) ON DELETE CASCADE,
     type VARCHAR(20) NOT NULL,  -- 'ip' for single IP, 'cidr' for CIDR range

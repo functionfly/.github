@@ -1,7 +1,7 @@
 -- +up
 -- Add message reactions support for emoji reactions on conversation messages.
 
-CREATE TABLE message_reactions (
+CREATE TABLE IF NOT EXISTS message_reactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     message_id UUID NOT NULL REFERENCES conversation_messages(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

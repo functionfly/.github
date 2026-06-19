@@ -1,8 +1,0 @@
--- Table partitioning: intentionally a no-op in this migration.
---
--- In PostgreSQL, any UNIQUE or PRIMARY KEY on a partitioned table must include
--- the partition key. Partitioning is implemented in later migrations
--- (000084_table_partitioning / 000133_table_partitioning) where new _partitioned
--- tables are created without unique/primary constraints that exclude the
--- partition key (e.g. PARTITION BY RANGE (timestamp) with no PK on id alone).
--- This migration preserves ordering without applying partitioning here.

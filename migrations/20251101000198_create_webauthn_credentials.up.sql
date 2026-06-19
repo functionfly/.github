@@ -1,5 +1,5 @@
 -- Create webauthn_credentials table for WebAuthn/Passkeys authentication
-CREATE TABLE webauthn_credentials (
+CREATE TABLE IF NOT EXISTS webauthn_credentials (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     credential_id BYTEA NOT NULL,

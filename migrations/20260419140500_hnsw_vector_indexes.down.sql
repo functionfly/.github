@@ -33,7 +33,7 @@ DROP INDEX IF EXISTS idx_graph_definitions_embedding_hnsw;
 -- ============================================
 
 -- Recreate ivfflat index for graph definitions
-CREATE INDEX idx_graph_definitions_ai_embedding 
+CREATE INDEX IF NOT EXISTS idx_graph_definitions_ai_embedding 
 ON graph_definitions 
 USING ivfflat (ai_embedding vector_cosine_ops)
 WITH (lists = 100);
@@ -51,5 +51,5 @@ COMMENT ON INDEX idx_graph_definitions_ai_embedding IS
 -- ALTER TABLE content_pages DROP COLUMN IF EXISTS content_embedding;
 
 -- Keep GIN fallback index for agent_memories
-CREATE INDEX idx_agent_memories_embedding_gin 
+CREATE INDEX IF NOT EXISTS idx_agent_memories_embedding_gin 
 ON agent_memories USING GIN (embedding);

@@ -18,7 +18,7 @@ DROP FUNCTION IF EXISTS search_team_memories_adaptive(vector, integer, float);
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
-    CREATE INDEX idx_team_memories_embedding_hnsw
+    CREATE INDEX IF NOT EXISTS idx_team_memories_embedding_hnsw
     ON team_memories USING hnsw (embedding vector_cosine_ops)
     WITH (m = 16, ef_construction = 64);
   END IF;

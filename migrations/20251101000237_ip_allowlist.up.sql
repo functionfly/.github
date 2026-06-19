@@ -1,6 +1,6 @@
 -- IP Allowlist table for admin dashboard security
 -- Supports CIDR notation for IPv4 and IPv6 ranges
-CREATE TABLE ip_allowlist (
+CREATE TABLE IF NOT EXISTS ip_allowlist (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
     cidr VARCHAR(45) NOT NULL, -- Supports IPv4 and IPv6 CIDR notation

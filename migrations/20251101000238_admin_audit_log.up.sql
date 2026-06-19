@@ -1,5 +1,5 @@
 -- Admin audit log table for tracking all admin operations
-CREATE TABLE admin_audit_log (
+CREATE TABLE IF NOT EXISTS admin_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id),
     action VARCHAR(100) NOT NULL,

@@ -7,5 +7,5 @@ DROP INDEX IF EXISTS idx_agent_messages_pending_inbox;
 DROP INDEX IF EXISTS idx_agent_messages_to_agent;
 
 -- Recreate original indexes
-CREATE INDEX idx_agent_messages_to_agent ON agent_messages(to_agent_id, status, created_at DESC);
-CREATE INDEX idx_agent_messages_session ON agent_messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_agent_messages_to_agent ON agent_messages(to_agent_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_messages_session ON agent_messages(session_id);

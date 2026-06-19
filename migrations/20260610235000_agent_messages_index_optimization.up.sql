@@ -14,14 +14,14 @@ DROP INDEX IF EXISTS idx_agent_messages_session;
 
 -- Step 3: Recreate idx_agent_messages_to_agent with correct ASC order
 -- This matches the query: ORDER BY created_at ASC
-CREATE INDEX idx_agent_messages_to_agent ON agent_messages(to_agent_id, status, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_agent_messages_to_agent ON agent_messages(to_agent_id, status, created_at ASC);
 
 -- Step 4: Create a partial index for pending messages only (smaller, faster for common queries)
 -- This covers the most common inbox query pattern with less overhead
-CREATE INDEX idx_agent_messages_pending_inbox ON agent_messages(to_agent_id, created_at ASC)
+CREATE INDEX IF NOT EXISTS idx_agent_messages_pending_inbox ON agent_messages(to_agent_id, created_at ASC)
     WHERE status IN ('pending', 'delivered');
 
 -- Step 5: Create a covering index for MarkRead/MarkDelivered (id lookups)
 -- The id is already the primary key, but this helps with the status check
-CREATE INDEX idx_agent_messages_id_status ON agent_messages(id, status)
+CREATE INDEX IF NOT EXISTS idx_agent_messages_id_status ON agent_messages(id, status)
     WHERE status = 'pending';

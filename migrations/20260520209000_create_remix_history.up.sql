@@ -1,5 +1,5 @@
 -- Create remix_history table to track function remix relationships
-CREATE TABLE remix_history (
+CREATE TABLE IF NOT EXISTS remix_history (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     source_function_id uuid NOT NULL,
     target_function_id uuid NOT NULL,

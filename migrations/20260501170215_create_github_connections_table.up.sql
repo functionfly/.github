@@ -1,5 +1,5 @@
 -- GitHub Connections: Linked GitHub accounts with encrypted OAuth tokens
-CREATE TABLE github_connections (
+CREATE TABLE IF NOT EXISTS github_connections (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id             UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -30,7 +30,7 @@ CREATE INDEX idx_gh_conn_tenant ON github_connections(tenant_id);
 CREATE INDEX idx_gh_conn_status ON github_connections(status) WHERE status = 'active';
 
 -- GitHub Repos: Cached repository metadata
-CREATE TABLE github_repos (
+CREATE TABLE IF NOT EXISTS github_repos (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     connection_id       UUID NOT NULL REFERENCES github_connections(id) ON DELETE CASCADE,
     github_repo_id      BIGINT NOT NULL,
@@ -68,7 +68,7 @@ CREATE INDEX idx_gh_repo_status ON github_repos(import_status);
 CREATE INDEX idx_gh_repo_full_name ON github_repos(full_name);
 
 -- GitHub Imports: Import jobs and history
-CREATE TABLE github_imports (
+CREATE TABLE IF NOT EXISTS github_imports (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id             UUID NOT NULL REFERENCES users(id),
     tenant_id           UUID NOT NULL REFERENCES tenants(id),
@@ -106,7 +106,7 @@ CREATE INDEX idx_gh_import_status ON github_imports(status);
 CREATE INDEX idx_gh_import_function ON github_imports(function_id) WHERE function_id IS NOT NULL;
 
 -- GitHub Webhooks: Registered webhooks for auto-sync
-CREATE TABLE github_webhooks (
+CREATE TABLE IF NOT EXISTS github_webhooks (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     connection_id       UUID NOT NULL REFERENCES github_connections(id) ON DELETE CASCADE,
     repo_id             UUID NOT NULL REFERENCES github_repos(id) ON DELETE CASCADE,
@@ -125,7 +125,7 @@ CREATE TABLE github_webhooks (
 );
 
 -- GitHub Sync Logs: Push-to-deploy history
-CREATE TABLE github_sync_logs (
+CREATE TABLE IF NOT EXISTS github_sync_logs (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     import_id           UUID NOT NULL REFERENCES github_imports(id) ON DELETE CASCADE,
     function_id         UUID REFERENCES registry_functions(id),
@@ -149,7 +149,7 @@ CREATE INDEX idx_gh_sync_status ON github_sync_logs(status);
 CREATE INDEX idx_gh_sync_created ON github_sync_logs(created_at DESC);
 
 -- GitHub Import Templates: Reusable import configurations
-CREATE TABLE github_import_templates (
+CREATE TABLE IF NOT EXISTS github_import_templates (
     id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id           UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     user_id             UUID NOT NULL REFERENCES users(id),
