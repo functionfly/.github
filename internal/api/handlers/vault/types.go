@@ -25,6 +25,9 @@ type CreateSecretRequest struct {
 	EncryptedData EncryptedDataPayload   `json:"encrypted_data" validate:"required"`
 	Scopes        []string               `json:"scopes,omitempty"` // access scopes for the secret
 	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	// Namespace places the secret under a hierarchical path (Pro+ required)
+	// Defaults to "default" if empty. Paths use /-separated lowercase segments.
+	Namespace     string                 `json:"namespace,omitempty"`
 }
 
 // UpdateSecretRequest represents a request to partially update a secret
@@ -45,6 +48,7 @@ type SecretResponse struct {
 	EncryptedData  EncryptedDataPayload   `json:"encrypted_data"`
 	Scopes         []string               `json:"scopes,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	Namespace      string                 `json:"namespace"`
 	LastAccessedAt *time.Time             `json:"last_accessed_at,omitempty"`
 	AccessCount    int                    `json:"access_count"`
 	CreatedAt      time.Time              `json:"created_at"`
@@ -61,6 +65,7 @@ type SecretMetadataResponse struct {
 	SecretType     vault.SecretType       `json:"secret_type"`
 	Scopes         []string               `json:"scopes,omitempty"`
 	Metadata       map[string]interface{} `json:"metadata,omitempty"`
+	Namespace      string                 `json:"namespace"`
 	LastAccessedAt *time.Time             `json:"last_accessed_at,omitempty"`
 	AccessCount    int                    `json:"access_count"`
 	CreatedAt      time.Time              `json:"created_at"`

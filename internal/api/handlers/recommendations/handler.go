@@ -6,11 +6,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/recommendations"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 // Handler handles recommendation API requests
@@ -382,6 +383,11 @@ func (h *Handler) HandleTripleSearch(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
+		return
+	}
+
+	if !config.IsVectorSearchEnabled() {
+		apierror.WriteError(w, apierror.NewForbidden("vector search is not enabled"))
 		return
 	}
 

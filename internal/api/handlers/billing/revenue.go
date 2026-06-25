@@ -1,8 +1,12 @@
 package billing
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -12,6 +16,8 @@ import (
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/stripe/stripe-go/v83"
+	"github.com/stripe/stripe-go/v83/subscription"
 )
 
 // =============================================================================
@@ -147,6 +153,63 @@ type AgentSubscription struct {
 	MaxAgents          int       `json:"max_agents"`
 	Status             string    `json:"status"`
 	CurrentPeriodEnd   time.Time `json:"current_period_end"`
+}
+
+// StripeMeterVerificationResponse is the response for verifying Stripe meter integration
+type StripeMeterVerificationResponse struct {
+	Status               string    `json:"status"`
+	StripeConfigured     bool      `json:"stripe_configured"`
+	SubscriptionID       string    `json:"subscription_id,omitempty"`
+	MeterEventName      string    `json:"meter_event_name,omitempty"`
+	EventID             string    `json:"event_id,omitempty"`
+	Timestamp           int64     `json:"timestamp"`
+	Message             string    `json:"message"`
+	TestQuantity        int       `json:"test_quantity"`
+	CustomerID          string    `json:"customer_id,omitempty"`
+	Error               string    `json:"error,omitempty"`
+	SubscriptionChecked bool      `json:"subscription_checked"`
+	MeteredItemsFound   int       `json:"metered_items_found"`
+}
+
+// ReportUsageRequest is the request body for reporting usage to Stripe
+type ReportUsageRequest struct {
+	Quantity     int               `json:"quantity"`
+	EventType   string            `json:"event_type"` // function_execution, ai_call, etc.
+	Metadata    map[string]string `json:"metadata,omitempty"`
+	IdempotencyKey string         `json:"idempotency_key,omitempty"`
+}
+
+// ReportUsageResponse is the response for reporting usage to Stripe
+type ReportUsageResponse struct {
+	Success        bool      `json:"success"`
+	MeterEventID  string    `json:"meter_event_id,omitempty"`
+	TenantID      uuid.UUID `json:"tenant_id"`
+	Quantity      int       `json:"quantity"`
+	EventType     string    `json:"event_type"`
+	Timestamp     int64     `json:"timestamp"`
+	Error         string    `json:"error,omitempty"`
+	IdempotencyKey string   `json:"idempotency_key"`
+}
+
+// MeteredBillingStatusResponse shows metered billing status for a tenant
+type MeteredBillingStatusResponse struct {
+	TenantID           uuid.UUID `json:"tenant_id"`
+	StripeCustomerID   string    `json:"stripe_customer_id,omitempty"`
+	HasSubscription    bool      `json:"has_subscription"`
+	SubscriptionID     string    `json:"subscription_id,omitempty"`
+	MeteredItems       []MeteredItemStatus `json:"metered_items"`
+	StripeMeterEnabled bool      `json:"stripe_meter_enabled"`
+	LastReportedAt     *time.Time `json:"last_reported_at,omitempty"`
+	TotalReportedUsage int       `json:"total_reported_usage"`
+}
+
+// MeteredItemStatus shows the status of a metered billing item
+type MeteredItemStatus struct {
+	SubscriptionItemID string `json:"subscription_item_id"`
+	PriceID           string `json:"price_id"`
+	MeterEventName    string `json:"meter_event_name,omitempty"`
+	IsMetered        bool   `json:"is_metered"`
+	LastReportedUsage int    `json:"last_reported_usage"`
 }
 
 // =============================================================================
@@ -637,4 +700,461 @@ func (h *Handler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 
 	// Delegate to existing HandleCreateCheckoutSession which creates Stripe checkout
 	h.HandleCreateCheckoutSession(w, r)
+}
+
+// =============================================================================
+// HandleVerifyStripeMeterIntegration verifies that Stripe meter integration is working
+// GET /v1/billing/meter/verify
+// =============================================================================
+
+func (h *Handler) HandleVerifyStripeMeterIntegration(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
+	if stripeKey == "" {
+		writeJSON(w, http.StatusOK, StripeMeterVerificationResponse{
+			Status:           "not_configured",
+			StripeConfigured: false,
+			Message:          "Stripe is not configured (STRIPE_SECRET_KEY not set)",
+			Timestamp:        time.Now().UTC().Unix(),
+		})
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
+	if err != nil || tenant == nil {
+		writeJSONError(w, http.StatusNotFound, "Tenant not found")
+		return
+	}
+
+	customerID := ""
+	if tenant.StripeCustomerID != nil {
+		customerID = *tenant.StripeCustomerID
+	}
+
+	sub, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
+	hasSub := err == nil && sub != nil && sub.StripeSubscriptionID != ""
+
+	meterEventName := os.Getenv("STRIPE_OVERAGE_METER_NAME")
+	if meterEventName == "" {
+		meterEventName = "functionfly_overage"
+	}
+
+	response := StripeMeterVerificationResponse{
+		Status:               "configured",
+		StripeConfigured:     true,
+		MeterEventName:       meterEventName,
+		Timestamp:            time.Now().UTC().Unix(),
+		Message:              "Stripe is configured",
+		TestQuantity:          1,
+		CustomerID:           customerID,
+		SubscriptionChecked:  true,
+		MeteredItemsFound:    0,
+	}
+
+	if !hasSub {
+		response.Status = "no_subscription"
+		response.Message = "No active Stripe subscription found for tenant"
+		writeJSON(w, http.StatusOK, response)
+		return
+	}
+
+	response.SubscriptionID = sub.StripeSubscriptionID
+
+	var meteredItems int
+	if sub.StripeSubscriptionID != "" {
+		meteredItems = h.countMeteredItemsInSubscription(r.Context(), sub.StripeSubscriptionID)
+	}
+	response.MeteredItemsFound = meteredItems
+
+	if meteredItems == 0 {
+		response.Status = "no_metered_items"
+		response.Message = "Subscription exists but no metered billing items found"
+		writeJSON(w, http.StatusOK, response)
+		return
+	}
+
+	now := time.Now().UTC()
+	idempotencyKey := fmt.Sprintf("verify_%s_%d", claims.TenantID.String(), now.Unix())
+
+	meterPayload := map[string]interface{}{
+		"event_name": meterEventName,
+		"timestamp":  now.Unix(),
+		"identifier": idempotencyKey,
+		"payload": map[string]string{
+			"value":              "1",
+			"stripe_customer_id": customerID,
+			"action":            "verification_test",
+		},
+	}
+
+	eventID, err := h.createMeterEvent(r.Context(), meterPayload)
+	if err != nil {
+		response.Status = "api_error"
+		response.Error = err.Error()
+		response.Message = "Failed to create test meter event"
+		writeJSON(w, http.StatusInternalServerError, response)
+		return
+	}
+
+	response.Status = "success"
+	response.EventID = eventID
+	response.Message = "Stripe meter integration is working correctly"
+
+	logrus.WithFields(logrus.Fields{
+		"tenant_id":     claims.TenantID,
+		"customer_id":   customerID,
+		"event_id":      eventID,
+		"meter_event":   meterEventName,
+		"metered_items": meteredItems,
+	}).Info("Stripe meter integration verification successful")
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// countMeteredItemsInSubscription counts metered billing items in a Stripe subscription
+func (h *Handler) countMeteredItemsInSubscription(ctx context.Context, subscriptionID string) int {
+	if !payment.IsConfigured() {
+		return 0
+	}
+
+	sub, err := subscription.Get(subscriptionID, nil)
+	if err != nil || sub == nil {
+		return 0
+	}
+
+	count := 0
+	for _, item := range sub.Items.Data {
+		if item.Price != nil && item.Price.Recurring != nil &&
+			item.Price.Recurring.UsageType == stripe.PriceRecurringUsageTypeMetered {
+			count++
+		}
+	}
+	return count
+}
+
+// =============================================================================
+// HandleReportUsage reports usage to Stripe for metered billing
+// POST /v1/billing/meter/report
+// =============================================================================
+
+func (h *Handler) HandleReportUsage(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
+	if stripeKey == "" {
+		writeJSON(w, http.StatusOK, ReportUsageResponse{
+			Success:  false,
+			TenantID: claims.TenantID,
+			Error:    "Stripe is not configured",
+		})
+		return
+	}
+
+	var req ReportUsageRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.Quantity <= 0 {
+		writeJSONError(w, http.StatusBadRequest, "quantity must be positive")
+		return
+	}
+
+	if req.EventType == "" {
+		req.EventType = "function_execution"
+	}
+
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
+	if err != nil || tenant == nil {
+		writeJSONError(w, http.StatusNotFound, "Tenant not found")
+		return
+	}
+
+	customerID := ""
+	if tenant.StripeCustomerID != nil {
+		customerID = *tenant.StripeCustomerID
+	}
+
+	sub, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
+	if err != nil || sub == nil || sub.StripeSubscriptionID == "" {
+		writeJSON(w, http.StatusOK, ReportUsageResponse{
+			Success:  false,
+			TenantID: claims.TenantID,
+			Quantity: req.Quantity,
+			EventType: req.EventType,
+			Error:    "No active subscription found",
+		})
+		return
+	}
+
+	meterEventName := os.Getenv("STRIPE_OVERAGE_METER_NAME")
+	if meterEventName == "" {
+		meterEventName = "functionfly_overage"
+	}
+
+	now := time.Now().UTC()
+	idempotencyKey := req.IdempotencyKey
+	if idempotencyKey == "" {
+		idempotencyKey = fmt.Sprintf("%s_%s_%d", claims.TenantID.String(), req.EventType, now.Unix())
+	}
+
+	meterPayload := map[string]interface{}{
+		"event_name": meterEventName,
+		"timestamp":  now.Unix(),
+		"identifier": idempotencyKey,
+		"payload": map[string]string{
+			"value":              strconv.Itoa(req.Quantity),
+			"stripe_customer_id": customerID,
+			"event_type":         req.EventType,
+		},
+	}
+
+	if req.Metadata != nil {
+		for k, v := range req.Metadata {
+			meterPayload["payload"].(map[string]string)[k] = v
+		}
+	}
+
+	eventID, err := h.createMeterEvent(r.Context(), meterPayload)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"tenant_id":  claims.TenantID,
+			"quantity":   req.Quantity,
+			"event_type": req.EventType,
+		}).Error("Failed to report usage to Stripe")
+
+		writeJSON(w, http.StatusOK, ReportUsageResponse{
+			Success:        false,
+			TenantID:       claims.TenantID,
+			Quantity:       req.Quantity,
+			EventType:      req.EventType,
+			Timestamp:      now.Unix(),
+			Error:          err.Error(),
+			IdempotencyKey: idempotencyKey,
+		})
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"tenant_id":   claims.TenantID,
+		"event_id":    eventID,
+		"quantity":    req.Quantity,
+		"event_type":  req.EventType,
+		"meter_event": meterEventName,
+	}).Info("Successfully reported usage to Stripe meter events")
+
+	writeJSON(w, http.StatusOK, ReportUsageResponse{
+		Success:        true,
+		MeterEventID:   eventID,
+		TenantID:       claims.TenantID,
+		Quantity:       req.Quantity,
+		EventType:      req.EventType,
+		Timestamp:      now.Unix(),
+		IdempotencyKey: idempotencyKey,
+	})
+}
+
+// =============================================================================
+// HandleGetMeteredBillingStatus returns the metered billing status for a tenant
+// GET /v1/billing/meter/status
+// =============================================================================
+
+func (h *Handler) HandleGetMeteredBillingStatus(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	tenant, err := h.repo.GetTenantByID(r.Context(), claims.TenantID)
+	if err != nil || tenant == nil {
+		writeJSONError(w, http.StatusNotFound, "Tenant not found")
+		return
+	}
+
+	customerID := ""
+	if tenant.StripeCustomerID != nil {
+		customerID = *tenant.StripeCustomerID
+	}
+
+	sub, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
+	hasSub := err == nil && sub != nil && sub.StripeSubscriptionID != ""
+
+	response := MeteredBillingStatusResponse{
+		TenantID:         claims.TenantID,
+		StripeCustomerID: customerID,
+		HasSubscription:  hasSub,
+		MeteredItems:     []MeteredItemStatus{},
+	}
+
+	if hasSub {
+		response.SubscriptionID = sub.StripeSubscriptionID
+
+		if payment.IsConfigured() && sub.StripeSubscriptionID != "" {
+			stripeSub, err := subscription.Get(sub.StripeSubscriptionID, nil)
+			if err == nil && stripeSub != nil {
+				for _, item := range stripeSub.Items.Data {
+					if item.Price != nil && item.Price.Recurring != nil {
+						isMetered := item.Price.Recurring.UsageType == stripe.PriceRecurringUsageTypeMetered
+						response.MeteredItems = append(response.MeteredItems, MeteredItemStatus{
+							SubscriptionItemID: item.ID,
+							PriceID:           item.Price.ID,
+							IsMetered:        isMetered,
+						})
+					}
+				}
+			}
+		}
+	}
+
+	if len(response.MeteredItems) > 0 {
+		response.StripeMeterEnabled = true
+	}
+
+	writeJSON(w, http.StatusOK, response)
+}
+
+// =============================================================================
+// createMeterEvent creates a meter event in Stripe using the Meter Events API
+// This uses a separate endpoint (meter-events.stripe.com) for high-volume usage reporting
+// =============================================================================
+
+func (h *Handler) createMeterEvent(ctx context.Context, payload map[string]interface{}) (string, error) {
+	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
+	if stripeKey == "" {
+		return "", fmt.Errorf("stripe API key not configured")
+	}
+
+	jsonPayload, err := json.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", "https://meter-events.stripe.com/v1/billing/meter_events", bytes.NewBuffer(jsonPayload))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+stripeKey)
+	req.Header.Set("Stripe-Version", "2024-04-15")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to send request to Stripe: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		ID    string `json:"id"`
+		Error *struct {
+			Message string `json:"message"`
+			Code    string `json:"code"`
+		} `json:"error"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if result.Error != nil {
+		return "", fmt.Errorf("stripe API error: %s (code: %s)", result.Error.Message, result.Error.Code)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return result.ID, nil
+}
+
+// =============================================================================
+// reportOverageToStripe reports overage usage to Stripe for all metered items in a subscription
+// =============================================================================
+
+func (h *Handler) reportOverageToStripe(ctx context.Context, tenantID uuid.UUID, subscriptionID string, quantity int, eventType string) error {
+	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
+	if stripeKey == "" {
+		return fmt.Errorf("stripe is not configured")
+	}
+
+	sub, err := subscription.Get(subscriptionID, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get subscription: %w", err)
+	}
+
+	customerID := sub.Customer.ID
+
+	meterEventName := os.Getenv("STRIPE_OVERAGE_METER_NAME")
+	if meterEventName == "" {
+		meterEventName = "functionfly_overage"
+	}
+
+	now := time.Now().UTC()
+
+	reportedItems := 0
+	for _, item := range sub.Items.Data {
+		if item.Price != nil && item.Price.Recurring != nil && item.Price.Recurring.UsageType == "metered" {
+			idempotencyKey := storage.GenerateIdempotencyKey(tenantID, item.ID, now.Unix())
+
+			meterPayload := map[string]interface{}{
+				"event_name": meterEventName,
+				"timestamp":  now.Unix(),
+				"identifier": idempotencyKey,
+				"payload": map[string]string{
+					"value":              fmt.Sprintf("%d", quantity),
+					"stripe_customer_id": customerID,
+					"event_type":        eventType,
+				},
+			}
+
+			eventID, err := h.createMeterEvent(ctx, meterPayload)
+			if err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"subscription_item_id": item.ID,
+					"quantity":            quantity,
+				}).Error("Failed to report usage to Stripe")
+				continue
+			}
+
+			reportedItems++
+
+			logrus.WithFields(logrus.Fields{
+				"subscription_item_id": item.ID,
+				"price_id":            item.Price.ID,
+				"quantity":            quantity,
+				"meter_event_id":      eventID,
+				"timestamp":           now.Unix(),
+			}).Info("Successfully reported usage to Stripe")
+		}
+	}
+
+	if reportedItems == 0 {
+		logrus.WithFields(logrus.Fields{
+			"subscription_id": subscriptionID,
+			"customer_id":     customerID,
+			"quantity":       quantity,
+		}).Warn("No metered billing items found for usage reporting")
+		return fmt.Errorf("no metered billing items found in subscription")
+	}
+
+	return nil
+}
+
+// writeJSON is a helper to write JSON responses
+func writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
 }

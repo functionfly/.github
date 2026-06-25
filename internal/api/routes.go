@@ -30,6 +30,7 @@ import (
 	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/docs"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
@@ -65,6 +66,7 @@ import (
 	marketplacehandler "github.com/functionfly/functionfly/internal/api/handlers/marketplace"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
+	"github.com/functionfly/functionfly/internal/api/handlers/microvm"
 	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
 	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	payoutsHandler "github.com/functionfly/functionfly/internal/api/handlers/payouts"
@@ -111,6 +113,7 @@ import (
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
+	enterpriseaudit "github.com/functionfly/functionfly/internal/storage/enterprise_audit"
 	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
@@ -481,11 +484,25 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	pluginRepo := storage.NewPluginRepository(s.postgresDB.DB)
 	pluginStorageAdapter := plugin.NewStorageAdapter(pluginRepo)
 	pluginHandler := plugin.NewHandler(pluginStorageAdapter)
-	runtimeHandler := runtimehandler.New()
+	var (
+		runtimeHandler  = runtimehandler.New()
+		microvmRepo     = storage.NewMicroVMRepository(s.postgresDB.DB)
+		microvmHandler  = microvm.NewHandler(microvmRepo, s.repo)
+	)
+	// Wire up MicroVM repository for execution tracking and billing
+	registryHandler.SetMicroVMRepo(microvmRepo)
 	marketplaceRepo := storage.NewMarketplaceRepository(s.postgresDB.DB)
 	marketplaceStorageAdapter := marketplacehandler.NewStorageAdapterWithPlugins(marketplaceRepo, pluginRepo)
 	marketplaceHandler := marketplacehandler.NewHandler(marketplaceStorageAdapter)
 	enterpriseSLAHandler := enterprisePkg.NewSLAHandler(s.repo)
+	enterpriseAuditRepo := enterpriseaudit.NewRepository(s.postgresDB.GORM)
+	enterpriseAuditExportRepo := enterpriseaudit.NewExportRepository(s.postgresDB.GORM)
+	enterpriseAuditHandler := enterprisePkg.NewAuditHandler(s.repo, enterpriseAuditRepo, enterpriseAuditExportRepo)
+	if auditSigningKey := os.Getenv("ENTERPRISE_AUDIT_SIGNING_KEY"); auditSigningKey != "" {
+		enterpriseAuditHandler.SetAuditSigningKey(auditSigningKey)
+	} else if config.IsProduction() {
+		s.logger.Error("ENTERPRISE_AUDIT_SIGNING_KEY not set - audit exports will be rejected in production")
+	}
 	decisionsRepo := decisionsrepo.NewRepository(s.postgresDB.GORM)
 	decisionsHandler := decisions.NewHandler(decisionsRepo)
 
@@ -1124,7 +1141,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		analyticsHandler, unifiedAnalyticsSvc,
 		stateHandler, stateFabricHandler, vaultHandler,
 		memoryHandler, agentMemoryHandler,
-		dashboardHandler, enterpriseSLAHandler,
+		dashboardHandler, enterpriseSLAHandler, enterpriseAuditHandler,
 		teamHandler, providersHandler,
 		appsHandler, functionsHandler,
 		backendsHandler, deploymentsHandler,
@@ -1348,6 +1365,19 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/ai/composer/refine/stream", authMiddleware.RequireAuth(aiProxyHandler.HandleRefineFunctionStream)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/ai/health", aiProxyHandler.HandleHealth).Methods("GET", "OPTIONS")
 	api.HandleFunc("/ai/status", aiProxyHandler.HandleAIStatus).Methods("GET", "OPTIONS")
+
+	// ── MicroVM (Enterprise) endpoints ───────────────────────────────────────
+	// Usage and quota
+	protected.HandleFunc("/microvm/usage", authMiddleware.RequireAuth(microvmHandler.GetUsage)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/microvm/quota", authMiddleware.RequireAuth(microvmHandler.GetQuota)).Methods("GET", "OPTIONS")
+	// Billing
+	protected.HandleFunc("/microvm/billing", authMiddleware.RequireAuth(microvmHandler.GetBilling)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/microvm/billing/aggregate", authMiddleware.RequireAuth(microvmHandler.AggregateBilling)).Methods("POST", "OPTIONS")
+	// Audit log
+	protected.HandleFunc("/microvm/audit", authMiddleware.RequireAuth(microvmHandler.GetAuditLog)).Methods("GET", "OPTIONS")
+	// Execution tracking (internal use by orchestrator)
+	protected.HandleFunc("/microvm/executions", authMiddleware.RequireAuth(microvmHandler.CreateExecutionRecord)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/microvm/executions/{id}", authMiddleware.RequireAuth(microvmHandler.UpdateExecutionStatus)).Methods("PATCH", "OPTIONS")
 
 	// ── Infrastructure endpoints ──────────────────────────────────────────────
 	wellknownHandler := wellknown.NewHandler(registryRepo)

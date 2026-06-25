@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/graph"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/cache"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/frg"
 	httpclient "github.com/functionfly/functionfly/internal/http"
@@ -1104,14 +1105,17 @@ func (h *Handler) SemanticSearch(w http.ResponseWriter, r *http.Request) {
 	var results []*frg.GraphDefinition
 	var err error
 
-	// Try semantic search with embedding service if available
-	if h.embedClient != nil {
+	useVectorSearch := config.IsVectorSearchEnabled() && h.embedClient != nil
+
+	// Try semantic search with embedding service if available and enabled
+	if useVectorSearch {
 		// Generate embedding for the query
 		embedding, embedErr := h.embedClient.GenerateEmbedding(ctx, query)
 		if embedErr != nil {
 			// Log the error but fall back to text search
 			// (In production, you might want to log this properly)
 			_ = embedErr
+			useVectorSearch = false
 		}
 
 		if embedding != nil && len(embedding) > 0 {
@@ -1127,7 +1131,7 @@ func (h *Handler) SemanticSearch(w http.ResponseWriter, r *http.Request) {
 			results, err = h.frgRepo.SearchByText(ctx, query, 10)
 		}
 	} else {
-		// No embedding client configured, use text search
+		// Vector search disabled or no embedding client configured, use text search
 		results, err = h.frgRepo.SearchByText(ctx, query, 10)
 	}
 

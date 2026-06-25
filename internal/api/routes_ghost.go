@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/ghost"
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -14,6 +15,10 @@ func registerGhostRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	ghostHandler *ghost.Handler,
 ) {
+	if os.Getenv("GHOST_MODE_ENABLED") != "true" {
+		return
+	}
+
 	// Build lifecycle
 	api.HandleFunc("/v1/ghost/builds", authMiddleware.RequireAuth(ghostHandler.HandleCreateBuild)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/v1/ghost/builds", authMiddleware.RequireAuth(ghostHandler.HandleListBuilds)).Methods("GET", "OPTIONS")

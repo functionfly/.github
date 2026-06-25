@@ -58,8 +58,30 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get tenant plan and check secrets limit
+	// Get tenant plan first (needed for namespace validation)
 	plan := middleware.GetTenantPlan(r)
+
+	// Determine the namespace for this secret
+	namespace := strings.TrimSpace(req.Namespace)
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	// Validate namespace path if not default
+	if namespace != "default" {
+		// Namespaces other than "default" require Pro+ plan
+		if !plans.SupportsVaultNamespaces(plan) {
+			apierror.WriteError(w, apierror.NewForbidden("Namespaces require Professional plan or higher"))
+			return
+		}
+		// Validate namespace path format
+		if !vault.IsValidNamespacePath(namespace) {
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid namespace path. Use lowercase letters, digits, dash/underscore, /-separated with no empty segments"))
+			return
+		}
+	}
+
+	// Check secrets limit
 	maxSecrets := plans.GetMaxSecrets(plan)
 
 	// Get current secret count for tenant
@@ -125,6 +147,7 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		KeyVersion:        req.EncryptedData.KeyVersion,
 		Scopes:            scopesToJSONMap(req.Scopes),
 		Metadata:          req.Metadata,
+		Namespace:         namespace,
 	}
 
 	// Create secret in database
@@ -147,6 +170,7 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 		Metadata: vault.JSONMap{
 			"secret_name": req.Name,
 			"secret_type": req.SecretType.String(),
+			"namespace":  namespace,
 		},
 		Success: true,
 	}
@@ -166,6 +190,8 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
+
+	plan := middleware.GetTenantPlan(r)
 
 	// Parse pagination params
 	limit := 20
@@ -191,9 +217,55 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Parse optional namespace filter
+	namespace := strings.TrimSpace(r.URL.Query().Get("namespace"))
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	// If namespace is not default, require Pro+ plan
+	if namespace != "default" && !plans.SupportsVaultNamespaces(plan) {
+		h.respondError(w, http.StatusForbidden, "NAMESPACE_NOT_SUPPORTED", "Namespaces require Professional plan or higher")
+		return
+	}
+
+	// Validate namespace path if not default
+	if namespace != "default" && !vault.IsValidNamespacePath(namespace) {
+		h.respondError(w, http.StatusBadRequest, "INVALID_NAMESPACE", "Invalid namespace path")
+		return
+	}
+
 	// Get total count and page of secrets (DB-level pagination)
 	var total int64
 	var err error
+
+	if namespace != "default" {
+		// Use namespace-specific query (uses ListSecretsInNamespace which handles hierarchical matching)
+		secrets, listErr := h.repo.ListSecretsInNamespace(r.Context(), claims.TenantID, namespace, limit, offset)
+		if listErr != nil {
+			h.logger.WithError(listErr).Error("Failed to list secrets in namespace")
+			apierror.WriteError(w, apierror.NewInternal("Failed to list secrets"))
+			return
+		}
+		// Get count for pagination info
+		total = int64(len(secrets))
+
+		// Convert to metadata responses (no encrypted data)
+		responses := make([]SecretMetadataResponse, len(secrets))
+		for i, secret := range secrets {
+			responses[i] = secretToMetadataResponse(&secret)
+		}
+
+		h.respondJSON(w, http.StatusOK, ListSecretsResponse{
+			Secrets: responses,
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+		})
+		return
+	}
+
+	// Default namespace (no filter)
 	if secretType != "" {
 		total, err = h.repo.CountSecretsByTenantFiltered(r.Context(), claims.TenantID, secretType)
 	} else {

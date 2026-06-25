@@ -18,6 +18,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	statestorage "github.com/functionfly/functionfly/internal/storage/state"
 )
@@ -550,6 +551,12 @@ func (h *AgentMemoryHandler) HandleSearchMemories(w http.ResponseWriter, r *http
 	var req SearchMemoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
+		return
+	}
+
+	// Check vector search feature flag when embedding is provided
+	if len(req.Embedding) > 0 && !config.IsVectorSearchEnabled() {
+		apierror.WriteError(w, apierror.NewForbidden("vector search is not enabled"))
 		return
 	}
 

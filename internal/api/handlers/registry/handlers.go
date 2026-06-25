@@ -42,6 +42,8 @@ type Handler struct {
 	realtimeUsageTracker services.RealtimeUsageTrackerInterface
 	// PrivacyService provides privacy and compliance features
 	privacySvc execution.PrivacyService
+	// MicroVMRepo provides MicroVM execution tracking and billing (optional)
+	MicroVMRepo *storage.MicroVMRepository
 	// DRE execution node config (optional): when set, FXCERTs are signed
 	dreNodeKey     ed25519.PrivateKey
 	drePlatformKey ed25519.PrivateKey
@@ -140,6 +142,11 @@ func (h *Handler) SetRuntimeRouter(router *execution.RuntimeRouter) {
 // SetBundleService wires the eager-bundling service for publish-time compilation.
 func (h *Handler) SetBundleService(svc *bundler.BundleService) {
 	h.bundleService = svc
+}
+
+// SetMicroVMRepo wires the MicroVM repository for execution tracking and billing.
+func (h *Handler) SetMicroVMRepo(repo *storage.MicroVMRepository) {
+	h.MicroVMRepo = repo
 }
 
 // SetAutoReadmeService sets the auto-README generator service.

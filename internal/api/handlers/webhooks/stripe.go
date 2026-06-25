@@ -13,9 +13,9 @@ import (
 	"time"
 
 	agentbilling "github.com/functionfly/functionfly/internal/agent/billing"
-	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	billing "github.com/functionfly/functionfly/internal/api/handlers/billing"
 	"github.com/functionfly/functionfly/internal/apierror"
+	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/notification"
@@ -27,8 +27,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/stripe/stripe-go/v83"
-	stripeSub "github.com/stripe/stripe-go/v83/subscription"
 	"github.com/stripe/stripe-go/v83/invoice"
+	stripeSub "github.com/stripe/stripe-go/v83/subscription"
 	"github.com/stripe/stripe-go/v83/webhook"
 	"gorm.io/datatypes"
 )
@@ -74,17 +74,17 @@ func sanitizeMetadataForLogging(metadata map[string]string) map[string]string {
 
 // StripeWebhookHandler handles Stripe webhook events for payment processing.
 type StripeWebhookHandler struct {
-	financialTxRepo    *storage.FinancialTransactionRepository
-	billingCtrl         *agentbilling.Controller
-	notificationSvc    *notification.Service
-	userRepo            storage.Repository
-	platformFees        *storageregistry.PlatformFeeRepository
-	sfAddons            *statefabricaddons.Repository
-	disputeRepo         *storage.DisputeRepository
-	refundRepo          *storage.RefundRepository
-	registryRepo        *storageregistry.RegistryRepository
-	webhookSecret       string
-	emailSvc            email.Service
+	financialTxRepo *storage.FinancialTransactionRepository
+	billingCtrl     *agentbilling.Controller
+	notificationSvc *notification.Service
+	userRepo        storage.Repository
+	platformFees    *storageregistry.PlatformFeeRepository
+	sfAddons        *statefabricaddons.Repository
+	disputeRepo     *storage.DisputeRepository
+	refundRepo      *storage.RefundRepository
+	registryRepo    *storageregistry.RegistryRepository
+	webhookSecret   string
+	emailSvc        email.Service
 	dunningManager  *billingpkg.DunningManager
 	operationalRepo *storage.BillingOperationalRepository
 	payoutService   PayoutWebhookProcessor
@@ -136,18 +136,18 @@ func NewStripeWebhookHandler(
 	certRepo *storage.CertificationRepository,
 ) *StripeWebhookHandler {
 	return &StripeWebhookHandler{
-		financialTxRepo:  financialTxRepo,
-		billingCtrl:      billingCtrl,
-		notificationSvc:  notificationSvc,
-		userRepo:         userRepo,
-		platformFees:     platformFees,
-		sfAddons:         sfAddons,
-		webhookSecret:    os.Getenv("STRIPE_WEBHOOK_SECRET"),
-		disputeRepo:      disputeRepo,
-		refundRepo:       refundRepo,
-		registryRepo:     registryRepo,
-		emailSvc:         emailSvc,
-		certRepo:         certRepo,
+		financialTxRepo: financialTxRepo,
+		billingCtrl:     billingCtrl,
+		notificationSvc: notificationSvc,
+		userRepo:        userRepo,
+		platformFees:    platformFees,
+		sfAddons:        sfAddons,
+		webhookSecret:   os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		disputeRepo:     disputeRepo,
+		refundRepo:      refundRepo,
+		registryRepo:    registryRepo,
+		emailSvc:        emailSvc,
+		certRepo:        certRepo,
 	}
 }
 
@@ -1228,9 +1228,9 @@ func (h *StripeWebhookHandler) calculateProrationCredit(bundleSub *storage.Bundl
 	if prorationCredit > 0 {
 		logrus.WithFields(logrus.Fields{
 			"bundle_subscription_id": bundleSub.ID,
-			"credit_usd":            prorationCredit,
-			"invoice_id":            invoiceID,
-			"line_count":            len(fullInvoice.Lines.Data),
+			"credit_usd":             prorationCredit,
+			"invoice_id":             invoiceID,
+			"line_count":             len(fullInvoice.Lines.Data),
 		}).Info("proration credit calculated from stripe invoice lines")
 	}
 
@@ -3063,10 +3063,10 @@ func (h *StripeWebhookHandler) handlePayoutFailed(w http.ResponseWriter, r *http
 	}
 
 	var payout struct {
-		ID      string `json:"id"`
-		Amount  int64  `json:"amount"`
-		Status  string `json:"status"`
-		Account string `json:"account"`
+		ID             string `json:"id"`
+		Amount         int64  `json:"amount"`
+		Status         string `json:"status"`
+		Account        string `json:"account"`
 		FailureCode    string `json:"failure_code"`
 		FailureMessage string `json:"failure_message"`
 	}
@@ -3076,10 +3076,10 @@ func (h *StripeWebhookHandler) handlePayoutFailed(w http.ResponseWriter, r *http
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"payout_id":      payout.ID,
-		"account_id":     payout.Account,
-		"amount":         payout.Amount,
-		"failure_code":   payout.FailureCode,
+		"payout_id":       payout.ID,
+		"account_id":      payout.Account,
+		"amount":          payout.Amount,
+		"failure_code":    payout.FailureCode,
 		"failure_message": payout.FailureMessage,
 	}).Warn("Stripe payout.failed event received")
 
@@ -3114,9 +3114,9 @@ func (h *StripeWebhookHandler) handleTransferReversed(w http.ResponseWriter, r *
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"transfer_id":  txfr.ID,
-		"destination":  txfr.Dest,
-		"amount":       txfr.Amount,
+		"transfer_id": txfr.ID,
+		"destination": txfr.Dest,
+		"amount":      txfr.Amount,
 	}).Warn("Stripe transfer.reversed event received")
 
 	if h.payoutService != nil {
@@ -3138,10 +3138,10 @@ func (h *StripeWebhookHandler) handleConnectAccountUpdated(w http.ResponseWriter
 	}
 
 	var account struct {
-		ID             string `json:"id"`
-		PayoutsEnabled bool   `json:"payouts_enabled"`
-		DetailsSubmitted bool `json:"details_submitted"`
-		ChargesEnabled bool   `json:"charges_enabled"`
+		ID               string `json:"id"`
+		PayoutsEnabled   bool   `json:"payouts_enabled"`
+		DetailsSubmitted bool   `json:"details_submitted"`
+		ChargesEnabled   bool   `json:"charges_enabled"`
 	}
 	if err := json.Unmarshal(raw, &account); err != nil {
 		apierror.WriteError(w, apierror.NewBadRequest("Invalid account payload"))
@@ -3171,12 +3171,12 @@ func (h *StripeWebhookHandler) handleCertExamCheckout(w http.ResponseWriter, r *
 	userIDStr := session.Metadata["user_id"]
 
 	logrus.WithFields(logrus.Fields{
-		"exam_id":          examIDStr,
-		"tier_slug":        tierSlug,
-		"session_id":       session.ID,
-		"payment_intent":   session.PaymentIntent,
-		"payment_status":   session.PaymentStatus,
-		"webhook_user_id":  userIDStr,
+		"exam_id":         examIDStr,
+		"tier_slug":       tierSlug,
+		"session_id":      session.ID,
+		"payment_intent":  session.PaymentIntent,
+		"payment_status":  session.PaymentStatus,
+		"webhook_user_id": userIDStr,
 	}).Info("handleCertExamCheckout called")
 
 	if examIDStr == "" || userIDStr == "" {
@@ -3205,9 +3205,9 @@ func (h *StripeWebhookHandler) handleCertExamCheckout(w http.ResponseWriter, r *
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"exam_id":      examIDStr,
-		"user_id":      userIDStr,
-		"pi_id":        paymentIntentID,
+		"exam_id":       examIDStr,
+		"user_id":       userIDStr,
+		"pi_id":         paymentIntentID,
 		"cert_repo_nil": h.certRepo == nil,
 	}).Info("cert exam checkout: before update")
 
@@ -3231,10 +3231,10 @@ func (h *StripeWebhookHandler) handleCertExamCheckout(w http.ResponseWriter, r *
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"exam_id":     examIDStr,
-		"user_id":     userIDStr,
-		"session_id":  session.ID,
-		"tier_slug":   tierSlug,
+		"exam_id":    examIDStr,
+		"user_id":    userIDStr,
+		"session_id": session.ID,
+		"tier_slug":  tierSlug,
 	}).Info("cert exam payment completed and exam activated")
 
 	w.WriteHeader(http.StatusOK)

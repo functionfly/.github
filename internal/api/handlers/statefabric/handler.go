@@ -16,6 +16,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	repo "github.com/functionfly/functionfly/internal/storage/statefabric"
@@ -836,6 +837,7 @@ func (h *Handler) HandleGetFeatureFlags(w http.ResponseWriter, r *http.Request) 
 		AdvancedSecurityPack:    isFeatureEnabled("statefabric_advanced_security"),
 		HotCacheBooster:         isFeatureEnabled("statefabric_hot_cache"),
 		AIMemoryPack:            isFeatureEnabled("statefabric_ai_memory"),
+		VectorSearch:            config.IsVectorSearchEnabled(),
 	}
 	writeJSON(w, http.StatusOK, flags)
 }
@@ -848,6 +850,7 @@ type StateFabricFeatureFlags struct {
 	AdvancedSecurityPack    bool `json:"advanced_security_pack"`
 	HotCacheBooster         bool `json:"hot_cache_booster"`
 	AIMemoryPack            bool `json:"ai_memory_pack"`
+	VectorSearch            bool `json:"vector_search"`
 }
 
 // isFeatureEnabled checks if a feature flag is enabled via environment variable
@@ -882,16 +885,23 @@ func (h *Handler) HandleReplayProgress(w http.ResponseWriter, r *http.Request) {
 	}
 	replayIDStr := vars["replayId"]
 
-	_, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, replayIDStr)
+	replay, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, replayIDStr)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound("replay not found"))
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "no-cache, no-transform")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Transfer-Encoding", "chunked")
+	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+	if origin := r.Header.Get("Origin"); origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	}
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -899,30 +909,82 @@ func (h *Handler) HandleReplayProgress(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	monitoring.RecordStateFabricReplayOperation(tenantID.String(), fabricID.String(), "streaming_started")
+
+	const (
+		maxStreamingDuration = 30 * time.Minute
+		pollInterval         = 500 * time.Millisecond
+		idleTimeout         = 5 * time.Minute
+	)
+
+	streamStart := time.Now()
 	lastProgress := -1
+	lastActivity := time.Now()
+
 	for {
 		select {
 		case <-r.Context().Done():
+			monitoring.RecordStateFabricReplayOperation(tenantID.String(), fabricID.String(), "streaming_cancelled")
 			return
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(pollInterval):
+			if time.Since(streamStart) > maxStreamingDuration {
+				data := fmt.Sprintf("data: {\"error\": \"streaming timeout\", \"code\": \"STREAM_TIMEOUT\"}\n\n")
+				w.Write([]byte(data))
+				flusher.Flush()
+				monitoring.RecordStateFabricReplayOperation(tenantID.String(), fabricID.String(), "streaming_timeout")
+				return
+			}
+
 			currentReplay, err := h.repo.GetReplay(r.Context(), tenantID, fabricID, replayIDStr)
 			if err != nil {
+				data := fmt.Sprintf("data: {\"error\": \"failed to fetch progress\", \"code\": \"FETCH_ERROR\"}\n\n")
+				w.Write([]byte(data))
+				flusher.Flush()
+				monitoring.RecordStateFabricReplayOperation(tenantID.String(), fabricID.String(), "streaming_error")
 				return
 			}
 
 			if currentReplay.Progress != lastProgress {
 				lastProgress = currentReplay.Progress
+				lastActivity = time.Now()
 				data := fmt.Sprintf("data: {\"progress\": %d, \"eventsReplayed\": %d, \"status\": \"%s\"}\n\n",
 					currentReplay.Progress, currentReplay.EventsReplayed, currentReplay.Status)
 				w.Write([]byte(data))
 				flusher.Flush()
 
-				if currentReplay.Status == "completed" || currentReplay.Status == "failed" || currentReplay.Status == "cancelled" {
+				if currentReplay.Status == "completed" {
+					data := fmt.Sprintf("data: {\"progress\": 100, \"eventsReplayed\": %d, \"status\": \"completed\", \"completed\": true}\n\n",
+						currentReplay.EventsReplayed)
+					w.Write([]byte(data))
+					flusher.Flush()
+					monitoring.RecordStateFabricReplayOperation(tenantID.String(), fabricID.String(), "streaming_completed")
 					return
 				}
+				if currentReplay.Status == "failed" || currentReplay.Status == "cancelled" {
+					data := fmt.Sprintf("data: {\"progress\": %d, \"eventsReplayed\": %d, \"status\": \"%s\", \"error\": \"%s\"}\n\n",
+						currentReplay.Progress, currentReplay.EventsReplayed, currentReplay.Status,
+						escapeErrorMessage(currentReplay.Error))
+					w.Write([]byte(data))
+					flusher.Flush()
+					monitoring.RecordStateFabricReplayOperation(tenantID.String(), fabricID.String(), "streaming_"+currentReplay.Status)
+					return
+				}
+			} else if time.Since(lastActivity) > idleTimeout && replay.Status != "running" && replay.Status != "pending" {
+				monitoring.RecordStateFabricReplayOperation(tenantID.String(), fabricID.String(), "streaming_idle_timeout")
+				return
 			}
 		}
 	}
+}
+
+func escapeErrorMessage(msg string) string {
+	if msg == "" {
+		return ""
+	}
+	escaped := strings.ReplaceAll(msg, "\"", "\\\"")
+	escaped = strings.ReplaceAll(escaped, "\n", "\\n")
+	escaped = strings.ReplaceAll(escaped, "\r", "\\r")
+	return escaped
 }
 
 // HandleReady handles GET /state-fabrics/ready - readiness probe

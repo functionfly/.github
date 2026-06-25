@@ -1,6 +1,8 @@
 package api
 
 import (
+	"os"
+
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
@@ -64,6 +66,7 @@ func registerPlatformRoutes(
 	agentMemoryHandler *agentmemoryhandler.AgentMemoryHandler,
 	dashboardHandler *dashboard.Handler,
 	enterpriseSLAHandler *enterprise.SLAHandler,
+	enterpriseAuditHandler *enterprise.AuditHandler,
 	teamHandler *teams.Handler,
 	providersHandler *providers.Handler,
 	appsHandler *apps.Handler,
@@ -284,7 +287,9 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/dashboard/activity", authMiddleware.RequireAuth(dashboardHandler.HandleGetActivity)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/dashboard/metrics", authMiddleware.RequireAuth(dashboardHandler.HandleGetMetrics)).Methods("GET", "OPTIONS")
 
-	// ── Studio Collaboration (protected, tenant-scoped) ───────────────────────
+	// Studio is disabled at launch — skip route registration
+	if os.Getenv("STUDIO_ENABLED") == "true" {
+		// ── Studio Collaboration (protected, tenant-scoped) ───────────────────────
 	protected.HandleFunc("/studio/collab/events", authMiddleware.RequireAuth(studioCollabHandler.HandleListEvents)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/studio/collab/events", authMiddleware.RequireAuth(studioCollabHandler.HandleCreateEvent)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/studio/collab/events/{id}", authMiddleware.RequireAuth(studioCollabHandler.HandleGetEvent)).Methods("GET", "OPTIONS")
@@ -340,6 +345,7 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/studio/devops/regions", authMiddleware.RequireAuth(studioDevOpsHandler.HandleListCloudRegions)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/studio/devops/regions", authMiddleware.RequireAuth(studioDevOpsHandler.HandleCreateCloudRegion)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/studio/devops/regions/{id}", authMiddleware.RequireAuth(studioDevOpsHandler.HandleGetCloudRegion)).Methods("GET", "OPTIONS")
+	} // end STUDIO_ENABLED
 
 	// ── Plugin Manager (protected, tenant-scoped) ──────────────────────────
 	protected.HandleFunc("/plugins", authMiddleware.RequireAuth(pluginHandler.HandleListPlugins)).Methods("GET", "OPTIONS")
@@ -371,6 +377,12 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/enterprise/sla/overview", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetSLAOverview)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/enterprise/sla/uptime-history", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetUptimeHistory)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/enterprise/sla/incidents", authMiddleware.RequireAuth(enterpriseSLAHandler.HandleGetIncidents)).Methods("GET", "OPTIONS")
+
+	// ── Enterprise Audit Logs (protected) ─────────────────────────────────────
+	protected.HandleFunc("/enterprise/audit/logs", authMiddleware.RequireAuth(enterpriseAuditHandler.HandleListAuditLogs)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/enterprise/audit/logs", authMiddleware.RequireAuth(enterpriseAuditHandler.HandleGetAuditLog)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/enterprise/audit/filters", authMiddleware.RequireAuth(enterpriseAuditHandler.HandleGetFilters)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/enterprise/audit/export", authMiddleware.RequireAuth(enterpriseAuditHandler.HandleExportAudit)).Methods("GET", "OPTIONS")
 
 	// ── State (protected, rate-limited per-tenant) ────────────────────────────
 	protected.HandleFunc("/state", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateHandler.HandleListStates))).Methods("GET")
@@ -434,7 +446,7 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListReplays))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateReplay))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays/{replayId:[0-9a-fA-F-]{36}}", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleGetReplay))).Methods("GET", "OPTIONS")
-	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays/{replayId:[0-9a-fA-F-]{36}}/progress", stateFabricHandler.HandleReplayProgress).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays/{replayId:[0-9a-fA-F-]{36}}/progress", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleReplayProgress))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/replays/{replayId:[0-9a-fA-F-]{36}}/resume", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleResumeReplay))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/triggers", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleListTriggers))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/state-fabrics/{id:[0-9a-fA-F-]{36}}/triggers", advancedSecurityMiddleware.AdvancedRateLimit(authMiddleware.RequireAuth(stateFabricHandler.HandleCreateTrigger))).Methods("POST", "OPTIONS")

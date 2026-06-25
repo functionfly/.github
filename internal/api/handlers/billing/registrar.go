@@ -81,6 +81,11 @@ func (r *RouteRegistrar) Register(router *mux.Router, api *mux.Router, protected
 	billingRouter.HandleFunc("/agent-usage", r.handler.HandleGetAgentUsage).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/subscribe", r.handler.HandleSubscribe).Methods("POST", "OPTIONS")
 
+	// Stripe Meter Events integration for metered billing
+	billingRouter.HandleFunc("/meter/verify", r.handler.HandleVerifyStripeMeterIntegration).Methods("GET", "OPTIONS")
+	billingRouter.HandleFunc("/meter/report", r.handler.HandleReportUsage).Methods("POST", "OPTIONS")
+	billingRouter.HandleFunc("/meter/status", r.handler.HandleGetMeteredBillingStatus).Methods("GET", "OPTIONS")
+
 	// Tax/VAT compliance endpoints
 	billingRouter.HandleFunc("/tax/settings", r.handler.HandleGetTaxSettings).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/tax/settings", r.handler.HandleUpdateTaxSettings).Methods("POST", "OPTIONS")

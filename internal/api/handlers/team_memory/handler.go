@@ -12,6 +12,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -493,7 +494,14 @@ func (h *Handler) HandleSearchMemories(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 
-	results, err := h.repo.SearchTeamMemories(r.Context(), user.TenantID, teamID, req.Query, limit)
+	var results []*storage.TeamMemorySearchResult
+
+	if config.IsVectorSearchEnabled() {
+		results, err = h.repo.SearchTeamMemories(r.Context(), user.TenantID, teamID, req.Query, limit)
+	} else {
+		results, err = h.repo.SearchTeamMemoriesFallback(r.Context(), user.TenantID, teamID, req.Query, req.MemoryType, req.Category, limit)
+	}
+
 	if err != nil {
 		logrus.WithError(err).Error("Failed to search team memories")
 		apierror.WriteError(w, apierror.NewInternal("Failed to search memories"))

@@ -44,6 +44,8 @@ type Handler struct {
 	PrivacyService PrivacyService
 	// DNARecorder records execution metrics for DNA analysis (optional)
 	DNARecorder DNARecorder
+	// MicroVMRepo provides MicroVM execution tracking and billing (optional)
+	MicroVMRepo *storage.MicroVMRepository
 	// NodeID is the identifier of this execution node (used in MEG records and certificates)
 	NodeID string
 	// Region is the geographic region of this node

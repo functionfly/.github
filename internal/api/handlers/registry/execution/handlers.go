@@ -238,6 +238,39 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	cached := false
 	var resourceUsage *ResourceUsage
 
+	// MicroVM execution tracking
+	var microvmExecutionID uuid.UUID
+	var microvmMemoryMB int
+	var microvmVCPUs int
+	if fnVersion.Runtime == plans.RuntimePythonMicroVM && fn.TenantID != nil && h.MicroVMRepo != nil {
+		microvmMemoryMB = fnVersion.MemoryMB
+		if microvmMemoryMB == 0 {
+			microvmMemoryMB = plans.EnterpriseDefaultMemoryMB
+		}
+		microvmVCPUs = plans.EnterpriseDefaultVCPU
+		if limits := plans.GetMicroVMLimits(plans.PlanEnterprise); limits != nil && microvmMemoryMB > limits.MaxMemoryMB {
+			microvmMemoryMB = limits.MaxMemoryMB
+		}
+
+		microvmExec := &storage.MicroVMExecution{
+			ID:              uuid.New(),
+			TenantID:        *fn.TenantID,
+			FunctionID:      fnVersion.FunctionID,
+			FunctionVersion: fnVersion.Version,
+			ExecutionID:    uuid.New(),
+			StartedAt:       time.Now(),
+			MemoryMB:        microvmMemoryMB,
+			VCPUs:           microvmVCPUs,
+			Status:          "running",
+			CreatedAt:       time.Now(),
+		}
+		if err := h.MicroVMRepo.CreateExecution(r.Context(), microvmExec); err != nil {
+			logrus.WithError(err).Error("Failed to create MicroVM execution record")
+		} else {
+			microvmExecutionID = microvmExec.ID
+		}
+	}
+
 	// Check cache eligibility for this function version
 	versionData := cache.FunctionVersionData{
 		FunctionID:    fnVersion.FunctionID,
@@ -294,6 +327,27 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 
 	// Determine outcome
 	outcome, errorCode := determineOutcome(executionErr, statusCode)
+
+	// Update MicroVM execution record if we created one
+	if microvmExecutionID != uuid.Nil {
+		execStatus := "completed"
+		execOutcome := string(outcome)
+		var execErrMsg *string
+		if executionErr != nil {
+			errStr := executionErr.Error()
+			execErrMsg = &errStr
+		}
+		if statusCode >= 400 {
+			execStatus = "failed"
+		} else if statusCode == -1 || strings.Contains(execOutcome, "timeout") {
+			execStatus = "timeout"
+		}
+		go func() {
+			if err := h.MicroVMRepo.UpdateExecutionStatus(context.Background(), microvmExecutionID, execStatus, &execOutcome, execErrMsg, time.Now(), durationMs); err != nil {
+				logrus.WithError(err).Error("Failed to update MicroVM execution record")
+			}
+		}()
+	}
 
 	// Perform replay verification for deterministic functions (only on successful executions)
 	var verificationResult *ReplayVerificationResult

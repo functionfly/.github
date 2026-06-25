@@ -16,6 +16,7 @@ func (h *Handler) buildExecHandler() *execution.Handler {
 		EdgeCache:         h.edgeCache,
 		UsageTracker:      h.realtimeUsageTracker,
 		PrivacyService:    h.privacySvc,
+		MicroVMRepo:       h.MicroVMRepo,
 		DNARecorder:       h.dnaRecorder,
 		NodeID:            h.dreNodeID,
 		Region:            h.dreRegion,

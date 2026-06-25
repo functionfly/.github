@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 	"unsafe"
@@ -292,6 +293,12 @@ func (h *Handler) HandleAnchorCertificate(w http.ResponseWriter, r *http.Request
 			"anchored":       true,
 			"message":        "certificate is already anchored",
 		})
+		return
+	}
+
+	// Check if DRE blockchain anchoring is enabled via env var
+	if os.Getenv("DRE_BLOCKCHAIN_ANCHORING_ENABLED") != "true" {
+		writeError(w, http.StatusServiceUnavailable, "DRE blockchain anchoring is not enabled. Set DRE_BLOCKCHAIN_ANCHORING_ENABLED=true to enable.")
 		return
 	}
 

@@ -72,21 +72,27 @@ func (h *SLAHandler) HandleGetSLAOverview(w http.ResponseWriter, r *http.Request
 
 	since := time.Now().AddDate(0, 0, -days)
 
+	downtimeMinutes, err := h.repo.GetTotalDowntimeMinutesSince(r.Context(), since)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get downtime minutes for SLA overview")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load SLA overview"))
+		return
+	}
+
+	totalPeriodMinutes := float64(days) * 24.0 * 60.0
+	currentUptime := 100.0 * (1.0 - float64(downtimeMinutes)/totalPeriodMinutes)
+	if currentUptime > 100.0 {
+		currentUptime = 100.0
+	}
+	if currentUptime < 99.0 {
+		currentUptime = 99.0
+	}
+
 	count, err := h.repo.CountIncidentsSince(r.Context(), since)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to count incidents for SLA overview")
 		apierror.WriteError(w, apierror.NewInternal("Failed to load SLA overview"))
 		return
-	}
-
-	// Current uptime: 100% minus impact from incidents. For MVP we use 99.99% if no incidents, else a simple formula.
-	currentUptime := 99.99
-	if count > 0 {
-		// Simple degradation: each incident in the period reduces by 0.01% (placeholder until we have duration data).
-		currentUptime = 99.99 - float64(count)*0.01
-		if currentUptime < 99.0 {
-			currentUptime = 99.0
-		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
