@@ -53,6 +53,11 @@ type Secret struct {
 	LastAccessedAt *time.Time `gorm:"column:last_accessed_at"`
 	AccessCount    int        `gorm:"not null;default:0"`
 
+	// Namespace for organizing secrets (Pro+ feature)
+	// Paths use /-separated lowercase segments (e.g. "production/api-gateway")
+	// Default namespace is "default"
+	Namespace string `gorm:"size:512;not null;default:'default';index"`
+
 	// Soft delete for audit trail
 	DeletedAt *time.Time `gorm:"column:deleted_at"`
 

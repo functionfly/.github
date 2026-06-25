@@ -96,6 +96,11 @@ func (db *PostgresDB) CountIncidentsSince(ctx context.Context, since time.Time) 
 	return db.incidentRepository.CountIncidentsSince(ctx, since)
 }
 
+// GetTotalDowntimeMinutesSince returns total downtime minutes since a given time
+func (db *PostgresDB) GetTotalDowntimeMinutesSince(ctx context.Context, since time.Time) (int, error) {
+	return db.incidentRepository.GetTotalDowntimeMinutesSince(ctx, since)
+}
+
 // CountIncidentsGroupedByDay groups incidents by day since a given time
 func (db *PostgresDB) CountIncidentsGroupedByDay(ctx context.Context, since time.Time) ([]DailyIncidentCount, error) {
 	return db.incidentRepository.CountIncidentsGroupedByDay(ctx, since)

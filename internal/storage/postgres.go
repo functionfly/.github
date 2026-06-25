@@ -70,6 +70,14 @@ type PostgresDB struct {
 	creditNoteRepository         *CreditNoteRepository
 	tenantStripeConfigRepository *TenantStripeConfigRepository
 	certificationRepository      *CertificationRepository
+	employeeRepository           *EmployeeRepository
+	ffidRepository              *FFIDRepository
+	phase2Repository            *Phase2Repository
+	phase3Repository           *Phase3Repository
+	phase4Repository           *Phase4Repository
+	phase5Repository           *Phase5Repository
+	phase6Repository           *Phase6Repository
+	remainingRepository          *RemainingRepository
 
 	// Read replica connections
 	readReplicas       []ReadReplicaConnection
@@ -528,6 +536,10 @@ func (db *PostgresDB) SearchTeamMemories(ctx context.Context, tenantID, teamID u
 
 func (db *PostgresDB) SearchTeamMemoriesByVector(ctx context.Context, tenantID, teamID uuid.UUID, embedding []float32, limit int) ([]*TeamMemorySearchResult, error) {
 	return db.teamMemoryRepository.SearchSimilar(ctx, tenantID, teamID, embedding, limit)
+}
+
+func (db *PostgresDB) SearchTeamMemoriesFallback(ctx context.Context, tenantID, teamID uuid.UUID, query string, memoryType, category string, limit int) ([]*TeamMemorySearchResult, error) {
+	return db.teamMemoryRepository.SearchFallback(ctx, tenantID, teamID, query, memoryType, category, limit)
 }
 
 func (db *PostgresDB) ValidateTeamMemory(ctx context.Context, memoryID uuid.UUID, validatedBy uuid.UUID) error {

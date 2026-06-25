@@ -326,9 +326,10 @@ const (
 	// FlyPy runtime has been disabled - using MicroPython only
 )
 
-// IsEnterpriseTier returns true if the plan is enterprise
+// IsEnterpriseTier returns true if the plan is enterprise or agent_enterprise
+// Both plans have access to enterprise features (SLA, Audit, etc.)
 func IsEnterpriseTier(plan string) bool {
-	return plan == PlanEnterprise
+	return plan == PlanEnterprise || plan == PlanAgentEnterprise
 }
 
 // IsAgentTier returns true if the plan is an AEP agent tier
@@ -991,6 +992,36 @@ func SupportsFullDiffReport(plan string) bool {
 	}
 }
 
+// Support response time constants (in hours)
+const (
+	CommunitySupportResponseHours     = 72 // 72 hour response for free/starter
+	PremiumSupportResponseHours        = 4  // 4 hour response for pro
+	PrioritySupportResponseHours       = 1  // 1 hour response for enterprise
+	PremiumSupportAvailabilityHours    = 24 // 24/7 availability for premium support
+)
+
+// GetSupportResponseHours returns the expected support response time in hours for a plan
+func GetSupportResponseHours(plan string) int {
+	switch plan {
+	case PlanPro, PlanAgentScale:
+		return PremiumSupportResponseHours
+	case PlanEnterprise, PlanAgentPro, PlanAgentEnterprise:
+		return PrioritySupportResponseHours
+	default:
+		return CommunitySupportResponseHours
+	}
+}
+
+// IsPremiumSupportAvailable returns true if premium support (24/7 priority) is available for the plan
+func IsPremiumSupportAvailable(plan string) bool {
+	switch plan {
+	case PlanPro, PlanAgentScale, PlanEnterprise, PlanAgentPro, PlanAgentEnterprise:
+		return true
+	default:
+		return false
+	}
+}
+
 // TimeMachineLimits provides a snapshot of all Time Machine limits for a plan.
 type TimeMachineLimits struct {
 	ReplayWindowHours      int  `json:"replay_window_hours"`
@@ -1121,6 +1152,11 @@ func SupportsVaultAuditExport(plan string) bool {
 // SupportsVaultHAStatus returns true if the plan supports HA status monitoring
 func SupportsVaultHAStatus(plan string) bool {
 	return plan == PlanAgentEnterprise
+}
+
+// SupportsVaultNamespaces returns true if the plan supports hierarchical namespaces for organizing secrets
+func SupportsVaultNamespaces(plan string) bool {
+	return plan == PlanPro || plan == PlanEnterprise || plan == PlanAgentEnterprise
 }
 
 // GetMaxDynamicCreds returns the maximum dynamic credentials for a plan (30-day rolling window)

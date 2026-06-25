@@ -525,6 +525,7 @@ type Repository interface {
 	ListAllActiveFounderModes(ctx context.Context) ([]*FounderModeRegistration, error)
 	StartGracePeriod(ctx context.Context, id uuid.UUID, gracePeriodDays int) error
 	GetDeferredBillingConfig(ctx context.Context, bundleID uuid.UUID) (*DeferredBillingConfig, error)
+	CalculateAndUpdateFounderTiers(ctx context.Context) error
 
 	// Bundle Subscriptions
 	CreateBundleSubscription(ctx context.Context, sub *BundleSubscription) error
@@ -765,6 +766,7 @@ type Repository interface {
 	ListIncidentsSince(ctx context.Context, since time.Time, limit int) ([]*Incident, error)
 	CountIncidentsSince(ctx context.Context, since time.Time) (int, error)
 	CountIncidentsGroupedByDay(ctx context.Context, since time.Time) ([]DailyIncidentCount, error)
+	GetTotalDowntimeMinutesSince(ctx context.Context, since time.Time) (int, error)
 	UpdateIncident(ctx context.Context, incidentID uuid.UUID, updates map[string]interface{}) (*Incident, error)
 	ResolveIncident(ctx context.Context, incidentID uuid.UUID) (*Incident, error)
 
@@ -1008,6 +1010,7 @@ type Repository interface {
 	ListTeamMemoriesByType(ctx context.Context, tenantID, teamID uuid.UUID, memoryType string, limit, offset int) ([]*TeamMemory, error)
 	SearchTeamMemories(ctx context.Context, tenantID, teamID uuid.UUID, query string, limit int) ([]*TeamMemorySearchResult, error)
 	SearchTeamMemoriesByVector(ctx context.Context, tenantID, teamID uuid.UUID, embedding []float32, limit int) ([]*TeamMemorySearchResult, error)
+	SearchTeamMemoriesFallback(ctx context.Context, tenantID, teamID uuid.UUID, query string, memoryType, category string, limit int) ([]*TeamMemorySearchResult, error)
 	ValidateTeamMemory(ctx context.Context, memoryID uuid.UUID, validatedBy uuid.UUID) error
 	MarkTeamMemoryAsAccessed(ctx context.Context, memoryID uuid.UUID) error
 	CreateEncryptedTeamMemory(ctx context.Context, memory *TeamMemory, encryptedContent, iv, tag []byte) (*TeamMemory, error)
@@ -1074,6 +1077,278 @@ type Repository interface {
 	GetTenantStripeConfig(ctx context.Context, tenantID uuid.UUID) (*TenantStripeConfig, error)
 	CreateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error
 	UpdateTenantStripeConfig(ctx context.Context, config *TenantStripeConfig) error
+
+	// AI Chat operations
+	CreateChatSession(ctx context.Context, sess *AIChatSession) (*AIChatSession, error)
+	GetChatSessionByID(ctx context.Context, id uuid.UUID) (*AIChatSession, error)
+	ListChatSessions(ctx context.Context, userID uuid.UUID, opts ListAIChatSessionsOpts) ([]*AIChatSession, int, error)
+	ListChatMessages(ctx context.Context, sessionID uuid.UUID, limit, offset int) ([]*AIChatMessage, error)
+	CreateChatMessage(ctx context.Context, msg *AIChatMessage) (*AIChatMessage, error)
+	DeleteChatSession(ctx context.Context, id uuid.UUID) error
+
+	// Achievement operations
+	ListAchievementDefinitions(ctx context.Context, tenantID uuid.UUID) ([]*AchievementDefinition, error)
+	GetAchievementProgress(ctx context.Context, employeeID uuid.UUID) ([]*AchievementProgress, error)
+	CheckAndAwardAchievements(ctx context.Context, employeeID uuid.UUID) error
+	CreateAchievementDefinition(ctx context.Context, ach *AchievementDefinition) (*AchievementDefinition, error)
+	SeedAchievementDefinitions(ctx context.Context, tenantID uuid.UUID) error
+
+	// Employee operations
+	GetEmployeeByUserID(ctx context.Context, userID uuid.UUID) (*Employee, error)
+	GetEmployeeByID(ctx context.Context, id uuid.UUID) (*Employee, error)
+	GetEmployeeByFFID(ctx context.Context, ffid string) (*Employee, error)
+	GetDepartmentByID(ctx context.Context, id int64) (*Department, error)
+	ListEmployees(ctx context.Context, tenantID uuid.UUID, opts ListEmployeesOpts) ([]*Employee, int, error)
+	CreateEmployee(ctx context.Context, emp *Employee) (*Employee, error)
+	UpdateEmployee(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	UpdateClearanceLevel(ctx context.Context, employeeID uuid.UUID, level int) error
+	GetEmployeeSkills(ctx context.Context, employeeID uuid.UUID) ([]*EmployeeSkill, error)
+	AddEmployeeSkill(ctx context.Context, skill *EmployeeSkill) (*EmployeeSkill, error)
+	GetEmployeeCertifications(ctx context.Context, employeeID uuid.UUID) ([]*EmployeeCertification, error)
+	AddEmployeeCertification(ctx context.Context, cert *EmployeeCertification) (*EmployeeCertification, error)
+	GetEmployeeAchievements(ctx context.Context, employeeID uuid.UUID) ([]*EmployeeAchievement, error)
+	ListProjects(ctx context.Context, tenantID uuid.UUID, opts ListProjectsOpts) ([]*Project, int, error)
+	GetProjectByID(ctx context.Context, id uuid.UUID) (*Project, error)
+	CreateProject(ctx context.Context, proj *Project) (*Project, error)
+	UpdateProject(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	ListTasks(ctx context.Context, tenantID uuid.UUID, opts ListTasksOpts) ([]*Task, int, error)
+	GetTaskByID(ctx context.Context, id uuid.UUID) (*Task, error)
+	CreateTask(ctx context.Context, task *Task) (*Task, error)
+	UpdateTask(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	GetTaskComments(ctx context.Context, taskID uuid.UUID) ([]*TaskComment, error)
+	CreateTaskComment(ctx context.Context, comment *TaskComment) (*TaskComment, error)
+	ListTimeEntries(ctx context.Context, employeeID uuid.UUID, opts ListTimeEntriesOpts) ([]*TimeEntry, int, error)
+	CreateTimeEntry(ctx context.Context, entry *TimeEntry) (*TimeEntry, error)
+	GetTimeEntryByID(ctx context.Context, id uuid.UUID) (*TimeEntry, error)
+	UpdateTimeEntry(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	DeleteTimeEntry(ctx context.Context, id uuid.UUID) error
+	ListPTORequests(ctx context.Context, employeeID uuid.UUID, opts ListPTORequestsOpts) ([]*PTORequest, int, error)
+	CreatePTORequest(ctx context.Context, req *PTORequest) (*PTORequest, error)
+	GetPTORequestByID(ctx context.Context, id uuid.UUID) (*PTORequest, error)
+	UpdatePTORequestStatus(ctx context.Context, id uuid.UUID, status string, approvedBy *uuid.UUID, notes *string) error
+	GetGoalTree(ctx context.Context, tenantID uuid.UUID) ([]*PerformanceGoal, error)
+	GetIdentityCard(ctx context.Context, employeeID uuid.UUID) (*IdentityCard, error)
+	UpdateGoalCascade(ctx context.Context, id uuid.UUID, parentGoalID *uuid.UUID, goalLevel, cascadeVisibility string) error
+
+	// Email account operations
+	CreateEmailAccount(ctx context.Context, ea *EmailAccount) (*EmailAccount, error)
+	ListEmailAccounts(ctx context.Context, tenantID uuid.UUID, opts ListEmailAccountsOpts) ([]*EmailAccount, int, error)
+	UpdateEmailAccount(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+
+	// FWOS event operations
+	CreateFWOSEvent(ctx context.Context, ev *FWOSEvent) (*FWOSEvent, error)
+	ListFWOSEvents(ctx context.Context, tenantID uuid.UUID, opts ListFWOSEventsOpts) ([]*FWOSEvent, int, error)
+
+	// Feature flag operations
+	CreateFeatureFlag(ctx context.Context, ff *FeatureFlag) (*FeatureFlag, error)
+	GetFeatureFlagByKey(ctx context.Context, tenantID uuid.UUID, key string) (*FeatureFlag, error)
+	ListFeatureFlags(ctx context.Context, tenantID uuid.UUID, opts ListFeatureFlagsOpts) ([]*FeatureFlag, int, error)
+	UpdateFeatureFlag(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+
+	// Feedback round operations
+	CreateFeedbackRound(ctx context.Context, fr *FeedbackRound) (*FeedbackRound, error)
+	GetFeedbackRoundByID(ctx context.Context, id uuid.UUID) (*FeedbackRound, error)
+	ListFeedbackRounds(ctx context.Context, tenantID uuid.UUID, opts ListFeedbackRoundsOpts) ([]*FeedbackRound, int, error)
+	UpdateFeedbackRound(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	CreateFeedbackRoundResponse(ctx context.Context, r *FeedbackRoundResponse) (*FeedbackRoundResponse, error)
+	GetFeedbackRoundResults(ctx context.Context, roundID uuid.UUID) ([]map[string]interface{}, error)
+
+	// Incident operations
+	CreateFWOSIncident(ctx context.Context, inc *FWOSIncident) (*FWOSIncident, error)
+	GetFWOSIncidentByID(ctx context.Context, id uuid.UUID) (*FWOSIncident, error)
+	ListFWOSIncidents(ctx context.Context, tenantID uuid.UUID, opts ListIncidentsOpts) ([]*FWOSIncident, int, error)
+	UpdateFWOSIncident(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	CreateIncidentEvent(ctx context.Context, ev *IncidentEvent) (*IncidentEvent, error)
+	ListIncidentEvents(ctx context.Context, incidentID uuid.UUID, limit, offset int) ([]*IncidentEvent, error)
+	AddIncidentResponder(ctx context.Context, resp *IncidentResponder) (*IncidentResponder, error)
+	ListIncidentResponders(ctx context.Context, incidentID uuid.UUID) ([]*IncidentResponder, error)
+	CreatePostmortem(ctx context.Context, pm *Postmortem) (*Postmortem, error)
+	GetPostmortemByIncident(ctx context.Context, incidentID uuid.UUID) (*Postmortem, error)
+
+	// Innovation grant operations
+	CreateInnovationGrant(ctx context.Context, grant *InnovationGrant) (*InnovationGrant, error)
+	GetInnovationGrantByID(ctx context.Context, id uuid.UUID) (*InnovationGrant, error)
+	ListInnovationGrants(ctx context.Context, tenantID uuid.UUID, opts ListInnovationGrantsOpts) ([]*InnovationGrant, int, error)
+	UpdateInnovationGrant(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	GetInnovationGrantVoteByVoter(ctx context.Context, grantID, voterID uuid.UUID) (*InnovationGrantVote, error)
+	CreateInnovationGrantVote(ctx context.Context, vote *InnovationGrantVote) (*InnovationGrantVote, error)
+
+	// Knowledge article operations
+	CreateKnowledgeArticle(ctx context.Context, article *KnowledgeArticle) (*KnowledgeArticle, error)
+	GetKnowledgeArticleBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*KnowledgeArticle, error)
+	ListKnowledgeArticles(ctx context.Context, tenantID uuid.UUID, opts ListKnowledgeOpts) ([]*KnowledgeArticle, int, error)
+	UpdateKnowledgeArticle(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	SearchKnowledgeArticles(ctx context.Context, tenantID uuid.UUID, query string, limit int) ([]*KnowledgeArticle, error)
+
+	// Learning operations
+	CreateLearningCourse(ctx context.Context, course *LearningCourse) (*LearningCourse, error)
+	GetLearningCourseByID(ctx context.Context, id uuid.UUID) (*LearningCourse, error)
+	ListLearningCourses(ctx context.Context, tenantID uuid.UUID) ([]*LearningCourse, error)
+	GetEmployeeLearning(ctx context.Context, employeeID uuid.UUID) ([]*EmployeeLearning, error)
+	EnrollCourse(ctx context.Context, el *EmployeeLearning) (*EmployeeLearning, error)
+	UpdateLearningProgress(ctx context.Context, id int64, updates map[string]interface{}) error
+
+	// Lifecycle operations
+	CreateLifecycleEvent(ctx context.Context, ev *LifecycleEvent) (*LifecycleEvent, error)
+	ListLifecycleEvents(ctx context.Context, employeeID uuid.UUID, opts ListLifecycleEventsOpts) ([]*LifecycleEvent, int, error)
+	CreateLifecycleWorkflow(ctx context.Context, wf *LifecycleWorkflow) (*LifecycleWorkflow, error)
+	ListLifecycleWorkflows(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*LifecycleWorkflow, int, error)
+	GetLifecycleWorkflowByID(ctx context.Context, id uuid.UUID) (*LifecycleWorkflow, error)
+	GetLifecycleWorkflowInstance(ctx context.Context, id uuid.UUID) (*LifecycleWorkflowInstance, error)
+	UpdateLifecycleWorkflowInstance(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+
+	// Living memory operations
+	CreateLivingMemoryEntry(ctx context.Context, e *LivingMemoryEntry) (*LivingMemoryEntry, error)
+	GetLivingMemoryEntry(ctx context.Context, id uuid.UUID) (*LivingMemoryEntry, error)
+	ListLivingMemoryEntries(ctx context.Context, tenantID uuid.UUID, opts ListLivingMemoryOpts) ([]*LivingMemoryEntry, int, error)
+	SearchLivingMemory(ctx context.Context, tenantID uuid.UUID, opts SearchLivingMemoryOpts) ([]*LivingMemoryEntry, error)
+	IncrementLivingMemoryViewCount(ctx context.Context, id uuid.UUID) error
+
+	// Skills graph operations
+	CreateSkillsGraphEntry(ctx context.Context, s *SkillsGraph) (*SkillsGraph, error)
+	GetSkillsGraph(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*SkillsGraph, int, error)
+	GetSkillGaps(ctx context.Context, tenantID uuid.UUID, limit int) ([]*SkillsGraph, error)
+	CalculateSkillsGraph(ctx context.Context, tenantID uuid.UUID) ([]*SkillsGraph, error)
+
+	// Team health operations
+	CreateTeamHealthMetric(ctx context.Context, m *TeamHealthMetric) (*TeamHealthMetric, error)
+	GetTeamHealthMetrics(ctx context.Context, tenantID uuid.UUID, opts ListTeamHealthOpts) ([]*TeamHealthMetric, int, error)
+	CalculateTeamHealth(ctx context.Context, tenantID uuid.UUID, departmentID int64) (*TeamHealthMetric, error)
+	GetLatestTeamHealth(ctx context.Context, tenantID uuid.UUID, departmentID int64) (*TeamHealthMetric, error)
+
+	// SSO provisioning operations
+	CreateSSOProvisioningConfig(ctx context.Context, cfg *SSOProvisioningConfig) (*SSOProvisioningConfig, error)
+	GetSSOProvisioningConfigByID(ctx context.Context, id uuid.UUID) (*SSOProvisioningConfig, error)
+	ListSSOProvisioningConfigs(ctx context.Context, tenantID uuid.UUID, opts ListSSOProvisioningConfigsOpts) ([]*SSOProvisioningConfig, int, error)
+	UpdateSSOProvisioningConfig(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	CreateSSOProvisioningLog(ctx context.Context, log *SSOProvisioningLog) (*SSOProvisioningLog, error)
+	ListSSOProvisioningLogs(ctx context.Context, configID uuid.UUID, opts ListSSOProvisioningLogsOpts) ([]*SSOProvisioningLog, int, error)
+
+	// Marketplace operations
+	CreateMarketplaceOpportunity(ctx context.Context, opp *MarketplaceOpportunity) (*MarketplaceOpportunity, error)
+	GetMarketplaceOpportunityByID(ctx context.Context, id uuid.UUID) (*MarketplaceOpportunity, error)
+	ListMarketplaceOpportunities(ctx context.Context, tenantID uuid.UUID, opts ListMarketplaceOpportunitiesOpts) ([]*MarketplaceOpportunity, int, error)
+	UpdateMarketplaceOpportunity(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	CreateMarketplaceApplication(ctx context.Context, app *MarketplaceApplication) (*MarketplaceApplication, error)
+	GetMarketplaceApplicationByID(ctx context.Context, id uuid.UUID) (*MarketplaceApplication, error)
+	UpdateMarketplaceApplicationStatus(ctx context.Context, id uuid.UUID, status string) error
+
+	// Mentorship operations
+	CreateMentorshipMatch(ctx context.Context, match *MentorshipMatch) (*MentorshipMatch, error)
+	GetMentorshipMatchByID(ctx context.Context, id uuid.UUID) (*MentorshipMatch, error)
+	ListMentorshipMatches(ctx context.Context, employeeID uuid.UUID, opts ListMentorshipMatchesOpts) ([]*MentorshipMatch, int, error)
+	UpdateMentorshipMatch(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+
+	// Mission control operations
+	CreateMissionControlSnapshot(ctx context.Context, s *MissionControlSnapshot) (*MissionControlSnapshot, error)
+	GetLatestMissionControlSnapshot(ctx context.Context, tenantID uuid.UUID) (*MissionControlSnapshot, error)
+	ListMissionControlSnapshots(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*MissionControlSnapshot, int, error)
+	GenerateMissionControlSnapshot(ctx context.Context, tenantID uuid.UUID) (*MissionControlSnapshot, error)
+
+	// Notification operations
+	ListNotifications(ctx context.Context, userID uuid.UUID, unreadOnly bool, limit, offset int) ([]*FWOSNotification, int, error)
+	CountUnreadNotifications(ctx context.Context, userID uuid.UUID) (int, error)
+	MarkNotificationRead(ctx context.Context, id uuid.UUID) error
+	MarkAllNotificationsRead(ctx context.Context, userID uuid.UUID) error
+
+	// Org chart operations
+	GetOrgChart(ctx context.Context, tenantID uuid.UUID) ([]*Employee, error)
+	GetDirectReports(ctx context.Context, managerID uuid.UUID) ([]*Employee, error)
+
+	// Org chart import operations
+	CreateOrgChartImport(ctx context.Context, imp *OrgChartImport) (*OrgChartImport, error)
+	GetOrgChartImportByID(ctx context.Context, id uuid.UUID) (*OrgChartImport, error)
+
+	// Package registry operations
+	GetPackageByID(ctx context.Context, id uuid.UUID) (*PackageRegistry, error)
+	ListPackages(ctx context.Context, tenantID uuid.UUID, opts ListPackageRegistryOpts) ([]*PackageRegistry, int, error)
+	CreatePackage(ctx context.Context, pkg *PackageRegistry) (*PackageRegistry, error)
+	ListPackageVersions(ctx context.Context, packageID uuid.UUID, opts ListPackageVersionsOpts) ([]*PackageVersion, int, error)
+
+	// Performance operations
+	CreatePerformanceGoal(ctx context.Context, goal *PerformanceGoal) (*PerformanceGoal, error)
+	GetPerformanceGoalByID(ctx context.Context, id uuid.UUID) (*PerformanceGoal, error)
+	ListPerformanceGoals(ctx context.Context, employeeID uuid.UUID, opts ListPerformanceGoalsOpts) ([]*PerformanceGoal, int, error)
+	UpdatePerformanceGoal(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	CreatePerformanceReview(ctx context.Context, rev *PerformanceReview) (*PerformanceReview, error)
+	GetPerformanceReviewByID(ctx context.Context, id uuid.UUID) (*PerformanceReview, error)
+	ListPerformanceReviews(ctx context.Context, employeeID uuid.UUID, opts ListPerformanceReviewsOpts) ([]*PerformanceReview, int, error)
+	UpdatePerformanceReview(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	CreatePeerFeedback(ctx context.Context, fb *PeerFeedback) (*PeerFeedback, error)
+	ListPeerFeedback(ctx context.Context, toEmployeeID uuid.UUID, limit, offset int) ([]*PeerFeedback, error)
+
+	// Reputation operations
+	CreateReputationScore(ctx context.Context, s *ReputationScore) (*ReputationScore, error)
+	CalculateReputation(ctx context.Context, employeeID uuid.UUID, tenantID uuid.UUID) ([]*ReputationScore, error)
+	GetReputationScores(ctx context.Context, employeeID uuid.UUID) ([]*ReputationScore, error)
+	GetReputationLeaderboard(ctx context.Context, tenantID uuid.UUID, category string, limit, offset int) ([]*ReputationScore, int, error)
+	GetReputationHistory(ctx context.Context, employeeID uuid.UUID, category string) ([]*ReputationHistory, error)
+
+	// Push notification operations
+	CreatePushSubscription(ctx context.Context, ps *PushSubscription) (*PushSubscription, error)
+	UpsertNotificationPreference(ctx context.Context, pref *NotificationPreference) (*NotificationPreference, error)
+	ListNotificationPreferences(ctx context.Context, userID uuid.UUID, opts ListNotificationPreferencesOpts) ([]*NotificationPreference, int, error)
+
+	// Wallet pass operations
+	CreateWalletPass(ctx context.Context, wp *WalletPass) (*WalletPass, error)
+	GetWalletPassByQRToken(ctx context.Context, qrToken string) (*WalletPass, error)
+	ListWalletPasses(ctx context.Context, employeeID uuid.UUID, opts ListWalletPassesOpts) ([]*WalletPass, int, error)
+	UpdateWalletPass(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	CreateWalletPassTemplate(ctx context.Context, t *WalletPassTemplate) (*WalletPassTemplate, error)
+	ListWalletPassTemplates(ctx context.Context, tenantID uuid.UUID, opts ListWalletPassTemplatesOpts) ([]*WalletPassTemplate, int, error)
+
+	// Badge operations
+	CreateDigitalBadge(ctx context.Context, b *DigitalBadge) (*DigitalBadge, error)
+	ListDigitalBadges(ctx context.Context, tenantID uuid.UUID, opts ListBadgesOpts) ([]*DigitalBadge, int, error)
+	GetDigitalBadgeBySlug(ctx context.Context, tenantID uuid.UUID, slug string) (*DigitalBadge, error)
+	AwardEmployeeBadge(ctx context.Context, eb *EmployeeBadge) (*EmployeeBadge, error)
+	GetEmployeeBadges(ctx context.Context, employeeID uuid.UUID) ([]*EmployeeBadge, error)
+	RevokeEmployeeBadge(ctx context.Context, employeeID, badgeID uuid.UUID) error
+
+	// Certificate operations
+	CreateCertificateKey(ctx context.Context, ck *CertificateKey) (*CertificateKey, error)
+	GetCertificateKeysByCertID(ctx context.Context, certificateID uuid.UUID) ([]*CertificateKey, error)
+	ListCertificates(ctx context.Context, employeeID uuid.UUID, opts ListCertificatesOpts) ([]*EmployeeCertificate, int, error)
+	IssueCertificate(ctx context.Context, cert *EmployeeCertificate) (*EmployeeCertificate, error)
+	RevokeCertificate(ctx context.Context, id uuid.UUID, reason string) error
+	GetCertificateBySerial(ctx context.Context, serial string) (*EmployeeCertificate, error)
+
+	// Compensation operations
+	GetActiveCompensation(ctx context.Context, employeeID uuid.UUID) (*CompensationRecord, error)
+	CreateCompensationRecord(ctx context.Context, rec *CompensationRecord) (*CompensationRecord, error)
+	LogCompensationAccess(ctx context.Context, log *CompensationAccessLog) error
+	ListEquityGrants(ctx context.Context, employeeID uuid.UUID) ([]*EquityGrant, error)
+
+	// Data classification operations
+	CreateDataClassification(ctx context.Context, dc *DataClassification) (*DataClassification, error)
+	GetDataClassification(ctx context.Context, tenantID uuid.UUID, resourceType string, resourceID uuid.UUID) (*DataClassification, error)
+	ListDataClassifications(ctx context.Context, tenantID uuid.UUID, opts ListDataClassificationsOpts) ([]*DataClassification, int, error)
+
+	// Device operations
+	ListDevices(ctx context.Context, tenantID uuid.UUID, opts ListDevicesOpts) ([]*Device, int, error)
+	CreateDevice(ctx context.Context, d *Device) (*Device, error)
+	UpdateDevice(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	GetDeviceByID(ctx context.Context, id uuid.UUID) (*Device, error)
+
+	// Document operations
+	ListDocuments(ctx context.Context, tenantID uuid.UUID, opts ListDocumentsOpts) ([]*Document, int, error)
+	GetDocumentByID(ctx context.Context, id uuid.UUID) (*Document, error)
+	CreateDocument(ctx context.Context, doc *Document) (*Document, error)
+	UpdateDocument(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+	IncrementDocumentViewCount(ctx context.Context, id uuid.UUID) error
+	CreateDocumentShare(ctx context.Context, share *DocumentShare) (*DocumentShare, error)
+	ListDocumentShares(ctx context.Context, documentID uuid.UUID) ([]*DocumentShare, error)
+	CreateDocumentSignature(ctx context.Context, ds *DocumentSignature) (*DocumentSignature, error)
+	GetDocumentSignatureByID(ctx context.Context, id uuid.UUID) (*DocumentSignature, error)
+	UpdateDocumentSignature(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
+
+	// Career operations
+	ListCareerPaths(ctx context.Context, tenantID uuid.UUID, opts ListCareerPathsOpts) ([]*CareerPath, int, error)
+	GetCareerPathByID(ctx context.Context, id uuid.UUID) (*CareerPath, error)
+	GetEmployeeCareerProgressByEmployee(ctx context.Context, employeeID uuid.UUID) ([]*EmployeeCareerProgress, error)
+	CreateEmployeeCareerProgress(ctx context.Context, prog *EmployeeCareerProgress) (*EmployeeCareerProgress, error)
+	GetCareerTimeline(ctx context.Context, employeeID uuid.UUID) ([]*CareerTimelineEvent, error)
+	CreateCareerTimelineEvent(ctx context.Context, ev *CareerTimelineEvent) (*CareerTimelineEvent, error)
 }
 
 // Untyped re-exports of typed string constants from the types package.

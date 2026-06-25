@@ -32,6 +32,9 @@ type TeamMemoryRepository interface {
 	// Vector-only search for encrypted memories (can't search content JSON)
 	SearchByEmbeddingOnly(ctx context.Context, tenantID, teamID uuid.UUID, queryVector []float32, limit int) ([]*TeamMemorySearchResult, error)
 
+	// Fallback text search when vector search is disabled
+	SearchFallback(ctx context.Context, tenantID, teamID uuid.UUID, query string, memoryType, category string, limit int) ([]*TeamMemorySearchResult, error)
+
 	// Auto-update related
 	FindByConversation(ctx context.Context, conversationID uuid.UUID) ([]*TeamMemory, error)
 	MarkAsAccessed(ctx context.Context, memoryID uuid.UUID) error
@@ -296,6 +299,43 @@ func (r *teamMemoryRepo) SearchByEmbeddingOnly(ctx context.Context, tenantID, te
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to search all memories: %w", err)
+	}
+
+	return results, nil
+}
+
+// SearchFallback performs text-based search when vector search is disabled
+// Uses ILIKE pattern matching on summary and content fields
+func (r *teamMemoryRepo) SearchFallback(ctx context.Context, tenantID, teamID uuid.UUID, query string, memoryType, category string, limit int) ([]*TeamMemorySearchResult, error) {
+	if limit == 0 {
+		limit = 10
+	}
+
+	var results []*TeamMemorySearchResult
+
+	queryPattern := "%" + query + "%"
+
+	baseQuery := r.db.WithContext(ctx).
+		Model(&TeamMemory{}).
+		Where("tenant_id = ? AND team_id = ?", tenantID, teamID).
+		Where("expires_at IS NULL OR expires_at > NOW()").
+		Where("is_encrypted = false")
+
+	if memoryType != "" {
+		baseQuery = baseQuery.Where("memory_type = ?", memoryType)
+	}
+	if category != "" {
+		baseQuery = baseQuery.Where("category = ?", category)
+	}
+
+	err := baseQuery.
+		Where("(summary ILIKE ? OR content::text ILIKE ?)", queryPattern, queryPattern).
+		Order("importance_score DESC, created_at DESC").
+		Limit(limit).
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to search memories: %w", err)
 	}
 
 	return results, nil

@@ -88,6 +88,7 @@ type IncidentRepository interface {
 	ListIncidentsSince(ctx context.Context, since time.Time, limit int) ([]*types.Incident, error)
 	CountIncidentsSince(ctx context.Context, since time.Time) (int, error)
 	CountIncidentsGroupedByDay(ctx context.Context, since time.Time) ([]types.DailyIncidentCount, error)
+	GetTotalDowntimeMinutesSince(ctx context.Context, since time.Time) (int, error)
 	UpdateIncident(ctx context.Context, incidentID uuid.UUID, updates map[string]interface{}) (*types.Incident, error)
 	ResolveIncident(ctx context.Context, incidentID uuid.UUID) (*types.Incident, error)
 }

@@ -202,6 +202,23 @@ func (r *IncidentRepository) CountIncidentsSince(ctx context.Context, since time
 	return count, nil
 }
 
+// GetTotalDowntimeMinutesSince returns the sum of duration_minutes for all incidents created on or after the given time.
+func (r *IncidentRepository) GetTotalDowntimeMinutesSince(ctx context.Context, since time.Time) (int, error) {
+	var total sql.NullInt64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(duration_minutes), 0)
+		FROM incidents
+		WHERE created_at >= $1 AND duration_minutes IS NOT NULL`,
+		since).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("failed to sum downtime minutes since: %w", err)
+	}
+	if !total.Valid {
+		return 0, nil
+	}
+	return int(total.Int64), nil
+}
+
 // DailyIncidentCount is the number of incidents that occurred on a single calendar day (UTC).
 type DailyIncidentCount struct {
 	Date  string // YYYY-MM-DD

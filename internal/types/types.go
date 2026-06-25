@@ -1353,6 +1353,7 @@ type PricingTierExtended struct {
 	TierType              string          `json:"tier_type"`
 	StripePriceID         *string         `json:"stripe_price_id,omitempty"`
 	StripePriceIDAnnual   *string         `json:"stripe_price_id_annual,omitempty"`
+	StripeMeteredPriceID  *string         `json:"stripe_metered_price_id,omitempty"`
 	TrialDays             int             `json:"trial_days"`
 	MaxAgents             int             `json:"max_agents"`
 	MaxFunctions          int             `json:"max_functions"`

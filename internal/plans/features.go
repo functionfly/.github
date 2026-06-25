@@ -37,6 +37,7 @@ const (
 	FeaturePrioritySupport   = "priority_support"
 	FeatureCustomDomains     = "custom_domains"
 	FeatureSSOSAML           = "sso_saml"
+	FeatureSCIM              = "scim"
 	FeatureAuditLogs         = "audit_logs"
 	FeatureDataResidency     = "data_residency"
 	FeatureAPIRateLimits     = "api_rate_limits"
@@ -75,6 +76,7 @@ const (
 	FeatureCustomHeaders     = "custom_headers"
 	FeatureLongTimeout       = "long_timeout"
 	FeatureBulkOperations    = "bulk_operations"
+	FeaturePremiumSupport    = "premium_support"
 )
 
 // Starter features (included by default)
@@ -152,6 +154,14 @@ var featureDefinitions = map[string]Feature{
 		Key:         FeatureSSOSAML,
 		Name:        "SSO/SAML",
 		Description: "Single Sign-On integration",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureSCIM: {
+		Key:         FeatureSCIM,
+		Name:        "SCIM Provisioning",
+		Description: "System for Cross-domain Identity Management",
 		Category:    CategorySecurity,
 		Type:        FeatureTypeBoolean,
 		Default:     false,
@@ -370,6 +380,14 @@ var featureDefinitions = map[string]Feature{
 		Type:        FeatureTypeBoolean,
 		Default:     true,
 	},
+	FeaturePremiumSupport: {
+		Key:         FeaturePremiumSupport,
+		Name:        "Premium Support",
+		Description: "24/7 priority email and chat support with 4-hour response time",
+		Category:    CategorySupport,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
 	FeaturePublishFunctions: {
 		Key:         FeaturePublishFunctions,
 		Name:        "Publish Functions",
@@ -440,6 +458,7 @@ var (
 		FeatureAdvancedSecurity,
 		FeatureSLA,
 		FeaturePrioritySupport,
+		FeaturePremiumSupport,
 		FeatureCustomDomains,
 		FeatureSSOSAML,
 		FeatureAuditLogs,
@@ -483,6 +502,7 @@ var (
 		FeatureCustomHeaders,
 		FeatureLongTimeout,
 		FeatureBulkOperations,
+		FeaturePremiumSupport,
 		FeatureBasicProviders,
 		FeatureBaseRequests,
 		FeatureAgentStarter,
@@ -524,6 +544,7 @@ var (
 		FeatureDedicatedPool,
 		FeatureAdvancedSecurity,
 		FeaturePrioritySupport,
+		FeaturePremiumSupport,
 		FeatureAuditLogs,
 		FeatureTeamRBAC,
 		FeatureSecretRotation,

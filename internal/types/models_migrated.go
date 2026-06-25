@@ -1899,16 +1899,16 @@ type RevenueRecognitionReport struct {
 // LoginHint preserves the tenant subdomain or email context through the OAuth flow.
 // DeviceFingerprint stores a hash of device characteristics for session binding validation.
 type OAuthState struct {
-	State             string     `gorm:"column:state;primaryKey;size:512"`
-	ExpiresAt         time.Time  `gorm:"column:expires_at;not null"`
-	RedirectURI       string     `gorm:"column:redirect_uri;type:text"`
-	InviteCode        string     `gorm:"column:invite_code;type:text"`
-	CodeVerifier      string     `gorm:"column:code_verifier;type:text"`      // PKCE code verifier (S256)
-	LoginHint         string     `gorm:"column:login_hint;type:text"`         // Preserved tenant/email context
-	DeviceFingerprint string     `gorm:"column:device_fingerprint;type:text"` // Device fingerprint for session binding
-	UserID            uuid.UUID  `gorm:"column:user_id;type:uuid;index"`
-	TenantID          uuid.UUID  `gorm:"column:tenant_id;type:uuid;index"`
-	Provider          string     `gorm:"column:provider;size:64;index"`
+	State             string    `gorm:"column:state;primaryKey;size:512"`
+	ExpiresAt         time.Time `gorm:"column:expires_at;not null"`
+	RedirectURI       string    `gorm:"column:redirect_uri;type:text"`
+	InviteCode        string    `gorm:"column:invite_code;type:text"`
+	CodeVerifier      string    `gorm:"column:code_verifier;type:text"`      // PKCE code verifier (S256)
+	LoginHint         string    `gorm:"column:login_hint;type:text"`         // Preserved tenant/email context
+	DeviceFingerprint string    `gorm:"column:device_fingerprint;type:text"` // Device fingerprint for session binding
+	UserID            uuid.UUID `gorm:"column:user_id;type:uuid;index"`
+	TenantID          uuid.UUID `gorm:"column:tenant_id;type:uuid;index"`
+	Provider          string    `gorm:"column:provider;size:64;index"`
 }
 
 // SignupInviteCode stores hashed platform signup invite codes (invite-only launch).
@@ -3716,17 +3716,16 @@ func DefaultThresholdConfig() TrustScoreThresholdConfig {
 	}
 }
 
-
 // Status stub types.
 type (
-	SocialLinks            string
-	FeedbackType           string
-	FeedbackStatus         string
-	FeedbackPriority       string
-	HealthStatus           string
-	DeploymentStatus       string
-	DeploymentStatusType   string
-	HealthCheckType        string
+	SocialLinks          string
+	FeedbackType         string
+	FeedbackStatus       string
+	FeedbackPriority     string
+	HealthStatus         string
+	DeploymentStatus     string
+	DeploymentStatusType string
+	HealthCheckType      string
 )
 
 // Feedback and related types.
@@ -3767,7 +3766,7 @@ type (
 		DeployKeys []DeployKeyResponse `json:"deploy_keys"`
 		TotalCount int                 `json:"total_count"`
 		Page       int                 `json:"page"`
-		PageSize    int                 `json:"page_size"`
+		PageSize   int                 `json:"page_size"`
 	}
 )
 
@@ -3847,32 +3846,32 @@ func (s *CreditNoteStats) TotalCreditedUSD() float64 {
 }
 
 const (
-	PCISeverityCritical = "critical"
+	PCISeverityCritical  = "critical"
 	PCISeverityEmergency = "emergency"
-	PCISeverityInfo = "info"
-	PCISeverityWarning = "warning"
+	PCISeverityInfo      = "info"
+	PCISeverityWarning   = "warning"
 
-	PCIAuditCardDataRead = "card_data_read"
-	PCIAuditCardDataWrite = "card_data_write"
-	PCIAuditCardDataDelete = "card_data_delete"
-	PCIAuditCardDataTokenized = "card_data_tokenized"
+	PCIAuditCardDataRead        = "card_data_read"
+	PCIAuditCardDataWrite       = "card_data_write"
+	PCIAuditCardDataDelete      = "card_data_delete"
+	PCIAuditCardDataTokenized   = "card_data_tokenized"
 	PCIAuditCardDataDetokenized = "card_data_detokenized"
 
-	PCIAuditKeyCreated = "encryption_key_created"
-	PCIAuditKeyRotated = "encryption_key_rotated"
-	PCIAuditKeyRetired = "encryption_key_retired"
-	PCIAuditKeyAccessed = "encryption_key_accessed"
-	PCIAuditKeyBackupCreated = "encryption_key_backup_created"
+	PCIAuditKeyCreated        = "encryption_key_created"
+	PCIAuditKeyRotated        = "encryption_key_rotated"
+	PCIAuditKeyRetired        = "encryption_key_retired"
+	PCIAuditKeyAccessed       = "encryption_key_accessed"
+	PCIAuditKeyBackupCreated  = "encryption_key_backup_created"
 	PCIAuditKeyBackupRestored = "encryption_key_backup_restored"
 
-	PCIAuditPaymentInitiated = "payment_initiated"
-	PCIAuditPaymentProcessed = "payment_processed"
-	PCIAuditPaymentFailed = "payment_failed"
-	PCIAuditRefundProcessed = "refund_processed"
+	PCIAuditPaymentInitiated   = "payment_initiated"
+	PCIAuditPaymentProcessed   = "payment_processed"
+	PCIAuditPaymentFailed      = "payment_failed"
+	PCIAuditRefundProcessed    = "refund_processed"
 	PCIAuditChargebackReceived = "chargeback_received"
 
-	PCIAuditAuthSuccess = "authentication_success"
-	PCIAuditAuthFailure = "authentication_failure"
-	PCIAuditSessionCreated = "session_created"
+	PCIAuditAuthSuccess       = "authentication_success"
+	PCIAuditAuthFailure       = "authentication_failure"
+	PCIAuditSessionCreated    = "session_created"
 	PCIAuditSessionTerminated = "session_terminated"
 )

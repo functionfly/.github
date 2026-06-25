@@ -47,6 +47,7 @@ var OptionalEnvVars = []struct {
 	{"Redis Address", "REDIS_ADDR", ""},
 	{"Base URL", "BASE_URL", ""},
 	{"Shutdown Timeout", "SHUTDOWN_TIMEOUT", ""},
+	{"Enable Vector Search", "ENABLE_VECTOR_SEARCH", "false"},
 }
 
 // GitHubEnvVars lists GitHub-specific environment variables.

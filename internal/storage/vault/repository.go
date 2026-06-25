@@ -73,6 +73,21 @@ func (r *Repository) CountSecretsByTenant(ctx context.Context, tenantID uuid.UUI
 	return count, err
 }
 
+// CountSecretsByNamespace returns the total number of non-deleted secrets in a namespace
+func (r *Repository) CountSecretsByNamespace(ctx context.Context, tenantID uuid.UUID, namespace string) (int64, error) {
+	var count int64
+	prefix := namespace
+	if prefix != "" && prefix[len(prefix)-1] != '/' {
+		prefix += "/"
+	}
+	err := r.db.WithContext(ctx).
+		Model(&Secret{}).
+		Where("tenant_id = ? AND deleted_at IS NULL AND (namespace = ? OR namespace LIKE ?)",
+			tenantID, namespace, prefix+"%").
+		Count(&count).Error
+	return count, err
+}
+
 // GetSecretsByTenantPaginated returns a page of secrets for a tenant (metadata suitable for list views)
 func (r *Repository) GetSecretsByTenantPaginated(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]Secret, error) {
 	var secrets []Secret

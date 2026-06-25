@@ -640,7 +640,7 @@ func (r *RevenueRepository) ListPricingTiersExtended(ctx context.Context) ([]*Pr
 		SELECT id, name, description, price_cents, annual_price_cents, currency,
 		       COALESCE(billing_cycle, 'monthly') as billing_cycle, features, is_active,
 		       COALESCE(tier_type, 'subscription') as tier_type,
-		       stripe_price_id, stripe_price_id_annual, trial_days,
+		       stripe_price_id, stripe_price_id_annual, stripe_metered_price_id, trial_days,
 		       max_agents, max_functions, max_executions_per_month,
 		       created_at, updated_at
 		FROM pricing_tiers
@@ -657,7 +657,7 @@ func (r *RevenueRepository) ListPricingTiersExtended(ctx context.Context) ([]*Pr
 	for rows.Next() {
 		tier := &PricingTierExtended{}
 		var features []byte
-		var stripePriceID, stripePriceIDAnnual sql.NullString
+		var stripePriceID, stripePriceIDAnnual, stripeMeteredPriceID sql.NullString
 		var tierType sql.NullString
 		var annualPriceCents sql.NullInt64
 		var trialDays, maxAgents, maxFunctions, maxExecutions sql.NullInt64
@@ -666,8 +666,8 @@ func (r *RevenueRepository) ListPricingTiersExtended(ctx context.Context) ([]*Pr
 		err := rows.Scan(
 			&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &annualPriceCents,
 			&tier.Currency, &billingCycle, &features, &tier.IsActive, &tierType,
-			&stripePriceID, &stripePriceIDAnnual, &trialDays,
-			&maxAgents, &maxFunctions, &maxExecutions, &tier.CreatedAt, &tier.UpdatedAt,
+			&stripePriceID, &stripePriceIDAnnual, &stripeMeteredPriceID, &trialDays,
+			&maxAgents, &tier.MaxFunctions, &maxExecutions, &tier.CreatedAt, &tier.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -681,6 +681,9 @@ func (r *RevenueRepository) ListPricingTiersExtended(ctx context.Context) ([]*Pr
 		}
 		if stripePriceIDAnnual.Valid {
 			tier.StripePriceIDAnnual = &stripePriceIDAnnual.String
+		}
+		if stripeMeteredPriceID.Valid {
+			tier.StripeMeteredPriceID = &stripeMeteredPriceID.String
 		}
 		if tierType.Valid {
 			tier.TierType = tierType.String
@@ -716,7 +719,7 @@ func (r *RevenueRepository) GetPricingTierExtendedByID(ctx context.Context, id u
 		SELECT id, name, description, price_cents, annual_price_cents, currency,
 		       COALESCE(billing_cycle, 'monthly') as billing_cycle, features, is_active,
 		       COALESCE(tier_type, 'subscription') as tier_type,
-		       stripe_price_id, stripe_price_id_annual, trial_days,
+		       stripe_price_id, stripe_price_id_annual, stripe_metered_price_id, trial_days,
 		       max_agents, max_functions, max_executions_per_month,
 		       created_at, updated_at
 		FROM pricing_tiers
@@ -724,7 +727,7 @@ func (r *RevenueRepository) GetPricingTierExtendedByID(ctx context.Context, id u
 
 	tier := &PricingTierExtended{}
 	var features []byte
-	var stripePriceID, stripePriceIDAnnual sql.NullString
+	var stripePriceID, stripePriceIDAnnual, stripeMeteredPriceID sql.NullString
 	var tierType sql.NullString
 	var annualPriceCents sql.NullInt64
 	var trialDays, maxAgents, maxFunctions, maxExecutions sql.NullInt64
@@ -733,7 +736,7 @@ func (r *RevenueRepository) GetPricingTierExtendedByID(ctx context.Context, id u
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
 		&tier.ID, &tier.Name, &tier.Description, &tier.PriceCents, &annualPriceCents,
 		&tier.Currency, &billingCycle, &features, &tier.IsActive, &tierType,
-		&stripePriceID, &stripePriceIDAnnual, &trialDays,
+		&stripePriceID, &stripePriceIDAnnual, &stripeMeteredPriceID, &trialDays,
 		&maxAgents, &maxFunctions, &maxExecutions, &tier.CreatedAt, &tier.UpdatedAt,
 	)
 	if err != nil {
@@ -748,6 +751,9 @@ func (r *RevenueRepository) GetPricingTierExtendedByID(ctx context.Context, id u
 	}
 	if stripePriceIDAnnual.Valid {
 		tier.StripePriceIDAnnual = &stripePriceIDAnnual.String
+	}
+	if stripeMeteredPriceID.Valid {
+		tier.StripeMeteredPriceID = &stripeMeteredPriceID.String
 	}
 	if tierType.Valid {
 		tier.TierType = tierType.String

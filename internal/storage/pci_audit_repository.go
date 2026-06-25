@@ -1,13 +1,13 @@
 package storage
 
 import (
-	"github.com/functionfly/functionfly/internal/types"
 	"context"
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/functionfly/functionfly/internal/types"
 	"time"
 
 	"github.com/google/uuid"
@@ -309,6 +309,8 @@ type PaymentFlowEventParams struct {
 	TenantID      *uuid.UUID
 	CardLastFour  *string
 	CardBrand     *string
+	CardExpMonth  *int
+	CardExpYear   *int
 	TokenID       *string
 	TransactionID string
 	StripeEventID *string
