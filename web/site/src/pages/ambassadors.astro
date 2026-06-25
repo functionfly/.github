@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AmbassadorsPage from '../components/AmbassadorsPage';
+import { SITE_ORIGIN } from '../config';
+import '../styles/rankings-chamber.css';
+import '../styles/ambassadors.css';
+
+const rankingSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'FunctionFly City Ambassadors',
+  description:
+    "Top builder in every FunctionFly city. Top contributors get the ambassador badge, beta access, and a path to local events.",
+  url: `${SITE_ORIGIN}/ambassadors`,
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+  },
+};
+
+const title =
+  'City Ambassadors — Top Builders in Every AI Hub | FunctionFly';
+const description =
+  "Top contributor per city. Same scoring as the public leaderboard, k≥5 privacy threshold. Promoted every hour from real FunctionFly activity.";
+---
+
+<Layout
+  title={title}
+  description={description}
+  schema={rankingSchema}
+  ogImage="/og-ambassadors.svg"
+>
+  <AmbassadorsPage client:load />
+</Layout>

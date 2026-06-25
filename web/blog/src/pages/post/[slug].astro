@@ -1,0 +1,27 @@
+---
+import PostLayout from '../../layouts/PostLayout.astro';
+import RelatedPosts from '../../components/RelatedPosts.astro';
+import { getPostBySlug, getRelatedPosts, getAllPosts } from '../../lib/api';
+
+// Enable server-side rendering for this page
+export const prerender = false;
+
+const { slug } = Astro.params;
+
+if (!slug) {
+  return Astro.redirect('/');
+}
+
+const post = await getPostBySlug(slug);
+
+if (!post) {
+  return Astro.redirect('/');
+}
+
+// Get related posts
+const relatedPosts = await getRelatedPosts(post.id, post.category?.slug, 3);
+---
+
+<PostLayout post={post}>
+  <RelatedPosts slot="related-posts" posts={relatedPosts} />
+</PostLayout>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FF6B35"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect x="80" y="220" width="72" height="72" rx="14" fill="#0F172A"/>
+  <path d="M116 237L157 278L116 319L75 278L116 237Z" fill="#6366F1"/>
+  <path d="M116 254.5L135.5 274L116 293.5L96.5 274L116 254.5Z" fill="white"/>
+  <path d="M116 264L125.5 274L116 284L106.5 274L116 264Z" fill="#6366F1"/>
+  <text x="180" y="275" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="56" font-weight="700">FunctionFly</text>
+  <text x="80" y="360" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="28">Ship Functions. Agents Trust Them.</text>
+  <rect x="80" y="400" width="300" height="60" rx="12" fill="#1e293b" stroke="#6366F1" stroke-width="2"/>
+  <text x="230" y="440" fill="#a5b4fc" font-family="system-ui,sans-serif" font-size="22" font-weight="600" text-anchor="middle">Verified Functions</text>
+  <rect x="400" y="400" width="300" height="60" rx="12" fill="#1e293b" stroke="#FF6B35" stroke-width="2"/>
+  <text x="550" y="440" fill="#fb923c" font-family="system-ui,sans-serif" font-size="22" font-weight="600" text-anchor="middle">Trust Scores</text>
+  <rect x="720" y="400" width="300" height="60" rx="12" fill="#1e293b" stroke="#00D4FF" stroke-width="2"/>
+  <text x="870" y="440" fill="#67e8f9" font-family="system-ui,sans-serif" font-size="22" font-weight="600" text-anchor="middle">Zero-Knowledge Vault</text>
+  <text x="80" y="530" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="36" font-weight="700">The Trust Layer for AI Agents</text>
+  <circle cx="1100" cy="150" r="80" fill="url(#accent)" opacity="0.15"/>
+  <circle cx="1100" cy="150" r="50" fill="url(#accent)" opacity="0.2"/>
+</svg>

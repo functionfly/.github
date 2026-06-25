@@ -1,0 +1,791 @@
+/**
+ * Sealed Containment Sidebar Theme
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Sidebar Container
+   ═══════════════════════════════════════════════ */
+
+.sc-sidebar {
+  --sc-sidebar-font-display: var(--font-display);
+  --sc-sidebar-font-mono: var(--font-mono);
+}
+
+/* ═══════════════════════════════════════════════
+   Main Sidebar
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar {
+  background: var(--chamber-bg);
+  border-right: 1px solid var(--chamber-edge);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.aviation-sidebar-collapsed {
+  /* No additional styling needed */
+}
+
+/* ═══════════════════════════════════════════════
+   Collapse Button
+   ═══════════════════════════════════════════════ */
+
+.aviation-collapse-btn {
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--chamber-shadow);
+}
+
+.aviation-collapse-btn:hover {
+  background: var(--steel);
+  border-color: var(--steel-light);
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Navigation Items
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  transition: all 0.15s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.aviation-sidebar-item:hover {
+  background: rgba(143, 255, 208, 0.05);
+  color: var(--text-primary);
+}
+
+.aviation-sidebar-item-active {
+  background: rgba(143, 255, 208, 0.08);
+  color: var(--status-ok);
+}
+
+.aviation-sidebar-item-active:hover {
+  background: rgba(143, 255, 208, 0.12);
+}
+
+.aviation-sidebar-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-faint);
+  transition: color 0.15s ease;
+  flex-shrink: 0;
+}
+
+.aviation-sidebar-item:hover .aviation-sidebar-icon,
+.aviation-sidebar-item-active .aviation-sidebar-icon {
+  color: var(--status-ok);
+}
+
+.aviation-sidebar-item-label {
+  color: inherit;
+}
+
+.aviation-sidebar-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0.125rem 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--steel);
+  border-radius: calc(var(--radius) / 2);
+  border: 1px solid var(--chamber-edge);
+}
+
+/* ═══════════════════════════════════════════════
+   Sidebar Sections
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-section {
+  color: var(--status-ok);
+}
+
+.aviation-sidebar-section-title {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.aviation-sidebar-section-active {
+  color: var(--status-ok);
+}
+
+.aviation-sidebar-section-collapsed {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+}
+
+.aviation-sidebar-section-collapsed:hover {
+  background: var(--steel);
+  border-color: var(--steel-light);
+}
+
+.aviation-sidebar-toggle {
+  color: var(--text-faint);
+  transition: color 0.15s ease;
+}
+
+.aviation-sidebar-toggle:hover {
+  color: var(--text-primary);
+}
+
+.aviation-sidebar-toggle-icon {
+  color: inherit;
+}
+
+/* ═══════════════════════════════════════════════
+   Sidebar Dividers
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-divider {
+  height: 1px;
+  background: var(--chamber-edge);
+  margin: 0.5rem 0;
+}
+
+.aviation-sidebar-divider.mt-auto {
+  margin-top: auto;
+}
+
+/* ═══════════════════════════════════════════════
+   Favorites & Recent
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-favorites,
+.aviation-sidebar-recent {
+  /* Container styling */
+}
+
+.aviation-sidebar-favorites-title,
+.aviation-sidebar-recent-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  padding: 0 0.5rem;
+  margin-bottom: 0.375rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Status Badge
+   ═══════════════════════════════════════════════ */
+
+.aviation-status-badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 700;
+  border-radius: 9px;
+  background: var(--steel);
+  color: var(--text-dim);
+  border: 1px solid var(--chamber-edge);
+}
+
+.aviation-status-badge-count[data-type="warning"] {
+  background: rgba(255, 122, 61, 0.15);
+  color: var(--accent);
+  border-color: rgba(255, 122, 61, 0.3);
+}
+
+.aviation-status-badge-count[data-type="success"] {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+  border-color: rgba(143, 255, 208, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   Sidebar Badges
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: calc(var(--radius) / 2);
+}
+
+.aviation-sidebar-badge-new {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+}
+
+.aviation-sidebar-badge-beta {
+  background: rgba(159, 216, 255, 0.1);
+  color: var(--foil-a);
+  border: 1px solid rgba(159, 216, 255, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   Favorite Button
+   ═══════════════════════════════════════════════ */
+
+.aviation-favorite-btn {
+  color: var(--text-faint);
+  transition: color 0.15s ease;
+  opacity: 0;
+}
+
+.aviation-sidebar-item:hover .aviation-favorite-btn {
+  opacity: 1;
+}
+
+.aviation-favorite-btn:hover {
+  color: var(--accent);
+}
+
+.aviation-favorite-btn.is-favorite {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════
+   Profile Section
+   ═══════════════════════════════════════════════ */
+
+.aviation-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem;
+  border-radius: var(--radius);
+  transition: background-color 0.15s ease;
+}
+
+.aviation-profile:hover {
+  background: rgba(143, 255, 208, 0.05);
+}
+
+.aviation-profile-avatar {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.aviation-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--chamber-edge);
+  object-fit: cover;
+}
+
+.aviation-profile-initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--steel);
+  border: 2px solid var(--chamber-edge);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.aviation-profile-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--status-ok);
+  border: 2px solid var(--chamber-bg);
+  box-shadow: 0 0 6px var(--status-ok);
+}
+
+.aviation-profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.aviation-profile-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aviation-profile-plan {
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ═══════════════════════════════════════════════
+   Sign Out Button
+   ═══════════════════════════════════════════════ */
+
+.aviation-signout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius);
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aviation-signout:hover {
+  background: rgba(255, 122, 61, 0.08);
+  color: var(--status-revoked);
+}
+
+.aviation-signout-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.aviation-signout-text {
+  color: inherit;
+}
+
+/* ═══════════════════════════════════════════════
+   Environment Switcher
+   ═══════════════════════════════════════════════ */
+
+.aviation-environment-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--steel);
+  border-radius: var(--radius);
+  border: 1px solid var(--chamber-edge);
+}
+
+.aviation-environment-tab {
+  padding: 0.375rem 0.625rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius) / 2);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aviation-environment-tab:hover {
+  color: var(--text-primary);
+  background: var(--chamber-bg);
+}
+
+.aviation-environment-tab.active {
+  color: var(--bg);
+  background: var(--status-ok);
+  box-shadow: 0 0 8px rgba(143, 255, 208, 0.4);
+}
+
+/* ═══════════════════════════════════════════════
+   Onboarding Progress
+   ═══════════════════════════════════════════════ */
+
+.aviation-onboarding-progress {
+  margin: 0.5rem 0.75rem;
+  padding: 0.75rem;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow);
+}
+
+.aviation-onboarding-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--status-ok);
+}
+
+.aviation-onboarding-progress-bar {
+  height: 4px;
+  background: var(--chamber-edge);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.aviation-onboarding-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--status-ok), var(--seal-a));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(143, 255, 208, 0.4);
+}
+
+/* ═══════════════════════════════════════════════
+   Workspace Switcher
+   ═══════════════════════════════════════════════ */
+
+.aviation-workspace-switcher {
+  padding: 0 0.75rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Keyboard Shortcut Hint
+   ═══════════════════════════════════════════════ */
+
+.aviation-shortcut-hint {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow), 0 0 20px rgba(143, 255, 208, 0.1);
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 100;
+}
+
+.aviation-shortcut-hint.visible {
+  opacity: 1;
+}
+
+.aviation-shortcut-hint kbd {
+  padding: 0.125rem 0.375rem;
+  background: var(--steel);
+  border: 1px solid var(--chamber-edge);
+  border-radius: calc(var(--radius) / 2);
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Scrollbar Styling
+   ═══════════════════════════════════════════════ */
+
+.aviation-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.aviation-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aviation-scroll::-webkit-scrollbar-thumb {
+  background: var(--steel);
+  border-radius: 3px;
+}
+
+.aviation-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--steel-light);
+}
+
+/* ═══════════════════════════════════════════════
+   Mobile Sidebar Sheet
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-mobile-sheet {
+  background: var(--chamber-bg);
+  border-right: 1px solid var(--chamber-edge);
+  box-shadow: var(--chamber-shadow), 0 0 40px rgba(0, 0, 0, 0.5);
+}
+
+.aviation-sidebar-mobile-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--steel);
+  border-radius: 2px;
+  margin: 0.5rem auto;
+}
+
+/* ═══════════════════════════════════════════════
+   Section Drag & Drop
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-section-dragging {
+  opacity: 0.5;
+}
+
+.aviation-sidebar-section-drag-over {
+  background: rgba(143, 255, 208, 0.05);
+  border: 1px dashed var(--status-ok);
+  border-radius: var(--radius);
+}
+
+.aviation-sidebar-drag-handle {
+  color: var(--text-faint);
+  cursor: grab;
+  transition: color 0.15s ease;
+}
+
+.aviation-sidebar-drag-handle:hover {
+  color: var(--status-ok);
+}
+
+/* ═══════════════════════════════════════════════
+   Light Mode Overrides
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar {
+  background: var(--chamber-bg);
+  border-right: 1px solid var(--chamber-edge);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme='light'] .aviation-collapse-btn {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+[data-theme='light'] .aviation-collapse-btn:hover {
+  background: #f8fafc;
+  border-color: #059669;
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-sidebar-item {
+  color: #000000;
+}
+
+[data-theme='light'] .aviation-sidebar-item:hover {
+  background: rgba(5, 150, 105, 0.05);
+  color: #0f172a;
+}
+
+[data-theme='light'] .aviation-sidebar-item-active {
+  background: rgba(5, 150, 105, 0.08);
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-sidebar-icon {
+  color: #64748b;
+}
+
+[data-theme='light'] .aviation-sidebar-item:hover .aviation-sidebar-icon,
+[data-theme='light'] .aviation-sidebar-item-active .aviation-sidebar-icon {
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-sidebar-kbd {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+[data-theme='light'] .aviation-sidebar-section-title {
+  color: #000000;
+}
+
+[data-theme='light'] .aviation-status-badge-count {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+[data-theme='light'] .aviation-status-badge-count[data-type="warning"] {
+  background: rgba(232, 90, 42, 0.1);
+  color: #e85a2a;
+  border-color: rgba(232, 90, 42, 0.3);
+}
+
+[data-theme='light'] .aviation-status-badge-count[data-type="success"] {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+[data-theme='light'] .aviation-sidebar-badge-new {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+[data-theme='light'] .aviation-sidebar-badge-beta {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.3);
+}
+
+[data-theme='light'] .aviation-favorite-btn:hover {
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-favorite-btn.is-favorite {
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-profile:hover {
+  background: rgba(5, 150, 105, 0.05);
+}
+
+[data-theme='light'] .aviation-profile-initials {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme='light'] .aviation-profile-status {
+  border-color: #ffffff;
+}
+
+[data-theme='light'] .aviation-signout {
+  color: #000000;
+}
+
+[data-theme='light'] .aviation-signout:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+[data-theme='light'] .aviation-environment-tabs {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .aviation-environment-tab {
+  color: #64748b;
+}
+
+[data-theme='light'] .aviation-environment-tab:hover {
+  color: #0f172a;
+  background: #ffffff;
+}
+
+[data-theme='light'] .aviation-environment-tab.active {
+  color: #ffffff;
+  background: #059669;
+  box-shadow: 0 0 8px rgba(5, 150, 105, 0.4);
+}
+
+[data-theme='light'] .aviation-onboarding-progress {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .aviation-onboarding-progress-header {
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-onboarding-progress-bar {
+  background: #e2e8f0;
+}
+
+[data-theme='light'] .aviation-onboarding-progress-fill {
+  background: linear-gradient(90deg, #059669, #2563eb);
+}
+
+[data-theme='light'] .aviation-sidebar-divider {
+  background: #e2e8f0;
+}
+
+[data-theme='light'] .aviation-sidebar-divider.mt-auto {
+  margin-top: auto;
+}
+
+[data-theme='light'] .aviation-shortcut-hint {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0, 0 4px 12px rgba(0, 0, 0, 0.1);
+  color: #475569;
+}
+
+[data-theme='light'] .aviation-shortcut-hint kbd {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme='light'] .aviation-scroll::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+}
+
+[data-theme='light'] .aviation-scroll::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+[data-theme='light'] .aviation-sidebar-mobile-sheet {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .aviation-sidebar-mobile-handle {
+  background: #e2e8f0;
+}
+
+[data-theme='light'] .aviation-sidebar-drag-handle:hover {
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-sidebar-section-drag-over {
+  background: rgba(5, 150, 105, 0.05);
+  border-color: #059669;
+}

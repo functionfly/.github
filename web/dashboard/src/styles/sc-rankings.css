@@ -1,0 +1,684 @@
+/**
+ * Sealed Containment Rankings Page Theme
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ * Follows the same visual system as sc-analytics.css
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Rankings Page Container
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-page {
+  min-height: 100vh;
+  padding: 1.5rem;
+  max-width: 85rem;
+  margin: 0 auto;
+}
+
+.sc-rankings-header {
+  position: relative;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.sc-rankings-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 8rem;
+  height: 1px;
+  background: linear-gradient(90deg, var(--status-ok), transparent);
+}
+
+.sc-rankings-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sc-rankings-subtitle {
+  font-size: 0.9375rem;
+  color: var(--text-dim);
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Filter Bar
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+}
+
+.sc-rankings-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sc-rankings-filter-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sc-rankings-filter-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 150ms ease;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.sc-rankings-filter-btn:hover:not(.sc-rankings-filter-btn-active) {
+  color: var(--text-primary);
+  background: rgba(143, 255, 208, 0.05);
+}
+
+.sc-rankings-filter-btn-active {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+  border-color: rgba(143, 255, 208, 0.3);
+  box-shadow: 0 0 10px rgba(143, 255, 208, 0.15);
+}
+
+.sc-rankings-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  border: 1px solid var(--chamber-edge);
+  background: transparent;
+  color: var(--text-dim);
+  transition: all 150ms ease;
+}
+
+.sc-rankings-refresh-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--steel-light);
+}
+
+.sc-rankings-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.sc-rankings-refresh-btn-spinning svg {
+  animation: sc-rankings-spin 1s linear infinite;
+}
+
+@keyframes sc-rankings-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════
+   Error Banner
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--accent);
+}
+
+.sc-rankings-error-banner svg {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Main Grid Layout
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .sc-rankings-main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Chamber Card (Leaderboard)
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-chamber {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+  transition: all 250ms ease;
+  box-shadow: var(--chamber-shadow);
+}
+
+.sc-rankings-chamber::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--status-ok) 20%,
+    var(--foil-a) 80%,
+    transparent 100%
+  );
+}
+
+.sc-rankings-chamber:hover {
+  border-color: var(--steel-light);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+/* ═══════════════════════════════════════════════
+   Chamber Header
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-chamber-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.sc-rankings-chamber-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sc-rankings-chamber-title svg {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--status-ok);
+}
+
+/* ═══════════════════════════════════════════════
+   Rankings Table
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sc-rankings-table th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--chamber-edge);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sc-rankings-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid rgba(28, 36, 43, 0.5);
+  vertical-align: middle;
+  transition: background 150ms ease;
+}
+
+.sc-rankings-table tr:last-child td {
+  border-bottom: none;
+}
+
+.sc-rankings-table tr:hover td {
+  background: rgba(143, 255, 208, 0.03);
+}
+
+.sc-rankings-rank {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.sc-rankings-rank-number {
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 2rem;
+}
+
+.sc-rankings-rank-delta {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.sc-rankings-rank-delta-up {
+  color: var(--status-ok);
+}
+
+.sc-rankings-rank-delta-down {
+  color: var(--accent);
+}
+
+.sc-rankings-metro-link {
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.sc-rankings-metro-link:hover {
+  color: var(--status-ok);
+  text-decoration: underline;
+}
+
+.sc-rankings-metro-country {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+  margin-left: 0.5rem;
+}
+
+.sc-rankings-score {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--status-ok);
+  text-align: right;
+}
+
+.sc-rankings-score-secondary {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════
+   Sidebar Cards
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sc-rankings-sidebar-card {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 250ms ease;
+  box-shadow: var(--chamber-shadow);
+}
+
+.sc-rankings-sidebar-card:hover {
+  border-color: var(--steel-light);
+}
+
+.sc-rankings-sidebar-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--steel) 30%,
+    var(--steel) 70%,
+    transparent 100%
+  );
+}
+
+.sc-rankings-sidebar-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sc-rankings-sidebar-title svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.sc-rankings-sidebar-title-up {
+  color: var(--status-ok);
+}
+
+.sc-rankings-sidebar-title-down {
+  color: var(--accent);
+}
+
+.sc-rankings-movers-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sc-rankings-movers-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--chamber-edge);
+  transition: background 150ms ease;
+}
+
+.sc-rankings-movers-item:last-child {
+  border-bottom: none;
+}
+
+.sc-rankings-movers-item:hover {
+  background: rgba(143, 255, 208, 0.03);
+  margin: 0 -0.5rem;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.sc-rankings-movers-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.sc-rankings-movers-link:hover {
+  color: var(--status-ok);
+}
+
+.sc-rankings-movers-delta {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.sc-rankings-movers-delta-up {
+  color: var(--status-ok);
+}
+
+.sc-rankings-movers-delta-down {
+  color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════
+   How It Works Card
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-howitworks {
+  background: var(--chamber-bg);
+  border: 1px solid rgba(143, 255, 208, 0.2);
+  border-radius: var(--radius);
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.sc-rankings-howitworks::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--status-ok) 50%,
+    transparent 100%
+  );
+}
+
+.sc-rankings-howitworks-title {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--status-ok);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sc-rankings-howitworks-title svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.sc-rankings-howitworks-text {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.sc-rankings-howitworks-text p {
+  margin-bottom: 0.5rem;
+}
+
+.sc-rankings-howitworks-text p:last-child {
+  margin-bottom: 0;
+}
+
+.sc-rankings-howitworks-link {
+  color: var(--status-ok);
+  text-decoration: none;
+  transition: opacity 150ms ease;
+}
+
+.sc-rankings-howitworks-link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+/* ═══════════════════════════════════════════════
+   Empty State
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.sc-rankings-empty-icon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(143, 255, 208, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.sc-rankings-empty-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--status-ok);
+}
+
+.sc-rankings-empty-text {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  max-width: 20rem;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Loading Skeleton
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-skeleton {
+  padding: 1rem;
+}
+
+.sc-rankings-skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.sc-rankings-skeleton-row:last-child {
+  border-bottom: none;
+}
+
+.sc-rankings-skeleton-cell {
+  height: 1rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--chamber-edge) 0%,
+    rgba(74, 86, 95, 0.3) 50%,
+    var(--chamber-edge) 100%
+  );
+  background-size: 200% 100%;
+  animation: sc-rankings-shimmer 1.5s ease-in-out infinite;
+}
+
+.sc-rankings-skeleton-rank {
+  width: 2rem;
+}
+
+.sc-rankings-skeleton-metro {
+  flex: 1;
+}
+
+.sc-rankings-skeleton-score {
+  width: 5rem;
+}
+
+@keyframes sc-rankings-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* ═══════════════════════════════════════════════
+   Animation
+   ═══════════════════════════════════════════════ */
+
+.sc-rankings-fade-in {
+  animation: sc-rankings-fade-in 0.3s ease-out forwards;
+}
+
+@keyframes sc-rankings-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Light Mode Overrides
+   ═══════════════════════════════════════════════ */
+
+[data-theme='light'] .sc-rankings-title {
+  color: #0f172a;
+}
+
+[data-theme='light'] .sc-rankings-subtitle {
+  color: #475569;
+}
+
+[data-theme='light'] .sc-rankings-chamber,
+[data-theme='light'] .sc-rankings-sidebar-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .sc-rankings-chamber:hover,
+[data-theme='light'] .sc-rankings-sidebar-card:hover {
+  border-color: #059669;
+  box-shadow: 0 0 0 1px #059669;
+}
+
+[data-theme='light'] .sc-rankings-table th {
+  background: #f8fafc;
+}
+
+[data-theme='light'] .sc-rankings-table td {
+  border-bottom-color: #e2e8f0;
+}
+
+[data-theme='light'] .sc-rankings-table tr:hover td {
+  background: rgba(5, 150, 105, 0.05);
+}

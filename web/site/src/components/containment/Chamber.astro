@@ -1,0 +1,45 @@
+---
+interface Props {
+  variant?: 'default' | 'ribs';
+  class?: string;
+}
+
+const { variant = 'default', class: className } = Astro.props;
+---
+
+<div class:list={['chamber', { 'chamber--ribs': variant === 'ribs' }, className]}>
+  <slot />
+</div>
+
+<style>
+  .chamber {
+    position: relative;
+    background:
+      radial-gradient(ellipse 100% 80% at 50% 0%, rgba(110, 190, 170, 0.03) 0%, transparent 60%),
+      var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-chamber);
+    padding: var(--space-7);
+  }
+
+  .chamber--ribs {
+    background:
+      radial-gradient(ellipse 100% 80% at 50% 0%, rgba(110, 190, 170, 0.05) 0%, transparent 60%),
+      repeating-linear-gradient(
+        180deg,
+        transparent 0px,
+        transparent 8px,
+        rgba(110, 190, 170, 0.015) 8px,
+        rgba(110, 190, 170, 0.015) 9px
+      ),
+      var(--panel);
+    border-color: rgba(110, 190, 170, 0.15);
+  }
+
+  @media (max-width: 640px) {
+    .chamber {
+      padding: var(--space-5);
+    }
+  }
+</style>

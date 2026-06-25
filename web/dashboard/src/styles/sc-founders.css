@@ -1,0 +1,679 @@
+/**
+ * Sealed Containment — Founders Page
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ */
+
+@import "./sc-tokens.css";
+
+/* ============================================================================
+   Chamber / Containment Panel
+   ============================================================================ */
+
+.founders-chamber {
+  position: relative;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow);
+  overflow: hidden;
+}
+
+.founders-chamber::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--chamber-glass) 20%,
+    var(--chamber-glass) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.founders-chamber--large {
+  padding: 1.5rem;
+}
+
+.founders-chamber--medium {
+  padding: 1rem;
+}
+
+.founders-chamber--small {
+  padding: 0.75rem;
+}
+
+/* Ribs texture for large chambers */
+.founders-chamber--ribbed {
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.01) 2px,
+    rgba(255, 255, 255, 0.01) 4px
+  );
+}
+
+/* ============================================================================
+   Corner Braces
+   ============================================================================ */
+
+.corner-brace {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+}
+
+.corner-brace--tl {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--steel-light);
+  border-left: 2px solid var(--steel-light);
+}
+
+.corner-brace--tr {
+  top: -1px;
+  right: -1px;
+  border-top: 2px solid var(--steel-light);
+  border-right: 2px solid var(--steel-light);
+}
+
+.corner-brace--bl {
+  bottom: -1px;
+  left: -1px;
+  border-bottom: 2px solid var(--steel-light);
+  border-left: 2px solid var(--steel-light);
+}
+
+.corner-brace--br {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--steel-light);
+  border-right: 2px solid var(--steel-light);
+}
+
+/* ============================================================================
+   Trust Seal (Security Foil)
+   ============================================================================ */
+
+.trust-seal {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    var(--seal-a),
+    var(--seal-b),
+    var(--seal-c),
+    var(--seal-a)
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--foil-shadow);
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.trust-seal:hover {
+  transform: scale(1.05);
+}
+
+.trust-seal__inner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--chamber-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-seal__icon {
+  color: var(--status-ok);
+}
+
+.trust-seal--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.trust-seal--sm .trust-seal__inner {
+  width: 24px;
+  height: 24px;
+}
+
+.trust-seal--lg {
+  width: 64px;
+  height: 64px;
+}
+
+.trust-seal--lg .trust-seal__inner {
+  width: 48px;
+  height: 48px;
+}
+
+/* ============================================================================
+   Status Pill
+   ============================================================================ */
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid;
+}
+
+.status-pill--live {
+  background: rgba(143, 255, 208, 0.08);
+  border-color: rgba(143, 255, 208, 0.3);
+  color: var(--status-ok);
+}
+
+.status-pill--pending {
+  background: rgba(74, 83, 88, 0.15);
+  border-color: rgba(74, 83, 88, 0.3);
+  color: var(--text-dim);
+}
+
+.status-pill--revoked {
+  background: rgba(255, 122, 61, 0.08);
+  border-color: rgba(255, 122, 61, 0.3);
+  color: var(--accent);
+}
+
+.status-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-pill__dot--pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============================================================================
+   Gauge Strip (Horizontal Metrics Row)
+   ============================================================================ */
+
+.gauge-strip {
+  display: flex;
+  align-items: stretch;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.gauge-strip__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 1rem;
+  position: relative;
+}
+
+.gauge-strip__item:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 25%;
+  height: 50%;
+  width: 1px;
+  background: var(--chamber-edge);
+}
+
+.gauge-strip__value {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.gauge-strip__value--accent {
+  color: var(--status-ok);
+}
+
+.gauge-strip__value--warning {
+  color: var(--accent);
+}
+
+.gauge-strip__label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.gauge-strip__tick {
+  width: 3px;
+  height: 8px;
+  background: var(--status-ok);
+  border-radius: 1px;
+  margin-bottom: 0.25rem;
+}
+
+/* ============================================================================
+   Annotation Tag
+   ============================================================================ */
+
+.annotation-tag {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: 0.125rem 0.375rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 2px;
+  border: 1px solid var(--chamber-edge);
+}
+
+/* ============================================================================
+   Benefit Card (Chamber variant)
+   ============================================================================ */
+
+.benefit-card {
+  position: relative;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  box-shadow: var(--chamber-shadow);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.benefit-card:hover {
+  border-color: var(--steel);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+.benefit-card__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(143, 255, 208, 0.05);
+  border: 1px solid rgba(143, 255, 208, 0.15);
+  border-radius: var(--radius);
+  margin-bottom: 0.875rem;
+  color: var(--status-ok);
+}
+
+.benefit-card__title {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.375rem;
+}
+
+.benefit-card__description {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* ============================================================================
+   Referral Link Display
+   ============================================================================ */
+
+.referral-link-display {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.referral-link-display__code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--chamber-edge);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================================
+   Data Table
+   ============================================================================ */
+
+.founders-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.founders-table th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--chamber-edge);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.founders-table td {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.founders-table tr:last-child td {
+  border-bottom: none;
+}
+
+.founders-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* ============================================================================
+   Vote Card
+   ============================================================================ */
+
+.vote-card {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--chamber-shadow);
+}
+
+.vote-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.vote-card__title {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.vote-card__description {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.vote-card__voted {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  color: var(--status-ok);
+  margin-top: 0.75rem;
+}
+
+/* ============================================================================
+   Feature Card (Early Access)
+   ============================================================================ */
+
+.feature-card {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: var(--chamber-shadow);
+}
+
+.feature-card__info {
+  flex: 1;
+}
+
+.feature-card__name {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.feature-card__description {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.feature-card__status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ============================================================================
+   Empty States
+   ============================================================================ */
+
+.founders-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.founders-empty__title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.founders-empty__description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  max-width: 320px;
+  line-height: 1.6;
+}
+
+/* ============================================================================
+   Founders Page Layout
+   ============================================================================ */
+
+.founders-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.founders-page__header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.founders-page__title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.founders-page__subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+.founders-page__section {
+  margin-bottom: 2rem;
+}
+
+.founders-page__section-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.founders-page__section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--chamber-edge);
+}
+
+.founders-page__grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.founders-page__grid--2col {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.founders-page__footer {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-top: 2rem;
+  border-top: 1px solid var(--chamber-edge);
+}
+
+/* ============================================================================
+   Loading State
+   ============================================================================ */
+
+.founders-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+}
+
+.founders-loading__spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--chamber-edge);
+  border-top-color: var(--status-ok);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   Error State
+   ============================================================================ */
+
+.founders-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  text-align: center;
+}
+
+.founders-error__icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 122, 61, 0.1);
+  border: 1px solid rgba(255, 122, 61, 0.3);
+  border-radius: var(--radius);
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.founders-error__message {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ============================================================================
+   Responsive
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .founders-page {
+    padding: 1rem;
+  }
+
+  .founders-page__grid--2col {
+    grid-template-columns: 1fr;
+  }
+
+  .gauge-strip {
+    flex-wrap: wrap;
+  }
+
+  .gauge-strip__item {
+    flex: 1 1 50%;
+    min-width: 120px;
+  }
+
+  .gauge-strip__item:nth-child(2)::after {
+    display: none;
+  }
+}

@@ -1,0 +1,341 @@
+/**
+ * Sealed Containment — Apps Page
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ */
+
+@import './sc-tokens.css';
+
+/* Ensure SC tokens are applied */
+.apps-page {
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* Remove global brand underline from dashboard page headings */
+.apps-page h1::after,
+.apps-page h2::after {
+  display: none;
+}
+
+/* AppsPage-specific Chamber styles */
+.apps-page .founders-chamber {
+  background: var(--panel);
+  background-image: radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-chamber);
+  padding: var(--space-6);
+  position: relative;
+}
+
+.apps-page .founders-chamber--small {
+  padding: var(--space-4);
+}
+
+.apps-page .founders-chamber--medium {
+  padding: var(--space-5);
+}
+
+.apps-page .founders-chamber--large {
+  padding: var(--space-7);
+}
+
+.apps-page .founders-chamber--ribbed {
+  background-image:
+    radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0px,
+      transparent 119px,
+      rgba(255, 255, 255, 0.025) 120px
+    );
+}
+
+/* Corner Braces */
+.apps-page .corner-brace {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+}
+
+.apps-page .corner-brace--tl {
+  top: var(--space-3);
+  left: var(--space-3);
+  border-top: 2px solid var(--steel-light);
+  border-left: 2px solid var(--steel-light);
+}
+
+.apps-page .corner-brace--tr {
+  top: var(--space-3);
+  right: var(--space-3);
+  border-top: 2px solid var(--steel-light);
+  border-right: 2px solid var(--steel-light);
+}
+
+.apps-page .corner-brace--bl {
+  bottom: var(--space-3);
+  left: var(--space-3);
+  border-bottom: 2px solid var(--steel-light);
+  border-left: 2px solid var(--steel-light);
+}
+
+.apps-page .corner-brace--br {
+  bottom: var(--space-3);
+  right: var(--space-3);
+  border-bottom: 2px solid var(--steel-light);
+  border-right: 2px solid var(--steel-light);
+}
+
+/* Annotation Tag */
+.apps-page .annotation-tag {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.7;
+  text-align: right;
+  top: var(--space-7);
+  right: var(--space-7);
+  color: var(--text-faint);
+}
+
+.apps-page .annotation-tag span {
+  display: block;
+}
+
+/* Trust Seal */
+.apps-page .trust-seal {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.apps-page .trust-seal--sm {
+  width: 22px;
+  height: 22px;
+}
+
+.apps-page .trust-seal--md {
+  width: 32px;
+  height: 32px;
+}
+
+.apps-page .trust-seal--lg {
+  width: 48px;
+  height: 48px;
+}
+
+.apps-page .trust-seal__inner {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme='light'] .apps-page .trust-seal__inner {
+  background: var(--panel-raised);
+}
+
+.apps-page .trust-seal__icon {
+  color: var(--status-ok);
+}
+
+/* GaugeStrip */
+.apps-page .gauge-strip {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.apps-page .gauge-strip__item {
+  padding: var(--space-2) var(--space-3);
+  border-right: 1px solid var(--panel-edge);
+  background: var(--panel);
+}
+
+.apps-page .gauge-strip__item:last-child {
+  border-right: none;
+}
+
+.apps-page .gauge-strip__value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.apps-page .gauge-strip__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+}
+
+/* Sealed Button */
+.apps-page .sealed-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(180deg, #ffffff, #d8dee2);
+  color: var(--text-on-light);
+  box-shadow: var(--shadow-btn-primary-rest);
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.apps-page .sealed-button-primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover);
+}
+
+.apps-page .sealed-button-primary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+.apps-page .sealed-button-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.apps-page .sealed-btn-md {
+  height: 2rem;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+}
+
+.apps-page .sealed-btn-label {
+  line-height: 1;
+}
+
+/* Frame Button */
+.apps-page .frame-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-radius: var(--radius);
+  border: 1px solid var(--steel);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: var(--shadow-btn-secondary-rest);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.apps-page .frame-button-secondary:hover:not(:disabled) {
+  border-color: var(--steel-light);
+}
+
+.apps-page .frame-button-secondary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-secondary-active);
+}
+
+.apps-page .frame-button-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.apps-page .frame-btn-sm {
+  height: 1.75rem;
+  padding: 0 var(--space-2);
+  font-size: 12px;
+}
+
+.apps-page .frame-btn-md {
+  height: 2rem;
+  padding: 0 var(--space-3);
+  font-size: 13px;
+}
+
+/* Status Pill */
+.apps-page .status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px var(--space-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.apps-page .status-pill--success {
+  color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.06);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+}
+
+.apps-page .status-pill--warning {
+  color: var(--status-pending);
+  background: rgba(232, 196, 104, 0.06);
+  border: 1px solid rgba(232, 196, 104, 0.3);
+}
+
+.apps-page .status-pill--error {
+  color: var(--status-revoked);
+  background: rgba(255, 107, 107, 0.06);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.apps-page .status-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: var(--space-1);
+}
+
+.apps-page .status-pill--success .status-pill__dot {
+  background: var(--status-ok);
+  box-shadow: 0 0 6px rgba(143, 255, 208, 0.6);
+}
+
+/* Empty State */
+.apps-page .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-9) var(--space-6);
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .apps-page .founders-chamber--large {
+    padding: var(--space-5);
+  }
+
+  .apps-page .annotation-tag {
+    display: none;
+  }
+}

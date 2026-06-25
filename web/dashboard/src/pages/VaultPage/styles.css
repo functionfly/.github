@@ -1,0 +1,612 @@
+/* ==========================================================================
+   Vault Page — Sealed Containment overrides
+   Re-themes the aviation-styled SecretList (and related surfaces) to match
+   the sealed-containment design system used by the rest of /vault.
+   ========================================================================== */
+
+@import '@/styles/sc-tokens.css';
+@import '@/pages/SecretsPage/styles.css';
+
+/* --------------------------------------------------------------------------
+   Re-map SecretList variables inside the vault chamber
+   -------------------------------------------------------------------------- */
+
+.vault-page {
+  /* Override aviation secrets variables with sealed-containment equivalents */
+  --secrets-primary: var(--accent);
+  --secrets-primary-hover: var(--accent-hover);
+  --secrets-primary-light: rgba(255, 122, 61, 0.1);
+  --secrets-primary-border: rgba(255, 122, 61, 0.2);
+  --secrets-cyan: var(--foil-a);
+
+  --secret-type-api-bg: rgba(143, 255, 208, 0.1);
+  --secret-type-api-text: var(--status-ok);
+  --secret-type-api-border: rgba(143, 255, 208, 0.25);
+
+  --secret-type-oauth-bg: rgba(159, 216, 255, 0.1);
+  --secret-type-oauth-text: var(--foil-a);
+  --secret-type-oauth-border: rgba(159, 216, 255, 0.25);
+
+  --secret-type-password-bg: rgba(232, 196, 104, 0.1);
+  --secret-type-password-text: var(--status-pending);
+  --secret-type-password-border: rgba(232, 196, 104, 0.25);
+
+  --secret-type-cert-bg: rgba(217, 196, 255, 0.1);
+  --secret-type-cert-text: var(--foil-b);
+  --secret-type-cert-border: rgba(217, 196, 255, 0.25);
+
+  --status-active-bg: rgba(143, 255, 208, 0.1);
+  --status-active-text: var(--status-ok);
+  --status-active-border: rgba(143, 255, 208, 0.25);
+
+  --status-rotated-bg: rgba(159, 216, 255, 0.1);
+  --status-rotated-text: var(--foil-a);
+  --status-rotated-border: rgba(159, 216, 255, 0.25);
+
+  --status-stale-bg: rgba(232, 196, 104, 0.1);
+  --status-stale-text: var(--status-pending);
+  --status-stale-border: rgba(232, 196, 104, 0.25);
+
+  --secrets-card-bg: var(--panel-raised);
+  --secrets-card-border: var(--panel-edge);
+  --secrets-card-hover-border: var(--steel-light);
+  --secrets-card-text: var(--text);
+  --secrets-card-text-secondary: var(--text-dim);
+
+  --secrets-table-bg: var(--panel-raised);
+  --secrets-table-border: var(--panel-edge);
+  --secrets-table-header-bg: var(--panel);
+  --secrets-table-row-hover: var(--panel);
+
+  --secrets-input-bg: var(--panel-raised);
+  --secrets-input-border: var(--steel);
+  --secrets-input-text: var(--text);
+  --secrets-input-placeholder: var(--text-faint);
+
+  --secrets-shadow-sm: none;
+  --secrets-shadow-md: none;
+  --secrets-shadow-glow: none;
+  --secrets-shadow-cyan: none;
+}
+
+/* Light mode vault secrets overrides */
+[data-theme='light'] .vault-page {
+  --secrets-card-bg: var(--panel-raised);
+  --secrets-card-border: var(--panel-edge);
+  --secrets-card-hover-border: var(--steel-light);
+  --secrets-card-text: var(--text);
+  --secrets-card-text-secondary: var(--text-dim);
+
+  --secrets-table-bg: var(--panel-raised);
+  --secrets-table-border: var(--panel-edge);
+  --secrets-table-header-bg: var(--panel);
+  --secrets-table-row-hover: var(--panel);
+
+  --secrets-input-bg: var(--panel-raised);
+  --secrets-input-border: var(--steel);
+  --secrets-input-text: var(--text);
+  --secrets-input-placeholder: var(--text-faint);
+}
+
+/* --------------------------------------------------------------------------
+   Toolbar / search
+   -------------------------------------------------------------------------- */
+
+.vault-page .secrets-toolbar {
+  gap: var(--space-3);
+}
+
+.vault-page .secrets-search-input {
+  height: 2.5rem;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  background-color: var(--panel-raised);
+  border: 1px solid var(--steel);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.vault-page .secrets-search-input:focus {
+  border-color: var(--steel-light);
+  box-shadow: var(--shadow-input-focus);
+}
+
+.vault-page .secrets-search-input::placeholder {
+  color: var(--text-faint);
+}
+
+.vault-page .secrets-search-icon {
+  color: var(--text-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Limit indicator
+   -------------------------------------------------------------------------- */
+
+.vault-page .secrets-limit-indicator {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.vault-page .secrets-limit-indicator-normal {
+  background: var(--panel);
+  color: var(--text-dim);
+  border: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-limit-indicator-warning {
+  background: rgba(255, 107, 107, 0.08);
+  color: var(--status-revoked);
+  border: 1px solid rgba(255, 107, 107, 0.25);
+}
+
+.vault-page .secrets-limit-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Create / action buttons — use SealedButton/FrameButton equivalents
+   -------------------------------------------------------------------------- */
+
+.vault-page .btn-secrets-create {
+  height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  background: linear-gradient(180deg, #ffffff, #d8dee2);
+  color: var(--text-on-light);
+  border: none;
+  box-shadow: var(--shadow-btn-primary-rest);
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.vault-page .btn-secrets-create:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover);
+}
+
+.vault-page .btn-secrets-create:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+.vault-page .btn-secrets-create:focus-visible {
+  box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus);
+}
+
+.vault-page .btn-secrets-create:disabled {
+  opacity: 0.4;
+  box-shadow: var(--shadow-btn-primary-disabled);
+}
+
+.vault-page .btn-secrets-create::before {
+  display: none;
+}
+
+.vault-page .btn-secrets-outline,
+.vault-page .btn-secrets-cancel {
+  height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--steel);
+  box-shadow: var(--shadow-btn-secondary-rest);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.vault-page .btn-secrets-outline:hover,
+.vault-page .btn-secrets-cancel:hover {
+  background: var(--panel-raised);
+  border-color: var(--steel-light);
+}
+
+.vault-page .btn-secrets-outline:active,
+.vault-page .btn-secrets-cancel:active {
+  box-shadow: var(--shadow-btn-secondary-active);
+}
+
+.vault-page .btn-secrets-delete {
+  height: 2rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--status-revoked);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.vault-page .btn-secrets-delete:hover {
+  background: rgba(255, 107, 107, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   Empty state
+   -------------------------------------------------------------------------- */
+
+.vault-page .secrets-empty-state {
+  padding: var(--space-7) var(--space-5);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.vault-page .secrets-empty-state::before {
+  display: none;
+}
+
+.vault-page .secrets-empty-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-empty-icon::after {
+  display: none;
+}
+
+.vault-page .secrets-empty-icon svg {
+  color: var(--status-ok);
+  filter: drop-shadow(0 0 6px rgba(143, 255, 208, 0.4));
+}
+
+.vault-page .secrets-empty-title {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.vault-page .secrets-empty-description {
+  color: var(--text-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Table
+   -------------------------------------------------------------------------- */
+
+.vault-page .secrets-table-container {
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-edge);
+  background: var(--panel-raised);
+}
+
+.vault-page .secrets-table-container::before {
+  display: none;
+}
+
+.vault-page .secrets-table-header-row {
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-table-head {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.vault-page .secrets-table-body-row {
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-table-body-row:hover {
+  background: var(--panel);
+  box-shadow: none;
+}
+
+.vault-page .secrets-name-icon {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-name-icon svg {
+  color: var(--status-ok);
+  filter: none;
+}
+
+.vault-page .secrets-name-text {
+  color: var(--text);
+}
+
+.vault-page .secrets-description-cell {
+  color: var(--text-dim);
+}
+
+.vault-page .secrets-time-cell {
+  color: var(--text-dim);
+}
+
+.vault-page .secrets-action-btn:hover {
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   Badges
+   -------------------------------------------------------------------------- */
+
+.vault-page .secret-type-badge,
+.vault-page .rotation-badge {
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+/* --------------------------------------------------------------------------
+   Dialog / delete
+   -------------------------------------------------------------------------- */
+
+.vault-page .secrets-dialog-content {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--panel-edge);
+  background: var(--panel);
+}
+
+.vault-page .secrets-dialog-content::before {
+  display: none;
+}
+
+.vault-page .secrets-dialog-header {
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-dialog-title {
+  font-family: var(--font-display);
+  color: var(--text);
+}
+
+.vault-page .secrets-dialog-description {
+  color: var(--text-dim);
+}
+
+.vault-page .secrets-dialog-footer {
+  border-top: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-delete-content {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  background: var(--panel);
+}
+
+.vault-page .secrets-delete-header {
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.vault-page .secrets-delete-title {
+  font-family: var(--font-display);
+  color: var(--status-revoked);
+}
+
+.vault-page .secrets-delete-description {
+  color: var(--text-dim);
+}
+
+.vault-page .secrets-delete-description strong {
+  color: var(--text);
+}
+
+.vault-page .secrets-delete-footer {
+  border-top: 1px solid var(--panel-edge);
+}
+
+/* --------------------------------------------------------------------------
+   Loading / error states
+   -------------------------------------------------------------------------- */
+
+.vault-page .secrets-loading-container {
+  gap: var(--space-3);
+}
+
+.vault-page .secrets-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--panel-raised) 0%,
+    var(--panel-edge) 50%,
+    var(--panel-raised) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius);
+}
+
+.vault-page .secrets-skeleton::after {
+  display: none;
+}
+
+.vault-page .secrets-error-state {
+  background: rgba(255, 107, 107, 0.06);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: var(--radius);
+}
+
+.vault-page .secrets-error-icon {
+  color: var(--status-revoked);
+  filter: none;
+}
+
+.vault-page .secrets-error-title {
+  font-family: var(--font-display);
+  color: var(--status-revoked);
+}
+
+/* --------------------------------------------------------------------------
+   Namespace tree (vault-specific)
+   -------------------------------------------------------------------------- */
+
+.vault-namespace-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.vault-namespace-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.vault-namespace-item:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--panel-raised);
+}
+
+.vault-namespace-item--selected {
+  color: var(--text);
+  background: var(--panel-raised);
+  box-shadow: inset 0 0 0 1px var(--panel-edge);
+}
+
+.vault-namespace-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vault-namespace-item__icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.vault-namespace-item__chevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.vault-namespace-item__chevron--open {
+  transform: rotate(90deg);
+}
+
+/* --------------------------------------------------------------------------
+   Quota summary (vault-specific)
+   -------------------------------------------------------------------------- */
+
+.vault-quota-summary {
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+}
+
+.vault-quota-summary__summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  list-style: none;
+}
+
+.vault-quota-summary__summary::-webkit-details-marker {
+  display: none;
+}
+
+.vault-quota-summary__plan {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px var(--space-2);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+}
+
+.vault-quota-summary__stat {
+  color: var(--text-dim);
+}
+
+.vault-quota-summary__progress {
+  width: 96px;
+  height: 6px;
+  margin-left: auto;
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.vault-quota-summary__progress > * {
+  height: 100%;
+  background: var(--status-ok);
+  border-radius: var(--radius-sm);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.vault-quota-summary__hint {
+  padding: 0 var(--space-3) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  .vault-page .secrets-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .vault-page .secrets-toolbar-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .vault-page .btn-secrets-create,
+  .vault-page .btn-secrets-outline,
+  .vault-page .btn-secrets-cancel,
+  .vault-page .btn-secrets-delete {
+    width: 100%;
+    justify-content: center;
+  }
+}

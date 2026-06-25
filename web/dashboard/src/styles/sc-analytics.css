@@ -1,0 +1,533 @@
+/**
+ * Sealed Containment Analytics Page Theme
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Analytics Page Container
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-page {
+  min-height: 100vh;
+  padding: 1.5rem;
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+.sc-analytics-header {
+  position: relative;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.sc-analytics-header::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 8rem;
+  height: 1px;
+  background: linear-gradient(90deg, var(--status-ok), transparent);
+}
+
+.sc-analytics-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sc-analytics-subtitle {
+  font-size: 0.9375rem;
+  color: var(--text-dim);
+  margin-top: 0.5rem;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Time Range Toggle
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+}
+
+.sc-analytics-toggle-btn {
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 150ms ease;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.sc-analytics-toggle-btn:hover:not(.sc-analytics-toggle-btn-active) {
+  color: var(--text-primary);
+  background: rgba(143, 255, 208, 0.05);
+}
+
+.sc-analytics-toggle-btn-active {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+  border-color: rgba(143, 255, 208, 0.3);
+  box-shadow: 0 0 10px rgba(143, 255, 208, 0.15);
+}
+
+/* ═══════════════════════════════════════════════
+   Stats Grid
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .sc-analytics-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .sc-analytics-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Stat Card
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-stat-card {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 250ms ease;
+  box-shadow: var(--chamber-shadow);
+}
+
+.sc-analytics-stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--steel) 30%,
+    var(--steel) 70%,
+    transparent 100%
+  );
+}
+
+.sc-analytics-stat-card:hover {
+  border-color: var(--steel-light);
+  transform: translateY(-2px);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+.sc-analytics-stat-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.sc-analytics-stat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(143, 255, 208, 0.1);
+  position: relative;
+}
+
+.sc-analytics-stat-icon::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from 0deg,
+    var(--status-ok),
+    var(--foil-a),
+    var(--status-ok)
+  );
+  opacity: 0;
+  transition: opacity 300ms ease;
+  z-index: -1;
+  animation: sc-analytics-icon-spin 3s linear infinite;
+}
+
+.sc-analytics-stat-card:hover .sc-analytics-stat-icon::after {
+  opacity: 0.4;
+}
+
+@keyframes sc-analytics-icon-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.sc-analytics-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  margin-top: 0.75rem;
+}
+
+.sc-analytics-stat-value-primary {
+  color: var(--text-primary);
+  text-shadow: 0 0 20px rgba(143, 255, 208, 0.3);
+}
+
+.sc-analytics-stat-value-success {
+  color: var(--status-ok);
+}
+
+.sc-analytics-stat-value-warning {
+  color: var(--accent);
+}
+
+.sc-analytics-stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.sc-analytics-stat-change {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 0.25rem;
+}
+
+/* Corner accents */
+.sc-analytics-corner {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--status-ok);
+  opacity: 0.3;
+  transition: all 200ms ease;
+}
+
+.sc-analytics-stat-card:hover .sc-analytics-corner {
+  opacity: 0.6;
+  width: 16px;
+  height: 16px;
+}
+
+.sc-analytics-corner-tl {
+  top: 8px;
+  left: 8px;
+  border-top: 2px solid;
+  border-left: 2px solid;
+}
+
+.sc-analytics-corner-tr {
+  top: 8px;
+  right: 8px;
+  border-top: 2px solid;
+  border-right: 2px solid;
+}
+
+.sc-analytics-corner-bl {
+  bottom: 8px;
+  left: 8px;
+  border-bottom: 2px solid;
+  border-left: 2px solid;
+}
+
+.sc-analytics-corner-br {
+  bottom: 8px;
+  right: 8px;
+  border-bottom: 2px solid;
+  border-right: 2px solid;
+}
+
+/* ═══════════════════════════════════════════════
+   Chart Card
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .sc-analytics-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sc-analytics-chart-card {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 250ms ease;
+  box-shadow: var(--chamber-shadow);
+}
+
+.sc-analytics-chart-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--status-ok) 20%,
+    var(--foil-a) 80%,
+    transparent 100%
+  );
+}
+
+.sc-analytics-chart-card:hover {
+  border-color: var(--steel-light);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+.sc-analytics-chart-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(143, 255, 208, 0.3) 0%,
+    transparent 40%,
+    transparent 60%,
+    rgba(159, 216, 255, 0.3) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  pointer-events: none;
+}
+
+.sc-analytics-chart-card:hover::after {
+  opacity: 0.6;
+}
+
+.sc-analytics-chart-header {
+  margin-bottom: 1rem;
+}
+
+.sc-analytics-chart-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.sc-analytics-chart-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Loading State
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+
+.sc-analytics-spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--chamber-edge);
+  border-top-color: var(--status-ok);
+  border-radius: 50%;
+  animation: sc-analytics-spin 1s linear infinite;
+}
+
+@keyframes sc-analytics-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════
+   Empty State
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.sc-analytics-empty-icon {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--foil-a) 0%, var(--foil-b) 50%, var(--foil-c) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--foil-shadow);
+  animation: sc-analytics-empty-float 3s ease-in-out infinite;
+}
+
+@keyframes sc-analytics-empty-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.sc-analytics-empty-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.sc-analytics-empty-description {
+  font-size: 0.9375rem;
+  color: var(--text-dim);
+  max-width: 24rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.sc-analytics-empty-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--button-primary);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all 150ms ease;
+  box-shadow: var(--btn-primary-shadow);
+}
+
+.sc-analytics-empty-btn:hover {
+  background: var(--button-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--btn-primary-shadow-hover);
+}
+
+/* ═══════════════════════════════════════════════
+   Animation
+   ═══════════════════════════════════════════════ */
+
+.sc-analytics-fade-in {
+  animation: sc-analytics-fade-in 0.3s ease-out forwards;
+}
+
+@keyframes sc-analytics-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Light Mode Overrides
+   ═══════════════════════════════════════════════ */
+
+[data-theme='light'] .sc-analytics-title {
+  color: #0f172a;
+}
+
+[data-theme='light'] .sc-analytics-subtitle {
+  color: #475569;
+}
+
+[data-theme='light'] .sc-analytics-stat-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .sc-analytics-stat-card:hover {
+  border-color: #059669;
+  box-shadow: 0 0 0 1px #059669;
+}
+
+[data-theme='light'] .sc-analytics-chart-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .sc-analytics-chart-card:hover {
+  border-color: #059669;
+  box-shadow: 0 0 0 1px #059669;
+}
+
+[data-theme='light'] .sc-analytics-corner {
+  border-color: #059669;
+}
+
+[data-theme='light'] .sc-analytics-toggle {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}

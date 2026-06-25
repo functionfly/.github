@@ -1,0 +1,226 @@
+/**
+ * Sealed Containment Footer Theme
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Footer Container
+   ═══════════════════════════════════════════════ */
+
+.sc-footer {
+  background: var(--chamber-bg);
+  border-top: 1px solid var(--chamber-edge);
+}
+
+.footer-enhanced {
+  background: var(--chamber-bg);
+  border-top: 1px solid var(--chamber-edge);
+}
+
+/* ═══════════════════════════════════════════════
+   Footer Text
+   ═══════════════════════════════════════════════ */
+
+.sc-footer-text {
+  color: var(--text-dim);
+}
+
+.sc-footer-text-primary {
+  color: var(--text-primary);
+}
+
+.sc-footer-link {
+  color: var(--status-ok);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.sc-footer-link:hover {
+  color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════
+   Footer Border
+   ═══════════════════════════════════════════════ */
+
+.sc-footer-divider {
+  height: 1px;
+  background: var(--chamber-edge);
+}
+
+/* ═══════════════════════════════════════════════
+   Footer Social Icons
+   ═══════════════════════════════════════════════ */
+
+.sc-footer-social {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: var(--steel);
+  border: 1px solid var(--chamber-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  transition: all 0.15s ease;
+}
+
+.sc-footer-social:hover {
+  background: var(--steel-light);
+  border-color: var(--status-ok);
+  color: var(--status-ok);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   Footer Button
+   ═══════════════════════════════════════════════ */
+
+.sc-footer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: var(--btn-primary-shadow);
+}
+
+.sc-footer-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #e8ecf0 100%);
+  box-shadow: var(--btn-primary-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.sc-footer-btn:active:not(:disabled) {
+  background: linear-gradient(180deg, #f0f4f7 0%, #d0d5d9 100%);
+  box-shadow: var(--btn-primary-shadow-pressed);
+  transform: translateY(0);
+}
+
+.sc-footer-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════
+   Footer Newsletter Input
+   ═══════════════════════════════════════════════ */
+
+.sc-footer-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: all 0.15s ease;
+}
+
+.sc-footer-input:focus {
+  outline: none;
+  border-color: var(--status-ok);
+  box-shadow: 0 0 0 3px rgba(143, 255, 208, 0.15);
+}
+
+.sc-footer-input::placeholder {
+  color: var(--text-faint);
+}
+
+/* ═══════════════════════════════════════════════
+   Footer Badge
+   ═══════════════════════════════════════════════ */
+
+.sc-footer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.sc-footer-badge-success {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   Light Mode Overrides
+   ═══════════════════════════════════════════════ */
+
+[data-theme='light'] .sc-footer {
+  background: #ffffff;
+  border-top-color: #e2e8f0;
+}
+
+[data-theme='light'] .footer-enhanced {
+  background: #ffffff;
+  border-top-color: #e2e8f0;
+}
+
+[data-theme='light'] .sc-footer-text {
+  color: #475569;
+}
+
+[data-theme='light'] .sc-footer-text-primary {
+  color: #0f172a;
+}
+
+[data-theme='light'] .sc-footer-link {
+  color: #059669;
+}
+
+[data-theme='light'] .sc-footer-link:hover {
+  color: #e85a2a;
+}
+
+[data-theme='light'] .sc-footer-divider {
+  background: #e2e8f0;
+}
+
+[data-theme='light'] .sc-footer-social {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+[data-theme='light'] .sc-footer-social:hover {
+  background: #ffffff;
+  border-color: #059669;
+  color: #059669;
+}
+
+[data-theme='light'] .sc-footer-input {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme='light'] .sc-footer-input:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+[data-theme='light'] .sc-footer-badge-success {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}

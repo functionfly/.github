@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect x="80" y="80" width="72" height="72" rx="14" fill="#0F172A"/>
+  <path d="M116 97L157 138L116 179L75 138L116 97Z" fill="#6366F1"/>
+  <path d="M116 114.5L135.5 134L116 153.5L96.5 134L116 114.5Z" fill="white"/>
+  <path d="M116 124L125.5 134L116 144L106.5 134L116 124Z" fill="#6366F1"/>
+  <text x="180" y="135" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="48" font-weight="700">FunctionFly</text>
+  <text x="80" y="220" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="64" font-weight="700">Choose Your Plan</text>
+  <text x="80" y="280" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="28">Functions, agents, vault, and trust — all in one</text>
+  <rect x="80" y="340" width="320" height="180" rx="16" fill="#1e293b" stroke="#6366F1" stroke-width="2"/>
+  <text x="240" y="400" fill="#a5b4fc" font-family="system-ui,sans-serif" font-size="24" font-weight="600" text-anchor="middle">Platform</text>
+  <text x="240" y="450" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="48" font-weight="700" text-anchor="middle">Free</text>
+  <text x="240" y="490" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="18" text-anchor="middle">3 functions, 25K requests</text>
+  <rect x="440" y="340" width="320" height="180" rx="16" fill="#1e293b" stroke="#f59e0b" stroke-width="2"/>
+  <text x="600" y="400" fill="#f59e0b" font-family="system-ui,sans-serif" font-size="24" font-weight="600" text-anchor="middle">Agent Plans</text>
+  <text x="600" y="450" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="48" font-weight="700" text-anchor="middle">Scalable</text>
+  <text x="600" y="490" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="18" text-anchor="middle">3–500 agents, concurrent</text>
+  <rect x="800" y="340" width="320" height="180" rx="16" fill="#1e293b" stroke="#00D4FF" stroke-width="2"/>
+  <text x="960" y="400" fill="#00D4FF" font-family="system-ui,sans-serif" font-size="24" font-weight="600" text-anchor="middle">Vault Plans</text>
+  <text x="960" y="450" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="48" font-weight="700" text-anchor="middle">Secure</text>
+  <text x="960" y="490" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="18" text-anchor="middle">Zero-knowledge encryption</text>
+  <text x="80" y="580" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="24">Start free · Upgrade anytime</text>
+</svg>

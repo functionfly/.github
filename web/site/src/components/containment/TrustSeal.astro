@@ -1,0 +1,149 @@
+---
+interface Props {
+  size?: 'small' | 'default' | 'large';
+  label?: string;
+}
+
+const { size = 'default', label = 'Verified' } = Astro.props;
+
+const sizes = {
+  small: { outer: 16, inner: 13, inset: 3 },
+  default: { outer: 22, inner: 18, inset: 4 },
+  large: { outer: 32, inner: 26, inset: 6 },
+};
+
+const sizeValues = sizes[size];
+---
+
+<div
+  class="trust-seal-wrapper"
+  style={`--seal-size: ${sizeValues.outer}px; --seal-inner: ${sizeValues.inner}px; --seal-inset: ${sizeValues.inset}px;`}
+>
+  <div class="trust-seal-foil" style="--seal-angle: 140deg;"></div>
+  <div class="trust-seal-shimmer"></div>
+  <div class="trust-seal-center"></div>
+  <span class="sr-only">{label}</span>
+</div>
+
+<style>
+  .trust-seal-wrapper {
+    position: relative;
+    width: var(--seal-size);
+    height: var(--seal-size);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .trust-seal-foil {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      from var(--seal-angle, 0deg),
+      var(--foil-a),
+      var(--foil-b),
+      var(--foil-c),
+      var(--foil-d),
+      var(--foil-a)
+    );
+    box-shadow: var(--shadow-seal);
+    will-change: transform;
+    animation: seal-idle-rotation 16s linear infinite;
+  }
+
+  .trust-seal-shimmer {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      transparent 0deg,
+      rgba(255, 255, 255, 0.5) 30deg,
+      transparent 60deg
+    );
+    opacity: 0.6;
+    mix-blend-mode: overlay;
+    pointer-events: none;
+    animation: seal-idle-rotation 16s linear infinite;
+  }
+
+  .trust-seal-center {
+    position: absolute;
+    inset: var(--seal-inset);
+    border-radius: 50%;
+    background: var(--panel);
+  }
+
+  @keyframes seal-idle-rotation {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .trust-seal-foil,
+    .trust-seal-shimmer {
+      animation: none;
+    }
+
+    .trust-seal-foil {
+      background: conic-gradient(
+        from 0deg,
+        var(--foil-a),
+        var(--foil-b),
+        var(--foil-c),
+        var(--foil-d),
+        var(--foil-a)
+      );
+    }
+  }
+</style>
+
+<script>
+  const seals = document.querySelectorAll('.trust-seal-foil');
+  let angle = 140;
+  let idleInterval: ReturnType<typeof setInterval> | null = null;
+
+  function startIdleDriver() {
+    if (idleInterval) return;
+    idleInterval = setInterval(() => {
+      angle += 1;
+      seals.forEach(seal => {
+        seal.style.setProperty('--seal-angle', `${angle}deg`);
+      });
+    }, 1000);
+  }
+
+  function stopIdleDriver() {
+    if (idleInterval) {
+      clearInterval(idleInterval);
+      idleInterval = null;
+    }
+  }
+
+  startIdleDriver();
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopIdleDriver();
+    } else {
+      startIdleDriver();
+    }
+  });
+</script>

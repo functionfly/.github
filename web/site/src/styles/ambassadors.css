@@ -1,0 +1,351 @@
+/**
+ * Ambassadors Page Styles
+ * Uses the Chamber design system
+ */
+
+/* =============================================
+   HEADER SECTION
+   ============================================= */
+.ambassadors-header {
+  position: relative;
+  padding: 48px 0;
+  text-align: center;
+}
+
+.ambassadors-header__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--chamber-status-ok);
+}
+
+.ambassadors-header__badge svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ambassadors-header__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--chamber-text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0 0 16px;
+}
+
+.ambassadors-header__subtitle {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--chamber-text-dim);
+  max-width: 560px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* =============================================
+   AMBASSADOR LIST
+   ============================================= */
+.ambassador-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ambassador-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--chamber-panel-edge);
+  transition: background 0.15s ease;
+}
+
+.ambassador-item:last-child {
+  border-bottom: none;
+}
+
+.ambassador-item:hover {
+  background: rgba(110, 190, 170, 0.03);
+}
+
+.ambassador-item__seal {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(143, 255, 208, 0.1);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+  border-radius: 50%;
+  color: var(--chamber-status-ok);
+}
+
+.ambassador-item__seal svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ambassador-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.ambassador-item__name {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--chamber-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ambassador-item__username {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--chamber-text-dim);
+}
+
+.ambassador-item__location {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--chamber-text-faint);
+}
+
+.ambassador-item__location-sep {
+  opacity: 0.5;
+}
+
+.ambassador-item__meta {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.ambassador-item__date {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--chamber-text-dim);
+}
+
+.ambassador-item__source {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--chamber-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+/* =============================================
+   EMPTY STATE
+   ============================================= */
+.ambassadors-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-panel-edge);
+  border-radius: var(--chamber-radius);
+  text-align: center;
+}
+
+.ambassadors-empty__icon {
+  width: 48px;
+  height: 48px;
+  color: var(--chamber-text-faint);
+  margin-bottom: 16px;
+}
+
+.ambassadors-empty__title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--chamber-text);
+  margin-bottom: 8px;
+}
+
+.ambassadors-empty__text {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--chamber-text-dim);
+  max-width: 360px;
+}
+
+/* =============================================
+   COUNTRY FILTER
+   ============================================= */
+.country-filter {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 6px;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--chamber-panel-edge) transparent;
+}
+
+.country-filter::-webkit-scrollbar {
+  height: 4px;
+}
+
+.country-filter::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.country-filter::-webkit-scrollbar-thumb {
+  background: var(--chamber-panel-edge);
+  border-radius: 2px;
+}
+
+.country-filter__label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--chamber-text-faint);
+  margin-right: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.country-btn {
+  padding: 6px 12px;
+  border-radius: var(--chamber-radius);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--chamber-panel-edge);
+  background: transparent;
+  color: var(--chamber-text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.country-btn:hover {
+  border-color: var(--chamber-steel);
+  color: var(--chamber-text);
+}
+
+.country-btn--active {
+  background: var(--chamber-status-ok);
+  color: var(--chamber-bg);
+  border-color: var(--chamber-status-ok);
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@media (max-width: 768px) {
+  .ambassadors-header__title {
+    font-size: 28px;
+  }
+
+  .country-filter {
+    gap: 4px;
+  }
+
+  .country-btn {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+
+  .ambassador-item {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .ambassador-item__meta {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+.country-filter__label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--chamber-text-faint);
+  margin-right: 4px;
+}
+
+.country-btn {
+  padding: 8px 14px;
+  border-radius: var(--chamber-radius);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--chamber-panel-edge);
+  background: transparent;
+  color: var(--chamber-text-dim);
+}
+
+.country-btn:hover {
+  border-color: var(--chamber-steel);
+  color: var(--chamber-text);
+}
+
+.country-btn--active {
+  background: var(--chamber-status-ok);
+  color: var(--chamber-bg);
+  border-color: var(--chamber-status-ok);
+}
+
+/* =============================================
+   FOOTER INFO
+   ============================================= */
+.ambassadors-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--chamber-panel-edge);
+  text-align: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--chamber-text-faint);
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@media (max-width: 768px) {
+  .ambassadors-header__title {
+    font-size: 28px;
+  }
+
+  .country-filter {
+    gap: 6px;
+  }
+
+  .country-btn {
+    padding: 6px 10px;
+    font-size: 10px;
+  }
+
+  .ambassador-item {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .ambassador-item__meta {
+    text-align: left;
+    width: 100%;
+  }
+}

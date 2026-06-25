@@ -1,0 +1,630 @@
+/**
+ * Sealed Containment Functions Page
+ * FunctionFly Dashboard
+ *
+ * Uses the Sealed Containment design system tokens from sc-tokens.css
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Page Layout
+   ═══════════════════════════════════════════════ */
+
+.sc-functions-page {
+  min-height: 100vh;
+  position: relative;
+}
+
+.sc-functions-page .page-grid {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-base);
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.sc-functions-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+}
+
+/* ═══════════════════════════════════════════════
+   Page Header / Hero
+   ═══════════════════════════════════════════════ */
+
+.sc-functions-header {
+  padding: var(--space-7) 0;
+  border-bottom: 1px solid var(--panel-edge);
+  margin-bottom: var(--space-6);
+}
+
+.sc-functions-header__inner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.sc-functions-header__title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.sc-functions-header__title .icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  box-shadow: var(--shadow-chamber);
+}
+
+.sc-functions-header__subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin-top: var(--space-2);
+  max-width: 480px;
+}
+
+/* ═══════════════════════════════════════════════
+   Filter Navigation
+   ═══════════════════════════════════════════════ */
+
+.sc-functions-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--panel-edge);
+  margin-bottom: var(--space-6);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--steel) transparent;
+}
+
+.sc-functions-filters::-webkit-scrollbar {
+  height: 4px;
+}
+
+.sc-functions-filters::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sc-functions-filters::-webkit-scrollbar-thumb {
+  background: var(--steel);
+  border-radius: 2px;
+}
+
+.sc-functions-filter-btn {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sc-functions-filter-btn:hover {
+  color: var(--text);
+  border-color: var(--panel-edge);
+}
+
+.sc-functions-filter-btn.active {
+  color: var(--text);
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+}
+
+.sc-functions-filter-btn .icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Functions Grid
+   ═══════════════════════════════════════════════ */
+
+.sc-functions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+@media (max-width: 480px) {
+  .sc-functions-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Sealed Function Card
+   ═══════════════════════════════════════════════ */
+
+.sc-function-card {
+  position: relative;
+  background: var(--panel);
+  background-image: radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-chamber);
+  padding: var(--space-5);
+  cursor: pointer;
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.sc-function-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    var(--shadow-chamber),
+    0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.sc-function-card--nested {
+  background: var(--panel-raised);
+  background-image: none;
+  box-shadow: none;
+}
+
+/* Corner Braces */
+.sc-function-card__brace-tl {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: 22px;
+  height: 22px;
+  border-top: 2px solid var(--steel-light);
+  border-left: 2px solid var(--steel-light);
+  opacity: 0.4;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.sc-function-card__brace-br {
+  position: absolute;
+  bottom: var(--space-3);
+  right: var(--space-3);
+  width: 22px;
+  height: 22px;
+  border-bottom: 2px solid var(--steel-light);
+  border-right: 2px solid var(--steel-light);
+  opacity: 0.4;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.sc-function-card:hover .sc-function-card__brace-tl,
+.sc-function-card:hover .sc-function-card__brace-br {
+  opacity: 0.8;
+}
+
+/* Card Header */
+.sc-function-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.sc-function-card__id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--space-1);
+}
+
+.sc-function-card__name {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+/* Actions Dropdown */
+.sc-function-card__actions {
+  flex-shrink: 0;
+}
+
+.sc-function-card__actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+.sc-function-card__actions button:hover {
+  color: var(--text);
+  background: var(--panel-edge);
+}
+
+/* Badges */
+.sc-function-card__badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.sc-function-card__badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--panel-edge);
+  color: var(--text-dim);
+  border: 1px solid var(--steel);
+}
+
+/* Metrics Grid */
+.sc-function-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.sc-function-card__metric {
+  background: var(--panel-raised);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+.sc-function-card__metric-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.sc-function-card__metric-value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sc-function-card__metric-value--highlight {
+  color: var(--accent);
+}
+
+/* Footer */
+.sc-function-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--panel-edge);
+}
+
+.sc-function-card__meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sc-function-card__execute-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  border: none;
+  background: linear-gradient(180deg, #ffffff, #d8dee2);
+  color: var(--text-on-light);
+  cursor: pointer;
+  box-shadow: var(--shadow-btn-primary-rest);
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.sc-function-card__execute-btn:hover {
+  box-shadow: var(--shadow-btn-primary-hover);
+}
+
+.sc-function-card__execute-btn:active {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+/* ═══════════════════════════════════════════════
+   Loading State (Skeleton)
+   ═══════════════════════════════════════════════ */
+
+.sc-functions-loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-5);
+  padding-bottom: var(--space-8);
+}
+
+.sc-functions-skeleton {
+  height: 280px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.sc-functions-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 100%
+  );
+  animation: skeleton-shimmer 1.5s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Empty State
+   ═══════════════════════════════════════════════ */
+
+.sc-functions-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-9) var(--space-5);
+  text-align: center;
+}
+
+.sc-functions-empty .chamber {
+  max-width: 480px;
+}
+
+.sc-functions-empty__icon {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--radius-lg);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-5);
+  color: var(--text-dim);
+}
+
+.sc-functions-empty__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.sc-functions-empty__description {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-5);
+  max-width: 360px;
+}
+
+.sc-functions-empty__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ═══════════════════════════════════════════════
+   Delete Dialog
+   ═══════════════════════════════════════════════ */
+
+.sc-delete-dialog .dialog-content {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-chamber);
+  max-width: 420px;
+  width: 100%;
+}
+
+.sc-delete-dialog__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.sc-delete-dialog__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--status-revoked);
+}
+
+.sc-delete-dialog__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+}
+
+.sc-delete-dialog__body {
+  padding: var(--space-5);
+}
+
+.sc-delete-dialog__description {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.sc-delete-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--panel-edge);
+}
+
+/* ═══════════════════════════════════════════════
+   Animation Keyframes
+   ═══════════════════════════════════════════════ */
+
+@keyframes sc-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sc-animate-fade-in-up {
+  animation: sc-fade-in-up 0.4s var(--ease-out) forwards;
+}
+
+.sc-stagger-1 { animation-delay: 0.05s; }
+.sc-stagger-2 { animation-delay: 0.1s; }
+.sc-stagger-3 { animation-delay: 0.15s; }
+.sc-stagger-4 { animation-delay: 0.2s; }
+.sc-stagger-5 { animation-delay: 0.25s; }
+.sc-stagger-6 { animation-delay: 0.3s; }
+
+/* ═══════════════════════════════════════════════
+   Responsive Adjustments
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .sc-functions-content {
+    padding: 0 var(--space-4);
+  }
+
+  .sc-functions-header {
+    padding: var(--space-5) 0;
+  }
+
+  .sc-functions-header__inner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sc-functions-header__title {
+    font-size: 28px;
+  }
+
+  .sc-functions-header__actions {
+    width: 100%;
+  }
+
+  .sc-functions-header__actions .sealed-button,
+  .sc-functions-header__actions .frame-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sc-functions-filters {
+    padding: var(--space-3) 0;
+    margin-bottom: var(--space-5);
+  }
+
+  .sc-functions-filter-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 13px;
+  }
+
+  .sc-functions-empty__actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .sc-functions-empty__actions .sealed-button,
+  .sc-functions-empty__actions .frame-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

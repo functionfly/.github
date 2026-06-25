@@ -1,0 +1,31 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CompanyRankingsPage from '../components/CompanyRankingsPage';
+import { SITE_ORIGIN } from '../config';
+import '../styles/rankings-chamber.css';
+import '../styles/company-rankings.css';
+
+const rankingSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'FunctionFly Company Rankings',
+  description: "Top companies by FunctionFly activity. See which businesses are building the most with AI agents and automation.",
+  url: `${SITE_ORIGIN}/company-rankings`,
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+  },
+};
+
+const title = 'Company Rankings — Top Businesses by AI Activity | FunctionFly';
+const description = "Top companies ranked by FunctionFly activity. See which businesses are leading in AI agent deployments, automation, and productivity.";
+---
+
+<Layout
+  title={title}
+  description={description}
+  schema={rankingSchema}
+>
+  <CompanyRankingsPage client:load />
+</Layout>

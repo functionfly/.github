@@ -1,0 +1,134 @@
+---
+import ContentPage from '../../layouts/ContentPage.astro';
+import { SITE_ORIGIN } from '../../config';
+import { readFile } from 'node:fs/promises';
+import { marked } from 'marked';
+
+export async function getStaticPaths() {
+  const reportsDir = new URL('../../content/reports/', import.meta.url);
+  let files: string[] = [];
+  try {
+    const dir = await import('node:fs/promises');
+    files = (await dir.readdir(reportsDir)).filter((f) => f.endsWith('.md')).sort().reverse();
+  } catch {
+    return [];
+  }
+  return files.map((f) => {
+    const slug = f.replace(/\.md$/, '');
+    return { params: { slug } };
+  });
+}
+
+const { slug } = Astro.params;
+
+let raw = '';
+let title = slug;
+let description = 'State of AI Builders report';
+try {
+  const path = new URL(`../../content/reports/${slug}.md`, import.meta.url);
+  raw = await readFile(path, 'utf-8');
+  const titleMatch = raw.match(/^# (.+)$/m);
+  if (titleMatch) title = titleMatch[1];
+  const periodMatch = raw.match(/_Period: ([\d-]+) → ([\d-]+)/);
+  if (periodMatch) {
+    description = `Monthly State of AI Builders report for ${periodMatch[1]} → ${periodMatch[2]}. Top cities, universities, and ambassadors ranked by FunctionFly activity.`;
+  }
+} catch {
+  // No file for this slug.
+}
+
+const html = raw ? await marked.parse(raw) : '<p>Report not found.</p>';
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: title,
+  description,
+  url: `${SITE_ORIGIN}/blog/${slug}`,
+  isPartOf: {
+    '@type': 'Blog',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+  },
+};
+---
+
+<ContentPage
+  title={`${title} | FunctionFly`}
+  description={description}
+  schema={schema}
+  ogImage={`/og-report-${slug}.svg`}
+>
+  <p class="muted"><a href="/blog">← All State of AI Builders reports</a></p>
+  <div class="report-body" set:html={html}></div>
+</ContentPage>
+
+<style is:global>
+  .report-body {
+    line-height: 1.7;
+  }
+  .report-body h1 {
+    font-size: 2.25rem;
+    margin: 0.5rem 0 1rem;
+    line-height: 1.2;
+  }
+  .report-body h2 {
+    font-size: 1.5rem;
+    margin: 2.5rem 0 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .report-body h3 {
+    font-size: 1.2rem;
+    margin: 1.5rem 0 0.75rem;
+  }
+  .report-body table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+    font-size: 0.95rem;
+  }
+  .report-body th,
+  .report-body td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: left;
+  }
+  .report-body th {
+    color: var(--text-dim);
+    font-weight: 500;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .report-body code {
+    background: var(--panel-raised);
+    padding: 0.1em 0.4em;
+    border-radius: var(--radius);
+    font-size: 0.9em;
+  }
+  .report-body blockquote {
+    margin: var(--space-5) 0;
+    padding: var(--space-2) var(--space-4);
+    border-left: 3px solid var(--accent-dim);
+    color: var(--text-dim);
+  }
+  .report-body a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+  }
+  .report-body hr {
+    border: 0;
+    border-top: 1px solid var(--panel-edge);
+    margin: var(--space-6) 0;
+  }
+  .report-body ul,
+  .report-body ol {
+    margin: 0.75rem 0 1.5rem 1.5rem;
+  }
+  .report-body li {
+    margin: 0.35rem 0;
+  }
+</style>

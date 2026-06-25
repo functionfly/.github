@@ -1,0 +1,701 @@
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Sealed Containment Auth Design System
+   ═══════════════════════════════════════════════ */
+
+/* Map SC tokens to auth Velocity variables for compatibility */
+:root {
+  /* SC Backgrounds → Velocity backgrounds */
+  --ff-tarmac: var(--bg);
+  --ff-cockpit: var(--chamber-bg);
+  --ff-flightdeck: var(--steel);
+  --ff-tower: var(--bg);
+  
+  /* SC Text → Velocity text */
+  --ff-primary-text: var(--text-primary);
+  --ff-secondary-text: var(--text-dim);
+  --ff-muted-text: var(--text-faint);
+  
+  /* SC Accents → Velocity accents */
+  --ff-flame: var(--accent);
+  --ff-flame-rgb: 255, 122, 61;
+  --ff-cyan: var(--status-ok);
+  --ff-cyan-rgb: 143, 255, 208;
+  --ff-afterburner: var(--accent);
+  --ff-afterburner-rgb: 255, 122, 61;
+  
+  /* SC Semantic → Velocity semantic */
+  --ff-success: var(--status-ok);
+  --ff-success-rgb: 143, 255, 208;
+  --ff-error: var(--status-revoked);
+  --ff-error-rgb: 255, 122, 61;
+  --ff-warning: #ff9500;
+  --ff-warning-rgb: 255, 149, 0;
+  --ff-info: var(--status-ok);
+  --ff-info-rgb: 143, 255, 208;
+  
+  /* SC Borders → Velocity borders */
+  --ff-border-default: var(--chamber-edge);
+  --ff-border-subtle: rgba(255, 255, 255, 0.08);
+  --ff-border-strong: var(--steel-light);
+  
+  /* SC Shadows → Velocity shadows */
+  --ff-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --ff-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --ff-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --ff-shadow-glow-flame: 0 0 20px rgba(255, 122, 61, 0.3);
+  --ff-shadow-glow-cyan: 0 0 20px rgba(143, 255, 208, 0.3);
+  --ff-shadow-glow-error: 0 0 10px rgba(255, 122, 61, 0.4);
+  --ff-shadow-glow-success: 0 0 10px rgba(143, 255, 208, 0.4);
+  
+  /* Radii */
+  --ff-radius-sm: var(--radius);
+  --ff-radius-md: calc(var(--radius) * 2);
+  --ff-radius-lg: calc(var(--radius) * 3);
+  --ff-radius-xl: calc(var(--radius) * 4);
+  --ff-radius-full: 9999px;
+  
+  /* Transitions */
+  --ff-transition-fast: 150ms ease;
+  --ff-transition-base: 200ms ease;
+  --ff-transition-slow: 300ms ease;
+}
+
+/* ── Grid Background ── */
+.auth-grid-bg {
+  position: relative;
+}
+
+.auth-grid-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgba(var(--ff-flame-rgb), 0.08) 1px, transparent 0);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.auth-grid-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Chamber Card System ── */
+.chamber {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chamber:hover {
+  border-color: var(--steel-light);
+  transform: translateY(-2px);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+.chamber--accent {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(255, 122, 61, 0.08) 0%, var(--chamber-bg) 100%);
+}
+
+.chamber--glass {
+  background: rgba(14, 19, 24, 0.6);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+}
+
+/* ── Auth Card (ff-card equivalent with SC) ── */
+.ff-card {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  padding: 2rem;
+  position: relative;
+  box-shadow: var(--chamber-shadow);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ff-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    var(--status-ok) 50%,
+    var(--accent) 100%
+  );
+  border-radius: var(--radius) var(--radius) 0 0;
+  opacity: 0.8;
+}
+
+.ff-card:hover {
+  border-color: var(--steel-light);
+  transform: translateY(-2px);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+.ff-card--elevated {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.5);
+}
+
+.ff-card--focused {
+  border-color: var(--accent);
+  box-shadow: var(--ff-shadow-glow-flame);
+}
+
+/* ── Button System ── */
+.ff-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 13px 22px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+}
+
+.ff-btn--primary {
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  color: var(--text-on-light);
+  border: none;
+  box-shadow: var(--shadow-btn-primary-rest);
+  font-weight: 600;
+}
+
+.ff-btn--primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover);
+  transform: translateY(-1px);
+}
+
+.ff-btn--primary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+.ff-btn--primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: var(--shadow-btn-primary-disabled);
+}
+
+.ff-btn--primary:focus-visible {
+  box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus);
+}
+
+.ff-btn--secondary {
+  background: transparent;
+  border: 1px solid var(--steel);
+  color: var(--text);
+  box-shadow: var(--shadow-btn-secondary-rest);
+}
+
+.ff-btn--secondary:hover:not(:disabled) {
+  border-color: var(--steel-light);
+}
+
+.ff-btn--secondary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-secondary-active);
+}
+
+.ff-btn--secondary:focus-visible {
+  box-shadow: var(--shadow-btn-secondary-rest), var(--shadow-focus);
+}
+
+.ff-btn--ghost {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+}
+
+.ff-btn--ghost:hover:not(:disabled) {
+  background: var(--chamber-bg);
+  color: var(--text-primary);
+}
+
+.ff-btn--full {
+  width: 100%;
+}
+
+.ff-btn--loading {
+  position: relative;
+  color: transparent !important;
+  cursor: wait;
+}
+
+/* ── Input System ── */
+.ff-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ff-input::placeholder {
+  color: var(--text-faint);
+}
+
+.ff-input:focus {
+  outline: none;
+  border-color: var(--status-ok);
+  box-shadow: 0 0 0 3px rgba(143, 255, 208, 0.15);
+}
+
+.ff-input--error {
+  border-color: var(--accent);
+  box-shadow: var(--ff-shadow-glow-error);
+}
+
+.ff-input--success {
+  border-color: var(--status-ok);
+  box-shadow: 0 0 0 3px rgba(143, 255, 208, 0.15);
+}
+
+.ff-input--password {
+  padding-right: 2.5rem;
+}
+
+/* Input wrapper for positioning icons/buttons */
+.ff-field__wrap {
+  position: relative;
+  min-width: 0;
+}
+
+/* Password toggle button */
+.ff-input__toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  color: var(--text-faint);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.ff-input__toggle:hover {
+  color: var(--status-ok);
+  background-color: rgba(143, 255, 208, 0.1);
+}
+
+.ff-input__toggle:focus-visible {
+  outline: 2px solid var(--status-ok);
+  outline-offset: 2px;
+}
+
+/* ── Form Field ── */
+.ff-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.ff-field__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ff-field__hint {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+.ff-field__error {
+  font-size: 0.75rem;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ── Badge System ── */
+.ff-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+}
+
+.ff-badge--default {
+  background: var(--steel);
+  color: var(--text-dim);
+  border-color: var(--chamber-edge);
+}
+
+.ff-badge--accent {
+  background: rgba(255, 122, 61, 0.15);
+  color: var(--accent);
+  border-color: rgba(255, 122, 61, 0.3);
+}
+
+.ff-badge--success {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+  border-color: rgba(143, 255, 208, 0.3);
+}
+
+.ff-badge--error {
+  background: rgba(255, 122, 61, 0.1);
+  color: var(--accent);
+  border-color: rgba(255, 122, 61, 0.3);
+}
+
+/* ── OAuth Button ── */
+.ff-oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ff-oauth-btn:hover:not(:disabled) {
+  border-color: var(--status-ok);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.ff-oauth-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ── Checkbox ── */
+.ff-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+}
+
+.ff-checkbox__input {
+  appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--steel);
+  border-radius: calc(var(--radius) / 2);
+  background: var(--bg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ff-checkbox__input:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+  background-size: 75%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.ff-checkbox__input:focus-visible {
+  outline: none;
+  border-color: var(--status-ok);
+  box-shadow: 0 0 0 3px rgba(143, 255, 208, 0.15);
+}
+
+.ff-checkbox__label {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  user-select: none;
+}
+
+/* ── Status Banner ── */
+.ff-status-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.ff-status-banner--error {
+  background: rgba(255, 122, 61, 0.1);
+  border: 1px solid rgba(255, 122, 61, 0.2);
+  color: var(--accent);
+}
+
+.ff-status-banner--success {
+  background: rgba(143, 255, 208, 0.1);
+  border: 1px solid rgba(143, 255, 208, 0.2);
+  color: var(--status-ok);
+}
+
+.ff-status-banner--warning {
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid rgba(255, 149, 0, 0.2);
+  color: #ff9500;
+}
+
+/* ── Divider ── */
+.ff-divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: var(--text-faint);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.ff-divider::before,
+.ff-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--chamber-edge) 10%, var(--steel) 50%, var(--chamber-edge) 90%, transparent);
+}
+
+/* ── Light Mode ── */
+[data-theme="light"] {
+  --ff-tarmac: #f8fafc;
+  --ff-cockpit: #ffffff;
+  --ff-flightdeck: #f1f5f9;
+  --ff-tower: #ffffff;
+  
+  --ff-primary-text: #0f172a;
+  --ff-secondary-text: #475569;
+  --ff-muted-text: #64748b;
+  
+  --ff-flame: #e85a2a;
+  --ff-flame-rgb: 232, 90, 42;
+  --ff-cyan: #059669;
+  --ff-cyan-rgb: 5, 150, 105;
+  
+  --ff-success: #059669;
+  --ff-success-rgb: 5, 150, 105;
+  --ff-error: #dc2626;
+  --ff-error-rgb: 220, 38, 38;
+  
+  --ff-border-default: #e2e8f0;
+  --ff-border-subtle: rgba(0, 0, 0, 0.08);
+  --ff-border-strong: #cbd5e1;
+  
+  --ff-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --ff-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --ff-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --ff-shadow-glow-flame: 0 0 20px rgba(232, 90, 42, 0.25);
+  --ff-shadow-glow-cyan: 0 0 20px rgba(5, 150, 105, 0.25);
+}
+
+[data-theme="light"] .ff-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme="light"] .ff-card:hover {
+  border-color: #059669;
+}
+
+[data-theme="light"] .ff-input {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .ff-input:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+[data-theme="light"] .ff-btn--primary {
+  background: linear-gradient(180deg, #ffffff 0%, #e8ecf0 100%);
+  color: #0f172a;
+}
+
+[data-theme="light"] .ff-btn--secondary {
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme="light"] .ff-btn--secondary:hover:not(:disabled) {
+  border-color: #059669;
+  background: rgba(5, 150, 105, 0.05);
+}
+
+/* ── Password Requirements ── */
+.password-requirements {
+  margin-top: 0.75rem;
+}
+
+.password-requirements__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+
+.password-requirements__header:hover {
+  color: var(--text-primary);
+}
+
+.password-requirements__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.password-requirements__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.25rem;
+  padding: 0 0.375rem;
+  background: var(--steel);
+  border-radius: calc(var(--radius) / 2);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: var(--ff-font-mono);
+  color: var(--text-faint);
+}
+
+.password-requirements__check-all {
+  color: var(--status-ok);
+}
+
+.password-requirements__text {
+  font-weight: 500;
+}
+
+.password-requirements__chevron {
+  transition: transform 0.2s ease;
+  color: var(--text-faint);
+}
+
+.password-requirements__chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.password-requirements__list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+  display: none;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.password-requirements__list.expanded {
+  display: flex;
+}
+
+.password-requirements__item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: calc(var(--radius) / 2);
+  font-size: 0.8rem;
+  color: var(--text-faint);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.password-requirements__item.met {
+  color: var(--status-ok);
+}
+
+.password-requirements__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.password-requirements__item:not(.met) .password-requirements__icon {
+  color: var(--text-faint);
+}
+
+.password-requirements__item.met .password-requirements__icon {
+  color: var(--status-ok);
+}
+
+.password-requirements__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  opacity: 0.4;
+}
+
+.password-requirements__item.met .password-requirements__dot {
+  display: none;
+}
+
+.password-requirements__label {
+  font-weight: 400;
+}
+
+.password-requirements__item.met .password-requirements__label {
+  font-weight: 500;
+}
+
+/* Light theme */
+[data-theme="light"] .password-requirements__count {
+  background: var(--steel);
+  color: var(--text-dim);
+}
+
+[data-theme="light"] .password-requirements__item.met {
+  color: #059669;
+}
+
+[data-theme="light"] .password-requirements__item.met .password-requirements__icon {
+  color: #059669;
+}
+
+[data-theme="light"] .password-requirements__check-all {
+  color: #059669;
+}

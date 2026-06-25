@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CityRankingsPage from '../components/CityRankingsPage';
+import { SITE_ORIGIN } from '../config';
+import '../styles/rankings-chamber.css';
+
+const rankingSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'FunctionFly City Rankings',
+  description: "The world's first live map of human and AI productivity. Ranked by real FunctionFly activity, updated hourly.",
+  url: `${SITE_ORIGIN}/rankings`,
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+  },
+};
+
+const title = 'City Rankings — Live Map of Human + AI Productivity | FunctionFly';
+const description =
+  "The world's first live map of human and AI productivity, ranked by real FunctionFly activity. Updated hourly. Per-capita scoring, opt-out privacy, and open to every builder on the platform.";
+---
+
+<Layout
+  title={title}
+  description={description}
+  schema={rankingSchema}
+  ogImage="/og-rankings.svg"
+>
+  <CityRankingsPage client:load />
+</Layout>

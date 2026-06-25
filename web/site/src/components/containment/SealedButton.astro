@@ -1,0 +1,174 @@
+---
+interface Props {
+  type?: 'button' | 'submit' | 'reset';
+  href?: string;
+  variant?: 'default' | 'accent';
+  size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
+  loading?: boolean;
+  class?: string;
+  id?: string;
+}
+
+const {
+  type = 'button',
+  href,
+  variant = 'default',
+  size = 'md',
+  disabled = false,
+  loading = false,
+  class: className,
+  id,
+} = Astro.props;
+
+const Tag = href ? 'a' : 'button';
+---
+
+<Tag
+  class:list={[
+    'sealed-button',
+    `sealed-button--${size}`,
+    { 'sealed-button--accent': variant === 'accent' },
+    { 'sealed-button--disabled': disabled },
+    { 'sealed-button--loading': loading },
+    className,
+  ]}
+  type={href ? undefined : type}
+  href={href}
+  disabled={href ? undefined : disabled}
+  data-loading={loading ? 'true' : undefined}
+  id={id}
+>
+  {loading && (
+    <span class="sealed-button__spinner" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="32" stroke-dashoffset="8">
+          <animateTransform attributeName="transform" type="rotate" from="0 8 8" to="360 8 8" dur="0.8s" repeatCount="indefinite"/>
+        </circle>
+      </svg>
+    </span>
+  )}
+  <span class="sealed-button__content" class:list={{ 'visually-hidden': loading }}>
+    <slot />
+  </span>
+</Tag>
+
+<style>
+  .sealed-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition:
+      box-shadow var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
+    white-space: nowrap;
+  }
+
+  /* Sizes */
+  .sealed-button--sm {
+    padding: 8px 16px;
+    font-size: 13px;
+    min-height: 32px;
+  }
+
+  .sealed-button--md {
+    padding: 12px 24px;
+    font-size: 14px;
+    min-height: 42px;
+  }
+
+  .sealed-button--lg {
+    padding: 16px 32px;
+    font-size: 16px;
+    min-height: 52px;
+  }
+
+  /* Default variant */
+  .sealed-button:not(.sealed-button--accent) {
+    background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+    color: var(--text-on-light);
+    box-shadow: var(--shadow-btn-primary-rest);
+  }
+
+  .sealed-button:not(.sealed-button--accent):hover {
+    box-shadow: var(--shadow-btn-primary-hover);
+    transform: translateY(-1px);
+  }
+
+  .sealed-button:not(.sealed-button--accent):active {
+    box-shadow: var(--shadow-btn-primary-active);
+    transform: translateY(1px);
+  }
+
+  /* Accent variant */
+  .sealed-button--accent {
+    background: linear-gradient(180deg, var(--accent) 0%, #e56a32 100%);
+    color: #ffffff;
+    box-shadow: var(--shadow-btn-primary-rest);
+  }
+
+  .sealed-button--accent:hover {
+    background: linear-gradient(180deg, var(--accent-hover) 0%, var(--accent) 100%);
+    box-shadow: var(--shadow-btn-primary-hover);
+    transform: translateY(-1px);
+  }
+
+  .sealed-button--accent:active {
+    box-shadow: var(--shadow-btn-primary-active);
+    transform: translateY(1px);
+  }
+
+  /* States */
+  .sealed-button:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus);
+  }
+
+  .sealed-button--disabled,
+  .sealed-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: var(--shadow-btn-primary-disabled);
+    transform: none;
+  }
+
+  .sealed-button--loading {
+    cursor: wait;
+  }
+
+  /* Spinner */
+  .sealed-button__spinner {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sealed-button__content {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

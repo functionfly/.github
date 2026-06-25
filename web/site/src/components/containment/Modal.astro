@@ -1,0 +1,106 @@
+---
+interface Props {
+  id: string;
+  title?: string;
+}
+
+const { id, title } = Astro.props;
+---
+
+<div class="modal-overlay" id={`${id}-overlay`} onclick="closeModal(this.dataset.modalId)">
+  <div
+    class="modal"
+    id={id}
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby={title ? `${id}-title` : undefined}
+    tabindex="-1"
+    data-modal-id={id}
+  >
+    {title && <h2 class="modal-title" id={`${id}-title`}>{title}</h2>}
+    <slot />
+  </div>
+</div>
+
+<style>
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 13, 17, 0.7);
+    z-index: var(--z-modal, 100);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: modal-overlay-enter 0.2s ease-out forwards;
+  }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius-lg, 6px);
+    box-shadow: var(--shadow-chamber);
+    padding: var(--space-7, 48px);
+    max-width: 480px;
+    width: 90%;
+    z-index: calc(var(--z-modal, 100) + 1);
+    animation: modal-enter 0.2s ease-out forwards;
+    outline: none;
+  }
+
+  .modal-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: var(--space-5, 24px);
+  }
+
+  @keyframes modal-overlay-enter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes modal-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+</style>
+
+<script is:inline>
+  function closeModal(modalId) {
+    const overlay = document.querySelector(`[data-modal-id="${modalId}"].modal-overlay`);
+    if (overlay) {
+      overlay.remove();
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const visibleModals = document.querySelectorAll('.modal-overlay');
+      if (visibleModals.length > 0) {
+        visibleModals[visibleModals.length - 1].remove();
+      }
+    }
+  });
+
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('focus', () => {
+      const focusable = modal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length > 0) {
+        (focusable[0] as HTMLElement).focus();
+      }
+    }, true);
+  });
+</script>

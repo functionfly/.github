@@ -1,0 +1,159 @@
+/**
+ * Holographic Skeuomorphism Design Tokens
+ * FunctionFly Marketing Site
+ *
+ * Single source of truth for colors, glass, neumorphism, and the
+ * "one virtual light source" principle. Consumed by CSS and
+ * mirrored in tokens.ts for JS/R3F code.
+ */
+
+:root {
+  /* Colors - extend Velocity Brand */
+  --hs-bg: #0b0e14;
+  --hs-surface: #161b26;
+  --hs-surface-elevated: #1f2533;
+  --hs-accent: #5fd0ff;
+  --hs-accent-rgb: 95, 208, 255;
+  --hs-accent-warm: #ff9d6c;
+  --hs-accent-warm-rgb: 255, 157, 108;
+  --hs-text: #eef2f7;
+  --hs-text-dim: #9aa6b8;
+  --hs-text-muted: #6b7280;
+  --hs-border: rgba(255, 255, 255, 0.12);
+  --hs-border-strong: rgba(255, 255, 255, 0.22);
+
+  /* The Single Light Source - consumed by shadows AND shaders */
+  --hs-light-azimuth: 135deg;     /* Direction shadows fall */
+  --hs-light-elevation: 0.65;     /* 0 = grazing, 1 = overhead */
+  --hs-light-color: 255, 245, 230; /* Warm white (RGB triplet for alpha composition) */
+
+  /* Computed shadow tokens derived from light source */
+  --hs-shadow-x: 0.5;             /* cos(135deg) ≈ -0.707 -> flipped: 0.5 */
+  --hs-shadow-y: 0.7;             /* sin(135deg) ≈ 0.707 */
+  --hs-shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --hs-shadow-medium: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --hs-shadow-strong: 0 16px 48px rgba(0, 0, 0, 0.45);
+  --hs-highlight: 0 -1px 0 rgba(var(--hs-light-color), 0.04);
+
+  /* Glass */
+  --hs-glass-blur: 18px;
+  --hs-glass-opacity: 0.14;
+  --hs-glass-border: rgba(255, 255, 255, 0.18);
+  --hs-glass-bg: rgba(22, 27, 34, 0.55);
+  --hs-glass-bg-deep: rgba(22, 27, 34, 0.75);
+
+  /* Neumorphic */
+  --hs-neu-distance: 6px;
+  --hs-neu-blur: 16px;
+  --hs-neu-intensity: 0.35;
+  --hs-neu-bg: var(--hs-bg);
+  --hs-neu-shadow-light: rgba(var(--hs-light-color), 0.04);
+  --hs-neu-shadow-dark: rgba(0, 0, 0, 0.5);
+
+  /* Radii */
+  --hs-radius-sm: 10px;
+  --hs-radius-md: 18px;
+  --hs-radius-lg: 28px;
+  --hs-radius-pill: 9999px;
+
+  /* Motion */
+  --hs-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --hs-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --hs-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --hs-duration-fast: 150ms;
+  --hs-duration-normal: 250ms;
+  --hs-duration-slow: 400ms;
+
+  /* Z-index */
+  --hs-z-backdrop: -1;
+  --hs-z-base: 0;
+  --hs-z-elevated: 10;
+  --hs-z-overlay: 100;
+  --hs-z-modal: 200;
+}
+
+/* Light theme override - inverts shadow direction subtly and lightens */
+[data-theme='light'] {
+  --hs-bg: #f8fafc;
+  --hs-surface: #f1f5f9;
+  --hs-surface-elevated: #ffffff;
+  --hs-text: #0f172a;
+  --hs-text-dim: #475569;
+  --hs-text-muted: #94a3b8;
+  --hs-border: rgba(15, 23, 42, 0.10);
+  --hs-border-strong: rgba(15, 23, 42, 0.18);
+
+  /* Flipped light: shadows go opposite direction, but elevation reads the same */
+  --hs-shadow-x: -0.5;
+  --hs-shadow-y: -0.7;
+  --hs-shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --hs-shadow-medium: 0 6px 18px rgba(15, 23, 42, 0.10);
+  --hs-shadow-strong: 0 12px 36px rgba(15, 23, 42, 0.15);
+
+  /* Glass: in light mode, "glass" is mostly white surface with subtle border */
+  --hs-glass-blur: 14px;
+  --hs-glass-opacity: 0.65;
+  --hs-glass-bg: rgba(255, 255, 255, 0.65);
+  --hs-glass-bg-deep: rgba(255, 255, 255, 0.92);
+  --hs-glass-border: rgba(15, 23, 42, 0.10);
+
+  /* Neumorphic in light mode: soft, low-contrast shadows (white highlight + soft dark) */
+  --hs-neu-distance: 5px;
+  --hs-neu-blur: 14px;
+  --hs-neu-intensity: 0.20;
+  --hs-neu-bg: #f1f5f9;
+  --hs-neu-shadow-light: rgba(255, 255, 255, 0.95);
+  --hs-neu-shadow-dark: rgba(15, 23, 42, 0.12);
+
+  /* Highlight on glass edge: dark border, not bright white */
+  --hs-highlight-color: 15, 23, 42;
+}
+
+/* Honor user's color-scheme preference if no data-theme is set */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    --hs-bg: #f8fafc;
+    --hs-surface: #f1f5f9;
+    --hs-surface-elevated: #ffffff;
+    --hs-text: #0f172a;
+    --hs-text-dim: #475569;
+    --hs-text-muted: #94a3b8;
+    --hs-border: rgba(15, 23, 42, 0.10);
+    --hs-border-strong: rgba(15, 23, 42, 0.18);
+    --hs-shadow-x: -0.5;
+    --hs-shadow-y: -0.7;
+    --hs-shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.06);
+    --hs-shadow-medium: 0 6px 18px rgba(15, 23, 42, 0.10);
+    --hs-shadow-strong: 0 12px 36px rgba(15, 23, 42, 0.15);
+    --hs-glass-blur: 14px;
+    --hs-glass-opacity: 0.65;
+    --hs-glass-bg: rgba(255, 255, 255, 0.65);
+    --hs-glass-bg-deep: rgba(255, 255, 255, 0.92);
+    --hs-glass-border: rgba(15, 23, 42, 0.10);
+    --hs-neu-distance: 5px;
+    --hs-neu-blur: 14px;
+    --hs-neu-intensity: 0.20;
+    --hs-neu-bg: #f1f5f9;
+    --hs-neu-shadow-light: rgba(255, 255, 255, 0.95);
+    --hs-neu-shadow-dark: rgba(15, 23, 42, 0.12);
+    --hs-highlight-color: 15, 23, 42;
+  }
+}
+
+/* Global smooth transition when data-theme changes */
+html {
+  transition: background-color var(--hs-duration-normal) var(--hs-ease-in-out);
+}
+
+[data-theme] .hs-glass,
+[data-theme] .hs-neu,
+[data-theme] .hs-btn,
+[data-theme] .hs-toggle,
+[data-theme] .hs-input,
+[data-theme] .hs-chromatic {
+  transition:
+    background-color var(--hs-duration-normal) var(--hs-ease-in-out),
+    color var(--hs-duration-normal) var(--hs-ease-in-out),
+    border-color var(--hs-duration-normal) var(--hs-ease-in-out),
+    box-shadow var(--hs-duration-normal) var(--hs-ease-in-out);
+}

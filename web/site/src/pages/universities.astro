@@ -1,0 +1,35 @@
+---
+import Layout from '../layouts/Layout.astro';
+import UniversityRankingsPage from '../components/UniversityRankingsPage';
+import { SITE_ORIGIN } from '../config';
+import '../styles/rankings-chamber.css';
+import '../styles/universities.css';
+
+const rankingSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebPage',
+  name: 'FunctionFly University Rankings',
+  description:
+    "Top universities by FunctionFly activity. Per-capita scoring so a small CS lab can outrank a state flagship. Updated hourly.",
+  url: `${SITE_ORIGIN}/universities`,
+  isPartOf: {
+    '@type': 'WebSite',
+    name: 'FunctionFly',
+    url: SITE_ORIGIN,
+  },
+};
+
+const title =
+  'University Rankings — Top Schools by AI Builder Activity | FunctionFly';
+const description =
+  "Top universities ranked by FunctionFly activity. Per-capita scoring so small CS departments can outrank state flagships. Privacy-thresholded and updated hourly.";
+---
+
+<Layout
+  title={title}
+  description={description}
+  schema={rankingSchema}
+  ogImage="/og-universities.svg"
+>
+  <UniversityRankingsPage client:load />
+</Layout>

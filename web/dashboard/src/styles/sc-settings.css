@@ -1,0 +1,571 @@
+/**
+ * Sealed Containment Settings Page Theme
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   CSS Variables (Settings SC Theme)
+   ═══════════════════════════════════════════════ */
+
+.sc-settings {
+  --sc-settings-font-display: var(--font-display);
+  --sc-settings-font-mono: var(--font-mono);
+  --sc-settings-transition-fast: 150ms ease;
+  --sc-settings-transition-normal: 250ms ease;
+}
+
+/* ═══════════════════════════════════════════════
+   Page Container
+   ═══════════════════════════════════════════════ */
+
+.settings-page {
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .settings-page {
+    padding: 1.5rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Page Header
+   ═══════════════════════════════════════════════ */
+
+.settings-page-header {
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.settings-page-header::after {
+  display: none;
+}
+
+.settings-page-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.settings-page-subtitle {
+  font-size: 0.9375rem;
+  color: var(--text-dim);
+  margin-top: 0.375rem;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Tabs Container
+   ═══════════════════════════════════════════════ */
+
+.settings-page-tabs {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  position: relative;
+  gap: 0;
+}
+
+.settings-page-tabs::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--chamber-edge);
+}
+
+/* ═══════════════════════════════════════════════
+   Tab Trigger
+   ═══════════════════════════════════════════════ */
+
+.settings-page-tab {
+  position: relative;
+  border-radius: 0 !important;
+  color: var(--text-dim) !important;
+  transition: all var(--sc-settings-transition-fast);
+  padding: 0.5rem 1rem;
+  margin-bottom: -1px;
+  border-bottom: 2px solid transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.settings-page-tab:hover {
+  color: var(--text-primary) !important;
+  background: transparent !important;
+  text-decoration: none;
+}
+
+.settings-page-tab[data-state='active'] {
+  color: var(--status-ok) !important;
+  background: transparent !important;
+  border-bottom: 2px solid var(--status-ok) !important;
+  text-decoration: none;
+  box-shadow: none !important;
+}
+
+.settings-page-tab[data-state='active'] svg {
+  color: var(--status-ok) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   Tab Content
+   ═══════════════════════════════════════════════ */
+
+.settings-tab-content {
+  animation: sc-settings-fade-in 0.3s ease-out forwards;
+}
+
+@keyframes sc-settings-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Settings Panel (Chamber Card)
+   ═══════════════════════════════════════════════ */
+
+.settings-panel {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow);
+  padding: 1.25rem 1.5rem;
+  transition: all var(--sc-settings-transition-normal);
+}
+
+.settings-panel:hover {
+  border-color: var(--steel-light);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+/* ═══════════════════════════════════════════════
+   Trust API / Velocity Cards Override
+   ═══════════════════════════════════════════════ */
+
+.settings-page .ff-card-velocity {
+  background: var(--chamber-bg) !important;
+  border: 1px solid var(--chamber-edge) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--chamber-shadow) !important;
+}
+
+.settings-page .ff-card-velocity:hover {
+  border-color: var(--steel-light) !important;
+  box-shadow: var(--chamber-shadow-hover) !important;
+}
+
+/* ═══════════════════════════════════════════════
+   Settings Section
+   ═══════════════════════════════════════════════ */
+
+.settings-section {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+.settings-section-description {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Settings Form Elements
+   ═══════════════════════════════════════════════ */
+
+.settings-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: var(--bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  transition: all var(--sc-settings-transition-fast);
+}
+
+.settings-input:focus {
+  outline: none;
+  border-color: var(--status-ok);
+  box-shadow: 0 0 0 3px rgba(143, 255, 208, 0.15);
+}
+
+.settings-input::placeholder {
+  color: var(--text-faint);
+}
+
+.settings-label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 0.375rem;
+}
+
+/* ═══════════════════════════════════════════════
+   Settings Buttons
+   ═══════════════════════════════════════════════ */
+
+.settings-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all var(--sc-settings-transition-fast);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--btn-primary-shadow);
+}
+
+.settings-button-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #e8ecf0 100%);
+  box-shadow: var(--btn-primary-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.settings-button-primary:active:not(:disabled) {
+  background: linear-gradient(180deg, #f0f4f7 0%, #d0d5d9 100%);
+  box-shadow: var(--btn-primary-shadow-pressed);
+  transform: translateY(0);
+}
+
+.settings-button-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-button-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  background: transparent;
+  color: var(--text-primary);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--steel);
+  cursor: pointer;
+  transition: all var(--sc-settings-transition-fast);
+}
+
+.settings-button-secondary:hover:not(:disabled) {
+  border-color: var(--status-ok);
+  color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.05);
+}
+
+/* ═══════════════════════════════════════════════
+   Settings Divider
+   ═══════════════════════════════════════════════ */
+
+.settings-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--chamber-edge) 20%,
+    var(--chamber-edge) 80%,
+    transparent 100%
+  );
+  margin: 1rem 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Settings Badge
+   ═══════════════════════════════════════════════ */
+
+.settings-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.settings-badge-success {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+}
+
+.settings-badge-warning {
+  background: rgba(255, 122, 61, 0.1);
+  color: var(--accent);
+  border: 1px solid rgba(255, 122, 61, 0.3);
+}
+
+.settings-badge-danger {
+  background: rgba(255, 122, 61, 0.1);
+  color: var(--status-revoked);
+  border: 1px solid rgba(255, 122, 61, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   Avatar Section
+   ═══════════════════════════════════════════════ */
+
+.settings-avatar-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settings-avatar {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  border: 2px solid var(--chamber-edge);
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   Animation Classes
+   ═══════════════════════════════════════════════ */
+
+.settings-fade-in {
+  animation: sc-settings-fade-in-up 0.4s ease-out forwards;
+}
+
+@keyframes sc-settings-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-slide-in-right {
+  animation: sc-settings-slide-in-right 0.3s ease-out;
+}
+
+@keyframes sc-settings-slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Chamber Glow Effects
+   ═══════════════════════════════════════════════ */
+
+.sc-glow-settings {
+  box-shadow: var(--chamber-shadow), 0 0 20px rgba(143, 255, 208, 0.1);
+}
+
+.sc-glow-tab-active {
+  box-shadow: 0 0 15px rgba(143, 255, 208, 0.2), 0 0 30px rgba(143, 255, 208, 0.1);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive Adjustments
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .settings-page {
+    padding: 0.75rem;
+  }
+
+  .settings-page-title {
+    font-size: 1.5rem;
+  }
+
+  .settings-section {
+    padding: 1rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Light Mode Overrides
+   ═══════════════════════════════════════════════ */
+
+[data-theme='light'] .settings-page-title {
+  color: #0f172a;
+}
+
+[data-theme='light'] .settings-page-subtitle {
+  color: #475569;
+}
+
+[data-theme='light'] .settings-panel {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .settings-panel:hover {
+  border-color: #059669;
+  box-shadow: 0 0 0 1px #059669;
+}
+
+[data-theme='light'] .settings-section {
+  border-bottom-color: #e2e8f0;
+}
+
+[data-theme='light'] .settings-section-title {
+  color: #0f172a;
+}
+
+[data-theme='light'] .settings-section-description {
+  color: #475569;
+}
+
+[data-theme='light'] .settings-input {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .settings-input:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+[data-theme='light'] .settings-label {
+  color: #475569;
+}
+
+[data-theme='light'] .settings-button-secondary {
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme='light'] .settings-button-secondary:hover:not(:disabled) {
+  border-color: #059669;
+  color: #059669;
+  background: rgba(5, 150, 105, 0.05);
+}
+
+[data-theme='light'] .settings-page-tabs::before {
+  background: #e2e8f0;
+}
+
+[data-theme='light'] .settings-page-tab {
+  color: #64748b !important;
+}
+
+[data-theme='light'] .settings-page-tab:hover {
+  color: #0f172a !important;
+}
+
+[data-theme='light'] .settings-page-tab[data-state='active'] {
+  color: #059669 !important;
+  border-bottom-color: #059669 !important;
+}
+
+[data-theme='light'] .settings-page-tab[data-state='active'] svg {
+  color: #059669 !important;
+}
+
+[data-theme='light'] .settings-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    #e2e8f0 20%,
+    #e2e8f0 80%,
+    transparent 100%
+  );
+}
+
+[data-theme='light'] .settings-badge-success {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+[data-theme='light'] .settings-badge-warning {
+  background: rgba(232, 90, 42, 0.1);
+  color: #e85a2a;
+  border-color: rgba(232, 90, 42, 0.3);
+}
+
+[data-theme='light'] .settings-badge-danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+[data-theme='light'] .settings-avatar {
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .sc-glow-settings {
+  box-shadow: 0 0 0 1px #e2e8f0, 0 0 20px rgba(5, 150, 105, 0.08);
+}
+
+[data-theme='light'] .sc-glow-tab-active {
+  box-shadow: 0 0 15px rgba(5, 150, 105, 0.15), 0 0 30px rgba(5, 150, 105, 0.08);
+}
+
+[data-theme='light'] .settings-page .ff-card-velocity {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 0 0 1px #e2e8f0 !important;
+}
+
+[data-theme='light'] .settings-page .ff-card-velocity:hover {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 1px #059669 !important;
+}

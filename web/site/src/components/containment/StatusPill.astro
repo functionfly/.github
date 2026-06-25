@@ -1,0 +1,73 @@
+---
+interface Props {
+  status: 'live' | 'pending' | 'revoked';
+  label: string;
+}
+
+const { status, label } = Astro.props;
+
+const statusColors = {
+  live: {
+    color: 'var(--status-ok)',
+    border: 'rgba(143,255,208,0.3)',
+    background: 'rgba(143,255,208,0.06)',
+  },
+  pending: {
+    color: 'var(--status-pending)',
+    border: 'rgba(232,196,104,0.3)',
+    background: 'rgba(232,196,104,0.06)',
+  },
+  revoked: {
+    color: 'var(--status-revoked)',
+    border: 'rgba(255,107,107,0.3)',
+    background: 'rgba(255,107,107,0.06)',
+  },
+};
+
+const styles = statusColors[status];
+---
+
+<span
+  class="status-pill"
+  style={`--pill-color: ${styles.color}; --pill-border: ${styles.border}; --pill-bg: ${styles.background};`}
+>
+  <span class="status-pill-dot" aria-hidden="true"></span>
+  <span class="sr-only">{status}: </span>{label}
+</span>
+
+<style>
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px var(--space-3, 12px);
+    border-radius: var(--radius-sm, 3px);
+    border: 1px solid var(--pill-border);
+    background: var(--pill-bg);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--pill-color);
+  }
+
+  .status-pill-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--pill-color);
+    margin-right: var(--space-1, 4px);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

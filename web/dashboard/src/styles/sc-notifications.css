@@ -1,0 +1,166 @@
+/**
+ * Sealed Containment — Notifications Page
+ * FunctionFly Dashboard
+ *
+ * Uses design tokens from sc-tokens.css
+ */
+
+@import "./sc-tokens.css";
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.notifications-page {
+  min-height: 100vh;
+  padding: var(--space-4);
+  position: relative;
+}
+
+@media (min-width: 960px) {
+  .notifications-page {
+    padding: var(--space-6);
+  }
+}
+
+/* ==========================================================================
+   Trust Alert Container
+   ========================================================================== */
+
+.trust-alert-container {
+  margin-bottom: var(--space-6);
+  position: relative;
+}
+
+/* ==========================================================================
+   Notifications Content Grid
+   ========================================================================== */
+
+.notifications-content-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+@media (min-width: 960px) {
+  .notifications-content-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* ==========================================================================
+   Notification Center Panel
+   ========================================================================== */
+
+.notification-center-panel {
+  /* Uses Chamber styling - no additional background needed */
+}
+
+/* ==========================================================================
+   Activity Feed Sidebar
+   ========================================================================== */
+
+.activity-feed-sidebar {
+  /* Uses Chamber styling */
+}
+
+.activity-feed-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.activity-feed-icon {
+  color: var(--accent);
+  filter: drop-shadow(0 0 4px var(--accent-dim));
+}
+
+.activity-feed-title {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.activity-feed-scroll {
+  height: calc(100vh - 300px);
+}
+
+/* ==========================================================================
+   Skeleton Loading
+   ========================================================================== */
+
+.notifications-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.notifications-skeleton-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.notifications-skeleton-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+@media (min-width: 960px) {
+  .notifications-skeleton-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.notifications-skeleton-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.notifications-skeleton-sidebar-header {
+  margin-bottom: var(--space-4);
+}
+
+/* ==========================================================================
+   Notifications Skeleton Shimmer
+   ========================================================================== */
+
+.notifications-skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--panel) 0%,
+    var(--panel-raised) 50%,
+    var(--panel) 100%
+  );
+  background-size: 200% 100%;
+  animation: notifications-scan 2s ease-in-out infinite;
+}
+
+@keyframes notifications-scan {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 479px) {
+  .notifications-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .activity-feed-scroll {
+    height: calc(100vh - 350px);
+  }
+}

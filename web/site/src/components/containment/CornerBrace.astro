@@ -1,0 +1,60 @@
+---
+interface Props {
+  position: 'tl' | 'tr' | 'bl' | 'br';
+  class?: string;
+}
+
+const { position, class: className } = Astro.props;
+
+const isVertical = position === 'tl' || position === 'tr';
+const isHorizontal = position === 'tl' || position === 'bl';
+---
+
+<div class:list={['corner-brace', `corner-brace--${position}`, className]}>
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 22 22"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-hidden="true"
+  >
+    {position === 'tl' && <path d="M1 21V1H21" stroke="var(--steel-light)" stroke-width="2" stroke-linecap="square"/>}
+    {position === 'tr' && <path d="M21 21V1H1" stroke="var(--steel-light)" stroke-width="2" stroke-linecap="square"/>}
+    {position === 'bl' && <path d="M1 1V21H21" stroke="var(--steel-light)" stroke-width="2" stroke-linecap="square"/>}
+    {position === 'br' && <path d="M21 1V21H1" stroke="var(--steel-light)" stroke-width="2" stroke-linecap="square"/>}
+  </svg>
+</div>
+
+<style>
+  .corner-brace {
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+  }
+
+  .corner-brace--tl {
+    top: 14px;
+    left: 14px;
+  }
+
+  .corner-brace--tr {
+    top: 14px;
+    right: 14px;
+  }
+
+  .corner-brace--bl {
+    bottom: 14px;
+    left: 14px;
+  }
+
+  .corner-brace--br {
+    bottom: 14px;
+    right: 14px;
+  }
+
+  .corner-brace svg {
+    display: block;
+  }
+</style>

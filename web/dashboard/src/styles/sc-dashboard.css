@@ -1,0 +1,651 @@
+/**
+ * Sealed Containment Dashboard Theme
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ * This theme replaces professional-dashboard.css with the SC design system
+ */
+
+@import "./sc-tokens.css";
+
+/* Ensure SC tokens are applied to professional-dashboard */
+.professional-dashboard {
+  /* Import SC design tokens */
+  font-family: var(--font-body);
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ═══════════════════════════════════════════════
+   Sealed Containment Design Tokens for Dashboard
+   ═══════════════════════════════════════════════ */
+
+.sc-dashboard {
+  /* Inherit SC tokens via sc-tokens.css, but add dashboard-specific overrides */
+  --sc-font-sans: "Instrument Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --sc-font-display: "Space Grotesk", "Instrument Sans", system-ui, sans-serif;
+  --sc-font-mono: "Commit Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  
+  /* Dashboard-specific spacing */
+  --sc-space-1: 0.25rem;
+  --sc-space-2: 0.5rem;
+  --sc-space-3: 0.75rem;
+  --sc-space-4: 1rem;
+  --sc-space-6: 1.5rem;
+  --sc-space-8: 2rem;
+}
+
+/* Map SC tokens to dashboard CSS variables for component compatibility */
+.professional-dashboard {
+  /* Background */
+  --card: var(--chamber-bg);
+  --bg-secondary: var(--chamber-bg);
+  --bg-tertiary: var(--steel);
+  --bg-hover: var(--chamber-edge);
+  
+  /* Text colors mapped to SC */
+  --text-primary: var(--sc-text-primary, #eef2f0);
+  --text-secondary: var(--sc-text-dim, #7c8a8a);
+  --text-muted: var(--sc-text-faint, #4a5358);
+  
+  /* Border colors */
+  --border-subtle: var(--chamber-edge);
+  --border-default: var(--steel);
+  --border-strong: var(--steel-light);
+  
+  /* Status colors */
+  --color-status-online: var(--status-ok);
+  --color-status-degraded: var(--accent);
+  --color-status-offline: var(--status-revoked);
+}
+
+/* ═══════════════════════════════════════════════
+   Dashboard Header
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .dashboard-header {
+  position: relative;
+}
+
+.professional-dashboard .dashboard-title {
+  font-family: var(--sc-font-display);
+  color: var(--text-primary);
+  letter-spacing: -0.04em;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════
+   Chamber Card System (replaces glass-card)
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .metric-card,
+.professional-dashboard .enterprise-status-card,
+.professional-dashboard .quick-create-card,
+.professional-dashboard .usage-graph,
+.professional-dashboard .execution-rate-chart,
+.professional-dashboard .error-rate-widget,
+.professional-dashboard .memory-usage-gauge,
+.professional-dashboard .trust-score-badge,
+.professional-dashboard .live-indicator,
+.professional-dashboard .provider-status-card,
+.professional-dashboard .recent-list-card,
+.professional-dashboard .agent-activity-feed {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.professional-dashboard .metric-card:hover,
+.professional-dashboard .enterprise-status-card:hover,
+.professional-dashboard .quick-create-card:hover,
+.professional-dashboard .usage-graph:hover,
+.professional-dashboard .execution-rate-chart:hover,
+.professional-dashboard .error-rate-widget:hover,
+.professional-dashboard .memory-usage-gauge:hover,
+.professional-dashboard .trust-score-badge:hover,
+.professional-dashboard .live-indicator:hover,
+.professional-dashboard .provider-status-card:hover,
+.professional-dashboard .recent-list-card:hover,
+.professional-dashboard .agent-activity-feed:hover {
+  border-color: var(--steel-light);
+  box-shadow: var(--chamber-shadow-hover);
+}
+
+/* Accent card variant */
+.professional-dashboard .metric-card--accent {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(255, 122, 61, 0.08) 0%, var(--chamber-bg) 100%);
+}
+
+/* ═══════════════════════════════════════════════
+   Metric Cards
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .metric-card-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .metric-card-value {
+  font-family: var(--sc-font-sans);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}
+
+.professional-dashboard .metric-card-icon {
+  border-radius: var(--radius);
+  background: var(--bg-secondary);
+  border: 1px solid var(--chamber-edge);
+  color: var(--status-ok);
+  transition: all 0.2s ease;
+}
+
+.professional-dashboard .metric-card:hover .metric-card-icon {
+  background: var(--steel);
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   System Health Indicator
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .system-health-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius);
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.professional-dashboard .system-health-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.professional-dashboard .system-health-healthy {
+  background: var(--status-ok);
+  box-shadow: 0 0 8px var(--status-ok);
+}
+
+.professional-dashboard .system-health-degraded {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.professional-dashboard .system-health-down {
+  background: var(--status-revoked);
+  box-shadow: 0 0 8px var(--status-revoked);
+}
+
+/* ═══════════════════════════════════════════════
+   Quick Create Card
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .quick-create-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--chamber-edge);
+  color: var(--status-ok);
+  transition: all 0.2s ease;
+}
+
+.professional-dashboard .quick-create-card:hover .quick-create-icon {
+  background: var(--steel);
+  color: var(--text-primary);
+}
+
+.professional-dashboard .quick-create-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--steel);
+  color: var(--text-secondary);
+  border: 1px solid var(--chamber-edge);
+}
+
+/* ═══════════════════════════════════════════════
+   Chart Cards
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .usage-graph-header,
+.professional-dashboard .execution-rate-header,
+.professional-dashboard .error-rate-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.professional-dashboard .usage-graph-title,
+.professional-dashboard .execution-rate-title,
+.professional-dashboard .error-rate-title {
+  font-family: var(--sc-font-sans);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════
+   Live Indicator & Trust Score
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .live-indicator-pulse {
+  background: var(--status-ok);
+  box-shadow: 0 0 12px var(--status-ok), 0 0 24px rgba(143, 255, 208, 0.4);
+  animation: sc-pulse-live 2s infinite;
+}
+
+@keyframes sc-pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* ═══════════════════════════════════════════════
+   Memory Usage Gauge
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .memory-gauge-track {
+  background: var(--chamber-edge);
+}
+
+.professional-dashboard .memory-gauge-fill {
+  background: linear-gradient(90deg, var(--status-ok), var(--status-ok));
+  box-shadow: 0 0 8px rgba(143, 255, 208, 0.4);
+}
+
+/* ═══════════════════════════════════════════════
+   Trust Score Badge
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .trust-score-badge {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+}
+
+.professional-dashboard .trust-score-value {
+  font-family: var(--sc-font-display);
+  font-weight: 700;
+  color: var(--status-ok);
+}
+
+/* ═══════════════════════════════════════════════
+   Quick Actions Panel
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .quick-actions-panel {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow);
+}
+
+.professional-dashboard .quick-action-item {
+  color: var(--text-dim);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.professional-dashboard .quick-action-item:hover {
+  color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.05);
+}
+
+/* ═══════════════════════════════════════════════
+   Error Rate Widget
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .error-rate-bar {
+  background: var(--status-ok);
+}
+
+.professional-dashboard .error-rate-bar.error {
+  background: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════
+   Performance Leaderboard
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .performance-item {
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.professional-dashboard .performance-item:last-child {
+  border-bottom: none;
+}
+
+.professional-dashboard .performance-rank {
+  color: var(--status-ok);
+  font-family: var(--sc-font-mono);
+}
+
+/* ═══════════════════════════════════════════════
+   Region Distribution Widget
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .region-bar {
+  background: var(--steel);
+}
+
+.professional-dashboard .region-bar-fill {
+  background: linear-gradient(90deg, var(--status-ok), var(--accent));
+}
+
+/* ═══════════════════════════════════════════════
+   Quota Usage Widget
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .quota-item {
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.professional-dashboard .quota-item:last-child {
+  border-bottom: none;
+}
+
+.professional-dashboard .quota-bar {
+  background: var(--chamber-edge);
+}
+
+.professional-dashboard .quota-bar-fill {
+  background: var(--status-ok);
+}
+
+.professional-dashboard .quota-bar-fill.warning {
+  background: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════
+   Recent List Items
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .recent-list-item {
+  transition: background-color 0.2s ease;
+}
+
+.professional-dashboard .recent-list-item:hover {
+  background: rgba(143, 255, 208, 0.03);
+}
+
+.professional-dashboard .recent-list-name {
+  color: var(--text-primary);
+}
+
+.professional-dashboard .recent-list-status {
+  color: var(--text-muted);
+}
+
+.professional-dashboard .recent-list-dot {
+  background: var(--status-ok);
+  box-shadow: 0 0 6px var(--status-ok);
+}
+
+/* ═══════════════════════════════════════════════
+   Activity Feed
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .activity-item {
+  border-left: 2px solid var(--chamber-edge);
+}
+
+.professional-dashboard .activity-item.info {
+  border-left-color: var(--status-ok);
+}
+
+.professional-dashboard .activity-item.warning {
+  border-left-color: var(--accent);
+}
+
+.professional-dashboard .activity-item.error {
+  border-left-color: var(--status-revoked);
+}
+
+/* ═══════════════════════════════════════════════
+   Onboarding Banner
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .onboarding-banner {
+  background: var(--chamber-bg);
+  border: 1px solid var(--status-ok);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow), 0 0 20px rgba(143, 255, 208, 0.15);
+}
+
+.professional-dashboard .onboarding-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: rgba(143, 255, 208, 0.1);
+  border: 1px solid rgba(143, 255, 208, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--status-ok);
+}
+
+.professional-dashboard .onboarding-title {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.professional-dashboard .onboarding-description {
+  color: var(--text-secondary);
+}
+
+/* ═══════════════════════════════════════════════
+   Buttons
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .btn-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  color: var(--bg);
+  border: none;
+  box-shadow: var(--btn-primary-shadow);
+  font-weight: 600;
+  border-radius: var(--radius);
+}
+
+.professional-dashboard .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #e8ecf0 100%);
+  box-shadow: var(--btn-primary-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.professional-dashboard .btn-primary:active:not(:disabled) {
+  background: linear-gradient(180deg, #f0f4f7 0%, #d0d5d9 100%);
+  box-shadow: var(--btn-primary-shadow-pressed);
+  transform: translateY(0);
+}
+
+/* ═══════════════════════════════════════════════
+   Empty States
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .empty-state-text {
+  color: var(--text-muted);
+}
+
+.professional-dashboard .empty-state-btn {
+  background: transparent;
+  border: 1px solid var(--steel);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.professional-dashboard .empty-state-btn:hover {
+  border-color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.05);
+}
+
+/* ═══════════════════════════════════════════════
+   Provider Status Grid
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .provider-status-item {
+  background: var(--chamber-bg);
+  border: 1px solid var(--chamber-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--chamber-shadow);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.professional-dashboard .provider-status-item:hover {
+  border-color: var(--steel-light);
+  transform: translateY(-2px);
+}
+
+.professional-dashboard .provider-status-connected {
+  color: var(--status-ok);
+}
+
+.professional-dashboard .provider-status-disconnected {
+  color: var(--text-muted);
+}
+
+.professional-dashboard .provider-status-error {
+  color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════
+   Card Headers & Titles
+   ═══════════════════════════════════════════════ */
+
+.professional-dashboard .recent-list-title {
+  font-family: var(--sc-font-sans);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: none;
+}
+
+/* ═══════════════════════════════════════════════
+   Light Mode Overrides
+   ═══════════════════════════════════════════════ */
+
+[data-theme='light'] .professional-dashboard {
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+}
+
+[data-theme='light'] .professional-dashboard .metric-card,
+[data-theme='light'] .professional-dashboard .enterprise-status-card,
+[data-theme='light'] .professional-dashboard .quick-create-card,
+[data-theme='light'] .professional-dashboard .usage-graph,
+[data-theme='light'] .professional-dashboard .execution-rate-chart,
+[data-theme='light'] .professional-dashboard .error-rate-widget,
+[data-theme='light'] .professional-dashboard .memory-usage-gauge,
+[data-theme='light'] .professional-dashboard .trust-score-badge,
+[data-theme='light'] .professional-dashboard .live-indicator,
+[data-theme='light'] .professional-dashboard .provider-status-card,
+[data-theme='light'] .professional-dashboard .recent-list-card,
+[data-theme='light'] .professional-dashboard .agent-activity-feed {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .professional-dashboard .metric-card:hover,
+[data-theme='light'] .professional-dashboard .enterprise-status-card:hover,
+[data-theme='light'] .professional-dashboard .quick-create-card:hover,
+[data-theme='light'] .professional-dashboard .usage-graph:hover,
+[data-theme='light'] .professional-dashboard .execution-rate-chart:hover,
+[data-theme='light'] .professional-dashboard .error-rate-widget:hover,
+[data-theme='light'] .professional-dashboard .memory-usage-gauge:hover,
+[data-theme='light'] .professional-dashboard .trust-score-badge:hover,
+[data-theme='light'] .professional-dashboard .live-indicator:hover,
+[data-theme='light'] .professional-dashboard .provider-status-card:hover,
+[data-theme='light'] .professional-dashboard .recent-list-card:hover,
+[data-theme='light'] .professional-dashboard .agent-activity-feed:hover {
+  border-color: #059669;
+}
+
+[data-theme='light'] .professional-dashboard .metric-card-icon,
+[data-theme='light'] .professional-dashboard .quick-create-icon {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #059669;
+}
+
+[data-theme='light'] .professional-dashboard .system-health-indicator {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+[data-theme='light'] .professional-dashboard .system-health-healthy {
+  background: #059669;
+  box-shadow: 0 0 8px #059669;
+}
+
+[data-theme='light'] .professional-dashboard .onboarding-banner {
+  background: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 0 0 1px #e2e8f0, 0 0 20px rgba(5, 150, 105, 0.1);
+}
+
+[data-theme='light'] .professional-dashboard .onboarding-icon {
+  background: rgba(5, 150, 105, 0.1);
+  border-color: rgba(5, 150, 105, 0.2);
+  color: #059669;
+}
+
+[data-theme='light'] .professional-dashboard .btn-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #e8ecf0 100%);
+  color: #0f172a;
+}
+
+[data-theme='light'] .professional-dashboard .btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffffff 0%, #d8dde2 100%);
+}
+
+[data-theme='light'] .professional-dashboard .quick-create-badge {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+[data-theme='light'] .professional-dashboard .recent-list-dot {
+  background: #059669;
+  box-shadow: 0 0 6px #059669;
+}
+
+[data-theme='light'] .professional-dashboard .live-indicator-pulse {
+  background: #059669;
+  box-shadow: 0 0 12px #059669;
+}
+
+[data-theme='light'] .professional-dashboard .activity-item.info {
+  border-left-color: #059669;
+}
+
+[data-theme='light'] .professional-dashboard .empty-state-btn:hover {
+  border-color: #059669;
+  background: rgba(5, 150, 105, 0.05);
+}
+
+[data-theme='light'] .professional-dashboard .quick-action-item:hover {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.05);
+}

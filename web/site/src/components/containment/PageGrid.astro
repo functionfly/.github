@@ -1,0 +1,34 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<div class:list={['page-grid', className]} aria-hidden="true"></div>
+
+<style>
+  .page-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--steel) 1px, transparent 1px),
+      linear-gradient(90deg, var(--steel) 1px, transparent 1px);
+    background-size: 48px 48px;
+    opacity: 0.03;
+  }
+
+  .page-grid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--steel) 1px, transparent 1px),
+      linear-gradient(90deg, var(--steel) 1px, transparent 1px);
+    background-size: 12px 12px;
+    opacity: 0.02;
+  }
+</style>

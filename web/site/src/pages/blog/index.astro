@@ -1,0 +1,133 @@
+---
+import ContentPage from '../../layouts/ContentPage.astro';
+import { SITE_ORIGIN } from '../../config';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
+
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'Blog',
+  name: 'State of AI Builders · FunctionFly',
+  description: 'Monthly reports on the top cities, universities, and ambassadors on FunctionFly.',
+  url: `${SITE_ORIGIN}/blog`,
+};
+
+interface ReportSummary {
+  slug: string;
+  title: string;
+  periodStart: string;
+  periodEnd: string;
+  generatedAt: string;
+  metros: number;
+  universities: number;
+  users: number;
+}
+
+const reportsDir = 'src/content/reports';
+let reports: ReportSummary[] = [];
+try {
+  const files = (await readdir(reportsDir)).filter((f) => f.endsWith('.md')).sort().reverse();
+  for (const file of files) {
+    const content = await readFile(join(reportsDir, file), 'utf-8');
+    const slug = file.replace(/\.md$/, '');
+    const titleMatch = content.match(/^# (.+)$/m);
+    const periodMatch = content.match(/_Period: ([\d-]+) → ([\d-]+) · Generated (.+?)_/m);
+    const tldrMatch = content.match(/\*\*(\d+) metros\*\* ranked, \*\*(\d+) universities\*\* ranked\.\n\n- \*\*(\d+)/);
+    reports.push({
+      slug,
+      title: titleMatch?.[1] ?? slug,
+      periodStart: periodMatch?.[1] ?? '',
+      periodEnd: periodMatch?.[2] ?? '',
+      generatedAt: periodMatch?.[3] ?? '',
+      metros: Number(tldrMatch?.[1] ?? 0),
+      universities: Number(tldrMatch?.[2] ?? 0),
+      users: Number(tldrMatch?.[3] ?? 0),
+    });
+  }
+} catch {
+  // Content dir missing — first deploy before any report ran.
+}
+
+const title = 'State of AI Builders — Monthly Reports | FunctionFly';
+const description = 'Monthly reports on the top cities, universities, and ambassadors on FunctionFly. Generated automatically from live data, k≥5 privacy threshold enforced.';
+---
+
+<ContentPage
+  title={title}
+  description={description}
+  schema={schema}
+  ogImage="/og-state-reports.svg"
+>
+  <h1>State of AI Builders</h1>
+  <p class="lead">Monthly reports on the top cities, universities, and ambassadors on FunctionFly. Generated automatically from live data; published the 1st of each month.</p>
+
+  {reports.length === 0 ? (
+    <p class="muted">No reports yet — the first report is generated on the 1st of next month.</p>
+  ) : (
+    <ul class="report-list">
+      {reports.map((r) => (
+        <li>
+          <a href={`/blog/${r.slug}`}>
+            <div class="report-card">
+              <span class="badge">Monthly Report</span>
+              <h2>{r.title}</h2>
+              <p class="meta">Period: {r.periodStart} → {r.periodEnd} · Generated {r.generatedAt}</p>
+              <div class="stats">
+                <span><strong>{r.metros}</strong> metros</span>
+                <span><strong>{r.universities}</strong> universities</span>
+                <span><strong>{r.users}</strong> active builders</span>
+              </div>
+            </div>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )}
+
+  <p class="muted">Source: <a href="/rankings">live city + university leaderboards</a> and the city ambassador program. Privacy threshold: k≥5 active builders.</p>
+</ContentPage>
+
+<style>
+  .report-list {
+    list-style: none;
+    padding: 0;
+    margin: 2rem 0;
+  }
+  .report-list li {
+    margin-bottom: 1rem;
+  }
+  .report-list a {
+    text-decoration: none;
+    color: inherit;
+  }
+  .report-card {
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius-lg);
+    padding: var(--space-5);
+    background: var(--panel-raised);
+    transition: border-color var(--duration-fast) var(--ease-out);
+  }
+  .report-card:hover {
+    border-color: var(--accent-dim);
+  }
+  .report-card h2 {
+    margin: var(--space-2) 0 var(--space-1);
+    font-size: 1.5rem;
+  }
+  .meta {
+    color: var(--text-dim);
+    font-size: 0.875rem;
+    margin: 0 0 var(--space-4);
+  }
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5);
+    font-size: 0.95rem;
+    color: var(--text-dim);
+  }
+  .stats strong {
+    color: var(--text);
+    font-size: 1.125rem;
+  }
+</style>

@@ -1,0 +1,378 @@
+/**
+ * Onboarding Page — Sealed Containment Style
+ * FunctionFly Dashboard
+ *
+ * Redesigned to match the Trust page aesthetic
+ * Uses mint accent (status-ok) instead of orange (aviation-amber)
+ */
+
+@import "./sc-tokens.css";
+
+/* ============================================================================
+   ONBOARDING VARIABLES — SEALED CONTAINMENT OVERRIDES
+   ============================================================================ */
+
+:root {
+  /* Status ok dim for backgrounds */
+  --status-ok-dim: rgba(143, 255, 208, 0.1);
+  --status-ok-border: rgba(143, 255, 208, 0.3);
+}
+
+/* ============================================================================
+   ONBOARDING PAGE CONTAINER
+   ============================================================================ */
+
+.onboarding-sealed {
+  --onboarding-bg: var(--bg);
+  --onboarding-panel: var(--chamber-bg, #0e1318);
+  --onboarding-edge: var(--chamber-edge, #1c242b);
+  --onboarding-glass: var(--chamber-glass, rgba(110, 190, 170, 0.05));
+}
+
+/* ============================================================================
+   BACKGROUND EFFECTS (keep but tint mint instead of orange)
+   ============================================================================ */
+
+.onboarding-sealed .mesh-gradient-bg {
+  background: var(--bg);
+}
+
+.onboarding-sealed .bg-brand-500\/10 {
+  background: rgba(143, 255, 208, 0.1);
+}
+
+.onboarding-sealed .bg-purple-500\/10 {
+  background: rgba(143, 255, 208, 0.1);
+}
+
+/* ============================================================================
+   HEADER
+   ============================================================================ */
+
+.onboarding-sealed .onboarding-header {
+  background: rgba(14, 19, 24, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--chamber-edge, #1c242b);
+}
+
+.onboarding-logo {
+  background: linear-gradient(135deg, var(--status-ok) 0%, #7ce4b8 100%);
+  box-shadow: 0 4px 14px rgba(143, 255, 208, 0.35);
+}
+
+.onboarding-brand-text {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.onboarding-brand-text .text-amber {
+  color: var(--status-ok);
+}
+
+/* ============================================================================
+   STEP COUNTER
+   ============================================================================ */
+
+.onboarding-sealed .text-aviation-text-muted {
+  color: var(--text-secondary, #7c8a8a);
+}
+
+/* ============================================================================
+   SKIP BUTTON
+   ============================================================================ */
+
+.onboarding-sealed .text-aviation-text-muted\/hover\:text-aviation-amber:hover,
+.onboarding-sealed .hover\:text-aviation-amber:hover {
+  color: var(--status-ok);
+}
+
+.onboarding-sealed .hover\:bg-aviation-bg-instrument:hover {
+  background: rgba(143, 255, 208, 0.05);
+}
+
+/* ============================================================================
+   PROGRESS BAR
+   ============================================================================ */
+
+.onboarding-sealed .bg-aviation-bg-secondary {
+  background: var(--bg-secondary, #0e1318);
+}
+
+.onboarding-sealed .bg-gradient-to-r {
+  background: linear-gradient(to right, var(--status-ok), #7ce4b8);
+}
+
+.onboarding-sealed .from-aviation-amber,
+.onboarding-sealed .to-aviation-cyan {
+  --tw-gradient-from: var(--status-ok);
+  --tw-gradient-to: #7ce4b8;
+}
+
+/* ============================================================================
+   MAIN CONTENT CARD
+   ============================================================================ */
+
+.onboarding-sealed .aviation-panel {
+  background: var(--chamber-bg, #0e1318);
+  border: 1px solid var(--chamber-edge, #1c242b);
+  box-shadow: inset 0 1px 0 rgba(110, 190, 170, 0.05), 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* ============================================================================
+   STEP ICON BADGE
+   ============================================================================ */
+
+.onboarding-sealed .bg-gradient-to-br\/20 {
+  background: rgba(143, 255, 208, 0.2);
+}
+
+.onboarding-sealed .border-aviation-amber-dim {
+  border-color: rgba(143, 255, 208, 0.3);
+}
+
+.onboarding-sealed .text-aviation-amber {
+  color: var(--status-ok);
+}
+
+.onboarding-sealed .border-aviation-border-panel {
+  border-color: var(--chamber-edge, #1c242b);
+}
+
+/* ============================================================================
+   STEP ICON CONTAINER (in header)
+   ============================================================================ */
+
+.onboarding-sealed .bg-gradient-to-br\.from-aviation-amber\.to-aviation-amber-glow {
+  background: linear-gradient(135deg, var(--status-ok) 0%, rgba(143, 255, 208, 0.6) 100%);
+  box-shadow: 0 0 20px rgba(143, 255, 208, 0.5);
+}
+
+/* ============================================================================
+   NAVIGATION BUTTONS
+   ============================================================================ */
+
+.onboarding-sealed .aviation-button-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  color: #0a0d11;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.onboarding-sealed .aviation-button-primary:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.onboarding-sealed .aviation-button-primary:active {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================================
+   BACK BUTTON
+   ============================================================================ */
+
+.onboarding-sealed .gap-2\.font-mono.text-aviation-text-secondary {
+  color: var(--text-secondary, #7c8a8a);
+}
+
+.onboarding-sealed .hover\:text-aviation-amber:hover {
+  color: var(--status-ok);
+}
+
+/* ============================================================================
+   TIPS CARD
+   ============================================================================ */
+
+.onboarding-sealed .aviation-panel-glow {
+  background: var(--chamber-bg, #0e1318);
+  border: 1px solid rgba(143, 255, 208, 0.2);
+  box-shadow: 0 0 20px rgba(143, 255, 208, 0.15);
+}
+
+.onboarding-sealed .text-aviation-amber {
+  color: var(--status-ok);
+}
+
+/* ============================================================================
+   STEPPER INDICATORS
+   ============================================================================ */
+
+.onboarding-sealed .bg-aviation-bg-instrument {
+  background: rgba(14, 19, 24, 0.6);
+}
+
+.onboarding-sealed .border-2\.border-aviation-amber {
+  border-color: var(--status-ok);
+}
+
+.onboarding-sealed .shadow-lg\.shadow-aviation-amber-dim {
+  box-shadow: 0 0 20px rgba(143, 255, 208, 0.3), 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.onboarding-sealed .border\.border-aviation-green\/50 {
+  border-color: rgba(143, 255, 208, 0.5);
+}
+
+.onboarding-sealed .bg-aviation-bg-tertiary {
+  background: #2a3138;
+}
+
+.onboarding-sealed .text-aviation-green {
+  color: var(--status-ok);
+}
+
+.onboarding-sealed .border-aviation-border-panel {
+  border-color: var(--chamber-edge, #1c242b);
+}
+
+.onboarding-sealed .border-aviation-amber-dim {
+  border-color: rgba(143, 255, 208, 0.3);
+}
+
+/* Step icon circles */
+.onboarding-sealed .bg-gradient-to-br\.from-aviation-amber\.to-aviation-amber-glow.text-aviation-bg-primary {
+  background: linear-gradient(135deg, var(--status-ok) 0%, rgba(143, 255, 208, 0.6) 100%);
+  color: #0a0d11;
+}
+
+.onboarding-sealed .bg-aviation-green {
+  background: var(--status-ok);
+  color: #0a0d11;
+}
+
+.onboarding-sealed .bg-aviation-bg-tertiary\.text-aviation-text-muted {
+  background: #2a3138;
+  color: var(--text-secondary, #7c8a8a);
+}
+
+/* ============================================================================
+   STEPPER TITLES
+   ============================================================================ */
+
+.onboarding-sealed .text-aviation-amber {
+  color: var(--status-ok);
+}
+
+.onboarding-sealed .text-aviation-green {
+  color: var(--status-ok);
+}
+
+/* ============================================================================
+   LIGHT MODE OVERRIDES
+   ============================================================================ */
+
+[data-theme='light'] .onboarding-sealed {
+  --onboarding-bg: #f8fafc;
+  --onboarding-panel: #ffffff;
+  --onboarding-edge: #e2e8f0;
+}
+
+[data-theme='light'] .onboarding-sealed .mesh-gradient-bg {
+  background: #f8fafc;
+}
+
+[data-theme='light'] .onboarding-sealed .bg-brand-500\/10 {
+  background: rgba(5, 150, 105, 0.1);
+}
+
+[data-theme='light'] .onboarding-sealed .bg-purple-500\/10 {
+  background: rgba(5, 150, 105, 0.1);
+}
+
+[data-theme='light'] .onboarding-sealed .aviation-panel {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .onboarding-sealed .onboarding-header {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .onboarding-logo {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+}
+
+[data-theme='light'] .onboarding-brand-text {
+  color: #0f172a;
+}
+
+[data-theme='light'] .onboarding-brand-text .text-amber {
+  color: #059669;
+}
+
+[data-theme='light'] .onboarding-sealed .text-aviation-text-muted {
+  color: #64748b;
+}
+
+[data-theme='light'] .onboarding-sealed .text-aviation-text-secondary {
+  color: #475569;
+}
+
+[data-theme='light'] .onboarding-sealed .bg-aviation-bg-secondary {
+  background: #f1f5f9;
+}
+
+[data-theme='light'] .onboarding-sealed .bg-aviation-bg-instrument {
+  background: rgba(5, 150, 105, 0.05);
+}
+
+[data-theme='light'] .onboarding-sealed .aviation-panel-glow {
+  background: #ffffff;
+  border-color: rgba(5, 150, 105, 0.2);
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .onboarding-sealed .from-aviation-amber,
+[data-theme='light'] .onboarding-sealed .to-aviation-cyan {
+  --tw-gradient-from: #059669;
+  --tw-gradient-to: #10b981;
+}
+
+[data-theme='light'] .onboarding-sealed .bg-gradient-to-br\.from-aviation-amber\.to-aviation-amber-glow {
+  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+}
+
+[data-theme='light'] .onboarding-sealed .border-aviation-amber-dim {
+  border-color: rgba(5, 150, 105, 0.3);
+}
+
+[data-theme='light'] .onboarding-sealed .text-aviation-amber {
+  color: #059669;
+}
+
+[data-theme='light'] .onboarding-sealed .text-aviation-green {
+  color: #059669;
+}
+
+[data-theme='light'] .onboarding-sealed .border-aviation-green\/50 {
+  border-color: rgba(5, 150, 105, 0.5);
+}
+
+[data-theme='light'] .onboarding-sealed .bg-aviation-green {
+  background: #059669;
+  color: #ffffff;
+}
+
+[data-theme='light'] .onboarding-sealed .bg-aviation-bg-tertiary {
+  background: #f1f5f9;
+}
+
+[data-theme='light'] .onboarding-sealed .bg-aviation-bg-tertiary\.text-aviation-text-muted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+[data-theme='light'] .onboarding-sealed .border-aviation-border-panel {
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .onboarding-sealed .shadow-lg\.shadow-aviation-amber-dim {
+  box-shadow: 0 0 20px rgba(5, 150, 105, 0.2), 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='light'] .onboarding-sealed .aviation-button-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #e8ecef 100%);
+  color: #0f172a;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 4px 12px rgba(0, 0, 0, 0.1);
+}

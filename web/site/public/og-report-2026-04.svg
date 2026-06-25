@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a"/>
+      <stop offset="100%" style="stop-color:#1e293b"/>
+    </linearGradient>
+    <linearGradient id="report" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#FF6B35"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#g)"/>
+  <rect x="80" y="80" width="72" height="72" rx="14" fill="#0F172A"/>
+  <path d="M116 97L157 138L116 179L75 138L116 97Z" fill="#6366F1"/>
+  <path d="M116 114.5L135.5 134L116 153.5L96.5 134L116 114.5Z" fill="white"/>
+  <path d="M116 124L125.5 134L116 144L106.5 134L116 124Z" fill="#6366F1"/>
+  <text x="180" y="135" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="48" font-weight="700">FunctionFly</text>
+  <text x="80" y="220" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="56" font-weight="700">State of AI Builders</text>
+  <text x="80" y="280" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="28">April 2026 Report</text>
+  <rect x="80" y="340" width="340" height="100" rx="12" fill="#1e293b" stroke="url(#report)" stroke-width="2"/>
+  <text x="250" y="390" fill="#fb923c" font-family="system-ui,sans-serif" font-size="20" font-weight="600" text-anchor="middle">Top Metros</text>
+  <text x="250" y="420" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="16" text-anchor="middle">City rankings by activity</text>
+  <rect x="460" y="340" width="340" height="100" rx="12" fill="#1e293b" stroke="#6366F1" stroke-width="2"/>
+  <text x="630" y="390" fill="#a5b4fc" font-family="system-ui,sans-serif" font-size="20" font-weight="600" text-anchor="middle">Universities</text>
+  <text x="630" y="420" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="16" text-anchor="middle">Per-capita rankings</text>
+  <rect x="840" y="340" width="280" height="100" rx="12" fill="#1e293b" stroke="#00D4FF" stroke-width="2"/>
+  <text x="980" y="390" fill="#67e8f9" font-family="system-ui,sans-serif" font-size="20" font-weight="600" text-anchor="middle">Ambassadors</text>
+  <text x="980" y="420" fill="#94a3b8" font-family="system-ui,sans-serif" font-size="16" text-anchor="middle">Top city builders</text>
+  <text x="80" y="520" fill="#f8fafc" font-family="system-ui,sans-serif" font-size="24">April 2026 · k≥5 privacy threshold</text>
+</svg>

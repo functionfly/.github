@@ -1,0 +1,75 @@
+import React, { forwardRef } from 'react';
+import { Spinner } from './Spinner';
+
+type ButtonSize = 'sm' | 'md' | 'lg';
+
+interface FrameButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  size?: ButtonSize;
+  loading?: boolean;
+  iconRight?: React.ReactNode;
+  iconLeft?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+/**
+ * FrameButton - Secondary button with transparent background and steel border.
+ * Used for less prominent actions alongside the primary SealedButton.
+ * 
+ * Visual spec:
+ * - Background: transparent
+ * - Border: 1px solid var(--steel)
+ * - Text color: var(--text-primary)
+ * - Font: Inter, 500 weight, 14px
+ * - Padding: 13px vertical, 22px horizontal
+ * - Border-radius: 4px (--radius token)
+ */
+export const FrameButton = forwardRef<HTMLButtonElement, FrameButtonProps>(
+  (
+    {
+      size = 'md',
+      loading = false,
+      iconRight,
+      iconLeft,
+      children,
+      className = '',
+      disabled,
+      ...props
+    },
+    ref
+  ) => {
+    const isDisabled = disabled || loading;
+
+    return (
+      <button
+        ref={ref}
+        disabled={isDisabled}
+        aria-disabled={isDisabled}
+        aria-busy={loading}
+        className={`
+          sealed-button-secondary
+          ${size === 'sm' ? 'sealed-btn-sm' : size === 'lg' ? 'sealed-btn-lg' : 'sealed-btn-md'}
+          ${loading ? 'sealed-btn-loading' : ''}
+          ${className}
+        `}
+        {...props}
+      >
+        {loading ? (
+          <>
+            <Spinner size={size === 'sm' ? 'sm' : 'md'} />
+            <span className="sealed-btn-label" aria-hidden="true">
+              Loading
+            </span>
+          </>
+        ) : (
+          <>
+            {iconLeft && <span className="sealed-btn-icon sealed-btn-icon-left">{iconLeft}</span>}
+            <span className="sealed-btn-label">{children}</span>
+            {iconRight && <span className="sealed-btn-icon sealed-btn-icon-right">{iconRight}</span>}
+          </>
+        )}
+      </button>
+    );
+  }
+);
+
+FrameButton.displayName = 'FrameButton';

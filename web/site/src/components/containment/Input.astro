@@ -1,0 +1,110 @@
+---
+interface Props {
+  type?: 'text' | 'email' | 'password' | 'number' | 'tel' | 'url' | 'search';
+  name?: string;
+  id?: string;
+  value?: string;
+  placeholder?: string;
+  required?: boolean;
+  disabled?: boolean;
+  error?: boolean;
+  errorMessage?: string;
+  class?: string;
+  autocomplete?: string;
+}
+
+const {
+  type = 'text',
+  name,
+  id,
+  value,
+  placeholder,
+  required = false,
+  disabled = false,
+  error = false,
+  errorMessage,
+  class: className,
+  autocomplete,
+} = Astro.props;
+---
+
+<div class:list={['input-wrapper', { 'input-wrapper--error': error }, className]}>
+  <input
+    class="input"
+    type={type}
+    name={name}
+    id={id}
+    value={value}
+    placeholder={placeholder}
+    required={required}
+    disabled={disabled}
+    aria-invalid={error ? 'true' : undefined}
+    aria-describedby={error && errorMessage ? `${id}-error` : undefined}
+    autocomplete={autocomplete}
+  />
+  {error && errorMessage && (
+    <span class="input-error" id={`${id}-error`} role="alert">
+      {errorMessage}
+    </span>
+  )}
+</div>
+
+<style>
+  .input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .input {
+    width: 100%;
+    padding: 12px 14px;
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--panel-raised);
+    border: 1px solid var(--steel);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-input-rest);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+    outline: none;
+  }
+
+  .input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .input:hover:not(:disabled) {
+    border-color: var(--steel-light);
+  }
+
+  .input:focus {
+    border-color: var(--steel-light);
+    box-shadow: var(--shadow-input-focus);
+  }
+
+  .input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Error state */
+  .input-wrapper--error .input {
+    border-color: var(--status-revoked);
+  }
+
+  .input-wrapper--error .input:focus {
+    box-shadow: var(--shadow-input-error);
+  }
+
+  .input-error {
+    font-size: 12px;
+    color: var(--status-revoked);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+</style>

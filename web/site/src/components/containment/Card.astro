@@ -1,0 +1,23 @@
+---
+import Chamber from './Chamber.astro';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<div class:list={['card', className]}>
+  <slot />
+</div>
+
+<style>
+  .card {
+    background: var(--panel-raised);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius, 4px);
+    padding: var(--space-5, 24px);
+    box-shadow: var(--shadow-chamber);
+  }
+</style>

@@ -1,0 +1,12 @@
+---
+import Layout from '../layouts/Layout.astro';
+import DpaPage from '../components/DpaPage';
+import { SITE_ORIGIN } from '../config';
+
+const title = 'Data Processing Agreement — FunctionFly';
+const description = 'Data Processing Agreement (DPA) for GDPR compliance. This DPA governs the processing of personal data when FunctionFly serves as a data processor for enterprise customers.';
+---
+
+<Layout title={title} description={description} ogImage="/og-home.svg">
+  <DpaPage client:load />
+</Layout>

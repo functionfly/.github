@@ -1,0 +1,240 @@
+/**
+ * Sealed Containment Component Styles — Auth Site
+ * Trust seal animations, button system, chamber refinements.
+ * Depends on: sc-tokens.css, sc-main.css
+ */
+
+/* ─────────────────────────────────────────────────
+   TrustSeal Foil Animations
+   ───────────────────────────────────────────────── */
+
+.trust-seal-foil {
+  box-shadow: var(--shadow-seal);
+  will-change: transform;
+}
+
+.trust-seal-shimmer {
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.5) 30deg,
+    transparent 60deg
+  );
+  opacity: 0.6;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trust-seal-foil {
+    background: conic-gradient(
+      from 0deg,
+      var(--foil-a),
+      var(--foil-b),
+      var(--foil-c),
+      var(--foil-a)
+    ) !important;
+    box-shadow: var(--shadow-seal);
+  }
+
+  .trust-seal-shimmer {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────
+   Pulse animation for "live" status indicators
+   ───────────────────────────────────────────────── */
+
+@keyframes ff-pulse-live {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.ff-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--status-ok);
+  border-radius: 50%;
+  animation: ff-pulse-live 2s infinite;
+  box-shadow:
+    0 0 12px var(--status-ok),
+    0 0 24px rgba(143, 255, 208, 0.4);
+}
+
+/* ─────────────────────────────────────────────────
+   Button System — SealedButton (primary) + FrameButton (secondary)
+   ───────────────────────────────────────────────── */
+
+.sealed-btn-label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sealed-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.sealed-btn-icon-left { margin-right: 6px; }
+.sealed-btn-icon-right { margin-left: 6px; }
+
+.sealed-btn-loading { cursor: wait; }
+
+.sealed-btn-sm .sealed-btn-label { font-size: 12px; }
+.sealed-btn-sm { padding: 9px 14px; }
+
+.sealed-btn-md { padding: 13px 22px; }
+
+.sealed-btn-lg .sealed-btn-label { font-size: 15px; }
+.sealed-btn-lg { padding: 15px 26px; }
+
+/* Primary — brushed metal embossed button */
+.sealed-button-primary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-on-light);
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-btn-primary-rest);
+  cursor: pointer;
+  transition:
+    box-shadow var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out);
+  text-decoration: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  z-index: 1;
+}
+
+.sealed-button-primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover);
+  transform: translateY(-1px);
+}
+
+.sealed-button-primary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+.sealed-button-primary:disabled,
+.sealed-button-primary[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: var(--shadow-btn-primary-disabled);
+}
+
+.sealed-button-primary:focus-visible {
+  box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus);
+}
+
+/* Secondary — framed steel border */
+.sealed-button-secondary {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-btn-secondary-rest);
+  cursor: pointer;
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+  text-decoration: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  z-index: 1;
+}
+
+.sealed-button-secondary:hover:not(:disabled) {
+  border-color: var(--steel-light);
+}
+
+.sealed-button-secondary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-secondary-active);
+}
+
+.sealed-button-secondary:disabled,
+.sealed-button-secondary[aria-disabled="true"] {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.sealed-button-secondary:focus-visible {
+  box-shadow: var(--shadow-btn-secondary-rest), var(--shadow-focus);
+}
+
+/* ButtonGroup layout */
+.sealed-button-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sealed-button-group > * { flex-shrink: 0; }
+
+.sealed-button-group-responsive {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+  .sealed-button-group-responsive {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  .sealed-button-group-responsive > * { flex-shrink: 0; }
+}
+
+/* ─────────────────────────────────────────────────
+   Light mode overrides
+   ───────────────────────────────────────────────── */
+
+[data-theme="light"] .sealed-button-primary { color: #0f172a; }
+
+[data-theme="light"] .sealed-button-secondary {
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .sealed-button-secondary:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .sealed-button-secondary:active:not(:disabled) {
+  background: rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .trust-seal-label { color: #059669 !important; }
+
+[data-theme="light"] .gauge-strip-value { color: #059669 !important; }
+[data-theme="light"] .gauge-strip-label { color: #6b7280 !important; }
+[data-theme="light"] .gauge-strip-divider { background: #e5e7eb !important; }
+
+[data-theme="light"] .ff-pulse-dot {
+  background: #059669;
+  box-shadow: 0 0 12px #059669;
+}
