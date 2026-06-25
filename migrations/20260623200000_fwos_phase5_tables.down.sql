@@ -1,0 +1,11 @@
+DROP TABLE IF EXISTS fwos_events;
+DROP TABLE IF EXISTS employee_certificates;
+DROP TABLE IF EXISTS data_classifications;
+DROP TABLE IF EXISTS feature_flags;
+DROP TABLE IF EXISTS lifecycle_workflow_instances;
+DROP TABLE IF EXISTS lifecycle_workflows;
+DROP TABLE IF EXISTS lifecycle_events;
+DROP TABLE IF EXISTS postmortems;
+DROP TABLE IF EXISTS incident_responders;
+DROP TABLE IF EXISTS incident_events;
+DROP TABLE IF EXISTS incidents;

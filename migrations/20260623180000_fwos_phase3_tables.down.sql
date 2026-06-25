@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS document_shares;
+DROP TABLE IF EXISTS documents;
+DROP TABLE IF EXISTS mentorship_matches;
+DROP TABLE IF EXISTS employee_career_progress;
+DROP TABLE IF EXISTS career_paths;
+DROP TABLE IF EXISTS marketplace_applications;
+DROP TABLE IF EXISTS marketplace_opportunities;
+DROP TABLE IF EXISTS innovation_grant_votes;
+DROP TABLE IF EXISTS innovation_grants;
