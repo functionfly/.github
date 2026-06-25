@@ -1,0 +1,86 @@
+---
+title: Secrets Vault
+description: Zero-knowledge encrypted secrets management for FunctionFly
+sidebar:
+  order: 1
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+The FunctionFly Secrets Vault provides **zero-knowledge encryption** for sensitive configuration data. Your secrets are encrypted client-side before being stored, ensuring the server never sees plaintext values.
+
+## Key Features
+
+- **Zero-Knowledge Encryption** — Client-side encryption, server never sees plaintext
+- **Passphrase Protection** — Only you hold the decryption key
+- **Runtime Injection** — Secrets available at function execution time
+- **Scoped Access** — Control secrets per function or environment
+- **Break-Glass Access** — Emergency access procedures for incident response
+- **Audit Logging** — Complete trail of secret access and modifications
+
+## How It Works
+
+```
+┌─────────────┐    AES-256-GCM     ┌─────────────┐
+│   Client    │ ──── Encrypt ────► │   Server   │
+│  (Browser)  │                    │  (Storage) │
+└─────────────┘                    └─────────────┘
+      │                                  │
+      │  Passphrase (never sent)         │  Ciphertext only
+      ▼                                  ▼
+┌─────────────┐                    ┌─────────────┐
+│  Decrypt    │ ◄─── Decrypt ──── │  ciphertext │
+│  Locally    │                    │   + IV     │
+└─────────────┘                    └─────────────┘
+```
+
+## Plans
+
+| Plan | Max Secrets | Max Dynamic Creds | Key Features |
+|------|------------|-------------------|--------------|
+| **Free** | 25 | 100 | Expiration, namespaces |
+| **Pro** | 500 | 5,000 | MFA, IP allowlist, break-glass |
+| **Team** | 5,000 | 50,000 | Escrow, RBAC, shares, SIEM webhooks |
+| **Enterprise** | 1,000,000 | 1,000,000 | SSO, HA status |
+
+## Quick Start
+
+```bash
+# Set a secret
+ffly secrets set API_KEY="sk-1234567890"
+
+# List secrets (values hidden)
+ffly secrets list
+
+# Use in function.yaml
+ffly secrets set DB_PASSWORD
+```
+
+Reference secrets in your `function.yaml`:
+
+```yaml
+name: my-function
+runtime: python
+secrets:
+  - DB_PASSWORD
+  - API_KEY
+environment:
+  DATABASE_URL: "postgresql://user:${DB_PASSWORD}@db.example.com/db"
+```
+
+## Documentation
+
+<CardGrid>
+  <Card title="Secrets Vault Guide" icon="seti:key" href="/guides/secrets-vault-guide/">
+    Complete guide to managing secrets, passphrases, and dynamic credentials.
+  </Card>
+  <Card title="Vault Operations" icon="document" href="/docs/VAULT_OPERATIONS.md">
+    Operations guide for key rotation, token cleanup, and retention policies.
+  </Card>
+</CardGrid>
+
+## Related
+
+- [Environment Variables](/guides/environment-variables/) — Configure function settings
+- [Authentication](/guides/authentication/) — Secure your functions
+- [Registry](/registry/) — Discover community functions

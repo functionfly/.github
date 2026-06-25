@@ -1,0 +1,121 @@
+---
+title: StateFabric
+description: Durable, distributed state management for serverless functions
+sidebar:
+  order: 2
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+StateFabric provides **durable, distributed state management** for your serverless functions. It enables stateful patterns like shopping carts, sessions, and user preferences while maintaining the scalability benefits of stateless architectures.
+
+## Overview
+
+StateFabric consists of two main components:
+
+1. **StateFabric (Backend)** — Full-featured state management via HTTP API with rich querying, history, and snapshots
+2. **Edge State** — High-performance state access for functions running at the edge (WASM runtime) via direct host function calls
+
+## Key Features
+
+- **Durable Storage** — Automatic persistence with replication
+- **Snapshots** — Point-in-time state backups
+- **History Tracking** — Full audit trail of state changes
+- **Time Travel** — Query state at any point in time
+- **Triggers** — Execute functions on state changes
+- **Edge Optimized** — Low-latency access for edge functions
+- **Permissions** — Fine-grained access control
+
+## Use Cases
+
+| Use Case | Description |
+|----------|-------------|
+| **Shopping Carts** | Maintain cart state across page views |
+| **User Sessions** | Track user activity and preferences |
+| **Rate Limiting** | Distributed request throttling |
+| **Configuration** | Dynamic application settings |
+| **Counters & Analytics** | Distributed counting and metrics |
+| **Workflow State** | Multi-step process coordination |
+
+## Storage Types
+
+| Type | Durability | Latency | Use Case |
+|------|-----------|---------|----------|
+| `durable` | High | Medium | Carts, orders, user data |
+| `ephemeral` | Low | Low | Sessions, temp data |
+| `cached` | Medium | Very Low | Config, catalogs, read-heavy |
+
+## Plans
+
+| Plan | Max Fabrics | Included Features |
+|------|-------------|-------------------|
+| **Free** | Not available | — |
+| **Starter** | 3 | Core state management |
+| **Professional** | 10 | + Advanced triggers |
+| **Enterprise** | Unlimited | + Hot cache, AI memory |
+
+**Add-ons:** `advanced_insights`, `advanced_security_pack`, `hot_cache_booster`, `ai_memory_pack`
+
+## Quick Start
+
+```python
+from flypy import edge_state
+
+state = edge_state.EdgeStateClient(fabric_id="my-fabric")
+
+# Get value with default
+cart = state.get("carts/user123", default={"items": []})
+
+# Set value
+state.set("carts/user123", {
+    "items": [{"id": 1, "name": "Widget", "price": 9.99}],
+    "total": 9.99
+})
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Edge Function (WASM)                    │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐   │
+│  │   Python    │    │  JavaScript │    │     Go      │   │
+│  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘   │
+│         │                  │                  │          │
+│         └──────────────────┼──────────────────┘          │
+│                            │                               │
+│                   ┌────────▼────────┐                     │
+│                   │   Edge State    │                     │
+│                   │   SDK (Host)    │                     │
+│                   └────────┬────────┘                     │
+└────────────────────────────┼────────────────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │  StateFabric    │
+                    │    Service     │
+                    └────────┬────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              │              │              │
+       ┌──────▼─────┐ ┌──────▼─────┐ ┌──────▼─────┐
+       │  PostgreSQL │ │    Redis   │ │     R2     │
+       │  (Primary)  │ │   (Cache)  │ │ (Snapshots)│
+       └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+## Documentation
+
+<CardGrid>
+  <Card title="StateFabric Guide" icon="seti:file-code" href="/guides/statefabric/">
+    Complete guide to creating fabrics, using Edge State, snapshots, and triggers.
+  </Card>
+  <Card title="Architecture" icon="document" href="/docs/STATE_FABRIC.md">
+    Deep dive into StateFabric architecture and design decisions.
+  </Card>
+</CardGrid>
+
+## Related
+
+- [Python SDK](/sdks/python/) — Detailed SDK reference
+- [JavaScript SDK](/sdks/javascript/) — JavaScript/TypeScript SDK
+- [REST API](/api-reference/) — Direct API access

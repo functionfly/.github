@@ -1,0 +1,94 @@
+---
+title: Registry
+description: Public marketplace for serverless functions
+sidebar:
+  order: 3
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+The FunctionFly Registry is a **public marketplace** for serverless functions. Discover, share, and reuse functions built by the community.
+
+## Key Features
+
+- **Discover** — Browse thousands of community-built functions
+- **Install** — Add registry functions to your projects with one command
+- **Publish** — Share your functions with the community
+- **Trust Scores** — Evaluate function quality and security
+- **Sandbox Execution** — Run functions in isolated environments
+- **MCP Support** — Model Context Protocol settings for AI integration
+
+## Quick Start
+
+```bash
+# Search the registry
+ffly search <query>
+
+# Install a function
+ffly install <author>/<function-name>
+
+# Invoke an installed function
+ffly run <author>/<function-name> --data '{"key": "value"}'
+```
+
+## Browse Functions
+
+Visit [functionfly.com/registry](https://functionfly.com/registry) to:
+- Search by name, description, or tags
+- Filter by runtime (Python, JavaScript, Go, etc.)
+- Sort by popularity, trust score, or recently added
+- View documentation and source code
+
+## Trust Scores
+
+Functions are rated 0-100% based on:
+
+| Factor | Weight | Description |
+|--------|--------|-------------|
+| **Code Quality** | 30% | Static analysis and security scanning |
+| **Documentation** | 20% | Completeness of README and examples |
+| **Maintenance** | 20% | Update frequency and issue response |
+| **Usage** | 15% | Number of installs and success rate |
+| **Verification** | 15% | Author identity and domain verification |
+
+:::tip
+Use functions with trust scores above 70% for production workloads.
+:::
+
+## Publishing Functions
+
+```bash
+# Prepare for publishing
+ffly publish --dry-run
+
+# Publish
+ffly publish
+
+# Version with semantic versioning
+ffly publish --bump patch  # bug fixes
+ffly publish --bump minor  # new features
+ffly publish --bump major  # breaking changes
+```
+
+Requirements for publishing:
+- Passes security scanning
+- Includes documentation (README.md)
+- Valid `function.yaml` configuration
+- Author identity verified
+
+## Documentation
+
+<CardGrid>
+  <Card title="Registry Guide" icon="seti:plugin" href="/guides/registry-guide/">
+    Complete guide to browsing, installing, and publishing functions.
+  </Card>
+  <Card title="Disaster Recovery" icon="document" href="/docs/REGISTRY_DISASTER_RECOVERY.md">
+    DR runbook for the registry service.
+  </Card>
+</CardGrid>
+
+## Related
+
+- [Secrets Vault](/secrets-vault/) — Securely manage sensitive configuration
+- [Authentication](/guides/authentication/) — Secure your functions
+- [CI/CD Integration](/guides/ci-cd/) — Automate deployments
