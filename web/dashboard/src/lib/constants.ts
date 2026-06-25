@@ -2,6 +2,12 @@ export const APP_NAME = 'FunctionFly';
 export const APP_TAGLINE = 'The Trust Layer for AI Agents';
 
 /**
+ * Vector search feature flag.
+ * Enable with VITE_ENABLE_VECTOR_SEARCH=true on frontend and ENABLE_VECTOR_SEARCH=true on backend.
+ */
+export const VECTOR_SEARCH_ENABLED = import.meta.env.VITE_ENABLE_VECTOR_SEARCH === 'true';
+
+/**
  * Allowed docs site origins — prevents open-redirect if VITE_DOCS_SITE_URL is misconfigured.
  * In production only docs.functionfly.com is allowed.
  * In development localhost ports 4322/4323 are allowed.
@@ -606,6 +612,16 @@ export const PLANS = {
       replayWindowHours: 2160,
       maxExecutionsPerReplay: 100000,
       maxConcurrentReplays: 10,
+      microVMs: {
+        enabled: true,
+        maxConcurrentVMs: 100,
+        defaultMemoryMB: 512,
+        maxMemoryMB: 2048,
+        defaultVCPU: 2,
+        maxVCPU: 4,
+        defaultTimeoutMs: 30000,
+        maxTimeoutMs: 300000,
+      },
     },
   },
 } as const;

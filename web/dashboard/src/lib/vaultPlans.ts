@@ -211,7 +211,7 @@ export const FEATURE_MIN_PLAN: Record<keyof PlanLimits['features'], VaultPlan> =
   breakGlass: 'pro',
   escrow: 'team',
   rbac: 'team',
-  namespaces: 'free',
+  namespaces: 'pro',
   shares: 'team',
   sso: 'enterprise',
   siemWebhooks: 'team',

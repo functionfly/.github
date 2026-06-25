@@ -26,6 +26,7 @@ export const stateFabricKeys = {
   snapshots: (fabricId: string) => [...stateFabricKeys.detail(fabricId), 'snapshots'] as const,
   replays: (fabricId: string) => [...stateFabricKeys.detail(fabricId), 'replays'] as const,
   triggers: (fabricId?: string) => [...stateFabricKeys.all, 'triggers', fabricId] as const,
+  featureFlags: () => [...stateFabricKeys.all, 'feature-flags'] as const,
 };
 
 // List all state fabrics
@@ -375,4 +376,159 @@ export function useStateFabricReplay(fabricId: string, replayId: string) {
     queryFn: () => stateFabricApi.getReplay(fabricId, replayId),
     enabled: isFabricIdValidForFetch(fabricId) && !!replayId,
   });
+}
+
+export interface ReplayProgressEvent {
+  progress: number;
+  eventsReplayed: number;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  error?: string;
+  completed?: boolean;
+}
+
+interface UseReplayProgressStreamOptions {
+  enabled?: boolean;
+  onProgress?: (event: ReplayProgressEvent) => void;
+  onError?: (error: Error) => void;
+  onComplete?: (event: ReplayProgressEvent) => void;
+  maxRetries?: number;
+  retryDelay?: number;
+}
+
+export function useReplayProgressStream(
+  fabricId: string,
+  replayId: string,
+  options: UseReplayProgressStreamOptions = {}
+) {
+  const {
+    enabled = true,
+    onProgress,
+    onError,
+    onComplete,
+    maxRetries = 3,
+    retryDelay = 2000,
+  } = options;
+
+  const queryClient = useQueryClient();
+  const eventSourceRef = { current: null as EventSource | null };
+  const retryCountRef = { current: 0 };
+  const isConnectedRef = { current: false };
+
+  const cleanup = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+      isConnectedRef.current = false;
+    }
+  };
+
+  const connect = () => {
+    if (!enabled || !fabricId || !replayId) return;
+
+    const userToken = localStorage.getItem('auth_token');
+    if (!userToken) {
+      onError?.(new Error('Authentication required'));
+      return;
+    }
+
+    cleanup();
+
+    const url = `/v1/state-fabrics/${fabricId}/replays/${replayId}/progress?token=${encodeURIComponent(userToken)}`;
+    const eventSource = new EventSource(url);
+    eventSourceRef.current = eventSource;
+    isConnectedRef.current = true;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as ReplayProgressEvent;
+        retryCountRef.current = 0;
+
+        if (data.error) {
+          onError?.(new Error(data.error));
+          return;
+        }
+
+        onProgress?.(data);
+
+        if (data.completed || data.status === 'completed' || data.status === 'failed' || data.status === 'cancelled') {
+          onComplete?.(data);
+          cleanup();
+        }
+      } catch (err) {
+        console.error('Failed to parse replay progress event:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('Replay progress EventSource error:', err);
+      isConnectedRef.current = false;
+
+      if (eventSource.readyState === EventSource.CLOSED) {
+        if (retryCountRef.current < maxRetries) {
+          retryCountRef.current++;
+          setTimeout(connect, retryDelay * retryCountRef.current);
+        } else {
+          onError?.(new Error('Connection lost and max retries exceeded'));
+        }
+      }
+    };
+
+    eventSource.onopen = () => {
+      retryCountRef.current = 0;
+      isConnectedRef.current = true;
+    };
+  };
+
+  useMutation({
+    mutationFn: async () => {
+      connect();
+      return { connected: true };
+    },
+  });
+
+  return {
+    connect,
+    disconnect: cleanup,
+    isConnected: isConnectedRef.current,
+  };
+}
+
+export function useReplayProgress(fabricId: string, replayId: string) {
+  const queryClient = useQueryClient();
+
+  const { data: replay } = useStateFabricReplay(fabricId, replayId);
+  const isActive = replay?.status === 'pending' || replay?.status === 'running';
+
+  useReplayProgressStream(fabricId, replayId, {
+    enabled: isActive,
+    onProgress: (event) => {
+      queryClient.setQueryData([...stateFabricKeys.replays(fabricId), replayId], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          progress: event.progress,
+          eventsReplayed: event.eventsReplayed,
+          status: event.status,
+        };
+      });
+    },
+    onComplete: () => {
+      queryClient.invalidateQueries({ queryKey: stateFabricKeys.replays(fabricId) });
+    },
+  });
+
+  return replay;
+}
+
+export function useStateFabricFeatureFlags() {
+  return useQuery({
+    queryKey: stateFabricKeys.featureFlags(),
+    queryFn: () => stateFabricApi.getFeatureFlags(),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useIsReplayStreamingEnabled() {
+  const { data: flags } = useStateFabricFeatureFlags();
+  return flags?.replay_progress_streaming ?? false;
 }

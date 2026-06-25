@@ -115,15 +115,17 @@ export function useStartReconciliation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, mode }: { id: string; mode: 'dry_run' | 'live' }) =>
-      timeMachineApi.startReconciliation(id, mode),
-    onSuccess: (_data, { id }) => {
-      queryClient.invalidateQueries({ queryKey: timeMachineKeys.replay(id) });
-      queryClient.invalidateQueries({ queryKey: timeMachineKeys.reconciliations(id) });
-      toast.success('Reconciliation started');
+    mutationFn: ({ id, dryRun }: { id: string; dryRun?: boolean }) =>
+      timeMachineApi.startReconciliation(id, { dry_run: dryRun }),
+    onSuccess: (_data, { dryRun }) => {
+      toast.success(dryRun === false ? 'Live reconciliation started' : 'Dry-run reconciliation started');
     },
     onError: (error: Error) => {
       toast.error(`Failed to start reconciliation: ${error.message}`);
+    },
+    onSettled: (_data, _error, { id }) => {
+      queryClient.invalidateQueries({ queryKey: timeMachineKeys.replay(id) });
+      queryClient.invalidateQueries({ queryKey: timeMachineKeys.reconciliations(id) });
     },
   });
 }

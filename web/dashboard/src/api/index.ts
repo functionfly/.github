@@ -24,8 +24,12 @@ export { contentAdminApi, contentApi } from './content';
 export { environmentService } from './environment';
 export type { ActiveEnvironmentResponse, SetEnvironmentRequest, SetEnvironmentResponse } from './environment';
 export { deploymentsApi } from './deployments';
-export { enterpriseSlaApi } from './enterprise';
+export { enterpriseSlaApi, enterpriseAuditApi } from './enterprise';
 export type {
+  AuditLogItem,
+  AuditLogsResponse,
+  AuditFiltersResponse,
+  AuditExportResponse,
   SLAIncidentItem,
   SLAIncidentsResponse,
   SLAOverviewResponse,

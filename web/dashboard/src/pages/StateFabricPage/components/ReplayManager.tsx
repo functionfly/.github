@@ -23,6 +23,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useCreateReplay,
+  useIsReplayStreamingEnabled,
+  useReplayProgress,
   useStateFabricReplay,
   useStateFabricReplays,
 } from '@/hooks/useStateFabric';
@@ -74,8 +76,10 @@ const statusConfig: Record<
 function ReplayDetailRow({ fabricId, replay }: { fabricId: string; replay: ReplaySession }) {
   const [expanded, setExpanded] = useState(false);
   const isActive = replay.status === 'pending' || replay.status === 'running';
+  const isStreamingEnabled = useIsReplayStreamingEnabled();
   const { data: liveReplay } = useStateFabricReplay(fabricId, replay.id);
-  const detail = liveReplay ?? replay;
+  const { data: streamedReplay } = useReplayProgress(fabricId, replay.id);
+  const detail = (isActive && isStreamingEnabled && streamedReplay) ? streamedReplay : (liveReplay ?? replay);
   const cfg = statusConfig[detail.status];
 
   return (

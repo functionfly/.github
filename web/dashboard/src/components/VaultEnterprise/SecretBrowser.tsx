@@ -13,24 +13,24 @@
  *   └── shared
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   ChevronRight,
-  Database,
   FileKey,
   Folder,
   FolderOpen,
   KeyRound,
   ShieldCheck,
-  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { useNamespaces } from "@/api/vault";
+import { useNamespaces, useCreateNamespace, vaultApi } from "@/api/vault";
 import type { VaultPlan, VaultNamespace } from "@/types/vault-enterprise";
+import type { SecretMetadata } from "@/types/vault";
 import { PlanGate } from "@/components/VaultEnterprise/PlanGate";
+import { useQuery } from "@tanstack/react-query";
 
 interface SecretBrowserProps {
   plan: VaultPlan;
@@ -75,10 +75,11 @@ function buildTree(namespaces: VaultNamespace[]): TreeNode {
 }
 
 export function SecretBrowser({ plan }: SecretBrowserProps) {
-  const { data: nsResp, isLoading } = useNamespaces();
+  const { data: nsResp, isLoading: nsLoading } = useNamespaces();
+  const createNamespace = useCreateNamespace();
   const [selectedPath, setSelectedPath] = useState<string>("default");
   const [filter, setFilter] = useState<string>("");
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(["default", "production"]));
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(["default"]));
 
   const tree = useMemo(() => buildTree(nsResp?.namespaces ?? []), [nsResp]);
   const visibleNamespaces = useMemo(
@@ -95,8 +96,23 @@ export function SecretBrowser({ plan }: SecretBrowserProps) {
     });
   };
 
+  const handleCreateNamespace = useCallback(() => {
+    const path = window.prompt("New namespace path (lowercase, dash/underscore, /-separated):");
+    if (path && path.trim()) {
+      createNamespace.mutate(
+        { path: path.trim(), description: "" },
+        {
+          onSuccess: () => {
+            setSelectedPath(path.trim());
+            setExpanded((s) => new Set([...s, path.trim()]));
+          },
+        },
+      );
+    }
+  }, [createNamespace]);
+
   return (
-    <PlanGate feature="namespaces" plan={plan} title="Namespaces available on Free and above">
+    <PlanGate feature="namespaces" plan={plan} title="Namespaces require Professional plan or higher">
       <div className="grid gap-4 md:grid-cols-[260px_1fr]">
         <div className="border rounded-md p-3 space-y-2">
           <Input
@@ -105,7 +121,7 @@ export function SecretBrowser({ plan }: SecretBrowserProps) {
             placeholder="Filter namespaces…"
             className="h-8 text-sm"
           />
-          {isLoading ? (
+          {nsLoading ? (
             <div className="space-y-1">
               <Skeleton className="h-6 w-full" />
               <Skeleton className="h-6 w-full" />
@@ -124,13 +140,7 @@ export function SecretBrowser({ plan }: SecretBrowserProps) {
             size="sm"
             variant="outline"
             className="w-full"
-            onClick={() => {
-              const path = window.prompt("New namespace path (lowercase, dash/underscore, /-separated):");
-              if (path) {
-                // Hand off to useCreateNamespace in real usage
-                console.log("create namespace", path);
-              }
-            }}
+            onClick={handleCreateNamespace}
           >
             + New namespace
           </Button>
@@ -148,7 +158,7 @@ export function SecretBrowser({ plan }: SecretBrowserProps) {
               + New secret
             </Button>
           </div>
-          <SecretListForNamespace path={selectedPath} />
+          <SecretListForNamespace path={selectedPath} plan={plan} />
         </div>
       </div>
     </PlanGate>
@@ -235,23 +245,60 @@ function TreeView({
   );
 }
 
-function SecretListForNamespace({ path }: { path: string }) {
-  // In a full implementation, this would call
-  //   apiClient.get(`/v1/vault/secrets?namespace=${path}`)
-  // We render a placeholder grid to keep the layout stable.
-  const sample = [
-    { name: "STRIPE_API_KEY", type: "api_key" as const, expires: "in 12d" },
-    { name: "DB_PASSWORD", type: "password" as const, expires: "in 4d" },
-    { name: "OAUTH_GITHUB", type: "oauth_token" as const, expires: "—" },
-  ];
+function SecretListForNamespace({ path, plan }: { path: string; plan: VaultPlan }) {
+  const namespaceParam = path === "default" ? "" : path;
+
+  const { data: secretsData, isLoading: secretsLoading } = useQuery({
+    queryKey: ["vault", "secrets", "namespace", namespaceParam || "default"],
+    queryFn: () => vaultApi.listSecretsWithNamespace(namespaceParam),
+    enabled: true,
+  });
+
+  if (secretsLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-8 w-full" />
+      </div>
+    );
+  }
+
+  const secrets = secretsData?.secrets ?? [];
+  const isDefaultNamespace = path === "default";
+
+  if (secrets.length === 0 && isDefaultNamespace) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <KeyRound className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No secrets yet</p>
+        <p className="text-xs mt-1">
+          Create your first secret using the button above
+        </p>
+      </div>
+    );
+  }
+
+  if (secrets.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
+        <p className="text-sm">No secrets in this namespace</p>
+        <p className="text-xs mt-1">
+          Create a secret and assign it to this namespace
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="divide-y">
-      {sample.map((s) => (
-        <div key={s.name} className="flex items-center justify-between py-2 text-sm">
+      {secrets.map((s: SecretMetadata) => (
+        <div key={s.id} className="flex items-center justify-between py-2 text-sm">
           <div className="flex items-center gap-2">
-            {s.type === "api_key" ? (
+            {s.secret_type === "api_key" ? (
               <KeyRound className="h-4 w-4 text-muted-foreground" />
-            ) : s.type === "oauth_token" ? (
+            ) : s.secret_type === "oauth_token" ? (
               <ShieldCheck className="h-4 w-4 text-muted-foreground" />
             ) : (
               <FileKey className="h-4 w-4 text-muted-foreground" />
@@ -259,17 +306,15 @@ function SecretListForNamespace({ path }: { path: string }) {
             <span className="font-mono">{s.name}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline">{s.type}</Badge>
-            <Badge variant="secondary">{s.expires}</Badge>
+            <Badge variant="outline">{s.secret_type}</Badge>
+            {s.expires_at && (
+              <Badge variant="secondary">
+                {new Date(s.expires_at).toLocaleDateString()}
+              </Badge>
+            )}
           </div>
         </div>
       ))}
-      {path === "default" && (
-        <p className="text-xs text-muted-foreground py-2">
-          Showing sample data. Connect your real secrets via the
-          dashboard or the <code>ff vault</code> CLI.
-        </p>
-      )}
     </div>
   );
 }

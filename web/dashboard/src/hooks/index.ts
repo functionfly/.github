@@ -750,3 +750,15 @@ export {
   useAmbientTelemetry,
   useDigitalTwin,
 } from '@/stores/futuristicStore';
+
+// Enterprise Audit Hooks
+export {
+  enterpriseAuditKeys,
+  useEnterpriseAuditLogs,
+  useEnterpriseAuditFilters,
+  useExportEnterpriseAudit,
+  useDownloadEnterpriseAuditExport,
+  type AuditLogParams,
+  type AuditExportParams,
+  type AuditExportResult,
+} from './useEnterpriseAudit';

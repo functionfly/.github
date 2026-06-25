@@ -12,12 +12,30 @@ import {
   GitBranch,
   Play,
   Ban,
+  AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { EmptyState } from '@/components/ui';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   useReplay,
   useReplayItems,
@@ -27,6 +45,7 @@ import {
   useTimeMachineLimits,
 } from '@/hooks/useTimeMachine';
 import { cn, formatDateTime } from '@/lib/utils';
+import { useState } from 'react';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'error'; icon: React.ReactNode }> = {
   pending: { label: 'Pending', variant: 'warning', icon: <Clock className="w-3 h-3" /> },
@@ -81,11 +100,15 @@ export function ReplayDetailPage() {
   const cancelReplay = useCancelReplay();
   const startReconciliation = useStartReconciliation();
 
+  const [reconciliationMode, setReconciliationMode] = useState<'dry_run' | 'live'>('dry_run');
+  const [showLiveConfirm, setShowLiveConfirm] = useState(false);
+
   const items = itemsData?.items ?? [];
   const changedItems = items.filter((item) => item.output_changed);
   const isActive = replay ? ACTIVE_STATUSES.has(replay.status) : false;
   const isCompleted = replay?.status === 'completed';
   const canReconcile = isCompleted && (limits?.auto_reconciliation || limits?.live_reconciliation);
+  const canLiveReconcile = isCompleted && limits?.live_reconciliation;
 
   if (replayLoading) {
     return (
@@ -180,18 +203,42 @@ export function ReplayDetailPage() {
             </Button>
           )}
           {canReconcile && (
-            <Button
-              size="sm"
-              onClick={() => startReconciliation.mutate({ id: replay.id, mode: 'dry_run' })}
-              disabled={startReconciliation.isPending}
-            >
-              {startReconciliation.isPending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4 mr-2" />
+            <div className="flex items-center gap-2">
+              {canLiveReconcile && (
+                <Select
+                  value={reconciliationMode}
+                  onValueChange={(v) => setReconciliationMode(v as 'dry_run' | 'live')}
+                >
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="dry_run">Dry Run</SelectItem>
+                    <SelectItem value="live">Live</SelectItem>
+                  </SelectContent>
+                </Select>
               )}
-              Start Reconciliation
-            </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (reconciliationMode === 'live' && canLiveReconcile) {
+                    setShowLiveConfirm(true);
+                  } else {
+                    startReconciliation.mutate({ id: replay.id, dryRun: reconciliationMode === 'dry_run' });
+                  }
+                }}
+                disabled={startReconciliation.isPending}
+                variant={reconciliationMode === 'live' ? 'default' : 'default'}
+                className={reconciliationMode === 'live' ? 'bg-amber-500 hover:bg-amber-600' : ''}
+              >
+                {startReconciliation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Play className="w-4 h-4 mr-2" />
+                )}
+                {reconciliationMode === 'live' ? 'Go Live' : 'Start Dry Run'}
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -322,6 +369,33 @@ export function ReplayDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={showLiveConfirm} onOpenChange={setShowLiveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Live Reconciliation Warning
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to run <strong>live reconciliation</strong>. This will modify actual execution
+              outputs based on the replay results. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowLiveConfirm(false);
+                startReconciliation.mutate({ id: replay.id, dryRun: false });
+              }}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              Confirm Live Reconciliation
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

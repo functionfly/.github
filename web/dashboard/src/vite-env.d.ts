@@ -19,7 +19,11 @@ interface ImportMetaEnv {
   readonly VITE_SANITY_PROJECT_ID?: string;
   readonly VITE_SANITY_DATASET?: string;
   readonly VITE_VERCEL_ANALYTICS?: string;
+  /** Enable vector search functionality (requires ENABLE_VECTOR_SEARCH=true on backend). */
+  readonly VITE_ENABLE_VECTOR_SEARCH?: string;
 }
+
+declare const ENABLE_VECTOR_SEARCH: boolean | undefined;
 
 declare module '@vercel/analytics/react' {
   import type { ComponentType } from 'react';

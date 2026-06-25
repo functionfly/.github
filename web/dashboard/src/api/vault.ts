@@ -654,6 +654,13 @@ export const vaultApi = {
       apiClient.get("/v1/vault/secrets")
     ),
 
+  listSecretsWithNamespace: (namespace: string) =>
+    unwrap<{ secrets: import("@/types/vault").SecretMetadata[]; total: number; limit: number; offset: number }>(
+      namespace
+        ? apiClient.get(`/v1/vault/secrets?namespace=${encodeURIComponent(namespace)}`)
+        : apiClient.get("/v1/vault/secrets")
+    ),
+
   getSecret: (id: string) =>
     unwrap<import("@/types/vault").Secret>(
       apiClient.get(`/v1/vault/secrets/${id}`)

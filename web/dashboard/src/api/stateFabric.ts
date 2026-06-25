@@ -187,6 +187,21 @@ export const stateFabricApi = {
       `/v1/state-fabrics/${fabricId}/triggers/${triggerId}`
     );
   },
+
+  // Feature Flags
+  getFeatureFlags: async (): Promise<StateFabricFeatureFlags> => {
+    return apiClient.get<StateFabricFeatureFlags>("/v1/state-fabrics/feature-flags");
+  },
+};
+
+export interface StateFabricFeatureFlags {
+  replay_progress_streaming: boolean;
+  pipeline_circuit_breaker: boolean;
+  r2_storage_offload: boolean;
+  advanced_security_pack: boolean;
+  hot_cache_booster: boolean;
+  ai_memory_pack: boolean;
+  vector_search: boolean;
 };
 
 // Admin API for State Fabric management

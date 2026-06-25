@@ -174,9 +174,9 @@ export async function getDiffSummary(id: string): Promise<DiffSummary> {
 
 export async function startReconciliation(
   id: string,
-  mode: 'dry_run' | 'live'
+  options?: { dry_run?: boolean }
 ): Promise<void> {
-  return apiClient.post(`/v1/time-machine/replays/${id}/reconcile`, { mode });
+  return apiClient.post(`/v1/time-machine/replays/${id}/reconcile`, { dry_run: options?.dry_run ?? true });
 }
 
 export async function listReconciliations(
