@@ -85,6 +85,14 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		"hasToken":   response != nil && response.Token != "",
 	}).Debug("Login result")
 
+	// DEBUG: Log response details
+	logrus.WithFields(logrus.Fields{
+		"identifier": identifier,
+		"err":        err,
+		"hasResponse": response != nil,
+		"hasToken":   response != nil && response.Token != "",
+	}).Debug("Login result")
+
 	if user != nil {
 		_, recordErr := h.authSvc.Repo().CreateLoginAttempt(context.Background(), user.ID, ipAddress, userAgent, err == nil, nil)
 		if recordErr != nil {

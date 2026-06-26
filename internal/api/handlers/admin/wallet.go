@@ -395,10 +395,11 @@ func (h *WalletHandler) HandleAdjustWalletBalance(w http.ResponseWriter, r *http
 
 	// Perform adjustment using admin credit/debit
 	var update *wallet.BalanceUpdate
+	idempotencyKey := uuid.New().String()
 	if req.Amount > 0 {
-		update, err = h.walletService.AdminCredit(ctx, walletID, req.Amount, req.Reference, req.Reason, adminUser.UserID)
+		update, err = h.walletService.AdminCredit(ctx, walletID, req.Amount, req.Reference, req.Reason, idempotencyKey, adminUser.UserID)
 	} else {
-		update, err = h.walletService.AdminDebit(ctx, walletID, -req.Amount, req.Reference, req.Reason, adminUser.UserID)
+		update, err = h.walletService.AdminDebit(ctx, walletID, -req.Amount, req.Reference, req.Reason, idempotencyKey, adminUser.UserID)
 	}
 
 	if err != nil {
