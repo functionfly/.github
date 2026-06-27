@@ -13,6 +13,7 @@ Features below are implemented but gated, disabled, or need finishing touches be
 - [ ] **City Wars™** — Quarterly bracket UI polish, bracket visualization
 
 ### References
+
 - Spec: `docs/CITY_RANKINGS.md`
 - Scoring: `internal/storage/cityranking/scorer.go`
 - Jobs: `internal/jobs/cityranking/`
@@ -28,6 +29,7 @@ Features below are implemented but gated, disabled, or need finishing touches be
 - [ ] **University Wars** — Quarterly bracket mirroring City Wars (optional)
 
 ### References
+
 - Spec: `docs/UNIVERSITY_RANKINGS.md`
 - Scoring: `internal/storage/universityranking/scorer.go`
 - Jobs: `internal/jobs/universityranking/`
@@ -39,28 +41,33 @@ Features below are implemented but gated, disabled, or need finishing touches be
 These features are implemented but disabled at launch. They require additional work before general availability.
 
 ### Studio (`STUDIO_ENABLED`)
+
 - [ ] **Route middleware** — Gate all `/studio/*` routes behind `STUDIO_ENABLED=true` env var
 - [ ] **Frontend nav badge** — Add "Beta" or "Coming Soon" badge to Studio sidebar nav
 - [ ] **Per-tenant enablement** — Move from global env var to tenant-specific feature flag system
 
 ### Ghost Mode (`GHOST_MODE_ENABLED`)
+
 - [ ] **Route middleware** — Gate all `/v1/ghost/*` routes behind `GHOST_MODE_ENABLED=true` env var
 - [ ] **Frontend nav badge** — Add "Beta" or "Coming Soon" badge to Ghost Mode sidebar nav
 - [ ] **Per-tenant enablement** — Move from global env var to tenant-specific feature flag system
 - [ ] **Reference:** `internal/api/handlers/ghost/handler.go` (~1600 lines, mostly stubbed)
 
 ### DRE Blockchain Anchoring (`DRE_BLOCKCHAIN_ANCHORING_ENABLED`)
+
 - [ ] **Verify gate implementation** — Confirm `internal/api/handlers/registry/dre/handlers.go:298` properly returns 503 when disabled
 - [ ] **HSM integration** — Implement actual blockchain anchoring when HSM is configured
 - [ ] **Per-tenant enablement** — Move from global env var to tenant-specific feature flag system
 
 ### SAML SSO (`GBA_SAML_ENABLED`)
+
 - [ ] **Production enablement** — Set `GBA_SAML_ENABLED=true` when enterprise customer requests SAML
 - [ ] **Dashboard UI** — Build IdP configuration UI in admin dashboard
 - [ ] **SSO audit logs** — Add SSO login/event logging in admin dashboard
 - [ ] **Reference:** `internal/auth/gba/plugins/saml/plugin.go`
 
 ### SCIM Provisioning (`GBA_SCIM_ENABLED`)
+
 - [ ] **Production enablement** — Set `GBA_SCIM_ENABLED=true` when enterprise customer requests SCIM
 - [ ] **IdP Integration Guides** — Create Okta, Azure AD, OneLogin guides
 - [ ] **Dashboard UI** — Display SCIM endpoint URL, last sync status, test connection
@@ -74,13 +81,13 @@ These features are implemented but disabled at launch. They require additional w
 
 **Status:** ✅ Fully implemented (2025-11). Routes registered at `/v1/scim/*`, gated behind Enterprise plan.
 
-| Component | Status | Location |
-|-----------|--------|----------|
-| SCIM 2.0 routes | ✅ Registered | `internal/api/routes_scim.go` |
-| Handler | ✅ Implemented | `internal/api/handlers/auth/scim.go` |
-| Service | ✅ Implemented | `internal/auth/scim.go` |
-| Storage | ✅ Implemented | `internal/storage/scim_repository.go` |
-| Feature flag | ✅ Enterprise-only | `internal/plans/features.go` (`FeatureSCIM`) |
+| Component       | Status             | Location                                     |
+| --------------- | ------------------ | -------------------------------------------- |
+| SCIM 2.0 routes | ✅ Registered      | `internal/api/routes_scim.go`                |
+| Handler         | ✅ Implemented     | `internal/api/handlers/auth/scim.go`         |
+| Service         | ✅ Implemented     | `internal/auth/scim.go`                      |
+| Storage         | ✅ Implemented     | `internal/storage/scim_repository.go`        |
+| Feature flag    | ✅ Enterprise-only | `internal/plans/features.go` (`FeatureSCIM`) |
 
 **Remaining SCIM Items:**
 
@@ -122,6 +129,27 @@ These features are implemented but disabled at launch. They require additional w
 ### Phone Support
 
 - [ ] **Phone support UI** — EnterpriseSupportPage (Low priority, Post-launch)
+
+---
+
+## 🔜 Blog / CMS (Sanity)
+
+- [ ] **Set up Sanity webhook** — In Sanity dashboard → API → Webhooks → Add webhook pointing to Vercel deploy hook URL
+  - Trigger: `create`, `update`, `delete`
+  - Filter: `_type in ["report", "blogPost"]`
+- [ ] **Generate Sanity API token** — sanity.io/manage → API → Tokens → Add API token (Editor role) → add to `web/site/.env` as `SANITY_API_TOKEN`
+- [ ] **Run migration script** — `cd web/site && bun run scripts/migrate-reports-to-sanity.ts`
+- [ ] **Verify reports in Sanity** — Visit sanity.io/manage to confirm all 4 reports migrated
+- [ ] **Test blog pages** — `curl localhost:4321/blog` and `curl localhost:4321/blog/2026-06` after migration
+- [ ] **Remove old .md files** — After verifying Sanity works, archive `web/site/src/content/reports/*.md`
+
+### Reference
+
+- Sanity project: `sg1k76uk` (sanity.io/manage)
+- Migration script: `web/site/scripts/migrate-reports-to-sanity.ts`
+- Blog pages: `web/site/src/pages/blog/index.astro`, `web/site/src/pages/blog/[slug].astro`
+- Sanity client: `web/site/src/lib/sanity.ts`
+- Schemas: `web/site/studio/schemas/`
 
 ---
 
