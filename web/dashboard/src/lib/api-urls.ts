@@ -62,37 +62,29 @@ export const API_URLS = {
   // Function Registry Endpoints
   // ========================================================================
   functions: {
-    list: (page = 1, limit = 20) =>
-      `${API}/functions?page=${page}&limit=${limit}`,
-    get: (author: string, name: string) =>
-      `${API}/functions/${author}/${name}`,
+    list: (page = 1, limit = 20) => `${API}/functions?page=${page}&limit=${limit}`,
+    get: (author: string, name: string) => `${API}/functions/${author}/${name}`,
     create: `${API}/functions`,
-    update: (author: string, name: string) =>
-      `${API}/functions/${author}/${name}`,
-    delete: (author: string, name: string) =>
-      `${API}/functions/${author}/${name}`,
+    update: (author: string, name: string) => `${API}/functions/${author}/${name}`,
+    delete: (author: string, name: string) => `${API}/functions/${author}/${name}`,
     search: (query: string, page = 1, limit = 20) =>
       `${API}/functions/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`,
     byAuthor: (author: string, page = 1, limit = 20) =>
       `${API}/functions?author=${author}&page=${page}&limit=${limit}`,
-    versions: (author: string, name: string) =>
-      `${API}/functions/${author}/${name}/versions`,
+    versions: (author: string, name: string) => `${API}/functions/${author}/${name}/versions`,
     latestVersion: (author: string, name: string) =>
       `${API}/functions/${author}/${name}/versions/latest`,
-    settings: (author: string, name: string) =>
-      `${API}/functions/${author}/${name}/settings`,
+    settings: (author: string, name: string) => `${API}/functions/${author}/${name}/settings`,
   },
 
   // ========================================================================
   // Function Execution Endpoints
   // ========================================================================
   execution: {
-    execute: (author: string, name: string) =>
-      `${API}/fx/${author}/${name}`,
+    execute: (author: string, name: string) => `${API}/fx/${author}/${name}`,
     executeWithVersion: (author: string, name: string, version: string) =>
       `${API}/fx/${author}/${name}@${version}`,
-    executeLatest: (author: string, name: string) =>
-      `${API}/fx/${author}/${name}/latest`,
+    executeLatest: (author: string, name: string) => `${API}/fx/${author}/${name}/latest`,
     batchExecute: `${API}/fx/batch`,
   },
 
@@ -100,8 +92,7 @@ export const API_URLS = {
   // Execution Replay/History Endpoints
   // ========================================================================
   replay: {
-    list: (page = 1, limit = 20) =>
-      `${API}/replay?page=${page}&limit=${limit}`,
+    list: (page = 1, limit = 20) => `${API}/replay?page=${page}&limit=${limit}`,
     get: (execId: string) => `${API}/replay/${execId}`,
     delete: (execId: string) => `${API}/replay/${execId}`,
     byFunction: (author: string, name: string, page = 1, limit = 20) =>
@@ -123,11 +114,9 @@ export const API_URLS = {
   // ========================================================================
   analytics: {
     overview: `${API}/analytics/overview`,
-    functions: (author: string, name: string) =>
-      `${API}/analytics/functions/${author}/${name}`,
+    functions: (author: string, name: string) => `${API}/analytics/functions/${author}/${name}`,
     usage: `${API}/analytics/usage`,
-    errors: (page = 1, limit = 20) =>
-      `${API}/analytics/errors?page=${page}&limit=${limit}`,
+    errors: (page = 1, limit = 20) => `${API}/analytics/errors?page=${page}&limit=${limit}`,
     latency: `${API}/analytics/latency`,
   },
 
@@ -147,8 +136,7 @@ export const API_URLS = {
   // ========================================================================
   blog: {
     posts: {
-      list: (page = 1, limit = 10) =>
-        `${API}/blog/posts?page=${page}&limit=${limit}`,
+      list: (page = 1, limit = 10) => `${API}/blog/posts?page=${page}&limit=${limit}`,
       get: (slug: string) => `${API}/blog/posts/${slug}`,
       create: `${API}/blog/posts`,
       update: (slug: string) => `${API}/blog/posts/${slug}`,
@@ -168,8 +156,7 @@ export const API_URLS = {
   // State Fabric Endpoints
   // ========================================================================
   stateFabric: {
-    list: (page = 1, limit = 20) =>
-      `${API}/state-fabric?page=${page}&limit=${limit}`,
+    list: (page = 1, limit = 20) => `${API}/state-fabric?page=${page}&limit=${limit}`,
     get: (id: string) => `${API}/state-fabric/${id}`,
     create: `${API}/state-fabric`,
     update: (id: string) => `${API}/state-fabric/${id}`,
@@ -186,13 +173,21 @@ export const API_URLS = {
   },
 
   // ========================================================================
+  // Founders Endpoints
+  // ========================================================================
+  founders: {
+    status: `${API}/founders/status`,
+    votes: `${API}/founders/votes`,
+    earlyAccess: `${API}/founders/early-access`,
+  },
+
+  // ========================================================================
   // Execution Receipt Endpoints (Public - no auth required for read paths)
   // ========================================================================
   receipts: {
     get: (id: string) => `${API}/receipts/${id}`,
     trending: `${API}/receipts/trending`,
-    byFunction: (author: string, name: string) =>
-      `${API}/receipts/function/${author}/${name}`,
+    byFunction: (author: string, name: string) => `${API}/receipts/function/${author}/${name}`,
     run: (id: string) => `${API}/receipts/${id}/run`,
     forkPayload: (id: string) => `${API}/receipts/${id}/fork-payload`,
     view: (id: string) => `${API}/receipts/${id}/view`,

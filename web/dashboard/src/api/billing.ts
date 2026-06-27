@@ -158,7 +158,7 @@ function validateStripePriceId(priceId: string): void {
   if (priceId.startsWith('prod_')) {
     throw new Error(
       `Invalid price ID: received product ID (${priceId}) instead of price ID. ` +
-      'Product IDs cannot be used for checkout - use the associated price ID (price_*) from Stripe Dashboard.'
+        'Product IDs cannot be used for checkout - use the associated price ID (price_*) from Stripe Dashboard.'
     );
   }
   if (priceId.startsWith('sub_')) {
@@ -213,53 +213,58 @@ export async function createCheckoutSession(
  * Get the current user's payment methods.
  */
 export async function listPaymentMethods(): Promise<PaymentMethodsResponse> {
-  return apiClient.get<PaymentMethodsResponse>('/v1/billing/payment-methods')
+  return apiClient.get<PaymentMethodsResponse>('/v1/billing/payment-methods');
 }
 
 /**
  * Create a Stripe SetupIntent for collecting payment methods client-side.
  */
 export async function createSetupIntent(): Promise<SetupIntentResponse> {
-  const csrfToken = await apiClient.fetchCSRFToken()
-  const headers: Record<string, string> = {}
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
   if (csrfToken) {
-    headers['X-CSRF-Token'] = csrfToken
+    headers['X-CSRF-Token'] = csrfToken;
   }
 
-  return apiClient.post<SetupIntentResponse>('/v1/billing/payment-methods/setup-intent', {}, { headers })
+  return apiClient.post<SetupIntentResponse>(
+    '/v1/billing/payment-methods/setup-intent',
+    {},
+    { headers }
+  );
 }
 
 /**
  * Set a payment method as the default for the customer.
  */
-export async function setDefaultPaymentMethod(paymentMethodId: string): Promise<{ message: string }> {
-  const csrfToken = await apiClient.fetchCSRFToken()
-  const headers: Record<string, string> = {}
+export async function setDefaultPaymentMethod(
+  paymentMethodId: string
+): Promise<{ message: string }> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
   if (csrfToken) {
-    headers['X-CSRF-Token'] = csrfToken
+    headers['X-CSRF-Token'] = csrfToken;
   }
 
   return apiClient.post<{ message: string }>(
     '/v1/billing/payment-methods/default',
     { payment_method_id: paymentMethodId },
     { headers }
-  )
+  );
 }
 
 /**
  * Remove a payment method from the customer's account.
  */
 export async function removePaymentMethod(paymentMethodId: string): Promise<{ message: string }> {
-  const csrfToken = await apiClient.fetchCSRFToken()
-  const headers: Record<string, string> = {}
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
   if (csrfToken) {
-    headers['X-CSRF-Token'] = csrfToken
+    headers['X-CSRF-Token'] = csrfToken;
   }
 
-  return apiClient.delete<{ message: string }>(
-    `/v1/billing/payment-methods/${paymentMethodId}`,
-    { headers }
-  )
+  return apiClient.delete<{ message: string }>(`/v1/billing/payment-methods/${paymentMethodId}`, {
+    headers,
+  });
 }
 
 /**
@@ -267,8 +272,8 @@ export async function removePaymentMethod(paymentMethodId: string): Promise<{ me
  * Returns subscription information including plan, status, and billing period.
  */
 export async function getSubscription(): Promise<Subscription> {
-  const response = await apiClient.get<Subscription>('/v1/billing/subscription')
-  return response
+  const response = await apiClient.get<Subscription>('/v1/billing/subscription');
+  return response;
 }
 
 /**
@@ -308,10 +313,7 @@ export interface UsageSummary {
   events: UsageDataPoint[];
 }
 
-export async function getUsage(
-  startDate?: string,
-  endDate?: string
-): Promise<UsageSummary> {
+export async function getUsage(startDate?: string, endDate?: string): Promise<UsageSummary> {
   const params = new URLSearchParams();
   if (startDate) params.set('start', startDate);
   if (endDate) params.set('end', endDate);
@@ -395,13 +397,14 @@ export interface WalletTransactionsResponse {
 export async function getWalletTransactions(limit = 50): Promise<WalletTransactionsResponse> {
   try {
     const params = new URLSearchParams({ limit: String(limit) });
-    const response = await apiClient.get<WalletTransactionsResponse>(`/v1/billing/wallet/transactions?${params}`);
+    const response = await apiClient.get<WalletTransactionsResponse>(
+      `/v1/billing/wallet/transactions?${params}`
+    );
     return response;
   } catch {
     return { transactions: [], total: 0 };
   }
 }
-
 
 /**
  * Get the current user's wallet information.
@@ -458,7 +461,9 @@ export async function topUpWallet(
     headers['X-CSRF-Token'] = csrfToken;
   }
 
-  const response = await apiClient.post<TopUpResponse>('/v1/billing/wallet/top-up', body, { headers });
+  const response = await apiClient.post<TopUpResponse>('/v1/billing/wallet/top-up', body, {
+    headers,
+  });
   return response;
 }
 
@@ -658,18 +663,18 @@ export async function registerFounderMode(
     headers['X-CSRF-Token'] = csrfToken;
   }
 
-  return apiClient.post<FounderModeRegistration>(
-    `/v1/billing/bundles/${slug}/founder`,
-    data,
-    { headers }
-  );
+  return apiClient.post<FounderModeRegistration>(`/v1/billing/bundles/${slug}/founder`, data, {
+    headers,
+  });
 }
 
 /**
  * Get founder mode status for current tenant.
  * GET /v1/billing/founder-mode
  */
-export async function getFounderModeStatus(): Promise<{ founder_modes: FounderModeRegistration[] }> {
+export async function getFounderModeStatus(): Promise<{
+  founder_modes: FounderModeRegistration[];
+}> {
   return apiClient.get<{ founder_modes: FounderModeRegistration[] }>('/v1/billing/founder-mode');
 }
 
@@ -734,10 +739,7 @@ export interface DeploymentStatusResponse {
  * Initiate a bundle deployment.
  * POST /v1/billing/bundles/{slug}/deploy
  */
-export async function deployBundle(
-  slug: string,
-  region?: string
-): Promise<DeploymentResponse> {
+export async function deployBundle(slug: string, region?: string): Promise<DeploymentResponse> {
   const csrfToken = await apiClient.fetchCSRFToken();
   const headers: Record<string, string> = {};
   if (csrfToken) {
@@ -755,12 +757,8 @@ export async function deployBundle(
  * Get deployment status by deployment ID.
  * GET /v1/billing/deployments/{deploymentId}/status
  */
-export async function getDeploymentStatus(
-  deploymentId: string
-): Promise<DeploymentStatusResponse> {
-  return apiClient.get<DeploymentStatusResponse>(
-    `/v1/billing/deployments/${deploymentId}/status`
-  );
+export async function getDeploymentStatus(deploymentId: string): Promise<DeploymentStatusResponse> {
+  return apiClient.get<DeploymentStatusResponse>(`/v1/billing/deployments/${deploymentId}/status`);
 }
 
 // ==================== Revenue Recognition (ASC 606/IFRS 15) ====================
@@ -889,11 +887,7 @@ export async function allocateRevenue(request: AllocationRequest): Promise<Alloc
     headers['X-CSRF-Token'] = csrfToken;
   }
 
-  return apiClient.post<AllocationResponse>(
-    '/v1/billing/revenue/allocate',
-    request,
-    { headers }
-  );
+  return apiClient.post<AllocationResponse>('/v1/billing/revenue/allocate', request, { headers });
 }
 
 // ==================== Affiliate / Referral API ====================
@@ -991,6 +985,44 @@ export async function getMyAffiliateReferrals(): Promise<AffiliateReferral[]> {
   return apiClient.get<AffiliateReferral[]>('/v1/affiliate/referrals');
 }
 
+// ==================== Founders Types ====================
+
+export interface FounderReferralCode {
+  code: string;
+  url: string;
+  share_url: string;
+  total_referrals: number;
+  total_commission_earned: number;
+  commission_rate: number;
+  created_at: string;
+}
+
+export interface FounderReferralStats {
+  total_referrals: number;
+  active_referrals: number;
+  total_commission_earned: number;
+  total_commission_paid: number;
+  pending_commission: number;
+  converted_count: number;
+  conversion_rate: number;
+  average_commission_cents: number;
+  referral_details: Array<{
+    user_id: string;
+    email: string;
+    joined_at: string;
+    status: string;
+    commission_earned: number;
+  }>;
+}
+
+export async function getMyReferralCode(): Promise<FounderReferralCode> {
+  return apiClient.get<FounderReferralCode>('/v1/founders/referral-code');
+}
+
+export async function getMyReferralStats(): Promise<FounderReferralStats> {
+  return apiClient.get<FounderReferralStats>('/v1/founders/referral-stats');
+}
+
 export async function getAffiliateEarningsSummary(): Promise<AffiliateEarningsSummary> {
   return apiClient.get<AffiliateEarningsSummary>('/v1/affiliate/earnings-summary');
 }
@@ -1008,9 +1040,7 @@ export async function applyAffiliateCode(request: {
     headers['X-CSRF-Token'] = csrfToken;
   }
 
-  return apiClient.post<ApplyAffiliateCodeResponse>(
-    '/v1/affiliate/apply-code',
-    request,
-    { headers }
-  );
+  return apiClient.post<ApplyAffiliateCodeResponse>('/v1/affiliate/apply-code', request, {
+    headers,
+  });
 }

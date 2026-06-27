@@ -1,7 +1,7 @@
 // ReceiptInputOutput component unit tests.
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ReceiptInputOutput } from './ReceiptInputOutput';
 
@@ -52,7 +52,7 @@ describe('ReceiptInputOutput', () => {
     Object.defineProperty(navigator.clipboard, 'writeText', {
       value: async () => {
         writeTextCalled = true;
-        return originalWriteText();
+        return originalWriteText('');
       },
       writable: true,
       configurable: true,

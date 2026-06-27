@@ -24,6 +24,7 @@ export interface CityLeaderboardResponse {
   entries: CityRankingEntry[];
   country?: string;
   cache_hit: boolean;
+  category?: string;
 }
 
 export interface CityMetroDetail {
@@ -71,7 +72,10 @@ export interface MetroUniversitiesResponse {
 }
 
 export const cityRankingsApi = {
-  async getLeaderboard(params?: { country?: string; limit?: number }): Promise<CityLeaderboardResponse> {
+  async getLeaderboard(params?: {
+    country?: string;
+    limit?: number;
+  }): Promise<CityLeaderboardResponse> {
     const search = new URLSearchParams();
     if (params?.country) search.set('country', params.country);
     if (params?.limit) search.set('limit', String(params.limit));
@@ -83,8 +87,13 @@ export const cityRankingsApi = {
     return apiClient.get<CityMetroDetail>(`/v1/city-rankings/${encodeURIComponent(slug)}`);
   },
 
-  async getMovers(direction: 'gainers' | 'losers' = 'gainers', limit = 25): Promise<CityMoversResponse> {
-    return apiClient.get<CityMoversResponse>(`/v1/city-rankings/movers?direction=${direction}&limit=${limit}`);
+  async getMovers(
+    direction: 'gainers' | 'losers' = 'gainers',
+    limit = 25
+  ): Promise<CityMoversResponse> {
+    return apiClient.get<CityMoversResponse>(
+      `/v1/city-rankings/movers?direction=${direction}&limit=${limit}`
+    );
   },
 
   async getMyCity(): Promise<MyCityResponse> {
@@ -96,10 +105,14 @@ export const cityRankingsApi = {
   },
 
   async setOptOut(optedOut: boolean): Promise<CityOptOutResponse> {
-    return apiClient.post<CityOptOutResponse>('/v1/users/me/city-ranking-opt-out', { opted_out: optedOut });
+    return apiClient.post<CityOptOutResponse>('/v1/users/me/city-ranking-opt-out', {
+      opted_out: optedOut,
+    });
   },
 
   async getUniversitiesForMetro(slug: string): Promise<MetroUniversitiesResponse> {
-    return apiClient.get<MetroUniversitiesResponse>(`/v1/city-rankings/${encodeURIComponent(slug)}/universities`);
+    return apiClient.get<MetroUniversitiesResponse>(
+      `/v1/city-rankings/${encodeURIComponent(slug)}/universities`
+    );
   },
 };

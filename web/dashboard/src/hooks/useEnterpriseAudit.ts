@@ -1,8 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
-import { enterpriseAuditApi, type AuditLogItem, type AuditLogsResponse, type AuditFiltersResponse } from '@/api/enterprise';
 import { apiClient } from '@/api/client';
+import { enterpriseAuditApi } from '@/api/enterprise';
 import { tokenVault } from '@/utils/token-vault';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 export const enterpriseAuditKeys = {
   all: ['enterpriseAudit'] as const,
@@ -23,6 +23,7 @@ export interface AuditLogParams {
   start_time?: string;
   end_time?: string;
   search?: string;
+  [key: string]: unknown;
 }
 
 export function useEnterpriseAuditLogs(params?: AuditLogParams) {
@@ -66,13 +67,7 @@ export interface AuditExportResult {
 
 export function useExportEnterpriseAudit() {
   return useMutation({
-    mutationFn: async ({
-      from,
-      to,
-      format,
-      service_area,
-      action,
-    }: AuditExportParams) => {
+    mutationFn: async ({ from, to, format, service_area, action }: AuditExportParams) => {
       const params = new URLSearchParams();
       if (from) params.set('from', from);
       if (to) params.set('to', to);
@@ -112,6 +107,6 @@ export function useDownloadEnterpriseAuditExport() {
       URL.revokeObjectURL(url);
       return result;
     },
-    [mutation],
+    [mutation]
   );
 }

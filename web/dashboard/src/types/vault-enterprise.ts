@@ -9,13 +9,13 @@
  * Plan gating lives in src/lib/vaultPlans.ts.
  */
 
-import type { SecretType } from "./vault";
+import type { SecretType } from './vault';
 
 // ============================================================================
 // Plans
 // ============================================================================
 
-export type VaultPlan = "free" | "pro" | "team" | "enterprise";
+export type VaultPlan = 'free' | 'pro' | 'team' | 'enterprise';
 
 export interface PlanLimits {
   /** Lifetime cap on stored secrets */
@@ -27,7 +27,7 @@ export interface PlanLimits {
   /** Audit log exports per 24h */
   auditExportsPerDay: number;
   /** Storage backends available for dynamic creds */
-  dynamicBackends: ("postgres" | "mysql")[];
+  dynamicBackends: ('postgres' | 'mysql')[];
   /** Feature flags */
   features: {
     mfa: boolean;
@@ -47,6 +47,7 @@ export interface PlanLimits {
     dependencyGraph: boolean;
     expirationDashboard: boolean;
     tokenMonitor: boolean;
+    rotationSchedules: boolean;
   };
 }
 
@@ -57,7 +58,7 @@ export interface PlanLimits {
 export interface VaultMFAConfig {
   tenant_id: string;
   mfa_required: boolean;
-  mfa_method: "totp" | "webauthn" | "both";
+  mfa_method: 'totp' | 'webauthn' | 'both';
   enforce_for_tokens: boolean;
   enforce_for_api: boolean;
   mfa_session_ttl_seconds: number;
@@ -66,7 +67,7 @@ export interface VaultMFAConfig {
 
 export interface UpdateVaultMFARequest {
   mfa_required?: boolean;
-  mfa_method?: "totp" | "webauthn" | "both";
+  mfa_method?: 'totp' | 'webauthn' | 'both';
   enforce_for_tokens?: boolean;
   enforce_for_api?: boolean;
   mfa_session_ttl_seconds?: number;
@@ -102,7 +103,7 @@ export interface UpdateTokenIPPolicyRequest {
 // Phase 1.3: Expiration
 // ============================================================================
 
-export type SecretStatus = "active" | "expiring_soon" | "expired" | "revoked";
+export type SecretStatus = 'active' | 'expiring_soon' | 'expired' | 'revoked';
 
 export interface SetSecretExpirationRequest {
   expires_at?: string;
@@ -113,7 +114,7 @@ export interface SetSecretExpirationRequest {
 // Phase 1.4: Break-glass
 // ============================================================================
 
-export type BreakGlassStatus = "pending" | "approved" | "denied" | "expired" | "revoked";
+export type BreakGlassStatus = 'pending' | 'approved' | 'denied' | 'expired' | 'revoked';
 
 export interface BreakGlassRequest {
   id: string;
@@ -164,7 +165,7 @@ export interface EnableEscrowRequest {
 // Phase 2: Dynamic credentials
 // ============================================================================
 
-export type DynamicDBType = "postgres" | "mysql";
+export type DynamicDBType = 'postgres' | 'mysql';
 
 export interface DynamicSecretTarget {
   id: string;
@@ -300,7 +301,7 @@ export interface AssignRoleRequest {
 // Phase 4.2: Audit + SIEM
 // ============================================================================
 
-export type AuditExportFormat = "json" | "csv" | "cef";
+export type AuditExportFormat = 'json' | 'csv' | 'cef';
 
 export interface AuditExportResult {
   format: AuditExportFormat;
@@ -316,7 +317,7 @@ export interface VaultSIEMWebhook {
   tenant_id: string;
   name: string;
   url: string;
-  format: "json" | "cef";
+  format: 'json' | 'cef';
   enabled: boolean;
   last_delivery_at?: string;
   last_delivery_status?: number;
@@ -329,7 +330,7 @@ export interface VaultSIEMWebhook {
 export interface CreateSIEMWebhookRequest {
   name: string;
   url: string;
-  format?: "json" | "cef";
+  format?: 'json' | 'cef';
 }
 
 // ============================================================================
@@ -357,7 +358,7 @@ export interface CreateNamespaceRequest {
 // Phase 4.4: Cross-tenant shares
 // ============================================================================
 
-export type SharePermission = "read" | "read-write";
+export type SharePermission = 'read' | 'read-write';
 
 export interface VaultShare {
   id: string;
@@ -444,6 +445,59 @@ export interface QuotaUsage {
   percentage_used: number;
   window?: string;
   resets_at?: string;
+}
+
+// ============================================================================
+// Phase 6: Secret Rotation Schedules
+// ============================================================================
+
+export interface RotationSchedule {
+  id: string;
+  tenant_id: string;
+  secret_id: string;
+  secret_name?: string;
+  rotation_type: 'automatic' | 'scheduled' | 'manual';
+  enabled: boolean;
+  auto_rotate_interval?: number; // days
+  scheduled_at?: string; // ISO date for scheduled rotation
+  next_rotation_at?: string;
+  last_rotated_at?: string;
+  grace_period_hours: number;
+  notify_stakeholders: boolean;
+  require_approval: boolean;
+  status: 'active' | 'paused' | 'pending' | 'cancelled' | 'failed';
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+export interface RotationSchedulesResponse {
+  schedules: RotationSchedule[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SetAutoRotationRequest {
+  secret_id: string;
+  enabled: boolean;
+  auto_rotate_interval?: number;
+  grace_period_hours?: number;
+  notify_stakeholders?: boolean;
+  require_approval?: boolean;
+}
+
+export interface CreateScheduledRotationRequest {
+  secret_id: string;
+  scheduled_at: string;
+  grace_period_hours?: number;
+  notify_stakeholders?: boolean;
+  require_approval?: boolean;
+}
+
+export interface CancelRotationRequest {
+  schedule_id: string;
+  reason: string;
 }
 
 // ============================================================================

@@ -175,7 +175,11 @@ export interface AffiliateCommission {
 // ============================================================================
 
 export const tenantApi = {
-  list: async (params?: { limit?: number; offset?: number; status?: string }): Promise<{ tenants: Tenant[]; total: number }> => {
+  list: async (params?: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+  }): Promise<{ tenants: Tenant[]; total: number }> => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.offset) searchParams.set('offset', String(params.offset));
@@ -253,7 +257,9 @@ export const billingApi = {
     return apiClient.get<PricingTier[]>('/admin/billing/tiers');
   },
 
-  createPricingTier: async (data: Omit<PricingTier, 'id' | 'created_at' | 'updated_at'>): Promise<PricingTier> => {
+  createPricingTier: async (
+    data: Omit<PricingTier, 'id' | 'created_at' | 'updated_at'>
+  ): Promise<PricingTier> => {
     return apiClient.post<PricingTier>('/admin/billing/tiers', data);
   },
 
@@ -273,7 +279,9 @@ export const billingApi = {
     return apiClient.get<Coupon[]>('/admin/billing/coupons');
   },
 
-  createCoupon: async (data: Omit<Coupon, 'id' | 'current_uses' | 'created_at' | 'updated_at'>): Promise<Coupon> => {
+  createCoupon: async (
+    data: Omit<Coupon, 'id' | 'current_uses' | 'created_at' | 'updated_at'>
+  ): Promise<Coupon> => {
     return apiClient.post<Coupon>('/admin/billing/coupons', data);
   },
 
@@ -313,7 +321,9 @@ export const billingApi = {
   },
 
   listAffiliateCommissions: async (codeId: string): Promise<AffiliateCommission[]> => {
-    return apiClient.get<AffiliateCommission[]>(`/admin/billing/affiliate-codes/${codeId}/commissions`);
+    return apiClient.get<AffiliateCommission[]>(
+      `/admin/billing/affiliate-codes/${codeId}/commissions`
+    );
   },
 
   recordAffiliateReferral: async (data: {
@@ -342,7 +352,10 @@ export const billingApi = {
     return apiClient.post(`/admin/billing/affiliate-commissions/${id}/paid`);
   },
 
-  calculateAffiliateCommission: async (affiliateCode: string, baseAmountCents: number): Promise<{
+  calculateAffiliateCommission: async (
+    affiliateCode: string,
+    baseAmountCents: number
+  ): Promise<{
     affiliate_code: string;
     commission_type: string;
     commission_value: number;
@@ -359,6 +372,150 @@ export const billingApi = {
 };
 
 // ============================================================================
+// City Wars Admin API
+// ============================================================================
+
+export interface WarMatch {
+  id: number;
+  war_id: number;
+  round: 'quarterfinal' | 'semifinal' | 'final';
+  position: number;
+  metro_a_id: number;
+  metro_a_name: string;
+  metro_a_country: string;
+  score_a: number;
+  active_users_a: number;
+  metro_b_id: number;
+  metro_b_name: string;
+  metro_b_country: string;
+  score_b: number;
+  active_users_b: number;
+  winner_metro_id: number | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+  scheduled_at: string;
+  completed_at: string | null;
+}
+
+export interface War {
+  id: number;
+  name: string;
+  season: string;
+  slug: string;
+  status: 'draft' | 'scheduled' | 'active' | 'complete' | 'cancelled';
+  starts_at: string;
+  ends_at: string;
+  round: 'quarterfinal' | 'semifinal' | 'final' | 'complete' | null;
+  quarterfinals: WarMatch[];
+  semifinals: WarMatch[];
+  final: WarMatch | null;
+  champion_name: string | null;
+  total_active_users: number;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+}
+
+export interface EligibleMetro {
+  id: number;
+  name: string;
+  metro_slug: string;
+  country_code: string;
+  score: number;
+  active_users: number;
+  deployments: number;
+  rank_position: number;
+  is_eligible: boolean;
+  eligibility_reason?: string;
+}
+
+export interface MatchResultRequest {
+  match_id: number;
+  metro_a_score: number;
+  metro_b_score: number;
+  winner_metro_id: number;
+  recorded_by: string;
+  recorded_at: string;
+}
+
+export interface WarBracket {
+  war_id: number;
+  quarterfinals: WarMatch[];
+  semifinals: WarMatch[];
+  final: WarMatch | null;
+  champion: string | null;
+}
+
+export const cityWarsApi = {
+  listWars: async (params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ wars: War[]; total: number }> => {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.offset) searchParams.set('offset', String(params.offset));
+    const queryString = searchParams.toString();
+    return apiClient.get<{ wars: War[]; total: number }>(
+      `/admin/city-wars${queryString ? `?${queryString}` : ''}`
+    );
+  },
+
+  getWar: async (id: number): Promise<War> => {
+    return apiClient.get<War>(`/admin/city-wars/${id}`);
+  },
+
+  createWar: async (data: {
+    name: string;
+    season: string;
+    slug: string;
+    starts_at: string;
+    ends_at: string;
+  }): Promise<War> => {
+    return apiClient.post<War>('/admin/city-wars', data);
+  },
+
+  activateWar: async (id: number): Promise<War> => {
+    return apiClient.post<War>(`/admin/city-wars/${id}/activate`);
+  },
+
+  cancelWar: async (id: number): Promise<War> => {
+    return apiClient.post<War>(`/admin/city-wars/${id}/cancel`);
+  },
+
+  generateBracket: async (id: number): Promise<WarBracket> => {
+    return apiClient.post<WarBracket>(`/admin/city-wars/${id}/bracket/generate`);
+  },
+
+  setQuarterfinals: async (
+    id: number,
+    matches: Omit<WarMatch, 'id' | 'war_id' | 'status' | 'completed_at'>[]
+  ): Promise<WarBracket> => {
+    return apiClient.post<WarBracket>(`/admin/city-wars/${id}/bracket/quarterfinals`, { matches });
+  },
+
+  advanceWar: async (id: number, round: 'semifinal' | 'final'): Promise<WarBracket> => {
+    return apiClient.post<WarBracket>(`/admin/city-wars/${id}/bracket/advance`, { round });
+  },
+
+  overrideMatch: async (id: number, data: MatchResultRequest): Promise<WarMatch> => {
+    return apiClient.post<WarMatch>(`/admin/city-wars/${id}/matches/override`, data);
+  },
+
+  recordMatch: async (id: number, data: MatchResultRequest): Promise<WarMatch> => {
+    return apiClient.post<WarMatch>(`/admin/city-wars/${id}/matches/record`, data);
+  },
+
+  getEligibleMetros: async (): Promise<EligibleMetro[]> => {
+    return apiClient.get<EligibleMetro[]>('/admin/city-wars/eligible-metros');
+  },
+
+  getWarBracket: async (id: number): Promise<WarBracket> => {
+    return apiClient.get<WarBracket>(`/admin/city-wars/${id}/bracket`);
+  },
+};
+
+// ============================================================================
 // Analytics API
 // ============================================================================
 
@@ -368,9 +525,7 @@ export const analyticsApi = {
     if (params?.start_date) searchParams.set('start_date', params.start_date);
     if (params?.end_date) searchParams.set('end_date', params.end_date);
     const queryString = searchParams.toString();
-    return apiClient.get<any>(
-      `/admin/analytics/overview${queryString ? `?${queryString}` : ''}`
-    );
+    return apiClient.get<any>(`/admin/analytics/overview${queryString ? `?${queryString}` : ''}`);
   },
 };
 
@@ -380,4 +535,5 @@ export default {
   healthApi,
   billingApi,
   analyticsApi,
+  cityWarsApi,
 };

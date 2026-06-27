@@ -15,17 +15,25 @@ export const SecretType = {
 };
 
 /** Audit action enumeration */
-export type AuditAction = 'create' | 'read' | 'update' | 'delete' | 'use' | 'revoke' | 'version' | 'rollback';
+export type AuditAction =
+  | 'create'
+  | 'read'
+  | 'update'
+  | 'delete'
+  | 'use'
+  | 'revoke'
+  | 'version'
+  | 'rollback';
 
 /** Actor type enumeration */
 export type ActorType = 'user' | 'token' | 'system' | 'api_key';
 
 /** Encrypted data payload - matches server-side structure */
 export interface EncryptedDataPayload {
-  ciphertext: string;  // base64 encoded encrypted data
-  iv: string;          // base64 encoded initialization vector
-  salt: string;        // base64 encoded PBKDF2 salt
-  tag: string;         // base64 encoded authentication tag
+  ciphertext: string; // base64 encoded encrypted data
+  iv: string; // base64 encoded initialization vector
+  salt: string; // base64 encoded PBKDF2 salt
+  tag: string; // base64 encoded authentication tag
   key_version: number; // encryption key version (1=passphrase, 2=KMS, 3=HSM)
 }
 
@@ -43,6 +51,7 @@ export interface SecretMetadata {
   updated_at: string;
   current_version?: number;
   last_modified_at?: string;
+  expires_at?: string;
 }
 
 /** Full secret with encrypted data */

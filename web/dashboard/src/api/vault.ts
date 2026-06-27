@@ -7,7 +7,49 @@
  * surface an empty result and a console warning.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from '@/api/client';
+import type {
+  AccessToken,
+  AssignRoleRequest,
+  AuditExportFormat,
+  AuditExportResult,
+  BreakGlassConfig,
+  BreakGlassRequest,
+  BreakGlassRequestBody,
+  CacheStats,
+  CancelRotationRequest,
+  CreateCredentialRequest,
+  CreateNamespaceRequest,
+  CreateRoleRequest,
+  CreateScheduledRotationRequest,
+  CreateSIEMWebhookRequest,
+  CreateTargetRequest,
+  DynamicCredential,
+  DynamicSecretTarget,
+  EnableEscrowRequest,
+  EscrowStatus,
+  GeneratedCredential,
+  RotationSchedule,
+  RotationSchedulesResponse,
+  SetAutoRotationRequest,
+  SetSecretExpirationRequest,
+  ShareSecretRequest,
+  UpdateRoleRequest,
+  UpdateSSORequest,
+  UpdateTokenIPPolicyRequest,
+  UpdateVaultMFARequest,
+  VaultMFAConfig,
+  VaultNamespace,
+  VaultRole,
+  VaultRoleAssignment,
+  VaultShare,
+  VaultSIEMWebhook,
+  VaultSSOConfig,
+} from '@/types/vault-enterprise';
+import { tokenVault } from '@/utils/token-vault';
+import { VaultCrypto } from '@/utils/vault-crypto';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
 export interface WrappedTargetResponse {
   wrapped_admin_password: string;
@@ -39,74 +81,40 @@ export interface WrappedDEKResponse {
   created_at: string;
   rotated_at?: string | null;
 }
-import { useCallback } from "react";
-import { apiClient } from "@/api/client";
-import { VaultCrypto } from "@/utils/vault-crypto";
-import { tokenVault } from "@/utils/token-vault";
-import type {
-  AssignRoleRequest,
-  AccessToken,
-  AuditExportFormat,
-  AuditExportResult,
-  BreakGlassConfig,
-  BreakGlassRequest,
-  BreakGlassRequestBody,
-  CacheStats,
-  CreateCredentialRequest,
-  CreateNamespaceRequest,
-  CreateRoleRequest,
-  CreateSIEMWebhookRequest,
-  CreateTargetRequest,
-  DynamicCredential,
-  DynamicSecretTarget,
-  EnableEscrowRequest,
-  EscrowStatus,
-  GeneratedCredential,
-  SetSecretExpirationRequest,
-  ShareSecretRequest,
-  UpdateRoleRequest,
-  UpdateSSORequest,
-  UpdateTokenIPPolicyRequest,
-  UpdateVaultMFARequest,
-  VaultMFAConfig,
-  VaultNamespace,
-  VaultRole,
-  VaultRoleAssignment,
-  VaultShare,
-  VaultSIEMWebhook,
-  VaultSSOConfig,
-} from "@/types/vault-enterprise";
 
 // ============================================================================
 // Query keys
 // ============================================================================
 
 export const vaultKeys = {
-  all: ["vault"] as const,
-  secrets: () => [...vaultKeys.all, "secrets"] as const,
+  all: ['vault'] as const,
+  secrets: () => [...vaultKeys.all, 'secrets'] as const,
   secret: (id: string) => [...vaultKeys.secrets(), id] as const,
-  tokens: (secretId: string) => [...vaultKeys.all, "tokens", secretId] as const,
-  audit: () => [...vaultKeys.all, "audit"] as const,
+  tokens: (secretId: string) => [...vaultKeys.all, 'tokens', secretId] as const,
+  audit: () => [...vaultKeys.all, 'audit'] as const,
   // Phase 1
-  mfa: () => [...vaultKeys.all, "mfa"] as const,
+  mfa: () => [...vaultKeys.all, 'mfa'] as const,
   // Phase 2
-  targets: () => [...vaultKeys.all, "targets"] as const,
+  targets: () => [...vaultKeys.all, 'targets'] as const,
   target: (id: string) => [...vaultKeys.targets(), id] as const,
-  dynamicCreds: () => [...vaultKeys.all, "dynamic-credentials"] as const,
+  dynamicCreds: () => [...vaultKeys.all, 'dynamic-credentials'] as const,
   dynamicCred: (id: string) => [...vaultKeys.dynamicCreds(), id] as const,
   // Phase 4
-  namespaces: () => [...vaultKeys.all, "namespaces"] as const,
-  roles: () => [...vaultKeys.all, "roles"] as const,
+  namespaces: () => [...vaultKeys.all, 'namespaces'] as const,
+  roles: () => [...vaultKeys.all, 'roles'] as const,
   role: (id: string) => [...vaultKeys.roles(), id] as const,
-  myAssignments: () => [...vaultKeys.all, "my-assignments"] as const,
-  sharesIncoming: () => [...vaultKeys.all, "shares", "incoming"] as const,
-  sso: () => [...vaultKeys.all, "sso"] as const,
-  siemWebhooks: () => [...vaultKeys.all, "siem-webhooks"] as const,
-  breakGlassConfig: () => [...vaultKeys.all, "break-glass-config"] as const,
-  breakGlassList: () => [...vaultKeys.all, "break-glass"] as const,
-  escrow: () => [...vaultKeys.all, "escrow"] as const,
+  myAssignments: () => [...vaultKeys.all, 'my-assignments'] as const,
+  sharesIncoming: () => [...vaultKeys.all, 'shares', 'incoming'] as const,
+  sso: () => [...vaultKeys.all, 'sso'] as const,
+  siemWebhooks: () => [...vaultKeys.all, 'siem-webhooks'] as const,
+  breakGlassConfig: () => [...vaultKeys.all, 'break-glass-config'] as const,
+  breakGlassList: () => [...vaultKeys.all, 'break-glass'] as const,
+  escrow: () => [...vaultKeys.all, 'escrow'] as const,
   // Phase 5
-  cache: () => [...vaultKeys.all, "cache"] as const,
+  cache: () => [...vaultKeys.all, 'cache'] as const,
+  // Phase 2.3: Rotation Schedules
+  rotationSchedules: () => [...vaultKeys.all, 'rotation-schedules'] as const,
+  rotationSchedule: (secretId: string) => [...vaultKeys.rotationSchedules(), secretId] as const,
 };
 
 async function unwrap<T>(p: Promise<{ data: T }>): Promise<T> {
@@ -121,7 +129,7 @@ async function unwrap<T>(p: Promise<{ data: T }>): Promise<T> {
 export function useVaultMFA() {
   return useQuery({
     queryKey: vaultKeys.mfa(),
-    queryFn: () => unwrap<VaultMFAConfig>(apiClient.get("/v1/vault/mfa/config")),
+    queryFn: () => unwrap<VaultMFAConfig>(apiClient.get('/v1/vault/mfa/config')),
   });
 }
 
@@ -129,16 +137,17 @@ export function useUpdateVaultMFA() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: UpdateVaultMFARequest) =>
-      unwrap<VaultMFAConfig>(apiClient.put("/v1/vault/mfa/config", body)),
+      unwrap<VaultMFAConfig>(apiClient.put('/v1/vault/mfa/config', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.mfa() }),
   });
 }
 
 export function useVerifyVaultMFA() {
   return useMutation({
-    mutationFn: () => unwrap<{ verified: boolean; expires_at: string; ttl: number }>(
-      apiClient.post("/v1/vault/mfa/verify", {}),
-    ),
+    mutationFn: () =>
+      unwrap<{ verified: boolean; expires_at: string; ttl: number }>(
+        apiClient.post('/v1/vault/mfa/verify', {})
+      ),
   });
 }
 
@@ -149,9 +158,10 @@ export function useVerifyVaultMFA() {
 export function useTokensForSecret(secretId: string) {
   return useQuery({
     queryKey: vaultKeys.tokens(secretId),
-    queryFn: () => unwrap<{ tokens: AccessToken[]; total: number }>(
-      apiClient.get(`/v1/vault/secrets/${secretId}/tokens`),
-    ),
+    queryFn: () =>
+      unwrap<{ tokens: AccessToken[]; total: number }>(
+        apiClient.get(`/v1/vault/secrets/${secretId}/tokens`)
+      ),
     enabled: !!secretId,
   });
 }
@@ -185,16 +195,17 @@ export function useSetSecretExpiration(secretId: string) {
 export function useBreakGlassConfig() {
   return useQuery({
     queryKey: vaultKeys.breakGlassConfig(),
-    queryFn: () => unwrap<BreakGlassConfig>(apiClient.get("/v1/vault/break-glass/config")),
+    queryFn: () => unwrap<BreakGlassConfig>(apiClient.get('/v1/vault/break-glass/config')),
   });
 }
 
 export function useBreakGlassList() {
   return useQuery({
     queryKey: vaultKeys.breakGlassList(),
-    queryFn: () => unwrap<{ requests: BreakGlassRequest[]; total: number }>(
-      apiClient.get("/v1/vault/break-glass"),
-    ),
+    queryFn: () =>
+      unwrap<{ requests: BreakGlassRequest[]; total: number }>(
+        apiClient.get('/v1/vault/break-glass')
+      ),
   });
 }
 
@@ -202,7 +213,7 @@ export function useRequestBreakGlass() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: BreakGlassRequestBody) =>
-      unwrap<BreakGlassRequest>(apiClient.post("/v1/vault/break-glass", body)),
+      unwrap<BreakGlassRequest>(apiClient.post('/v1/vault/break-glass', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.breakGlassList() }),
   });
 }
@@ -228,8 +239,7 @@ export function useDenyBreakGlass() {
 export function useRevokeBreakGlass() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiClient.post(`/v1/vault/break-glass/${id}/revoke`, {}),
+    mutationFn: (id: string) => apiClient.post(`/v1/vault/break-glass/${id}/revoke`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.breakGlassList() }),
   });
 }
@@ -241,7 +251,7 @@ export function useRevokeBreakGlass() {
 export function useEscrowStatus() {
   return useQuery({
     queryKey: vaultKeys.escrow(),
-    queryFn: () => unwrap<EscrowStatus>(apiClient.get("/v1/vault/escrow")),
+    queryFn: () => unwrap<EscrowStatus>(apiClient.get('/v1/vault/escrow')),
   });
 }
 
@@ -249,7 +259,7 @@ export function useEnableEscrow() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: EnableEscrowRequest) =>
-      unwrap<EscrowStatus>(apiClient.post("/v1/vault/escrow", body)),
+      unwrap<EscrowStatus>(apiClient.post('/v1/vault/escrow', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.escrow() }),
   });
 }
@@ -257,7 +267,7 @@ export function useEnableEscrow() {
 export function useDisableEscrow() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => apiClient.delete("/v1/vault/escrow"),
+    mutationFn: () => apiClient.delete('/v1/vault/escrow'),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.escrow() }),
   });
 }
@@ -269,9 +279,10 @@ export function useDisableEscrow() {
 export function useDynamicTargets() {
   return useQuery({
     queryKey: vaultKeys.targets(),
-    queryFn: () => unwrap<{ targets: DynamicSecretTarget[]; total: number }>(
-      apiClient.get("/v1/vault/dynamic-secret-targets"),
-    ),
+    queryFn: () =>
+      unwrap<{ targets: DynamicSecretTarget[]; total: number }>(
+        apiClient.get('/v1/vault/dynamic-secret-targets')
+      ),
   });
 }
 
@@ -279,7 +290,7 @@ export function useCreateTarget() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateTargetRequest) =>
-      unwrap<DynamicSecretTarget>(apiClient.post("/v1/vault/dynamic-secret-targets", body)),
+      unwrap<DynamicSecretTarget>(apiClient.post('/v1/vault/dynamic-secret-targets', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.targets() }),
   });
 }
@@ -296,7 +307,7 @@ export function useTestTarget() {
   return useMutation({
     mutationFn: (id: string) =>
       unwrap<{ ok: boolean; username: string; expires_at: string }>(
-        apiClient.post(`/v1/vault/dynamic-secret-targets/${id}/test`, {}),
+        apiClient.post(`/v1/vault/dynamic-secret-targets/${id}/test`, {})
       ),
   });
 }
@@ -308,9 +319,10 @@ export function useTestTarget() {
 export function useDynamicCredentials() {
   return useQuery({
     queryKey: vaultKeys.dynamicCreds(),
-    queryFn: () => unwrap<{ credentials: DynamicCredential[]; total: number }>(
-      apiClient.get("/v1/vault/dynamic-credentials"),
-    ),
+    queryFn: () =>
+      unwrap<{ credentials: DynamicCredential[]; total: number }>(
+        apiClient.get('/v1/vault/dynamic-credentials')
+      ),
   });
 }
 
@@ -318,7 +330,7 @@ export function useCreateDynamicCredential() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateCredentialRequest) =>
-      unwrap<DynamicCredential>(apiClient.post("/v1/vault/dynamic-credentials", body)),
+      unwrap<DynamicCredential>(apiClient.post('/v1/vault/dynamic-credentials', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.dynamicCreds() }),
   });
 }
@@ -329,7 +341,7 @@ export function useGenerateDynamicCredential() {
       unwrap<GeneratedCredential>(
         apiClient.post(`/v1/vault/dynamic-credentials/${id}/generate`, {
           ttl_seconds: ttlSeconds,
-        }),
+        })
       ),
   });
 }
@@ -337,8 +349,7 @@ export function useGenerateDynamicCredential() {
 export function useRevokeAllDynamicCredentials() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      apiClient.post(`/v1/vault/dynamic-credentials/${id}/revoke`, {}),
+    mutationFn: (id: string) => apiClient.post(`/v1/vault/dynamic-credentials/${id}/revoke`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.dynamicCreds() }),
   });
 }
@@ -359,10 +370,9 @@ export function useRenewLease() {
       ttlSeconds?: number;
     }) =>
       unwrap<{ lease_id: string; expires_at: string }>(
-        apiClient.post(
-          `/v1/vault/dynamic-credentials/${credentialId}/leases/${leaseId}/renew`,
-          { ttl_seconds: ttlSeconds },
-        ),
+        apiClient.post(`/v1/vault/dynamic-credentials/${credentialId}/leases/${leaseId}/renew`, {
+          ttl_seconds: ttlSeconds,
+        })
       ),
   });
 }
@@ -370,10 +380,65 @@ export function useRenewLease() {
 export function useRevokeLease() {
   return useMutation({
     mutationFn: ({ credentialId, leaseId }: { credentialId: string; leaseId: string }) =>
-      apiClient.post(
-        `/v1/vault/dynamic-credentials/${credentialId}/leases/${leaseId}/revoke`,
-        {},
+      apiClient.post(`/v1/vault/dynamic-credentials/${credentialId}/leases/${leaseId}/revoke`, {}),
+  });
+}
+
+// ============================================================================
+// Phase 2.3: Secret Rotation Schedules
+// ============================================================================
+
+export function useRotationSchedules() {
+  return useQuery({
+    queryKey: vaultKeys.rotationSchedules(),
+    queryFn: () => unwrap<RotationSchedulesResponse>(apiClient.get('/v1/vault/rotation-schedules')),
+  });
+}
+
+export function useRotationSchedule(secretId: string) {
+  return useQuery({
+    queryKey: vaultKeys.rotationSchedule(secretId),
+    queryFn: () =>
+      unwrap<RotationSchedule>(apiClient.get(`/v1/vault/rotation-schedules/${secretId}`)),
+    enabled: !!secretId,
+  });
+}
+
+export function useSetAutoRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SetAutoRotationRequest) =>
+      unwrap<RotationSchedule>(apiClient.post('/v1/vault/rotation-schedules/auto', body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.rotationSchedules() }),
+  });
+}
+
+export function useCreateScheduledRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: CreateScheduledRotationRequest) =>
+      unwrap<RotationSchedule>(apiClient.post('/v1/vault/rotation-schedules/scheduled', body)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.rotationSchedules() }),
+  });
+}
+
+export function useCancelRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ secretId, body }: { secretId: string; body: CancelRotationRequest }) =>
+      apiClient.post(`/v1/vault/rotation-schedules/${secretId}/cancel`, body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.rotationSchedules() }),
+  });
+}
+
+export function useTriggerRotation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (secretId: string) =>
+      unwrap<RotationSchedule>(
+        apiClient.post(`/v1/vault/rotation-schedules/${secretId}/trigger`, {})
       ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.rotationSchedules() }),
   });
 }
 
@@ -384,9 +449,7 @@ export function useRevokeLease() {
 export function useRoles() {
   return useQuery({
     queryKey: vaultKeys.roles(),
-    queryFn: () => unwrap<{ roles: VaultRole[]; total: number }>(
-      apiClient.get("/v1/vault/roles"),
-    ),
+    queryFn: () => unwrap<{ roles: VaultRole[]; total: number }>(apiClient.get('/v1/vault/roles')),
   });
 }
 
@@ -394,7 +457,7 @@ export function useCreateRole() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateRoleRequest) =>
-      unwrap<VaultRole>(apiClient.post("/v1/vault/roles", body)),
+      unwrap<VaultRole>(apiClient.post('/v1/vault/roles', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.roles() }),
   });
 }
@@ -419,9 +482,10 @@ export function useDeleteRole() {
 export function useMyAssignments() {
   return useQuery({
     queryKey: vaultKeys.myAssignments(),
-    queryFn: () => unwrap<{ assignments: VaultRoleAssignment[]; total: number }>(
-      apiClient.get("/v1/vault/my-assignments"),
-    ),
+    queryFn: () =>
+      unwrap<{ assignments: VaultRoleAssignment[]; total: number }>(
+        apiClient.get('/v1/vault/my-assignments')
+      ),
   });
 }
 
@@ -470,11 +534,11 @@ export function useExportAudit() {
       action?: string;
     }) => {
       const params = new URLSearchParams();
-      if (from) params.set("from", from);
-      if (to) params.set("to", to);
-      if (format) params.set("format", format);
-      if (secretId) params.set("secret_id", secretId);
-      if (action) params.set("action", action);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      if (format) params.set('format', format);
+      if (secretId) params.set('secret_id', secretId);
+      if (action) params.set('action', action);
       const url = `/v1/vault/audit/export?${params.toString()}`;
       const token = await getAuthToken();
       const response = await fetch(apiClient.getBaseUrl() + url, {
@@ -484,10 +548,10 @@ export function useExportAudit() {
         throw new Error(`HTTP ${response.status}`);
       }
       const result: AuditExportResult = {
-        format: (format ?? "json") as AuditExportFormat,
-        row_count: parseInt(response.headers.get("X-Audit-Row-Count") ?? "0", 10),
-        generated_at: response.headers.get("X-Audit-Generated-At") ?? new Date().toISOString(),
-        hmac_sha256: response.headers.get("X-Audit-Signature") ?? "",
+        format: (format ?? 'json') as AuditExportFormat,
+        row_count: parseInt(response.headers.get('X-Audit-Row-Count') ?? '0', 10),
+        generated_at: response.headers.get('X-Audit-Generated-At') ?? new Date().toISOString(),
+        hmac_sha256: response.headers.get('X-Audit-Signature') ?? '',
         body: await response.blob(),
       };
       return result;
@@ -508,23 +572,24 @@ export function useDownloadExport() {
     async (params: ExportParams, filename: string): Promise<AuditExportResult | null> => {
       const result = await mutation.mutateAsync(params);
       const url = URL.createObjectURL(result.body);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
       return result;
     },
-    [mutation],
+    [mutation]
   );
 }
 
 export function useSIEMWebhooks() {
   return useQuery({
     queryKey: vaultKeys.siemWebhooks(),
-    queryFn: () => unwrap<{ webhooks: VaultSIEMWebhook[]; total: number }>(
-      apiClient.get("/v1/vault/siem-webhooks"),
-    ),
+    queryFn: () =>
+      unwrap<{ webhooks: VaultSIEMWebhook[]; total: number }>(
+        apiClient.get('/v1/vault/siem-webhooks')
+      ),
   });
 }
 
@@ -532,7 +597,7 @@ export function useCreateSIEMWebhook() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateSIEMWebhookRequest) =>
-      unwrap<VaultSIEMWebhook>(apiClient.post("/v1/vault/siem-webhooks", body)),
+      unwrap<VaultSIEMWebhook>(apiClient.post('/v1/vault/siem-webhooks', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.siemWebhooks() }),
   });
 }
@@ -556,7 +621,7 @@ export function useNamespaces() {
     queryFn: async () => {
       try {
         return await unwrap<{ namespaces: VaultNamespace[]; total: number }>(
-          apiClient.get("/v1/vault/namespaces"),
+          apiClient.get('/v1/vault/namespaces')
         );
       } catch {
         return { namespaces: [] as VaultNamespace[], total: 0 };
@@ -569,7 +634,7 @@ export function useCreateNamespace() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateNamespaceRequest) =>
-      unwrap<VaultNamespace>(apiClient.post("/v1/vault/namespaces", body)),
+      unwrap<VaultNamespace>(apiClient.post('/v1/vault/namespaces', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.namespaces() }),
   });
 }
@@ -589,9 +654,8 @@ export function useDeleteNamespace() {
 export function useIncomingShares() {
   return useQuery({
     queryKey: vaultKeys.sharesIncoming(),
-    queryFn: () => unwrap<{ shares: VaultShare[]; total: number }>(
-      apiClient.get("/v1/vault/shared"),
-    ),
+    queryFn: () =>
+      unwrap<{ shares: VaultShare[]; total: number }>(apiClient.get('/v1/vault/shared')),
   });
 }
 
@@ -617,7 +681,7 @@ export function useRevokeShare() {
 export function useSSOConfig() {
   return useQuery({
     queryKey: vaultKeys.sso(),
-    queryFn: () => unwrap<VaultSSOConfig>(apiClient.get("/v1/vault/sso/config")),
+    queryFn: () => unwrap<VaultSSOConfig>(apiClient.get('/v1/vault/sso/config')),
   });
 }
 
@@ -625,7 +689,7 @@ export function useUpdateSSOConfig() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: UpdateSSORequest) =>
-      unwrap<VaultSSOConfig>(apiClient.put("/v1/vault/sso/config", body)),
+      unwrap<VaultSSOConfig>(apiClient.put('/v1/vault/sso/config', body)),
     onSuccess: () => qc.invalidateQueries({ queryKey: vaultKeys.sso() }),
   });
 }
@@ -637,9 +701,8 @@ export function useUpdateSSOConfig() {
 export function useCacheStats() {
   return useQuery({
     queryKey: vaultKeys.cache(),
-    queryFn: () => unwrap<CacheStats & { enabled: boolean }>(
-      apiClient.get("/v1/vault/cache/stats"),
-    ),
+    queryFn: () =>
+      unwrap<CacheStats & { enabled: boolean }>(apiClient.get('/v1/vault/cache/stats')),
     refetchInterval: 30_000,
   });
 }
@@ -650,57 +713,63 @@ export function useCacheStats() {
 
 export const vaultApi = {
   listSecrets: () =>
-    unwrap<{ secrets: import("@/types/vault").SecretMetadata[]; total: number; limit: number; offset: number }>(
-      apiClient.get("/v1/vault/secrets")
-    ),
+    unwrap<{
+      secrets: import('@/types/vault').SecretMetadata[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(apiClient.get('/v1/vault/secrets')),
 
   listSecretsWithNamespace: (namespace: string) =>
-    unwrap<{ secrets: import("@/types/vault").SecretMetadata[]; total: number; limit: number; offset: number }>(
+    unwrap<{
+      secrets: import('@/types/vault').SecretMetadata[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(
       namespace
         ? apiClient.get(`/v1/vault/secrets?namespace=${encodeURIComponent(namespace)}`)
-        : apiClient.get("/v1/vault/secrets")
+        : apiClient.get('/v1/vault/secrets')
     ),
 
   getSecret: (id: string) =>
-    unwrap<import("@/types/vault").Secret>(
-      apiClient.get(`/v1/vault/secrets/${id}`)
-    ),
+    unwrap<import('@/types/vault').Secret>(apiClient.get(`/v1/vault/secrets/${id}`)),
 
   getAuditLog: (limit = 100) =>
-    unwrap<{ entries: import("@/types/vault").AuditLogEntry[]; total: number; limit: number; offset: number }>(
-      apiClient.get(`/v1/vault/audit?limit=${limit}`)
-    ),
+    unwrap<{
+      entries: import('@/types/vault').AuditLogEntry[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(apiClient.get(`/v1/vault/audit?limit=${limit}`)),
 
   getSecretAuditLog: (secretId: string, limit = 100) =>
-    unwrap<{ entries: import("@/types/vault").AuditLogEntry[]; total: number; limit: number; offset: number }>(
-      apiClient.get(`/v1/vault/secrets/${secretId}/audit?limit=${limit}`)
-    ),
+    unwrap<{
+      entries: import('@/types/vault').AuditLogEntry[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(apiClient.get(`/v1/vault/secrets/${secretId}/audit?limit=${limit}`)),
 
   listTokens: (secretId: string) =>
-    unwrap<{ tokens: import("@/types/vault").AccessToken[]; total: number }>(
+    unwrap<{ tokens: import('@/types/vault').AccessToken[]; total: number }>(
       apiClient.get(`/v1/vault/secrets/${secretId}/tokens`)
     ),
 
-  createSecret: (data: import("@/types/vault").CreateSecretRequest) =>
-    unwrap<import("@/types/vault").Secret>(
-      apiClient.post("/v1/vault/secrets", data)
-    ),
+  createSecret: (data: import('@/types/vault').CreateSecretRequest) =>
+    unwrap<import('@/types/vault').Secret>(apiClient.post('/v1/vault/secrets', data)),
 
-  updateSecret: (id: string, data: import("@/types/vault").UpdateSecretRequest) =>
-    unwrap<import("@/types/vault").Secret>(
-      apiClient.patch(`/v1/vault/secrets/${id}`, data)
-    ),
+  updateSecret: (id: string, data: import('@/types/vault').UpdateSecretRequest) =>
+    unwrap<import('@/types/vault').Secret>(apiClient.patch(`/v1/vault/secrets/${id}`, data)),
 
-  deleteSecret: (id: string) =>
-    apiClient.delete(`/v1/vault/secrets/${id}`),
+  deleteSecret: (id: string) => apiClient.delete(`/v1/vault/secrets/${id}`),
 
-  generateToken: (secretId: string, data: import("@/types/vault").GenerateTokenRequest) =>
-    unwrap<import("@/types/vault").GenerateTokenResponse>(
+  generateToken: (secretId: string, data: import('@/types/vault').GenerateTokenRequest) =>
+    unwrap<import('@/types/vault').GenerateTokenResponse>(
       apiClient.post(`/v1/vault/secrets/${secretId}/tokens`, data)
     ),
 
-  revokeToken: (tokenId: string) =>
-    apiClient.delete(`/v1/vault/tokens/${tokenId}`),
+  revokeToken: (tokenId: string) => apiClient.delete(`/v1/vault/tokens/${tokenId}`),
 
   /**
    * Client-side secret decryption (zero-knowledge).
@@ -708,48 +777,56 @@ export const vaultApi = {
    * The passphrase is NEVER sent to the server.
    */
   decryptSecret: async (id: string, passphrase: string) => {
-    const secret = (await unwrap(apiClient.get(`/v1/vault/secrets/${id}`))) as { encrypted_data: string };
+    const secret = (await unwrap(apiClient.get(`/v1/vault/secrets/${id}`))) as {
+      encrypted_data: string;
+    };
     const encryptedData = VaultCrypto.fromPayload(JSON.parse(secret.encrypted_data));
     const plaintext = await VaultCrypto.decryptWithPassphrase(encryptedData, passphrase);
     return { value: plaintext };
   },
 
-
-  rotateSecret: (secretId: string, data: { encrypted_data: import("@/types/vault").EncryptedDataPayload; reason?: string }) =>
-    unwrap<import("@/types/vault").Secret>(
+  rotateSecret: (
+    secretId: string,
+    data: { encrypted_data: import('@/types/vault').EncryptedDataPayload; reason?: string }
+  ) =>
+    unwrap<import('@/types/vault').Secret>(
       apiClient.post(`/v1/vault/secrets/${secretId}/rotate`, data)
     ),
 
   listSecretVersions: (secretId: string, limit = 50, offset = 0) =>
-    unwrap<import("@/types/vault").ListSecretVersionsResponse>(
+    unwrap<import('@/types/vault').ListSecretVersionsResponse>(
       apiClient.get(`/v1/vault/secrets/${secretId}/versions?limit=${limit}&offset=${offset}`)
     ),
 
   getSecretVersion: (secretId: string, versionNumber: number, includeEncrypted = false) =>
-    unwrap<import("@/types/vault").SecretVersion>(
-      apiClient.get(`/v1/vault/secrets/${secretId}/versions/${versionNumber}?include_encrypted=${includeEncrypted}`)
+    unwrap<import('@/types/vault').SecretVersion>(
+      apiClient.get(
+        `/v1/vault/secrets/${secretId}/versions/${versionNumber}?include_encrypted=${includeEncrypted}`
+      )
     ),
 
   diffSecretVersions: (secretId: string, fromVersion: number, toVersion?: number) =>
-    unwrap<import("@/types/vault").SecretVersionDiff>(
-      apiClient.get(`/v1/vault/secrets/${secretId}/versions/diff?from=${fromVersion}&to=${toVersion ?? fromVersion}`)
+    unwrap<import('@/types/vault').SecretVersionDiff>(
+      apiClient.get(
+        `/v1/vault/secrets/${secretId}/versions/diff?from=${fromVersion}&to=${toVersion ?? fromVersion}`
+      )
     ),
 
-  rollbackSecret: (secretId: string, request: import("@/types/vault").RollbackSecretRequest) =>
-    unwrap<import("@/types/vault").RollbackSecretResponse>(
+  rollbackSecret: (secretId: string, request: import('@/types/vault').RollbackSecretRequest) =>
+    unwrap<import('@/types/vault').RollbackSecretResponse>(
       apiClient.post(`/v1/vault/secrets/${secretId}/rollback`, request)
     ),
 
   getSecretDependencies: (secretId: string) =>
-    unwrap<{ dependencies: Array<{
-      id: string;
-      name: string;
-      dependent_id: string;
-      dependent_type: string;
-      criticality: string;
-    }> }>(
-      apiClient.get(`/v1/vault/secrets/${secretId}/dependencies`)
-    ),
+    unwrap<{
+      dependencies: Array<{
+        id: string;
+        name: string;
+        dependent_id: string;
+        dependent_type: string;
+        criticality: string;
+      }>;
+    }>(apiClient.get(`/v1/vault/secrets/${secretId}/dependencies`)),
 
   // Dynamic credential methods
   getWrappedTarget: (targetId: string) =>
@@ -775,19 +852,13 @@ export const vaultApi = {
       apiClient.post(`/v1/vault/dynamic-credentials/leases/${leaseId}/revoke`, body)
     ),
 
-  renewLease: (
-    leaseId: string,
-    body: { ttl_seconds: number; target_admin_password: string }
-  ) =>
+  renewLease: (leaseId: string, body: { ttl_seconds: number; target_admin_password: string }) =>
     unwrap<{ lease_id: string; expires_at: string }>(
       apiClient.post(`/v1/vault/dynamic-credentials/leases/${leaseId}/renew`, body)
     ),
 
   // DEK (Data Encryption Key) methods (tenant-scoped)
-  getWrappedDEK: () =>
-    unwrap<WrappedDEKResponse | null>(
-      apiClient.get(`/v1/vault/deks`)
-    ),
+  getWrappedDEK: () => unwrap<WrappedDEKResponse | null>(apiClient.get(`/v1/vault/deks`)),
 
   upsertWrappedDEK: (body: {
     wrapped_dek: string;
@@ -796,10 +867,7 @@ export const vaultApi = {
     dek_salt: string;
     key_version: number;
     kdf_params?: Record<string, unknown>;
-  }) =>
-    unwrap<{ resource_id: string; updated_at: string }>(
-      apiClient.put(`/v1/vault/deks`, body)
-    ),
+  }) => unwrap<{ resource_id: string; updated_at: string }>(apiClient.put(`/v1/vault/deks`, body)),
 
   // Tenant key sharing
   shareDEK: (body: {

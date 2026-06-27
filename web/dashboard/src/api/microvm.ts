@@ -101,28 +101,26 @@ export interface MicroVMAuditResponse {
 // ==================== API Functions ====================
 
 export async function getMicroVMUsage(): Promise<MicroVMUsageResponse> {
-  const { data } = await apiClient.get<MicroVMUsageResponse>('/v1/microvm/usage');
-  return data;
+  return apiClient.get<MicroVMUsageResponse>('/v1/microvm/usage');
 }
 
 export async function getMicroVMQuota(): Promise<MicroVMQuota> {
-  const { data } = await apiClient.get<MicroVMQuota>('/v1/microvm/quota');
-  return data;
+  return apiClient.get<MicroVMQuota>('/v1/microvm/quota');
 }
 
 export async function getMicroVMBilling(): Promise<MicroVMBillingResponse> {
-  const { data } = await apiClient.get<MicroVMBillingResponse>('/v1/microvm/billing');
-  return data;
+  return apiClient.get<MicroVMBillingResponse>('/v1/microvm/billing');
 }
 
 export async function aggregateMicroVMBilling(): Promise<MicroVMBillingRecord> {
-  const { data } = await apiClient.post<MicroVMBillingRecord>('/v1/microvm/billing/aggregate');
-  return data;
+  return apiClient.post<MicroVMBillingRecord>('/v1/microvm/billing/aggregate');
 }
 
-export async function getMicroVMAudit(params?: { limit?: number; offset?: number }): Promise<MicroVMAuditResponse> {
-  const { data } = await apiClient.get<MicroVMAuditResponse>('/v1/microvm/audit', { params });
-  return data;
+export async function getMicroVMAudit(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<MicroVMAuditResponse> {
+  return apiClient.get<MicroVMAuditResponse>('/v1/microvm/audit', { params });
 }
 
 export async function createMicroVMExecution(params: {
@@ -134,8 +132,7 @@ export async function createMicroVMExecution(params: {
   network_allowed: boolean;
   packages_cached: boolean;
 }): Promise<MicroVMExecution> {
-  const { data } = await apiClient.post<MicroVMExecution>('/v1/microvm/executions', params);
-  return data;
+  return apiClient.post<MicroVMExecution>('/v1/microvm/executions', params);
 }
 
 export async function updateMicroVMExecution(

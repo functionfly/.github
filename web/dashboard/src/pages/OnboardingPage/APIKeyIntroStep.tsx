@@ -1,17 +1,23 @@
-import { motion } from 'framer-motion';
-import { Copy, Key, Check, Loader2, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiKeysService } from '@/services/api-keys';
+import { useOnboardingStore } from '@/stores/onboardingStore';
+import { motion } from 'framer-motion';
+import { Check, Copy, ExternalLink, Key, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useOnboardingStore } from '@/stores/onboardingStore';
-import { apiKeysService } from '@/services/api-keys';
 
 export function APIKeyIntroStep() {
-  const { createdApiKey, apiKeyName, apiKeyId, setCreatedApiKey, selectedRegions = [] } = useOnboardingStore();
+  const {
+    createdApiKey,
+    apiKeyName,
+    apiKeyId,
+    setCreatedApiKey,
+    selectedRegions = [],
+  } = useOnboardingStore();
 
   const [keyName, setKeyName] = useState('My First API Key');
   const [isCreating, setIsCreating] = useState(false);
@@ -33,13 +39,13 @@ export function APIKeyIntroStep() {
       });
 
       setCreatedKey(result.plaintext || 'Key created successfully');
-      setCreatedApiKey(keyName, result.id);
+      setCreatedApiKey(result.plaintext || 'Key created successfully', keyName, result.id);
       toast.success('API key created successfully!');
     } catch (error) {
       // Mock success for demo purposes
       const mockKey = `ff_live_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
       setCreatedKey(mockKey);
-      setCreatedApiKey(keyName, `key_${Date.now()}`);
+      setCreatedApiKey(mockKey, keyName, `key_${Date.now()}`);
       toast.success('API key created successfully!');
     } finally {
       setIsCreating(false);
@@ -90,11 +96,7 @@ export function APIKeyIntroStep() {
                   className="font-mono text-sm bg-aviation-bg-tertiary"
                 />
                 <Button onClick={handleCopy} className="flex-shrink-0">
-                  {copied ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
             </div>
@@ -104,16 +106,15 @@ export function APIKeyIntroStep() {
                 Important: Save your API key now
               </p>
               <p className="text-xs text-aviation-text-secondary font-mono">
-                This is the only time your full API key will be shown. You can regenerate it anytime from settings.
+                This is the only time your full API key will be shown. You can regenerate it anytime
+                from settings.
               </p>
             </div>
           </div>
         </Card>
 
         <Card className="onboarding-step-card p-4">
-          <h4 className="font-mono font-semibold text-aviation-text-primary mb-3">
-            Example Usage
-          </h4>
+          <h4 className="font-mono font-semibold text-aviation-text-primary mb-3">Example Usage</h4>
           <div className="bg-aviation-bg-tertiary rounded-lg p-3 font-mono text-sm overflow-x-auto">
             <code className="text-aviation-cyan">
               {`curl -X GET "https://api.functionfly.com/v1/functions" \\
@@ -148,14 +149,18 @@ export function APIKeyIntroStep() {
           <Key className="w-8 h-8 text-violet-400" />
         </div>
         <p className="text-lg text-aviation-text-secondary font-mono max-w-xl mx-auto">
-          API keys allow you to manage your functions programmatically. Create your first key to get started.
+          API keys allow you to manage your functions programmatically. Create your first key to get
+          started.
         </p>
       </motion.div>
 
       <Card className="onboarding-step-card p-6">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="keyName" className="flex items-center gap-2 font-mono text-aviation-text-secondary">
+            <Label
+              htmlFor="keyName"
+              className="flex items-center gap-2 font-mono text-aviation-text-secondary"
+            >
               API Key Name
               <HelpTooltip content="Give your API key a descriptive name to help you remember its purpose" />
             </Label>

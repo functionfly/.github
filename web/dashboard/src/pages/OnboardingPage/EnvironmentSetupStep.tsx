@@ -1,13 +1,12 @@
-import { motion } from 'framer-motion';
-import { Check, Code, Globe, Server, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
 import { Input } from '@/components/ui/input';
+import { useOnboardingStore, type Environment } from '@/stores/onboardingStore';
+import { motion } from 'framer-motion';
+import { Check, Code, Globe, Plus, Server } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useOnboardingStore, type Environment } from '@/stores/onboardingStore';
-import { hasCustomDomainsFeature } from '@/lib/plan-gating';
 
 const DEFAULT_ENVIRONMENTS: Array<{
   id: Environment;
@@ -52,18 +51,21 @@ export function EnvironmentSetupStep() {
   const [showAddCustom, setShowAddCustom] = useState(false);
   const [customEnvName, setCustomEnvName] = useState('');
 
-  const allEnvironments = [...DEFAULT_ENVIRONMENTS, ...customEnvironments.map((name) => ({
-    id: name as Environment,
-    name,
-    description: 'Custom environment',
-    icon: Server,
-    color: '#8b5cf6',
-  }))];
+  const allEnvironments = [
+    ...DEFAULT_ENVIRONMENTS,
+    ...customEnvironments.map((name) => ({
+      id: name as Environment,
+      name,
+      description: 'Custom environment',
+      icon: Server,
+      color: '#8b5cf6',
+    })),
+  ];
 
   const canAddCustom = selectedPlan !== 'free';
 
   const handleSelect = (envId: Environment) => {
-    setEnvironments(environments, envId);
+    setEnvironments([...environments.filter((e) => e !== envId), envId]);
   };
 
   const handleAddCustom = () => {
@@ -93,7 +95,8 @@ export function EnvironmentSetupStep() {
           <Server className="w-8 h-8 text-emerald-400" />
         </div>
         <p className="text-lg text-aviation-text-secondary font-mono max-w-xl mx-auto">
-          Set up your deployment environments. Each environment isolates your functions and configuration.
+          Set up your deployment environments. Each environment isolates your functions and
+          configuration.
         </p>
       </motion.div>
 
@@ -221,7 +224,8 @@ export function EnvironmentSetupStep() {
                 Need More Environments?
               </h4>
               <p className="text-sm text-aviation-text-secondary font-mono">
-                Upgrade to Starter or higher to create custom environments like QA, UAT, or regional stages.
+                Upgrade to Starter or higher to create custom environments like QA, UAT, or regional
+                stages.
               </p>
             </div>
           </div>
@@ -229,9 +233,7 @@ export function EnvironmentSetupStep() {
       )}
 
       <div className="bg-aviation-bg-tertiary rounded-lg p-4">
-        <h4 className="font-mono font-medium text-aviation-text-primary mb-2">
-          Environment Tips
-        </h4>
+        <h4 className="font-mono font-medium text-aviation-text-primary mb-2">Environment Tips</h4>
         <ul className="space-y-2 text-sm text-aviation-text-secondary font-mono">
           <li>• Development: Use for local testing and iteration</li>
           <li>• Staging: Mirror production configuration for final testing</li>

@@ -78,8 +78,9 @@ function ReplayDetailRow({ fabricId, replay }: { fabricId: string; replay: Repla
   const isActive = replay.status === 'pending' || replay.status === 'running';
   const isStreamingEnabled = useIsReplayStreamingEnabled();
   const { data: liveReplay } = useStateFabricReplay(fabricId, replay.id);
-  const { data: streamedReplay } = useReplayProgress(fabricId, replay.id);
-  const detail = (isActive && isStreamingEnabled && streamedReplay) ? streamedReplay : (liveReplay ?? replay);
+  const streamedReplay = useReplayProgress(fabricId, replay.id);
+  const detail =
+    isActive && isStreamingEnabled && streamedReplay ? streamedReplay : (liveReplay ?? replay);
   const cfg = statusConfig[detail.status];
 
   return (

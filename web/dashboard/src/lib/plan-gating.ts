@@ -5,7 +5,7 @@
  * features and steps available to their plan tier.
  */
 
-import type { PlanTier } from '@/stores/onboardingStore';
+import type { PlanTier } from '@/lib/plan-utils';
 import { PLANS } from './constants';
 
 export { type PlanTier };
@@ -139,10 +139,7 @@ export function canAddMore(current: number, max: number): boolean {
 /**
  * Check if a specific integration type is available for the plan
  */
-export function isIntegrationAvailable(
-  integrationType: string,
-  plan: PlanTier
-): boolean {
+export function isIntegrationAvailable(integrationType: string, plan: PlanTier): boolean {
   const basicIntegrations = ['slack', 'discord', 'github'];
   if (basicIntegrations.includes(integrationType)) {
     return true;

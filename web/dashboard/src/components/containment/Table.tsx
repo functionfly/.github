@@ -62,7 +62,7 @@ export function Table<T>({
                         col.align ? `table__cell--${col.align}` : ''
                       }`}
                     >
-                      {content}
+                      {content as ReactNode}
                     </td>
                   );
                 })}

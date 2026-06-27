@@ -1,12 +1,12 @@
-import { motion } from 'framer-motion';
-import { Check, ExternalLink, Loader2, MessageSquare, Bell, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { HelpTooltip } from '@/components/ui/help-tooltip';
+import { isIntegrationAvailable, type PlanTier } from '@/lib/plan-gating';
+import { useOnboardingStore, type IntegrationConfig } from '@/stores/onboardingStore';
+import { motion } from 'framer-motion';
+import { Bell, Check, Code, ExternalLink, Loader2, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { useOnboardingStore, type IntegrationConfig } from '@/stores/onboardingStore';
-import { isIntegrationAvailable, type PlanTier } from '@/lib/plan-gating';
 
 interface Integration {
   id: string;
@@ -45,8 +45,12 @@ const INTEGRATIONS: Integration[] = [
 ];
 
 export function IntegrationsStep() {
-  const { connectedIntegrations = [], addConnectedIntegration, removeConnectedIntegration, selectedPlan = 'free' } =
-    useOnboardingStore();
+  const {
+    connectedIntegrations = [],
+    addConnectedIntegration,
+    removeConnectedIntegration,
+    selectedPlan = 'free',
+  } = useOnboardingStore();
 
   const [connecting, setConnecting] = useState<string | null>(null);
 
@@ -64,6 +68,8 @@ export function IntegrationsStep() {
     const integration: IntegrationConfig = {
       id: `${integrationId}_${Date.now()}`,
       type: integrationId as IntegrationConfig['type'],
+      name: integrationId,
+      connected: true,
       connectedAt: new Date().toISOString(),
     };
 
@@ -152,7 +158,11 @@ export function IntegrationsStep() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDisconnect(connectedIntegrations.find((i) => i.type === integration.id)?.id || '')}
+                        onClick={() =>
+                          handleDisconnect(
+                            connectedIntegrations.find((i) => i.type === integration.id)?.id || ''
+                          )
+                        }
                         className="font-mono text-aviation-red border-aviation-red/50 hover:bg-aviation-red/10"
                       >
                         Disconnect

@@ -1,27 +1,25 @@
-import React, { useEffect, useState } from 'react';
 import { usePageTitle } from '@/hooks';
-import { API_URLS } from '../../lib/api-urls';
+import { AlertCircle, Copy, Shield, Vote, Wallet, Zap } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
-  getMyAffiliateCommissions,
-  getMyReferralCode,
-  getMyReferralStats,
   AffiliateCommission,
   FounderReferralCode,
   FounderReferralStats,
+  getMyAffiliateCommissions,
+  getMyReferralCode,
+  getMyReferralStats,
 } from '../../api/billing';
 import { apiClient } from '../../api/client';
 import { Chamber } from '../../components/ui/Chamber';
-import { TrustSeal } from '../../components/ui/TrustSeal';
-import { GaugeStrip } from '../../components/ui/GaugeStrip';
-import { StatusPill, LiveStatus, ClaimedBadge, AvailableBadge } from '../../components/ui/FoundersStatusPill';
 import {
-  Shield,
-  Vote,
-  Wallet,
-  Zap,
-  Copy,
-  AlertCircle,
-} from 'lucide-react';
+  AvailableBadge,
+  ClaimedBadge,
+  LiveStatus,
+  StatusPill,
+} from '../../components/ui/FoundersStatusPill';
+import { GaugeStrip } from '../../components/ui/GaugeStrip';
+import { TrustSeal } from '../../components/ui/TrustSeal';
+import { API_URLS } from '../../lib/api-urls';
 
 import '@/styles/sc-founders.css';
 
@@ -73,9 +71,10 @@ const benefitLabels = {
 
 const benefitDescriptions = {
   permanent_badge: 'Your gold founder badge is displayed permanently on your profile.',
-  voting_rights: 'Vote on feature roadmap priorities and help shape FunctionFly\'s future.',
-  lifetime_commissions: 'Earn commissions on referrals for as long as they remain active — no expiration.',
-  early_access: 'Get early access to new features before they\'re available to everyone.',
+  voting_rights: "Vote on feature roadmap priorities and help shape FunctionFly's future.",
+  lifetime_commissions:
+    'Earn commissions on referrals for as long as they remain active — no expiration.',
+  early_access: "Get early access to new features before they're available to everyone.",
 };
 
 export default function FoundersPage() {
@@ -102,9 +101,9 @@ export default function FoundersPage() {
           referralStatsRes,
           commissionsRes,
         ] = await Promise.all([
-          apiClient.get(API_URLS.founders.status),
-          apiClient.get(API_URLS.founders.votes),
-          apiClient.get(API_URLS.founders.earlyAccess),
+          apiClient.get<FounderStatus>(API_URLS.founders.status),
+          apiClient.get<{ votes: Vote[] }>(API_URLS.founders.votes),
+          apiClient.get<{ features: EarlyAccessFeature[] }>(API_URLS.founders.earlyAccess),
           getMyReferralCode(),
           getMyReferralStats(),
           getMyAffiliateCommissions(),
@@ -129,7 +128,7 @@ export default function FoundersPage() {
           setReferralStats(referralStatsRes);
         }
         if (commissionsRes) {
-          setCommissions(commissionsRes.commissions || []);
+          setCommissions(commissionsRes);
         }
       } catch {
         setError('Failed to load founders data');
@@ -198,7 +197,8 @@ export default function FoundersPage() {
             The first 10,000 FunctionFly members received permanent founder status.
           </p>
           <p className="text-mono text-[10px] uppercase tracking-widest text-[var(--text-muted)] mt-2">
-            {status.total_founders.toLocaleString()} of {status.max_founders.toLocaleString()} slots claimed
+            {status.total_founders.toLocaleString()} of {status.max_founders.toLocaleString()} slots
+            claimed
           </p>
         </Chamber>
       </div>
@@ -215,8 +215,17 @@ export default function FoundersPage() {
   const estimatedAnnual = totalEarned > 0 ? totalEarned * 12 : 0;
 
   const earningsGauges = [
-    { value: `$${(totalEarned / 100).toFixed(2)}`, label: 'Total Earned', variant: 'accent' as const, tick: true },
-    { value: `$${(pendingCommission / 100).toFixed(2)}`, label: 'Pending', variant: 'warning' as const },
+    {
+      value: `$${(totalEarned / 100).toFixed(2)}`,
+      label: 'Total Earned',
+      variant: 'accent' as const,
+      tick: true,
+    },
+    {
+      value: `$${(pendingCommission / 100).toFixed(2)}`,
+      label: 'Pending',
+      variant: 'warning' as const,
+    },
     { value: `$${(paidOut / 100).toFixed(2)}`, label: 'Paid Out' },
     { value: `$${(estimatedAnnual / 100).toFixed(2)}`, label: 'Est. Annual' },
   ];
@@ -225,7 +234,10 @@ export default function FoundersPage() {
     { value: referralStats?.total_referrals ?? 0, label: 'Total Referrals', tick: true },
     { value: referralStats?.converted_count ?? 0, label: 'Converted', variant: 'accent' as const },
     { value: `${referralStats?.conversion_rate?.toFixed(1) ?? '0.0'}%`, label: 'Conv. Rate' },
-    { value: `$${referralStats?.average_commission_cents?.toFixed(2) ?? '0.00'}`, label: 'Avg Commission' },
+    {
+      value: `$${referralStats?.average_commission_cents?.toFixed(2) ?? '0.00'}`,
+      label: 'Avg Commission',
+    },
   ];
 
   return (
@@ -285,9 +297,7 @@ export default function FoundersPage() {
           <div className="founders-page__section-title">Your Referral Link</div>
           <Chamber size="md" corners={['tl', 'br']}>
             <div className="referral-link-display">
-              <code className="referral-link-display__code">
-                {referralCode.share_url}
-              </code>
+              <code className="referral-link-display__code">{referralCode.share_url}</code>
               <button
                 onClick={copyReferralLink}
                 className="sealed-button-primary sealed-btn-md flex items-center gap-2"
@@ -302,7 +312,7 @@ export default function FoundersPage() {
                 className="frame-button-secondary frame-btn-md flex items-center gap-2"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/>
+                  <path d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z" />
                 </svg>
                 Share on X
               </button>
@@ -311,7 +321,7 @@ export default function FoundersPage() {
                 className="frame-button-secondary frame-btn-md flex items-center gap-2"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                 </svg>
                 Share on LinkedIn
               </button>
@@ -377,9 +387,7 @@ export default function FoundersPage() {
                     <h3 className="vote-card__title">{vote.title}</h3>
                     <LiveStatus label={vote.status} />
                   </div>
-                  {vote.description && (
-                    <p className="vote-card__description">{vote.description}</p>
-                  )}
+                  {vote.description && <p className="vote-card__description">{vote.description}</p>}
                   {vote.has_voted ? (
                     <div className="vote-card__voted">
                       <Vote size={14} />
@@ -411,11 +419,7 @@ export default function FoundersPage() {
                       <p className="feature-card__description">{feature.description}</p>
                     )}
                   </div>
-                  {feature.is_claimed ? (
-                    <ClaimedBadge />
-                  ) : (
-                    <AvailableBadge />
-                  )}
+                  {feature.is_claimed ? <ClaimedBadge /> : <AvailableBadge />}
                 </div>
               </Chamber>
             ))}
@@ -427,8 +431,8 @@ export default function FoundersPage() {
         <p>
           <span className="text-[var(--status-ok)]">{status.total_founders.toLocaleString()}</span>
           {status.total_founders === 1 ? ' founder has' : ' founders have'} joined —{' '}
-          <span>{(status.max_founders - status.total_founders).toLocaleString()}</span>
-          {' '}slots remaining
+          <span>{(status.max_founders - status.total_founders).toLocaleString()}</span> slots
+          remaining
         </p>
       </div>
     </div>

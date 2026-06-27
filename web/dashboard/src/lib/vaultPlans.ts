@@ -13,8 +13,8 @@
  * - platform AGENT_ENTERPRISE → vault enterprise tier (SSO, HA status)
  */
 
+import type { PlanLimits, VaultPlan } from '@/types/vault-enterprise';
 import { PLANS } from './constants';
-import type { PlanLimits, VaultPlan } from "@/types/vault-enterprise";
 
 type PlatformPlan = keyof typeof PLANS;
 
@@ -60,6 +60,7 @@ const VAULT_FEATURES: Record<VaultPlan, PlanLimits['features']> = {
     dependencyGraph: false,
     expirationDashboard: true,
     tokenMonitor: false,
+    rotationSchedules: false,
   },
   pro: {
     mfa: true,
@@ -79,6 +80,7 @@ const VAULT_FEATURES: Record<VaultPlan, PlanLimits['features']> = {
     dependencyGraph: false,
     expirationDashboard: true,
     tokenMonitor: true,
+    rotationSchedules: true,
   },
   team: {
     mfa: true,
@@ -98,6 +100,7 @@ const VAULT_FEATURES: Record<VaultPlan, PlanLimits['features']> = {
     dependencyGraph: true,
     expirationDashboard: true,
     tokenMonitor: true,
+    rotationSchedules: true,
   },
   enterprise: {
     mfa: true,
@@ -117,6 +120,7 @@ const VAULT_FEATURES: Record<VaultPlan, PlanLimits['features']> = {
     dependencyGraph: true,
     expirationDashboard: true,
     tokenMonitor: true,
+    rotationSchedules: true,
   },
 };
 
@@ -222,14 +226,13 @@ export const FEATURE_MIN_PLAN: Record<keyof PlanLimits['features'], VaultPlan> =
   dependencyGraph: 'team',
   expirationDashboard: 'free',
   tokenMonitor: 'pro',
+  rotationSchedules: 'pro',
 };
 
 /**
  * minPlanForFeature returns the lowest plan that unlocks a vault feature.
  */
-export function minPlanForFeature(
-  feature: keyof PlanLimits['features'],
-): VaultPlan {
+export function minPlanForFeature(feature: keyof PlanLimits['features']): VaultPlan {
   return FEATURE_MIN_PLAN[feature];
 }
 
@@ -249,7 +252,7 @@ export const PLAN_LIMITS: Record<VaultPlan, PlanLimits> = {
  */
 export function isFeatureAvailable(
   plan: VaultPlan,
-  feature: keyof PlanLimits['features'],
+  feature: keyof PlanLimits['features']
 ): boolean {
   return hasFeature(plan, feature);
 }

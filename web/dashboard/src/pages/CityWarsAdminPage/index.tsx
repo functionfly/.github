@@ -1,34 +1,7 @@
-import { useState } from "react";
-import {
-  Trophy,
-  Plus,
-  Play,
-  X,
-  ChevronRight,
-  Calendar,
-  Clock,
-  Users,
-  Shield,
-  AlertCircle,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Swords,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import type { EligibleMetro, MatchResultRequest, War, WarMatch } from '@/api/admin';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -36,33 +9,52 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  useCityWars,
-  useCityWar,
-  useEligibleMetros,
-  useCreateWar,
   useActivateWar,
-  useCancelWar,
-  useGenerateBracket,
-  useSetQuarterfinals,
   useAdvanceWar,
+  useCancelWar,
+  useCityWar,
+  useCityWars,
+  useCreateWar,
+  useEligibleMetros,
+  useGenerateBracket,
   useOverrideMatch,
   useRecordMatch,
-} from "@/hooks/useAdmin";
-import type { War, WarMatch, EligibleMetro, MatchResultRequest } from "@/api/admin";
-import { cn } from "@/lib/utils";
+} from '@/hooks/useAdmin';
+import { cn } from '@/lib/utils';
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  Play,
+  Plus,
+  RefreshCw,
+  Shield,
+  Swords,
+  Trophy,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import { useState } from 'react';
 
 export function CityWarsAdminPage() {
   const [selectedWarId, setSelectedWarId] = useState<number | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showOverrideDialog, setShowOverrideDialog] = useState<{ match: WarMatch; warId: number } | null>(null);
+  const [showOverrideDialog, setShowOverrideDialog] = useState<{
+    match: WarMatch;
+    warId: number;
+  } | null>(null);
 
-  const { data: wars, isLoading: warsLoading, refetch: refetchWars } = useCityWars();
+  const { data: warsData, isLoading: warsLoading, refetch: refetchWars } = useCityWars();
   const { data: eligibleMetros } = useEligibleMetros();
 
+  const wars = warsData?.wars ?? [];
   const selectedWar = useCityWar(selectedWarId ?? 0);
 
   const createMutation = useCreateWar();
@@ -75,41 +67,41 @@ export function CityWarsAdminPage() {
 
   const getStatusColor = (status?: string) => {
     switch (status) {
-      case "active":
-        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
-      case "scheduled":
-        return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
-      case "complete":
-        return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
-      case "cancelled":
-        return "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
+      case 'active':
+        return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+      case 'scheduled':
+        return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
+      case 'complete':
+        return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+      case 'cancelled':
+        return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20';
       default:
-        return "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20";
+        return 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20';
     }
   };
 
   const getRoundLabel = (round?: string) => {
     switch (round) {
-      case "quarterfinal":
-        return "Quarterfinals";
-      case "semifinal":
-        return "Semifinals";
-      case "final":
-        return "Final";
-      case "complete":
-        return "Champion";
+      case 'quarterfinal':
+        return 'Quarterfinals';
+      case 'semifinal':
+        return 'Semifinals';
+      case 'final':
+        return 'Final';
+      case 'complete':
+        return 'Champion';
       default:
-        return round || "—";
+        return round || '—';
     }
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "—";
+    if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString();
   };
 
   const formatDateTime = (dateString?: string) => {
-    if (!dateString) return "—";
+    if (!dateString) return '—';
     return new Date(dateString).toLocaleString();
   };
 
@@ -117,11 +109,11 @@ export function CityWarsAdminPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     await createMutation.mutateAsync({
-      name: formData.get("name") as string,
-      season: formData.get("season") as string,
-      slug: formData.get("slug") as string,
-      starts_at: new Date(formData.get("starts_at") as string).toISOString(),
-      ends_at: new Date(formData.get("ends_at") as string).toISOString(),
+      name: formData.get('name') as string,
+      season: formData.get('season') as string,
+      slug: formData.get('slug') as string,
+      starts_at: new Date(formData.get('starts_at') as string).toISOString(),
+      ends_at: new Date(formData.get('ends_at') as string).toISOString(),
     });
     setShowCreateDialog(false);
   };
@@ -139,7 +131,7 @@ export function CityWarsAdminPage() {
   };
 
   const handleAdvance = async (id: number, currentRound: string) => {
-    const nextRound = currentRound === "quarterfinal" ? "semifinal" : "final";
+    const nextRound = currentRound === 'quarterfinal' ? 'semifinal' : 'final';
     await advanceMutation.mutateAsync({ id, round: nextRound });
   };
 
@@ -172,13 +164,8 @@ export function CityWarsAdminPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetchWars()}
-            disabled={warsLoading}
-          >
-            <RefreshCw className={cn("h-4 w-4 mr-2", warsLoading && "animate-spin")} />
+          <Button variant="outline" size="sm" onClick={() => refetchWars()} disabled={warsLoading}>
+            <RefreshCw className={cn('h-4 w-4 mr-2', warsLoading && 'animate-spin')} />
             Refresh
           </Button>
           <Button onClick={() => setShowCreateDialog(true)}>
@@ -219,8 +206,8 @@ export function CityWarsAdminPage() {
                 <Card
                   key={war.id}
                   className={cn(
-                    "cursor-pointer transition-colors hover:bg-accent",
-                    selectedWarId === war.id && "border-primary"
+                    'cursor-pointer transition-colors hover:bg-accent',
+                    selectedWarId === war.id && 'border-primary'
                   )}
                   onClick={() => setSelectedWarId(war.id)}
                 >
@@ -233,12 +220,8 @@ export function CityWarsAdminPage() {
                             {war.season} &middot; {war.slug}
                           </span>
                         </div>
-                        <Badge className={getStatusColor(war.status)}>
-                          {war.status}
-                        </Badge>
-                        <Badge variant="outline">
-                          {getRoundLabel(war.round)}
-                        </Badge>
+                        <Badge className={getStatusColor(war.status)}>{war.status}</Badge>
+                        <Badge variant="outline">{getRoundLabel(war.round)}</Badge>
                       </div>
                       <div className="flex items-center gap-6 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
@@ -298,68 +281,37 @@ export function CityWarsAdminPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New War</DialogTitle>
-            <DialogDescription>
-              Set up a new City War bracket tournament
-            </DialogDescription>
+            <DialogDescription>Set up a new City War bracket tournament</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateWar} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">War Name</Label>
-              <Input
-                id="name"
-                name="name"
-                placeholder="Summer 2026 Championship"
-                required
-              />
+              <Input id="name" name="name" placeholder="Summer 2026 Championship" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="slug">Slug</Label>
-              <Input
-                id="slug"
-                name="slug"
-                placeholder="summer-2026"
-                required
-              />
+              <Input id="slug" name="slug" placeholder="summer-2026" required />
             </div>
             <div className="space-y-2">
               <Label htmlFor="season">Season</Label>
-              <Input
-                id="season"
-                name="season"
-                placeholder="2026-Q3"
-                required
-              />
+              <Input id="season" name="season" placeholder="2026-Q3" required />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="starts_at">Start Date</Label>
-                <Input
-                  id="starts_at"
-                  name="starts_at"
-                  type="datetime-local"
-                  required
-                />
+                <Input id="starts_at" name="starts_at" type="datetime-local" required />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ends_at">End Date</Label>
-                <Input
-                  id="ends_at"
-                  name="ends_at"
-                  type="datetime-local"
-                  required
-                />
+                <Input id="ends_at" name="ends_at" type="datetime-local" required />
               </div>
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowCreateDialog(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
                 Cancel
               </Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create War"}
+                {createMutation.isPending ? 'Creating...' : 'Create War'}
               </Button>
             </DialogFooter>
           </form>
@@ -367,16 +319,11 @@ export function CityWarsAdminPage() {
       </Dialog>
 
       {/* Override Dialog */}
-      <Dialog
-        open={!!showOverrideDialog}
-        onOpenChange={() => setShowOverrideDialog(null)}
-      >
+      <Dialog open={!!showOverrideDialog} onOpenChange={() => setShowOverrideDialog(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Override Match Result</DialogTitle>
-            <DialogDescription>
-              Manually set the winner and scores for this match
-            </DialogDescription>
+            <DialogDescription>Manually set the winner and scores for this match</DialogDescription>
           </DialogHeader>
           {showOverrideDialog && (
             <OverrideMatchForm
@@ -421,20 +368,21 @@ function WarDetail({
 }: WarDetailProps) {
   const [selectedMetros, setSelectedMetros] = useState<[number, number][]>([]);
 
-  const canEdit = war.status === "scheduled";
-  const canActivate = war.status === "scheduled" && war.quarterfinals && war.quarterfinals.length === 4;
+  const canEdit = war.status === 'scheduled';
+  const canActivate =
+    war.status === 'scheduled' && war.quarterfinals && war.quarterfinals.length === 4;
   const canAdvance =
-    war.status === "active" &&
-    war.round !== "complete" &&
+    war.status === 'active' &&
+    war.round !== 'complete' &&
     war.quarterfinals?.every((m) => m.winner_metro_id) &&
-    (war.round !== "semifinal" || war.semifinals?.every((m) => m.winner_metro_id));
+    (war.round !== 'semifinal' || war.semifinals?.every((m) => m.winner_metro_id));
 
-  const handleMetroSelect = (pairIndex: number, side: "a" | "b", metroId: number) => {
+  const handleMetroSelect = (pairIndex: number, side: 'a' | 'b', metroId: number) => {
     const newSelection = [...selectedMetros];
     if (!newSelection[pairIndex]) {
       newSelection[pairIndex] = [0, 0];
     }
-    if (side === "a") {
+    if (side === 'a') {
       newSelection[pairIndex] = [metroId, newSelection[pairIndex][1]];
     } else {
       newSelection[pairIndex] = [newSelection[pairIndex][0], metroId];
@@ -483,7 +431,7 @@ function WarDetail({
                     {war.champion_name}
                   </>
                 ) : (
-                  "—"
+                  '—'
                 )}
               </p>
             </div>
@@ -497,7 +445,11 @@ function WarDetail({
                   Auto-Generate Bracket
                 </Button>
               ) : (
-                <Button onClick={() => onGenerateBracket(war.id)} disabled={isMutating} variant="outline">
+                <Button
+                  onClick={() => onGenerateBracket(war.id)}
+                  disabled={isMutating}
+                  variant="outline"
+                >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Regenerate Bracket
                 </Button>
@@ -508,11 +460,7 @@ function WarDetail({
                   Activate War
                 </Button>
               )}
-              <Button
-                onClick={() => onCancel(war.id)}
-                disabled={isMutating}
-                variant="destructive"
-              >
+              <Button onClick={() => onCancel(war.id)} disabled={isMutating} variant="destructive">
                 <XCircle className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
@@ -538,8 +486,8 @@ function WarDetail({
                   <div className="space-y-2">
                     <select
                       className="w-full p-2 border rounded"
-                      value={selectedMetros[pairIdx]?.[0] ?? ""}
-                      onChange={(e) => handleMetroSelect(pairIdx, "a", Number(e.target.value))}
+                      value={selectedMetros[pairIdx]?.[0] ?? ''}
+                      onChange={(e) => handleMetroSelect(pairIdx, 'a', Number(e.target.value))}
                     >
                       <option value="">Select Metro A</option>
                       {eligibleMetros.map((m) => (
@@ -551,8 +499,8 @@ function WarDetail({
                     <p className="text-center text-muted-foreground">vs</p>
                     <select
                       className="w-full p-2 border rounded"
-                      value={selectedMetros[pairIdx]?.[1] ?? ""}
-                      onChange={(e) => handleMetroSelect(pairIdx, "b", Number(e.target.value))}
+                      value={selectedMetros[pairIdx]?.[1] ?? ''}
+                      onChange={(e) => handleMetroSelect(pairIdx, 'b', Number(e.target.value))}
                     >
                       <option value="">Select Metro B</option>
                       {eligibleMetros.map((m) => (
@@ -587,7 +535,7 @@ function WarDetail({
                       match={match}
                       warId={war.id}
                       onOverride={() => onOverride(match)}
-                      showOverride={war.status === "active"}
+                      showOverride={war.status === 'active'}
                       formatDateTime={formatDateTime}
                     />
                   ))}
@@ -608,7 +556,7 @@ function WarDetail({
                       match={match}
                       warId={war.id}
                       onOverride={() => onOverride(match)}
-                      showOverride={war.status === "active"}
+                      showOverride={war.status === 'active'}
                       formatDateTime={formatDateTime}
                     />
                   ))}
@@ -627,7 +575,7 @@ function WarDetail({
                     match={war.final}
                     warId={war.id}
                     onOverride={() => onOverride(war.final)}
-                    showOverride={war.status === "active"}
+                    showOverride={war.status === 'active'}
                     formatDateTime={formatDateTime}
                     isFinal
                   />
@@ -641,13 +589,9 @@ function WarDetail({
           {/* Advance Button */}
           {canAdvance && (
             <div className="mt-6 pt-6 border-t flex justify-center">
-              <Button
-                onClick={() => onAdvance(war.id, war.round)}
-                disabled={isMutating}
-                size="lg"
-              >
+              <Button onClick={() => onAdvance(war.id, war.round)} disabled={isMutating} size="lg">
                 <ChevronRight className="h-4 w-4 mr-2" />
-                Advance to {war.round === "quarterfinal" ? "Semifinals" : "Champion"}
+                Advance to {war.round === 'quarterfinal' ? 'Semifinals' : 'Champion'}
               </Button>
             </div>
           )}
@@ -666,51 +610,36 @@ interface MatchCardProps {
   isFinal?: boolean;
 }
 
-function MatchCard({
-  match,
-  onOverride,
-  showOverride,
-  formatDateTime,
-  isFinal,
-}: MatchCardProps) {
+function MatchCard({ match, onOverride, showOverride, formatDateTime, isFinal }: MatchCardProps) {
   const hasWinner = !!match.winner_metro_id;
   const winnerIsA = match.winner_metro_id === match.metro_a_id;
 
   return (
     <div
-      className={cn(
-        "border rounded-lg p-4",
-        hasWinner && "bg-emerald-500/5 border-emerald-500/20"
-      )}
+      className={cn('border rounded-lg p-4', hasWinner && 'bg-emerald-500/5 border-emerald-500/20')}
     >
       <div className="flex items-center justify-between mb-2">
         <Badge variant="outline" className="text-xs">
           {match.round} #{match.position}
         </Badge>
-        {hasWinner && (
-          <CheckCircle className="h-4 w-4 text-emerald-500" />
-        )}
+        {hasWinner && <CheckCircle className="h-4 w-4 text-emerald-500" />}
       </div>
 
       <div className="space-y-2">
         {/* Metro A */}
         <div
           className={cn(
-            "p-2 rounded flex justify-between items-center",
-            winnerIsA && "bg-emerald-500/10"
+            'p-2 rounded flex justify-between items-center',
+            winnerIsA && 'bg-emerald-500/10'
           )}
         >
           <div>
             <p className="font-medium text-sm">{match.metro_a_name}</p>
-            <p className="text-xs text-muted-foreground">
-              {match.metro_a_country}
-            </p>
+            <p className="text-xs text-muted-foreground">{match.metro_a_country}</p>
           </div>
           <div className="text-right">
             <p className="font-bold">{match.score_a.toFixed(4)}</p>
-            <p className="text-xs text-muted-foreground">
-              {match.active_users_a} users
-            </p>
+            <p className="text-xs text-muted-foreground">{match.active_users_a} users</p>
           </div>
         </div>
 
@@ -719,32 +648,23 @@ function MatchCard({
         {/* Metro B */}
         <div
           className={cn(
-            "p-2 rounded flex justify-between items-center",
-            !winnerIsA && hasWinner && "bg-emerald-500/10"
+            'p-2 rounded flex justify-between items-center',
+            !winnerIsA && hasWinner && 'bg-emerald-500/10'
           )}
         >
           <div>
             <p className="font-medium text-sm">{match.metro_b_name}</p>
-            <p className="text-xs text-muted-foreground">
-              {match.metro_b_country}
-            </p>
+            <p className="text-xs text-muted-foreground">{match.metro_b_country}</p>
           </div>
           <div className="text-right">
             <p className="font-bold">{match.score_b.toFixed(4)}</p>
-            <p className="text-xs text-muted-foreground">
-              {match.active_users_b} users
-            </p>
+            <p className="text-xs text-muted-foreground">{match.active_users_b} users</p>
           </div>
         </div>
       </div>
 
       {showOverride && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full mt-3"
-          onClick={onOverride}
-        >
+        <Button variant="outline" size="sm" className="w-full mt-3" onClick={onOverride}>
           Override Result
         </Button>
       )}
@@ -759,18 +679,13 @@ interface OverrideMatchFormProps {
   isPending: boolean;
 }
 
-function OverrideMatchForm({
-  match,
-  onSubmit,
-  onCancel,
-  isPending,
-}: OverrideMatchFormProps) {
+function OverrideMatchForm({ match, onSubmit, onCancel, isPending }: OverrideMatchFormProps) {
   const [winnerId, setWinnerId] = useState(match.metro_a_id);
   const [scoreA, setScoreA] = useState(match.score_a);
   const [scoreB, setScoreB] = useState(match.score_b);
   const [activeUsersA, setActiveUsersA] = useState(match.active_users_a);
   const [activeUsersB, setActiveUsersB] = useState(match.active_users_b);
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -867,7 +782,7 @@ function OverrideMatchForm({
           Cancel
         </Button>
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving..." : "Override Result"}
+          {isPending ? 'Saving...' : 'Override Result'}
         </Button>
       </DialogFooter>
     </form>
