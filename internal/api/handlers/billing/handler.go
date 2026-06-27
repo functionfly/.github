@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/helpers"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/payment"
@@ -75,6 +76,8 @@ type Handler struct {
 	sfAddons *statefabricaddons.Repository
 	// Redis client for rate limiting
 	redisClient *redis.Client
+	// PCI DSS audit helper for compliance logging
+	pciAuditHelper *helpers.PCIAuditHelper
 	// Isolated bundle provisioner callback for one-click SaaS Starter provisioning (optional).
 	// Returns (status, componentCount, error). Set via SetBundleProvisioner during server init.
 	provisionBundleFn func(ctx context.Context, tenantID uuid.UUID, bundleSlug string) (string, int, error)
@@ -85,6 +88,11 @@ type Handler struct {
 // instead of the legacy user_wallets table.
 func (h *Handler) SetWalletService(walletSvc *wallet.Service) {
 	h.walletService = walletSvc
+}
+
+// SetPCIAuditHelper injects the PCI audit helper for compliance logging.
+func (h *Handler) SetPCIAuditHelper(pciAudit *helpers.PCIAuditHelper) {
+	h.pciAuditHelper = pciAudit
 }
 
 // NewHandler creates a new billing handler.
@@ -218,6 +226,16 @@ func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	if h.pciAuditHelper != nil {
+		actor := h.pciAuditHelper.ActorContextFromRequest(r, &claims.TenantID)
+		h.pciAuditHelper.LogAdminActionAsync(r.Context(), actor, helpers.AdminActionParams{
+			Action:       "billing_portal_access",
+			ResourceType: "billing_portal",
+			Description:  "Accessed Stripe billing portal",
+			Success:      true,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(CreatePortalSessionResponse{URL: url})
@@ -284,6 +302,19 @@ func (h *Handler) HandleCreateCheckoutSession(w http.ResponseWriter, r *http.Req
 		}
 		writeJSONError(w, http.StatusInternalServerError, msg)
 		return
+	}
+
+	if h.pciAuditHelper != nil {
+		actor := h.pciAuditHelper.ActorContextFromRequest(r, &claims.TenantID)
+		h.pciAuditHelper.LogPaymentFlowAsync(r.Context(), actor, helpers.PaymentFlowParams{
+			EventType:     "initiated",
+			TransactionID: resp.SessionID,
+			AmountCents:   0,
+			Currency:      "usd",
+			PaymentMethod: "stripe_checkout",
+			Details:       "Checkout session created for subscription",
+			Success:       true,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -839,6 +870,17 @@ func (h *Handler) HandleCreateSetupIntent(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if h.pciAuditHelper != nil {
+		actor := h.pciAuditHelper.ActorContextFromRequest(r, &claims.TenantID)
+		h.pciAuditHelper.LogCardDataAccessAsync(r.Context(), actor, helpers.CardDataAccessParams{
+			AccessType: "tokenize",
+			DataType:   "card_setup",
+			Purpose:    "Create payment method via Stripe SetupIntent",
+			CDESection: "cardholder_data",
+			Success:    true,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(result)
@@ -890,6 +932,19 @@ func (h *Handler) HandleSetDefaultPaymentMethod(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	if h.pciAuditHelper != nil {
+		actor := h.pciAuditHelper.ActorContextFromRequest(r, &claims.TenantID)
+		pmID, _ := uuid.Parse(req.PaymentMethodID)
+		h.pciAuditHelper.LogCardDataAccessAsync(r.Context(), actor, helpers.CardDataAccessParams{
+			AccessType:      "write",
+			DataType:        "default_payment_method",
+			PaymentMethodID: &pmID,
+			Purpose:         "Set default payment method",
+			CDESection:      "cardholder_data",
+			Success:         true,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Default payment method updated"})
@@ -929,6 +984,19 @@ func (h *Handler) HandleDetachPaymentMethod(w http.ResponseWriter, r *http.Reque
 		logrus.WithError(err).WithField("payment_method_id", paymentMethodID).Warn("billing: failed to detach payment method")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to remove payment method")
 		return
+	}
+
+	if h.pciAuditHelper != nil {
+		actor := h.pciAuditHelper.ActorContextFromRequest(r, &claims.TenantID)
+		pmID, _ := uuid.Parse(paymentMethodID)
+		h.pciAuditHelper.LogCardDataAccessAsync(r.Context(), actor, helpers.CardDataAccessParams{
+			AccessType:      "delete",
+			DataType:        "payment_method",
+			PaymentMethodID: &pmID,
+			Purpose:         "Detach and remove payment method",
+			CDESection:      "cardholder_data",
+			Success:         true,
+		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -43,6 +43,7 @@ type PostgresDB struct {
 	billingRepository            *BillingRepository
 	revenueRepository            *RevenueRepository
 	auditRepository              *AuditRepository
+	pciAuditRepository          *PCIAuditRepository
 	appRepository                *AppRepository
 	backendRepository            *BackendRepository
 	deploymentRepository         *DeploymentRepository
@@ -271,6 +272,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.billingRepository = NewBillingRepository(postgresDB)
 	postgresDB.revenueRepository = NewRevenueRepository(postgresDB.DB)
 	postgresDB.auditRepository = NewAuditRepository(postgresDB)
+	postgresDB.pciAuditRepository = NewPCIAuditRepository(postgresDB)
 	postgresDB.appRepository = NewAppRepository(postgresDB)
 	postgresDB.backendRepository = NewBackendRepository(postgresDB)
 	postgresDB.deploymentRepository = NewDeploymentRepository(postgresDB)
@@ -333,6 +335,11 @@ func (db *PostgresDB) Repository() Repository {
 // ExportRepository accessor
 func (db *PostgresDB) ExportRepository() *ExportRepository {
 	return db.exportRepository
+}
+
+// PCIAuditRepository accessor
+func (db *PostgresDB) PCIAuditRepository() *PCIAuditRepository {
+	return db.pciAuditRepository
 }
 
 // Encryption methods

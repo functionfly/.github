@@ -14,6 +14,7 @@ import (
 
 	agentbilling "github.com/functionfly/functionfly/internal/agent/billing"
 	billing "github.com/functionfly/functionfly/internal/api/handlers/billing"
+	"github.com/functionfly/functionfly/internal/api/helpers"
 	"github.com/functionfly/functionfly/internal/apierror"
 	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/email"
@@ -90,6 +91,7 @@ type StripeWebhookHandler struct {
 	payoutService   PayoutWebhookProcessor
 	certRepo        *storage.CertificationRepository
 	disputeResponseManager *billingpkg.DisputeResponseManager
+	pciAuditHelper  *helpers.PCIAuditHelper
 }
 
 // PayoutWebhookProcessor handles payout-related webhook events.
@@ -175,6 +177,11 @@ func (h *StripeWebhookHandler) SetOperationalRepository(repo *storage.BillingOpe
 // SetDisputeResponseManager sets the dispute response manager for automated chargeback handling
 func (h *StripeWebhookHandler) SetDisputeResponseManager(drm *billingpkg.DisputeResponseManager) {
 	h.disputeResponseManager = drm
+}
+
+// SetPCIAuditHelper sets the PCI audit helper for compliance logging
+func (h *StripeWebhookHandler) SetPCIAuditHelper(pciAudit *helpers.PCIAuditHelper) {
+	h.pciAuditHelper = pciAudit
 }
 
 // RegisterRoutes registers webhook routes.
@@ -2030,6 +2037,28 @@ func (h *StripeWebhookHandler) handleInvoicePaymentFailed(w http.ResponseWriter,
 		}
 	}
 
+	if h.pciAuditHelper != nil {
+		ctx := r.Context()
+		tenant, _ := h.userRepo.GetTenantByStripeCustomerID(ctx, customerID)
+		if tenant != nil {
+			actor := helpers.ActorContext{
+				TenantID: &tenant.ID,
+			}
+			failureReason := "Invoice payment failed"
+			h.pciAuditHelper.LogPaymentFlowAsync(ctx, actor, helpers.PaymentFlowParams{
+				EventType:     "failed",
+				TransactionID: invoice.ID,
+				StripeEventID: &invoice.ID,
+				AmountCents:   int(invoice.AmountDue),
+				Currency:      string(invoice.Currency),
+				PaymentMethod: "stripe_invoice",
+				Details:       fmt.Sprintf("Invoice payment failed: %s", invoice.ID),
+				Success:       false,
+				FailureReason: &failureReason,
+			})
+		}
+	}
+
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
 }
@@ -2251,6 +2280,23 @@ func (h *StripeWebhookHandler) handleInvoicePaymentSucceeded(w http.ResponseWrit
 
 	// Record metrics
 	monitoring.RecordStripeEventProcessed("invoice.payment_succeeded")
+
+	if h.pciAuditHelper != nil {
+		actor := helpers.ActorContext{
+			TenantID: &tenant.ID,
+			Email:    user.Email,
+		}
+		h.pciAuditHelper.LogPaymentFlowAsync(ctx, actor, helpers.PaymentFlowParams{
+			EventType:     "processed",
+			TransactionID: invoice.ID,
+			StripeEventID: &invoice.ID,
+			AmountCents:   int(invoice.AmountPaid),
+			Currency:      string(invoice.Currency),
+			PaymentMethod: "stripe_invoice",
+			Details:       fmt.Sprintf("Invoice payment succeeded: %s", invoice.ID),
+			Success:       true,
+		})
+	}
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"status": "processed"})
@@ -2550,6 +2596,22 @@ func (h *StripeWebhookHandler) handleChargeDisputeCreated(w http.ResponseWriter,
 		}
 	}
 
+	if h.pciAuditHelper != nil {
+		actor := helpers.ActorContext{
+			TenantID: tenantID,
+		}
+		h.pciAuditHelper.LogPaymentFlowAsync(ctx, actor, helpers.PaymentFlowParams{
+			EventType:     "chargeback",
+			TransactionID: dispute.Charge.ID,
+			StripeEventID: &dispute.ID,
+			AmountCents:   int(dispute.Amount),
+			Currency:      string(dispute.Currency),
+			PaymentMethod: "stripe_dispute",
+			Details:       fmt.Sprintf("Chargeback received: %s, reason: %s", dispute.ID, dispute.Reason),
+			Success:       false,
+		})
+	}
+
 	monitoring.RecordStripeEventProcessed("charge.dispute.created")
 
 	w.WriteHeader(http.StatusOK)
@@ -2793,6 +2855,26 @@ func (h *StripeWebhookHandler) handleChargeRefunded(w http.ResponseWriter, r *ht
 						string(refund.Reason), tenantIDStr)
 				}
 			}
+
+			if h.pciAuditHelper != nil {
+				var tenantID *uuid.UUID
+				if paymentRefund.TenantID != nil {
+					tenantID = paymentRefund.TenantID
+				}
+				actor := helpers.ActorContext{
+					TenantID: tenantID,
+				}
+				h.pciAuditHelper.LogPaymentFlowAsync(ctx, actor, helpers.PaymentFlowParams{
+					EventType:     "refunded",
+					TransactionID: charge.ID,
+					StripeEventID: &refund.ID,
+					AmountCents:   int(refund.Amount),
+					Currency:      string(charge.Currency),
+					PaymentMethod: "stripe_refund",
+					Details:       fmt.Sprintf("Charge refunded: %s, reason: %s", refund.ID, refund.Reason),
+					Success:       refund.Status == "succeeded",
+				})
+			}
 		}
 
 		// Note: If the refund is related to a dispute, it would be handled by
@@ -2955,6 +3037,27 @@ func (h *StripeWebhookHandler) handlePaymentMethodUpdated(w http.ResponseWriter,
 		"brand":             pm.Card.Brand,
 		"last4":             pm.Card.Last4,
 	}).Info("payment method updated from stripe")
+
+	if h.pciAuditHelper != nil {
+		pmID, _ := uuid.Parse(pm.ID)
+		brand := string(pm.Card.Brand)
+		last4 := pm.Card.Last4
+		actor := helpers.ActorContext{
+			TenantID: &tenant.ID,
+		}
+		h.pciAuditHelper.LogCardDataAccessAsync(ctx, actor, helpers.CardDataAccessParams{
+			AccessType:      "write",
+			DataType:        "card_details",
+			PaymentMethodID: &pmID,
+			CardLastFour:    &last4,
+			CardBrand:       &brand,
+			CardExpiryMonth: func() *int { m := int(pm.Card.ExpMonth); return &m }(),
+			CardExpiryYear:  func() *int { y := int(pm.Card.ExpYear); return &y }(),
+			Purpose:         "Payment method updated via Stripe webhook",
+			CDESection:      "cardholder_data",
+			Success:         true,
+		})
+	}
 
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{

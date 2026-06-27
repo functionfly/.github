@@ -325,6 +325,56 @@ type PaymentFlowEventParams struct {
 	FailureReason *string
 }
 
+// AdminActionParams parameters for logging admin actions
+type AdminActionParams struct {
+	EventType     string
+	ActorUserID   *uuid.UUID
+	ActorEmail    string
+	ActorRole     string
+	ActorIP       string
+	SessionID     string
+	RequestID     string
+	TenantID      *uuid.UUID
+	ResourceType  string
+	ResourceID    *uuid.UUID
+	Description   string
+	CardLastFour  *string
+	CardBrand     *string
+	Success       bool
+	FailureReason *string
+}
+
+// LogAdminAction logs admin actions in the PCI audit trail
+func (r *PCIAuditRepository) LogAdminAction(ctx context.Context, params AdminActionParams) (*PCIAuditEvent, error) {
+	event := &PCIAuditEvent{
+		EventType:    params.EventType,
+		Severity:     PCISeverityWarning,
+		ActorUserID:  params.ActorUserID,
+		ActorEmail:   params.ActorEmail,
+		ActorRole:    params.ActorRole,
+		ActorIP:      params.ActorIP,
+		SessionID:    params.SessionID,
+		ResourceType: params.ResourceType,
+		ResourceID:   params.ResourceID,
+		TenantID:     params.TenantID,
+		CardLastFour: params.CardLastFour,
+		CardBrand:    params.CardBrand,
+		Description:  params.Description,
+		RequestID:    params.RequestID,
+		Success:      params.Success,
+		FailureReason: params.FailureReason,
+		Metadata: map[string]interface{}{
+			"action_category": "admin_operation",
+		},
+	}
+
+	if !params.Success {
+		event.Severity = PCISeverityCritical
+	}
+
+	return r.LogPCIAuditEvent(ctx, event)
+}
+
 // ListPCIAuditEvents retrieves PCI audit events with filtering
 func (r *PCIAuditRepository) ListPCIAuditEvents(ctx context.Context, filters PCIAuditEventFilters) ([]PCIAuditEvent, int, error) {
 	query := `
