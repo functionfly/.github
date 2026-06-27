@@ -129,6 +129,9 @@ const AdminChangelogPage = lazy(() =>
 const AdminSIEMPage = lazy(() =>
   import('@/pages/AdminSIEMPage').then((m) => ({ default: m.AdminSIEMPage }))
 );
+const AdminDisputesPage = lazy(() =>
+  import('@/pages/AdminDisputesPage').then((m) => ({ default: m.AdminDisputesPage }))
+);
 
 interface AdminRouteConfig {
   path: string;
@@ -146,6 +149,7 @@ const ADMIN_ROUTES: AdminRouteConfig[] = [
   { path: 'users', component: AdminUsersPage, permission: 'users:read', featureName: 'Users' },
   { path: 'users/:userId', component: AdminUserDetailPage, permission: 'users:read', featureName: 'User details' },
   { path: 'billing', component: AdminBillingPage, permission: 'billing:read', featureName: 'Billing' },
+  { path: 'disputes', component: AdminDisputesPage, permission: 'billing:read', featureName: 'Disputes' },
   { path: 'audit', component: AdminAuditPage, permission: 'audit:read', featureName: 'Audit log' },
   { path: 'auth-audit', component: AdminAuthAuditPage, permission: 'audit:read', featureName: 'Auth audit' },
   { path: 'system', component: AdminSystemPage, permission: 'system:read', featureName: 'System' },
