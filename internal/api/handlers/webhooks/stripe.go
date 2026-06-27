@@ -89,6 +89,7 @@ type StripeWebhookHandler struct {
 	operationalRepo *storage.BillingOperationalRepository
 	payoutService   PayoutWebhookProcessor
 	certRepo        *storage.CertificationRepository
+	disputeResponseManager *billingpkg.DisputeResponseManager
 }
 
 // PayoutWebhookProcessor handles payout-related webhook events.
@@ -169,6 +170,11 @@ func (h *StripeWebhookHandler) SetDunningManager(dm *billingpkg.DunningManager) 
 // SetOperationalRepository sets the billing operational repository for webhook storage
 func (h *StripeWebhookHandler) SetOperationalRepository(repo *storage.BillingOperationalRepository) {
 	h.operationalRepo = repo
+}
+
+// SetDisputeResponseManager sets the dispute response manager for automated chargeback handling
+func (h *StripeWebhookHandler) SetDisputeResponseManager(drm *billingpkg.DisputeResponseManager) {
+	h.disputeResponseManager = drm
 }
 
 // RegisterRoutes registers webhook routes.
@@ -2537,6 +2543,13 @@ func (h *StripeWebhookHandler) handleChargeDisputeCreated(w http.ResponseWriter,
 		}
 	}
 
+	// Trigger automated dispute response workflow if configured
+	if h.disputeResponseManager != nil {
+		if err := h.disputeResponseManager.HandleDisputeCreated(ctx, &dispute, paymentDispute); err != nil {
+			logrus.WithError(err).WithField("dispute_id", dispute.ID).Error("stripe webhook: dispute response manager failed")
+		}
+	}
+
 	monitoring.RecordStripeEventProcessed("charge.dispute.created")
 
 	w.WriteHeader(http.StatusOK)
@@ -2587,6 +2600,13 @@ func (h *StripeWebhookHandler) handleChargeDisputeUpdated(w http.ResponseWriter,
 	if existingDispute.Status != newStatus {
 		if err := h.disputeRepo.UpdateDisputeStatus(ctx, existingDispute.ID, newStatus, "", ""); err != nil {
 			logrus.WithError(err).WithField("dispute_id", dispute.ID).Error("stripe webhook: failed to update dispute status")
+		}
+	}
+
+	// Trigger automated dispute response workflow if configured
+	if h.disputeResponseManager != nil {
+		if err := h.disputeResponseManager.HandleDisputeUpdated(ctx, &dispute, existingDispute); err != nil {
+			logrus.WithError(err).WithField("dispute_id", dispute.ID).Error("stripe webhook: dispute response manager update failed")
 		}
 	}
 
@@ -2642,6 +2662,13 @@ func (h *StripeWebhookHandler) handleChargeDisputeClosed(w http.ResponseWriter, 
 				// Won if status indicates we won
 				won := status == "won" || status == "charge_refunded"
 				h.notificationSvc.SendDisputeResolved(ctx, adminUsers, dispute.ID, status, amountUSD, won)
+			}
+		}
+
+		// Trigger automated dispute response workflow if configured
+		if h.disputeResponseManager != nil {
+			if err := h.disputeResponseManager.HandleDisputeClosed(ctx, &dispute, existingDispute); err != nil {
+				logrus.WithError(err).WithField("dispute_id", dispute.ID).Error("stripe webhook: dispute response manager closed failed")
 			}
 		}
 	}

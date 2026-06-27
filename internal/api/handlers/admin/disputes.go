@@ -8,25 +8,31 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"github.com/stripe/stripe-go/v83"
+	stripeDispute "github.com/stripe/stripe-go/v83/dispute"
+	"github.com/stripe/stripe-go/v83/refund"
 )
 
 // DisputesHandler handles admin dispute management endpoints
 type DisputesHandler struct {
-	disputeRepo *storage.DisputeRepository
-	refundRepo  *storage.RefundRepository
-	userRepo    storage.Repository
+	disputeRepo        *storage.DisputeRepository
+	refundRepo         *storage.RefundRepository
+	userRepo           storage.Repository
+	disputeResponseMgr *billing.DisputeResponseManager
 }
 
 // NewDisputesHandler creates a new disputes handler
-func NewDisputesHandler(disputeRepo *storage.DisputeRepository, refundRepo *storage.RefundRepository, userRepo storage.Repository) *DisputesHandler {
+func NewDisputesHandler(disputeRepo *storage.DisputeRepository, refundRepo *storage.RefundRepository, userRepo storage.Repository, disputeResponseMgr *billing.DisputeResponseManager) *DisputesHandler {
 	return &DisputesHandler{
-		disputeRepo: disputeRepo,
-		refundRepo:  refundRepo,
-		userRepo:    userRepo,
+		disputeRepo:        disputeRepo,
+		refundRepo:         refundRepo,
+		userRepo:           userRepo,
+		disputeResponseMgr: disputeResponseMgr,
 	}
 }
 
@@ -467,6 +473,245 @@ func (h *DisputesHandler) HandleGetOpenDisputes(w http.ResponseWriter, r *http.R
 		"limit":           limit,
 		"offset":          offset,
 	})
+}
+
+// HandlePreviewEvidence returns the compiled evidence for a dispute without submitting
+// GET /v1/admin/billing/disputes/{disputeId}/evidence
+func (h *DisputesHandler) HandlePreviewEvidence(w http.ResponseWriter, r *http.Request) {
+	if h.disputeResponseMgr == nil {
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute response service not available"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	disputeIDStr := vars["disputeId"]
+
+	disputeID, err := uuid.Parse(disputeIDStr)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
+		return
+	}
+
+	evidence, err := h.disputeResponseMgr.PreviewEvidence(r.Context(), disputeID)
+	if err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to preview evidence")
+		apierror.WriteError(w, apierror.NewInternal("Failed to preview evidence"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(evidence)
+}
+
+// HandleSubmitEvidence submits compiled evidence to Stripe for a dispute
+// POST /v1/admin/billing/disputes/{disputeId}/submit
+func (h *DisputesHandler) HandleSubmitEvidence(w http.ResponseWriter, r *http.Request) {
+	if h.disputeResponseMgr == nil {
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute response service not available"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	disputeIDStr := vars["disputeId"]
+
+	disputeID, err := uuid.Parse(disputeIDStr)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
+		return
+	}
+
+	dispute, err := h.disputeRepo.GetDisputeByID(r.Context(), disputeID)
+	if err != nil || dispute == nil {
+		apierror.WriteError(w, apierror.NewNotFound("Dispute not found"))
+		return
+	}
+
+	evidence, err := h.disputeResponseMgr.PreviewEvidence(r.Context(), disputeID)
+	if err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to compile evidence")
+		apierror.WriteError(w, apierror.NewInternal("Failed to compile evidence"))
+		return
+	}
+
+	params := &stripe.DisputeParams{
+		Evidence: &stripe.DisputeEvidenceParams{
+			AccessActivityLog:        stripe.String(evidence.AccessActivityLog),
+			BillingAddress:          stripe.String(evidence.BillingAddress),
+			CancellationPolicy:       stripe.String(evidence.RefundPolicyURL),
+			CancellationPolicyDisclosure: stripe.String("Customer initiated cancellation request"),
+			CustomerCommunication:     stripe.String(evidence.CustomerCommunication),
+			CustomerEmailAddress:     stripe.String(evidence.CustomerEmail),
+			CustomerName:             stripe.String(evidence.CustomerName),
+			CustomerPurchaseIP:        stripe.String(evidence.CustomerPurchaseIP),
+			ProductDescription:        stripe.String(evidence.ProductDescription),
+			Receipt:                  stripe.String(evidence.ReceiptURL),
+			RefundPolicy:              stripe.String(evidence.RefundPolicyURL),
+			RefundPolicyDisclosure:   stripe.String("Refund policy disclosed at checkout"),
+			ServiceDate:              stripe.String(evidence.ServiceDate),
+			ServiceDocumentation:     stripe.String(evidence.ServiceDocument),
+		},
+		Submit: stripe.Bool(true),
+	}
+
+	_, err = stripeDispute.Update(dispute.StripeDisputeID, params)
+	if err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to submit evidence to Stripe")
+		apierror.WriteError(w, apierror.NewInternal("Failed to submit evidence"))
+		return
+	}
+
+	if err := h.disputeRepo.UpdateDisputeEvidence(r.Context(), disputeID, evidence); err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Warn("Failed to update evidence in database")
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "evidence_submitted"})
+}
+
+// HandleIssueRefund issues a manual refund for a dispute
+// POST /v1/admin/billing/disputes/{disputeId}/refund
+func (h *DisputesHandler) HandleIssueRefund(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	disputeIDStr := vars["disputeId"]
+
+	disputeID, err := uuid.Parse(disputeIDStr)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
+		return
+	}
+
+	dispute, err := h.disputeRepo.GetDisputeByID(r.Context(), disputeID)
+	if err != nil || dispute == nil {
+		apierror.WriteError(w, apierror.NewNotFound("Dispute not found"))
+		return
+	}
+
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
+		return
+	}
+
+	refundReason := string(stripe.RefundReasonRequestedByCustomer)
+	if req.Reason == "fraudulent" {
+		refundReason = string(stripe.RefundReasonFraudulent)
+	}
+
+	refundParams := &stripe.RefundParams{
+		Charge: stripe.String(dispute.StripeChargeID),
+		Reason: stripe.String(refundReason),
+	}
+
+	result, err := refund.New(refundParams)
+	if err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to issue refund")
+		apierror.WriteError(w, apierror.NewInternal("Failed to issue refund"))
+		return
+	}
+
+	if err := h.disputeRepo.LinkDisputeToRefund(r.Context(), disputeID, result.ID); err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Warn("Failed to link refund to dispute")
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":   "refund_issued",
+		"refund_id": result.ID,
+	})
+}
+
+// HandleSkipAutoResponse skips the automated response for a dispute
+// POST /v1/admin/billing/disputes/{disputeId}/skip
+func (h *DisputesHandler) HandleSkipAutoResponse(w http.ResponseWriter, r *http.Request) {
+	if h.disputeResponseMgr == nil {
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute response service not available"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	disputeIDStr := vars["disputeId"]
+
+	disputeID, err := uuid.Parse(disputeIDStr)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
+		return
+	}
+
+	if err := h.disputeResponseMgr.SkipAutoRefund(r.Context(), disputeID); err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to skip auto response")
+		apierror.WriteError(w, apierror.NewInternal("Failed to skip auto response"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "auto_response_skipped"})
+}
+
+// HandleGetAutomationLog returns the automation log for a dispute
+// GET /v1/admin/billing/disputes/{disputeId}/automation-log
+func (h *DisputesHandler) HandleGetAutomationLog(w http.ResponseWriter, r *http.Request) {
+	if h.disputeResponseMgr == nil {
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute response service not available"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	disputeIDStr := vars["disputeId"]
+
+	disputeID, err := uuid.Parse(disputeIDStr)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid dispute ID"))
+		return
+	}
+
+	logs, err := h.disputeResponseMgr.GetAutomationLog(r.Context(), disputeID)
+	if err != nil {
+		logrus.WithError(err).WithField("dispute_id", disputeID).Error("Failed to get automation log")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get automation log"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"dispute_id": disputeID,
+		"logs":       logs,
+		"count":      len(logs),
+	})
+}
+
+// HandleGetAutomationConfig returns the current automation configuration
+// GET /v1/admin/billing/disputes/config
+func (h *DisputesHandler) HandleGetAutomationConfig(w http.ResponseWriter, r *http.Request) {
+	if h.disputeResponseMgr == nil {
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute response service not available"))
+		return
+	}
+
+	config := h.disputeResponseMgr.GetConfig()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(config)
+}
+
+// HandleUpdateAutomationConfig updates the automation configuration
+// PUT /v1/admin/billing/disputes/config
+func (h *DisputesHandler) HandleUpdateAutomationConfig(w http.ResponseWriter, r *http.Request) {
+	if h.disputeResponseMgr == nil {
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Dispute response service not available"))
+		return
+	}
+
+	var config billing.DisputeAutomationConfig
+	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
+		return
+	}
+
+	h.disputeResponseMgr.UpdateConfig(&config)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "config_updated"})
 }
 
 // countRequiresAction counts disputes that require evidence submission

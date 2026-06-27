@@ -965,6 +965,74 @@ func (s *Service) SendChargebackFundsWithdrawn(ctx context.Context, adminUserIDs
 	return nil
 }
 
+// SendAutoRefundExecuted notifies admins when an automatic refund is executed for a dispute
+func (s *Service) SendAutoRefundExecuted(ctx context.Context, adminUserIDs []uuid.UUID, disputeID string, amountUSD float64, reason string) error {
+	for _, userID := range adminUserIDs {
+		_, err := s.Send(ctx, SendRequest{
+			UserID:   userID,
+			Type:     TypeBillingAlert,
+			Category: CategoryBilling,
+			Title:    fmt.Sprintf("Auto-Refund Executed: $%.2f", amountUSD),
+			Body:     fmt.Sprintf("An automatic refund of $%.2f was executed for dispute %s. Reason: %s.", amountUSD, disputeID, reason),
+			Data: JSONMap{
+				"dispute_id": disputeID,
+				"amount_usd": amountUSD,
+				"reason":     reason,
+			},
+			Channels: []string{ChannelInApp, ChannelEmail},
+			Priority: PriorityNormal,
+		})
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("Failed to send auto refund executed notification")
+		}
+	}
+	return nil
+}
+
+// SendDisputeEvidenceSubmitted notifies admins when evidence has been submitted for a dispute
+func (s *Service) SendDisputeEvidenceSubmitted(ctx context.Context, adminUserIDs []uuid.UUID, disputeID string) error {
+	for _, userID := range adminUserIDs {
+		_, err := s.Send(ctx, SendRequest{
+			UserID:   userID,
+			Type:     TypeBillingAlert,
+			Category: CategoryBilling,
+			Title:    fmt.Sprintf("Dispute Evidence Submitted: %s", disputeID),
+			Body:     fmt.Sprintf("Evidence has been submitted for dispute %s. You can view the submission in the admin dashboard.", disputeID),
+			Data: JSONMap{
+				"dispute_id": disputeID,
+			},
+			Channels: []string{ChannelInApp, ChannelEmail},
+			Priority: PriorityNormal,
+		})
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("Failed to send dispute evidence submitted notification")
+		}
+	}
+	return nil
+}
+
+// SendDisputePendingReminder reminds admins about disputes pending review
+func (s *Service) SendDisputePendingReminder(ctx context.Context, adminUserIDs []uuid.UUID, disputeID string) error {
+	for _, userID := range adminUserIDs {
+		_, err := s.Send(ctx, SendRequest{
+			UserID:   userID,
+			Type:     TypeBillingAlert,
+			Category: CategoryBilling,
+			Title:    fmt.Sprintf("Reminder: Dispute Pending Review: %s", disputeID),
+			Body:     fmt.Sprintf("Dispute %s has been pending review for over 24 hours. Please review and take action.", disputeID),
+			Data: JSONMap{
+				"dispute_id": disputeID,
+			},
+			Channels: []string{ChannelInApp, ChannelEmail},
+			Priority: PriorityHigh,
+		})
+		if err != nil {
+			s.logger.WithError(err).WithField("user_id", userID).Error("Failed to send dispute pending reminder notification")
+		}
+	}
+	return nil
+}
+
 // SendDeploymentSuccess notifies a user that a deployment succeeded.
 func (s *Service) SendDeploymentSuccess(ctx context.Context, userID uuid.UUID, appID, appName string, deployedAt int64) error {
 	_, err := s.Send(ctx, SendRequest{

@@ -180,7 +180,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize dispute and refund repositories for chargeback/refund handling
 	disputeRepo := storage.NewDisputeRepository(s.postgresDB.GORM)
 	refundRepo := storage.NewRefundRepository(s.postgresDB.GORM)
-	disputesHandler := admin.NewDisputesHandler(disputeRepo, refundRepo, s.repo)
+	disputeResponseManager := billing.NewDisputeResponseManager(disputeRepo, s.notificationSvc)
+	disputesHandler := admin.NewDisputesHandler(disputeRepo, refundRepo, s.repo, disputeResponseManager)
 	adminProvidersHandler := admin.NewProvidersHandler(s.repo, s.authSvc)
 	securityHandler := security.NewHandler(s.repo, s.authSvc)
 

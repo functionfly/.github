@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	agentbilling "github.com/functionfly/functionfly/internal/agent/billing"
+	"github.com/functionfly/functionfly/internal/billing"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentruntime "github.com/functionfly/functionfly/internal/api/handlers/agentruntime"
 	browserhandler "github.com/functionfly/functionfly/internal/api/handlers/browser"
@@ -56,6 +57,10 @@ func registerPublicWebhookRoutes(
 	)
 	stripeWebhookHandler.SetDunningManager(s.dunningManager)
 	stripeWebhookHandler.SetOperationalRepository(billingOperationalRepo)
+
+	// Wire up dispute response manager for automated chargeback handling
+	disputeResponseManager := billing.NewDisputeResponseManager(disputeRepo, s.notificationSvc)
+	stripeWebhookHandler.SetDisputeResponseManager(disputeResponseManager)
 	if s.payoutWebhookProcessor != nil {
 		stripeWebhookHandler.SetPayoutService(s.payoutWebhookProcessor)
 	}

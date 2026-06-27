@@ -742,3 +742,58 @@ func (r *DisputeRepository) LinkDisputeToRefund(ctx context.Context, disputeID u
 			"updated_at": time.Now().UTC(),
 		}).Error
 }
+
+// GetDisputesWithApproachingDeadline returns disputes with evidence due within the specified duration
+func (r *DisputeRepository) GetDisputesWithApproachingDeadline(ctx context.Context, within time.Duration) ([]*PaymentDispute, error) {
+	deadline := time.Now().Add(within)
+
+	var disputes []*PaymentDispute
+	err := r.db.WithContext(ctx).
+		Where("evidence_due_by IS NOT NULL").
+		Where("evidence_due_by <= ?", deadline).
+		Where("status IN ?", []string{"needs_response", "warning_needs_response", "needs_review"}).
+		Order("evidence_due_by ASC").
+		Find(&disputes).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return disputes, nil
+}
+
+// GetStalePendingDisputes returns disputes pending review for longer than the specified duration
+func (r *DisputeRepository) GetStalePendingDisputes(ctx context.Context, olderThan time.Duration) ([]*PaymentDispute, error) {
+	cutoff := time.Now().Add(-olderThan)
+
+	var disputes []*PaymentDispute
+	err := r.db.WithContext(ctx).
+		Where("status = ?", "pending_review").
+		Where("updated_at <= ?", cutoff).
+		Order("updated_at ASC").
+		Find(&disputes).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return disputes, nil
+}
+
+// GetRecentDisputes returns disputes created within the specified time window
+func (r *DisputeRepository) GetRecentDisputes(ctx context.Context, window time.Duration) ([]*PaymentDispute, error) {
+	since := time.Now().Add(-window)
+
+	var disputes []*PaymentDispute
+	err := r.db.WithContext(ctx).
+		Where("created_at >= ?", since).
+		Where("status NOT IN ?", []string{"won", "lost", "closed", "warning_closed"}).
+		Order("created_at DESC").
+		Find(&disputes).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return disputes, nil
+}

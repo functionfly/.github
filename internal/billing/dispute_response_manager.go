@@ -53,12 +53,12 @@ func NewDisputeResponseManager(
 
 	config := &DisputeAutomationConfig{
 		AutoRefundEnabled:              getEnvBool("CHARGEBACK_AUTO_REFUND_ENABLED", true),
-		AutoRefundThresholdCents:        getEnvInt("CHARGEBACK_AUTO_REFUND_THRESHOLD_CENTS", 5000),
+		AutoRefundThresholdCents:        getEnvInt("CHARGEBACK_AUTO_REFUND_THRESHOLD_CENTS", 2500), // $25
 		AutoRefundAllowedReasons:        getEnvList("CHARGEBACK_AUTO_REFUND_ALLOWED_REASONS", []string{"duplicate", "product_not_received"}),
-		EvidenceAutoSubmit:              getEnvBool("CHARGEBACK_EVIDENCE_AUTO_SUBMIT", true),
+		EvidenceAutoSubmit:              getEnvBool("CHARGEBACK_EVIDENCE_AUTO_SUBMIT", false), // Manual review by default
 		CustomerNotificationEnabled:     getEnvBool("CHARGEBACK_CUSTOMER_NOTIFICATION_ENABLED", true),
 		AdminEscalationEnabled:         getEnvBool("CHARGEBACK_ADMIN_ESCALATION_ENABLED", true),
-		AdminEscalationThresholdCents:  getEnvInt("CHARGEBACK_ADMIN_ESCALATION_THRESHOLD_CENTS", 50000),
+		AdminEscalationThresholdCents:  getEnvInt("CHARGEBACK_ADMIN_ESCALATION_THRESHOLD_CENTS", 15000), // $150
 	}
 
 	return &DisputeResponseManager{
@@ -372,14 +372,13 @@ type CompiledEvidence struct {
 
 func (m *DisputeResponseManager) compileEvidenceData(ctx context.Context, paymentDispute *storage.PaymentDispute) (*CompiledEvidence, error) {
 	evidence := &CompiledEvidence{
-		ProductDescription:    "FunctionFly AI Agent Platform Services",
-		CustomerEmail:         "customer@example.com",
-		CustomerName:          "Customer",
-		RefundPolicyURL:      "https://functionfly.com/refund-policy",
-		RefundPolicyDisclosed: true,
+		ProductDescription:      "FunctionFly AI Agent Platform Services",
+		CustomerEmail:           "",
+		CustomerName:            "",
+		RefundPolicyURL:        "https://functionfly.com/refund-policy",
+		RefundPolicyDisclosed:   true,
 		RefundPolicyDisclosedText: "Customers are shown our refund policy at checkout and agree to it before completing their purchase.",
-		ServiceDate:           time.Now().Format("2006-01-02"),
-		CancellationReason:    "Customer initiated cancellation request",
+		ServiceDate:             time.Now().Format("2006-01-02"),
 	}
 
 	if paymentDispute.TenantID != nil {
@@ -393,20 +392,30 @@ func (m *DisputeResponseManager) compileEvidenceData(ctx context.Context, paymen
 	if paymentDispute.UserID != nil {
 		user, err := m.getUserInfo(ctx, *paymentDispute.UserID)
 		if err == nil && user != nil {
-			if evidence.CustomerEmail == "customer@example.com" {
-				evidence.CustomerEmail = user.Email
-			}
-			if evidence.CustomerName == "Customer" {
+			evidence.CustomerEmail = user.Email
+			if evidence.CustomerName == "" {
 				evidence.CustomerName = user.Name
 			}
 			evidence.CustomerPurchaseIP = user.LastLoginIP
 		}
 	}
 
-	evidence.ProductDescription = fmt.Sprintf("FunctionFly AI Platform - %s dispute - Amount: $%.2f",
-		paymentDispute.Reason, float64(paymentDispute.AmountCents)/100.0)
+	// Get receipt URL from Stripe charge or local invoice
+	evidence.ReceiptURL = m.getReceiptURL(ctx, paymentDispute)
+
+	// Get subscription info for product description
+	subInfo := m.getSubscriptionInfo(ctx, paymentDispute)
+	evidence.ProductDescription = fmt.Sprintf("FunctionFly AI Platform - %s - %s",
+		subInfo.PlanName, paymentDispute.Reason)
+
+	// Get access activity log
 	evidence.AccessActivityLog = m.getAccessActivityLog(ctx, paymentDispute)
-	evidence.CustomerCommunication = "Customer has contacted support regarding this charge. All support tickets and communications are on file."
+
+	// Get support ticket communications
+	evidence.CustomerCommunication = m.getSupportCommunications(ctx, paymentDispute)
+
+	// Get service documentation URL
+	evidence.ServiceDocument = "https://functionfly.com/terms"
 
 	return evidence, nil
 }
@@ -438,25 +447,128 @@ func (m *DisputeResponseManager) getAccessActivityLog(ctx context.Context, payme
 		return "Activity log not available"
 	}
 
-	var logs []string
+	var logs []struct {
+		CreatedAt time.Time
+		Action    string
+	}
+
 	db := m.disputeRepo.DB().WithContext(ctx).Raw(`
-		SELECT created_at::text || ' - API activity recorded for tenant'
+		SELECT created_at, action
 		FROM execution_logs
 		WHERE tenant_id = ?
 		AND created_at >= NOW() - INTERVAL '30 days'
 		ORDER BY created_at DESC
-		LIMIT 50
+		LIMIT 20
 	`, *paymentDispute.TenantID).Scan(&logs)
 
 	if db.Error == nil && len(logs) > 0 {
-		if len(logs) > 10 {
-			logs = logs[:10]
-			logs = append(logs, "... (additional activity in logs)")
+		var lines []string
+		for _, log := range logs {
+			lines = append(lines, fmt.Sprintf("%s - %s", log.CreatedAt.Format("2006-01-02 15:04"), log.Action))
 		}
-		return strings.Join(logs, "\n")
+		if len(lines) > 10 {
+			lines = lines[:10]
+			lines = append(lines, fmt.Sprintf("... and %d more events in the past 30 days", len(logs)-10))
+		}
+		return strings.Join(lines, "\n")
 	}
 
 	return "Regular API and platform activity over the past 30 days"
+}
+
+func (m *DisputeResponseManager) getReceiptURL(ctx context.Context, paymentDispute *storage.PaymentDispute) string {
+	if paymentDispute.StripeChargeID == "" {
+		return ""
+	}
+
+	// Try to get receipt URL from invoices table
+	var receiptURL string
+	db := m.disputeRepo.DB().WithContext(ctx).Raw(`
+		SELECT receipt_url FROM invoices
+		WHERE stripe_charge_id = ?
+		LIMIT 1
+	`, paymentDispute.StripeChargeID).Scan(&receiptURL)
+
+	if db.Error == nil && receiptURL != "" {
+		return receiptURL
+	}
+
+	// If not found locally, construct Stripe receipt URL
+	return fmt.Sprintf("https://dashboard.stripe.com/payments/%s", paymentDispute.StripeChargeID)
+}
+
+type SubscriptionInfo struct {
+	PlanName   string
+	TermAccept string
+}
+
+func (m *DisputeResponseManager) getSubscriptionInfo(ctx context.Context, paymentDispute *storage.PaymentDispute) *SubscriptionInfo {
+	info := &SubscriptionInfo{
+		PlanName:   "Professional Plan",
+		TermAccept: time.Now().Format("2006-01-02"),
+	}
+
+	if paymentDispute.TenantID == nil {
+		return info
+	}
+
+	// Get bundle subscription plan name
+	var planName string
+	db := m.disputeRepo.DB().WithContext(ctx).Raw(`
+		SELECT pb.display_name
+		FROM bundle_subscriptions bs
+		JOIN pricing_bundles pb ON pb.id = bs.bundle_id
+		WHERE bs.tenant_id = ?
+		AND bs.status = 'active'
+		LIMIT 1
+	`, *paymentDispute.TenantID).Scan(&planName)
+
+	if db.Error == nil && planName != "" {
+		info.PlanName = planName
+	}
+
+	// Get terms acceptance date
+	var termsAccepted *time.Time
+	db = m.disputeRepo.DB().WithContext(ctx).Raw(`
+		SELECT terms_accepted_at FROM tenants WHERE id = ?
+	`, *paymentDispute.TenantID).Scan(&termsAccepted)
+
+	if db.Error == nil && termsAccepted != nil {
+		info.TermAccept = termsAccepted.Format("2006-01-02")
+	}
+
+	return info
+}
+
+func (m *DisputeResponseManager) getSupportCommunications(ctx context.Context, paymentDispute *storage.PaymentDispute) string {
+	if paymentDispute.TenantID == nil {
+		return "No support tickets found for this account."
+	}
+
+	var tickets []struct {
+		CreatedAt time.Time
+		Subject   string
+		Status    string
+	}
+
+	db := m.disputeRepo.DB().WithContext(ctx).Raw(`
+		SELECT created_at, subject, status
+		FROM support_tickets
+		WHERE tenant_id = ?
+		AND created_at >= NOW() - INTERVAL '90 days'
+		ORDER BY created_at DESC
+		LIMIT 5
+	`, *paymentDispute.TenantID).Scan(&tickets)
+
+	if db.Error == nil && len(tickets) > 0 {
+		var lines []string
+		for _, t := range tickets {
+			lines = append(lines, fmt.Sprintf("%s - [%s] %s", t.CreatedAt.Format("2006-01-02"), t.Status, t.Subject))
+		}
+		return strings.Join(lines, "\n")
+	}
+
+	return "No recent support tickets. Customer has not contacted support regarding this charge."
 }
 
 type TenantInfo struct {
@@ -690,11 +802,33 @@ func (m *DisputeResponseManager) notifyCustomerStatusChange(ctx context.Context,
 		return
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"dispute_id": paymentDispute.StripeDisputeID,
-		"new_status": newStatus,
-		"user_id":    paymentDispute.UserID,
-	}).Info("DisputeResponseManager: customer status change notification (not implemented - requires customer email lookup)")
+	user, err := m.getUserInfo(ctx, *paymentDispute.UserID)
+	if err != nil || user == nil || user.Email == "" {
+		logrus.WithField("user_id", paymentDispute.UserID).Warn("Cannot notify customer: user not found")
+		return
+	}
+
+	message := getCustomerStatusMessage(newStatus, paymentDispute.Reason)
+	_, err = m.notificationSvc.Send(ctx, notification.SendRequest{
+		UserID:   *paymentDispute.UserID,
+		Type:     notification.TypeBillingAlert,
+		Category: notification.CategoryBilling,
+		Title:    "Update on Your Disputed Charge",
+		Body:     message,
+		Data: map[string]interface{}{
+			"dispute_id": paymentDispute.StripeDisputeID,
+			"status":     newStatus,
+			"reason":     paymentDispute.Reason,
+		},
+		Channels: []string{notification.ChannelEmail, notification.ChannelInApp},
+		Priority: notification.PriorityNormal,
+	})
+
+	if err != nil {
+		logrus.WithError(err).WithField("dispute_id", paymentDispute.StripeDisputeID).Warn("Failed to notify customer of status change")
+	} else {
+		logrus.WithField("dispute_id", paymentDispute.StripeDisputeID).Info("Customer notified of dispute status change")
+	}
 }
 
 func (m *DisputeResponseManager) notifyCustomerDisputeResolved(ctx context.Context, paymentDispute *storage.PaymentDispute, won bool, amountUSD float64) {
@@ -702,12 +836,41 @@ func (m *DisputeResponseManager) notifyCustomerDisputeResolved(ctx context.Conte
 		return
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"dispute_id": paymentDispute.StripeDisputeID,
-		"won":        won,
-		"amount_usd": amountUSD,
-		"user_id":    paymentDispute.UserID,
-	}).Info("DisputeResponseManager: customer dispute resolved notification (not implemented - requires customer email lookup)")
+	user, err := m.getUserInfo(ctx, *paymentDispute.UserID)
+	if err != nil || user == nil || user.Email == "" {
+		logrus.WithField("user_id", paymentDispute.UserID).Warn("Cannot notify customer: user not found")
+		return
+	}
+
+	var title, body string
+	if won {
+		title = "Dispute Resolved in Your Favor"
+		body = fmt.Sprintf("Good news! The dispute for charge %s has been resolved in your favor. No action is needed from you.", paymentDispute.StripeDisputeID)
+	} else {
+		title = "Dispute Update"
+		body = fmt.Sprintf("The dispute for charge %s has been resolved. A refund of $%.2f has been processed to your original payment method.", paymentDispute.StripeDisputeID, amountUSD)
+	}
+
+	_, err = m.notificationSvc.Send(ctx, notification.SendRequest{
+		UserID:   *paymentDispute.UserID,
+		Type:     notification.TypeBillingAlert,
+		Category: notification.CategoryBilling,
+		Title:    title,
+		Body:     body,
+		Data: map[string]interface{}{
+			"dispute_id": paymentDispute.StripeDisputeID,
+			"won":        won,
+			"amount_usd": amountUSD,
+		},
+		Channels: []string{notification.ChannelEmail, notification.ChannelInApp},
+		Priority: notification.PriorityNormal,
+	})
+
+	if err != nil {
+		logrus.WithError(err).WithField("dispute_id", paymentDispute.StripeDisputeID).Warn("Failed to notify customer of dispute resolution")
+	} else {
+		logrus.WithField("dispute_id", paymentDispute.StripeDisputeID).Info("Customer notified of dispute resolution")
+	}
 }
 
 func (m *DisputeResponseManager) getAdminUsers(ctx context.Context) []uuid.UUID {
@@ -728,6 +891,23 @@ func (m *DisputeResponseManager) getAdminUsers(ctx context.Context) []uuid.UUID 
 	}
 
 	return userIDs
+}
+
+func getCustomerStatusMessage(status, reason string) string {
+	switch status {
+	case "needs_response", "warning_needs_response":
+		return fmt.Sprintf("We received notice of a dispute for your recent charge. Reason: %s. We are reviewing this matter and will take appropriate action.", reason)
+	case "needs_review", "under_review":
+		return fmt.Sprintf("Your dispute (reason: %s) is under review. We will keep you updated on any developments.", reason)
+	case "won", "charge_refunded":
+		return "Great news! The dispute has been resolved in your favor. No refund will be issued."
+	case "lost":
+		return "The dispute has been resolved. A refund has been processed to your original payment method."
+	case "closed":
+		return "The dispute case has been closed."
+	default:
+		return fmt.Sprintf("There has been an update to your dispute (reason: %s). Please contact support if you have questions.", reason)
+	}
 }
 
 func (m *DisputeResponseManager) GetConfigFromDB(ctx context.Context) (*DisputeAutomationConfig, error) {
