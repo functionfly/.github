@@ -183,6 +183,9 @@ type Server struct {
 
 	// Receipt milestone scheduler for daily sweep of missed milestones
 	receiptMilestoneScheduler *scheduler.ReceiptMilestoneScheduler
+
+	// Stripe meter usage scheduler for automated overage reporting to Stripe
+	stripeMeterUsageScheduler *scheduler.StripeMeterUsageScheduler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -990,6 +993,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.receiptMilestoneScheduler != nil {
 		s.receiptMilestoneScheduler.Stop()
 		logging.Logger().Info("Receipt milestone scheduler stopped")
+	}
+
+	// Stop Stripe meter usage scheduler
+	if s.stripeMeterUsageScheduler != nil {
+		s.stripeMeterUsageScheduler.Stop()
+		logging.Logger().Info("Stripe meter usage scheduler stopped")
 	}
 
 	// Shutdown the HTTP server gracefully

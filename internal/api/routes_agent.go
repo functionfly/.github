@@ -12,6 +12,7 @@ import (
 	conversationshandler "github.com/functionfly/functionfly/internal/api/handlers/conversations"
 	papercliphandler "github.com/functionfly/functionfly/internal/api/handlers/paperclip"
 	"github.com/functionfly/functionfly/internal/api/handlers/webhooks"
+	"github.com/functionfly/functionfly/internal/api/helpers"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/logging"
@@ -57,6 +58,7 @@ func registerPublicWebhookRoutes(
 	)
 	stripeWebhookHandler.SetDunningManager(s.dunningManager)
 	stripeWebhookHandler.SetOperationalRepository(billingOperationalRepo)
+	stripeWebhookHandler.SetPCIAuditHelper(helpers.NewPCIAuditHelper(s.postgresDB.PCIAuditRepository()))
 
 	// Wire up dispute response manager for automated chargeback handling
 	disputeResponseManager := billing.NewDisputeResponseManager(disputeRepo, s.notificationSvc)

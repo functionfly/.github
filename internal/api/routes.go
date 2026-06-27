@@ -59,6 +59,7 @@ import (
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
+	"github.com/functionfly/functionfly/internal/api/helpers"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	"github.com/functionfly/functionfly/internal/api/handlers/ghost"
 	githubhandler "github.com/functionfly/functionfly/internal/api/handlers/github"
@@ -162,6 +163,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	sfAddonRepo := statefabricaddons.NewRepository(s.postgresDB.GORM)
 	billingHandler := billinghandler.NewHandler(s.repo, platformFeeRepo, sfAddonRepo, s.redisClient)
 	billingHandler.SetWalletService(s.walletService)
+	billingHandler.SetPCIAuditHelper(helpers.NewPCIAuditHelper(s.postgresDB.PCIAuditRepository()))
 	tenantWebhookHandler := billinghandler.NewTenantWebhookHandler(s.repo)
 	appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
@@ -977,6 +979,19 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 			s.logger.Info("Receipt milestone scheduler started")
 		}
 		s.logger.Info("Execution receipt feature wired up")
+	}
+
+	// ── Stripe Meter Usage Scheduler ─────────────────────────────────────────
+	// Automated overage reporting to Stripe for metered billing
+	if stripeKey := os.Getenv("STRIPE_SECRET_KEY"); stripeKey != "" {
+		s.stripeMeterUsageScheduler = scheduler.NewStripeMeterUsageScheduler(s.repo, s.postgresDB)
+		if err := s.stripeMeterUsageScheduler.Start(s.Context()); err != nil {
+			s.logger.WithError(err).Error("Failed to start Stripe meter usage scheduler")
+		} else {
+			s.logger.Info("Stripe meter usage scheduler started")
+		}
+	} else {
+		s.logger.Debug("STRIPE_SECRET_KEY not set, skipping Stripe meter usage scheduler")
 	}
 
 	captchaService := captcha.NewCaptchaService(nil)
