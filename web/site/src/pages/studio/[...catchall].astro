@@ -1,0 +1,9 @@
+---
+import Studio from '../../components/Studio'
+import BaseLayout from '../../layouts/BaseLayout.astro'
+---
+<BaseLayout title="Content Studio — FunctionFly" description="Sanity CMS content studio">
+  <div id="sanity-studio" style="height: 100vh;">
+    <Studio client:only="react" />
+  </div>
+</BaseLayout>

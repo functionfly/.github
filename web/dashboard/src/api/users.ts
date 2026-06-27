@@ -84,6 +84,17 @@ export interface SessionItem {
   currentSession: boolean;
 }
 
+export interface LoginHistoryItem {
+  id: string;
+  eventType: string;
+  ip: string;
+  device: string;
+  location?: string;
+  loginMethod?: string;
+  mfaUsed: boolean;
+  createdAt: string;
+}
+
 // ============================================================================
 // User Analytics Types
 // ============================================================================
@@ -327,6 +338,22 @@ export const usersApi = {
    */
   revokeOtherSessions: () =>
     apiClient.post<{ message: string }>('/v1/users/me/sessions/revoke-others'),
+
+  /**
+   * List login history for the current user.
+   */
+  listLoginHistory: (params?: { limit?: number; offset?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set('limit', String(params.limit));
+    if (params?.offset) query.set('offset', String(params.offset));
+    const queryStr = query.toString();
+    return apiClient.get<{
+      history: LoginHistoryItem[];
+      total: number;
+      limit: number;
+      offset: number;
+    }>(`/v1/users/me/login-history${queryStr ? `?${queryStr}` : ''}`);
+  },
 
   /**
    * Delete current authenticated user account.

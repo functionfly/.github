@@ -1,9 +1,6 @@
-import React, {
-  useState,
-  type InputHTMLAttributes,
-  type ReactNode,
-} from "react";
+import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 import { cn } from "../lib/utils";
+import { Input } from "./sc";
 
 interface Props extends InputHTMLAttributes<HTMLInputElement> {
   label: ReactNode;
@@ -15,15 +12,15 @@ interface Props extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export default function InputField(props: Props) {
-  const { 
-    label, 
-    hint, 
-    error, 
-    type, 
-    id: customId, 
+  const {
+    label,
+    hint,
+    error,
+    type,
+    id: customId,
     className,
     name,
-    ...rest 
+    ...rest
   } = props;
   const [showPwd, setShowPwd] = useState(false);
   const isPassword = type === "password";
@@ -34,29 +31,32 @@ export default function InputField(props: Props) {
   const hintId = hint ? `${id}-hint` : undefined;
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
 
-  const autoCompleteValue = (rest as Record<string, unknown>).autoComplete as string || (rest as Record<string, unknown>).autocomplete as string;
-  const { autoComplete: _ac1, autocomplete: _ac2, ...restWithoutAutoComplete } = rest as Props & { autoComplete?: string; autocomplete?: string };
+  const autoCompleteValue =
+    ((rest as Record<string, unknown>).autoComplete as string) ||
+    ((rest as Record<string, unknown>).autocomplete as string);
+  const {
+    autoComplete: _ac1,
+    autocomplete: _ac2,
+    type: _type,
+    ...restWithoutAutoComplete
+  } = rest as Props & {
+    autoComplete?: string;
+    autocomplete?: string;
+    type?: string;
+  };
 
   return (
     <div className={cn("ff-field", className)}>
-      <label className="ff-field__label" htmlFor={id}>
-        {label}
-      </label>
-      <div className="ff-field__wrap">
-        <input
-          id={id}
-          name={name}
-          type={isPassword && showPwd ? "text" : type}
-          className={cn(
-            "ff-input",
-            isPassword && "ff-input--password",
-            error && "ff-input--error"
-          )}
-          aria-invalid={error ? "true" : "false"}
-          aria-describedby={describedBy}
-          autoComplete={autoCompleteValue}
-          {...restWithoutAutoComplete}
-        />
+      <Input
+        id={id}
+        name={name}
+        type={isPassword && showPwd ? "text" : type}
+        label={label}
+        error={error}
+        autoComplete={autoCompleteValue}
+        aria-describedby={describedBy}
+        {...restWithoutAutoComplete}
+      >
         {isPassword && (
           <button
             type="button"
@@ -64,6 +64,17 @@ export default function InputField(props: Props) {
             onClick={() => setShowPwd((v) => !v)}
             aria-label={showPwd ? "Hide password" : "Show password"}
             aria-pressed={showPwd}
+            style={{
+              position: "absolute",
+              right: "var(--space-3)",
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--text-faint)",
+              padding: "var(--space-1)",
+            }}
           >
             {showPwd ? (
               <svg
@@ -97,30 +108,7 @@ export default function InputField(props: Props) {
             )}
           </button>
         )}
-      </div>
-      {hint && !error && (
-        <p className="ff-field__hint" id={hintId}>
-          {hint}
-        </p>
-      )}
-      {error && (
-        <p className="ff-field__error" id={errorId} role="alert">
-          <svg 
-            width="14" 
-            height="14" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2"
-            className="inline"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          {error}
-        </p>
-      )}
+      </Input>
     </div>
   );
 }

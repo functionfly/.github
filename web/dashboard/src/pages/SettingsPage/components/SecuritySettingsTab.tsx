@@ -1,5 +1,6 @@
 import { authApi, type MFASetupResponse, type MFAStatusResponse } from '@/api/auth';
-import { usersApi, type SessionItem } from '@/api/users';
+import { usersApi, type SessionItem, type LoginHistoryItem } from '@/api/users';
+import { useLoginHistory } from '@/hooks';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,13 +15,21 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/stores/authStore';
 import { Icon } from '@iconify/react';
+import { differenceInMinutes } from 'date-fns';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -41,7 +50,6 @@ import {
   Trash2,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { differenceInMinutes } from 'date-fns';
 import { useEffect, useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -92,16 +100,26 @@ function getSessionDeviceIcon(deviceLabel: string, size: 'sm' | 'lg' = 'sm'): Re
   if (normalized.includes('linux')) {
     return <Server className={baseClass} />;
   }
-  if (normalized.includes('mobile') || normalized.includes('iphone') || normalized.includes('android') || normalized.includes('tablet') || normalized.includes('ipad')) {
+  if (
+    normalized.includes('mobile') ||
+    normalized.includes('iphone') ||
+    normalized.includes('android') ||
+    normalized.includes('tablet') ||
+    normalized.includes('ipad')
+  ) {
     return <Smartphone className={baseClass} />;
   }
   if (normalized.includes('tablet')) {
     return <Tablet className={baseClass} />;
   }
-  if (normalized.includes('chrome')) return <Icon icon="simple-icons:googlechrome" className={baseClass} />;
-  if (normalized.includes('firefox')) return <Icon icon="simple-icons:firefoxbrowser" className={baseClass} />;
-  if (normalized.includes('safari')) return <Icon icon="simple-icons:safari" className={baseClass} />;
-  if (normalized.includes('edge')) return <Icon icon="simple-icons:microsoftedge" className={baseClass} />;
+  if (normalized.includes('chrome'))
+    return <Icon icon="simple-icons:googlechrome" className={baseClass} />;
+  if (normalized.includes('firefox'))
+    return <Icon icon="simple-icons:firefoxbrowser" className={baseClass} />;
+  if (normalized.includes('safari'))
+    return <Icon icon="simple-icons:safari" className={baseClass} />;
+  if (normalized.includes('edge'))
+    return <Icon icon="simple-icons:microsoftedge" className={baseClass} />;
 
   return <Monitor className={`${baseClass} text-text-muted`} />;
 }
@@ -134,6 +152,8 @@ export function SecuritySettingsTab() {
   const [savingTimeout, setSavingTimeout] = useState(false);
   const [rememberDevices, setRememberDevices] = useState(true);
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [historyPage, setHistoryPage] = useState(0);
+  const historyPageSize = 20;
 
   const timeoutOptions = [
     { value: '1h', label: '1 hour', description: 'Sign out after 1 hour of inactivity' },
@@ -180,10 +200,14 @@ export function SecuritySettingsTab() {
     setRememberDevices(checked);
     try {
       await usersApi.updateMySecuritySettings({ rememberDevices: checked });
-      toast.success(t('securitySettings.toastRememberDevicesUpdated', 'Trusted device setting updated'));
+      toast.success(
+        t('securitySettings.toastRememberDevicesUpdated', 'Trusted device setting updated')
+      );
     } catch {
       setRememberDevices(!checked);
-      toast.error(t('securitySettings.toastRememberDevicesFailed', 'Failed to update trusted device setting'));
+      toast.error(
+        t('securitySettings.toastRememberDevicesFailed', 'Failed to update trusted device setting')
+      );
     }
   };
 
@@ -431,8 +455,13 @@ export function SecuritySettingsTab() {
             <p className="text-sm text-text-muted">{t('securitySettings.loadingSecurityStatus')}</p>
           ) : (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={status?.enabled ? 'default' : 'secondary'} className={status?.enabled ? 'ff-badge-primary' : ''}>
-                {status?.enabled ? t('securitySettings.mfaEnabledBadge') : t('securitySettings.mfaDisabledBadge')}
+              <Badge
+                variant={status?.enabled ? 'default' : 'secondary'}
+                className={status?.enabled ? 'ff-badge-primary' : ''}
+              >
+                {status?.enabled
+                  ? t('securitySettings.mfaEnabledBadge')
+                  : t('securitySettings.mfaDisabledBadge')}
               </Badge>
               {status?.required ? (
                 <Badge
@@ -443,7 +472,9 @@ export function SecuritySettingsTab() {
                 </Badge>
               ) : null}
               {typeof status?.backup_codes_remaining === 'number' ? (
-                <Badge variant="outline">{t('securitySettings.backupCodesCount', { count: status.backup_codes_remaining })}</Badge>
+                <Badge variant="outline">
+                  {t('securitySettings.backupCodesCount', { count: status.backup_codes_remaining })}
+                </Badge>
               ) : null}
             </div>
           )}
@@ -454,8 +485,18 @@ export function SecuritySettingsTab() {
                 {t('securitySettings.enableMfaDescription')}
               </p>
               {!setupData ? (
-                <Button onClick={handleStartSetup} disabled={working || loadingStatus} className="ff-btn-velocity">
-                  {working ? t('securitySettings.starting') : t('securitySettings.setUpAuthenticatorApp')}
+                <Button
+                  onClick={handleStartSetup}
+                  disabled={working || loadingStatus}
+                  style={{
+                    background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                    color: 'var(--text-on-light)',
+                    boxShadow: 'var(--shadow-btn-primary-rest)',
+                  }}
+                >
+                  {working
+                    ? t('securitySettings.starting')
+                    : t('securitySettings.setUpAuthenticatorApp')}
                 </Button>
               ) : (
                 <div className="space-y-4">
@@ -503,7 +544,9 @@ export function SecuritySettingsTab() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="mfa-verify-code">{t('securitySettings.verificationCode')}</Label>
+                    <Label htmlFor="mfa-verify-code">
+                      {t('securitySettings.verificationCode')}
+                    </Label>
                     <Input
                       id="mfa-verify-code"
                       placeholder="123456"
@@ -515,7 +558,15 @@ export function SecuritySettingsTab() {
                     />
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={handleEnableMFA} disabled={working} className="ff-btn-velocity">
+                    <Button
+                      onClick={handleEnableMFA}
+                      disabled={working}
+                      style={{
+                        background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                        color: 'var(--text-on-light)',
+                        boxShadow: 'var(--shadow-btn-primary-rest)',
+                      }}
+                    >
                       {working ? t('securitySettings.enabling') : t('securitySettings.enableMfa')}
                     </Button>
                     <Button
@@ -525,6 +576,7 @@ export function SecuritySettingsTab() {
                         setVerificationCode('');
                       }}
                       disabled={working}
+                      style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
                     >
                       {t('securitySettings.cancel')}
                     </Button>
@@ -592,6 +644,7 @@ export function SecuritySettingsTab() {
                 variant="outline"
                 size="sm"
                 onClick={() => void handleDownloadRecoveryCodes()}
+                style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
               >
                 {t('securitySettings.downloadCodes')}
               </Button>
@@ -615,16 +668,22 @@ export function SecuritySettingsTab() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Monitor className="h-5 w-5 text-brand-500" />
-              <CardTitle className="font-display">{t('securitySettings.sessionsDevicesTitle', 'Sessions & Devices')}</CardTitle>
+              <CardTitle className="font-display">
+                {t('securitySettings.sessionsDevicesTitle', 'Sessions & Devices')}
+              </CardTitle>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-text-muted">
-                {displaySessions.filter(s => !s.currentSession).length} {t('securitySettings.otherDevices', 'other devices')}
+                {displaySessions.filter((s) => !s.currentSession).length}{' '}
+                {t('securitySettings.otherDevices', 'other devices')}
               </span>
             </div>
           </div>
           <CardDescription className="text-text-secondary">
-            {t('securitySettings.sessionsDevicesDescription', 'Manage active sessions across all your devices. Revoke any session you don\'t recognize.')}
+            {t(
+              'securitySettings.sessionsDevicesDescription',
+              "Manage active sessions across all your devices. Revoke any session you don't recognize."
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -637,7 +696,7 @@ export function SecuritySettingsTab() {
                 <Server className="h-3.5 w-3.5" />
                 {t('securitySettings.tabActive', 'Active')}
                 <Badge variant="secondary" className="ml-1 text-xs px-1.5 py-0.5">
-                  {displaySessions.filter(s => !s.currentSession).length + 1}
+                  {displaySessions.filter((s) => !s.currentSession).length + 1}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger
@@ -663,13 +722,21 @@ export function SecuritySettingsTab() {
                     <Monitor className="h-5 w-5 text-brand-500" />
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-text-primary">{t('securitySettings.currentSessionLabel', 'Current Session')}</p>
+                    <p className="text-sm font-medium text-text-primary">
+                      {t('securitySettings.currentSessionLabel', 'Current Session')}
+                    </p>
                     <p className="text-xs text-text-muted">
-                      {t('securitySettings.thisDeviceNote', 'This is your current device and cannot be revoked')}
+                      {t(
+                        'securitySettings.thisDeviceNote',
+                        'This is your current device and cannot be revoked'
+                      )}
                     </p>
                   </div>
                 </div>
-                <Badge variant="outline" className="ff-status-active border-green-500/40 text-green-600 dark:text-green-400">
+                <Badge
+                  variant="outline"
+                  className="ff-status-active border-green-500/40 text-green-600 dark:text-green-400"
+                >
                   <span className="flex items-center gap-1">
                     <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                     {t('securitySettings.activeBadge', 'Active')}
@@ -677,7 +744,7 @@ export function SecuritySettingsTab() {
                 </Badge>
               </div>
 
-              {displaySessions.filter(s => !s.currentSession).length > 0 ? (
+              {displaySessions.filter((s) => !s.currentSession).length > 0 ? (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
                     <span className="text-xs font-medium text-text-muted uppercase tracking-wide">
@@ -688,68 +755,88 @@ export function SecuritySettingsTab() {
                       size="sm"
                       onClick={handleRevokeOthers}
                       disabled={revokingOthers || loadingSessions}
-                      className="text-xs text-destructive hover:text-destructive h-7 px-2"
+                      style={{ color: 'var(--status-revoked)' }}
+                      className="text-xs h-7 px-2"
                     >
                       <LogOut className="h-3 w-3 mr-1" />
-                      {revokingOthers ? t('securitySettings.signingOut') : t('securitySettings.signOutAllOther', 'Sign out all')}
+                      {revokingOthers
+                        ? t('securitySettings.signingOut')
+                        : t('securitySettings.signOutAllOther', 'Sign out all')}
                     </Button>
                   </div>
-                  {displaySessions.filter(s => !s.currentSession).map((session) => (
-                    <div
-                      key={session.id}
-                      className="group flex items-center justify-between rounded-lg border border-border-default bg-bg-secondary p-3 hover:border-brand-500/30 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-bg-tertiary shrink-0">
-                          {getSessionDeviceIcon(session.device, 'lg')}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium text-text-primary truncate">{session.device}</p>
-                            {differenceInMinutes(new Date(), new Date(session.lastActive)) < 60 && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400">
-                                {t('securitySettings.recentBadge', 'Recent')}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
-                            <span className="font-mono">{session.ip}</span>
-                            {session.location && (
-                              <>
-                                <span>·</span>
-                                <span>{session.location}</span>
-                              </>
-                            )}
-                          </div>
-                          <p className="text-xs text-text-muted/70 mt-0.5">
-                            {t('securitySettings.lastActiveAt', 'Last active')} {session.lastActive}
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRevokeSession(session.id)}
-                        disabled={revokingSessionId === session.id}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-8"
+                  {displaySessions
+                    .filter((s) => !s.currentSession)
+                    .map((session) => (
+                      <div
+                        key={session.id}
+                        className="group flex items-center justify-between rounded-lg border border-border-default bg-bg-secondary p-3 hover:border-brand-500/30 transition-colors"
                       >
-                        {revokingSessionId === session.id ? (
-                          t('securitySettings.revoking')
-                        ) : (
-                          <>
-                            <LogOut className="h-3 w-3 mr-1" />
-                            {t('securitySettings.signOut', 'Sign out')}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-bg-tertiary shrink-0">
+                            {getSessionDeviceIcon(session.device, 'lg')}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-text-primary truncate">
+                                {session.device}
+                              </p>
+                              {differenceInMinutes(new Date(), new Date(session.lastActive)) <
+                                60 && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400"
+                                >
+                                  {t('securitySettings.recentBadge', 'Recent')}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
+                              <span className="font-mono">{session.ip}</span>
+                              {session.location && (
+                                <>
+                                  <span>·</span>
+                                  <span>{session.location}</span>
+                                </>
+                              )}
+                            </div>
+                            <p className="text-xs text-text-muted/70 mt-0.5">
+                              {t('securitySettings.lastActiveAt', 'Last active')}{' '}
+                              {session.lastActive}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRevokeSession(session.id)}
+                          disabled={revokingSessionId === session.id}
+                          style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+                          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-8"
+                        >
+                          {revokingSessionId === session.id ? (
+                            t('securitySettings.revoking')
+                          ) : (
+                            <>
+                              <LogOut className="h-3 w-3 mr-1" />
+                              {t('securitySettings.signOut', 'Sign out')}
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border-default bg-bg-secondary/30 py-8 px-4 text-center">
                   <Server className="h-8 w-8 text-text-muted mb-2" />
-                  <p className="text-sm text-text-muted">{t('securitySettings.noOtherSessions', 'No other active sessions')}</p>
-                  <p className="text-xs text-text-muted/70 mt-1">{t('securitySettings.allDevicesListedNote', 'All your devices will appear here when you sign in')}</p>
+                  <p className="text-sm text-text-muted">
+                    {t('securitySettings.noOtherSessions', 'No other active sessions')}
+                  </p>
+                  <p className="text-xs text-text-muted/70 mt-1">
+                    {t(
+                      'securitySettings.allDevicesListedNote',
+                      'All your devices will appear here when you sign in'
+                    )}
+                  </p>
                 </div>
               )}
             </TabsContent>
@@ -761,43 +848,64 @@ export function SecuritySettingsTab() {
                     <Globe className="h-5 w-5 text-blue-500" />
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-text-primary">{t('securitySettings.signInHistoryTitle', 'Sign-in History')}</p>
+                    <p className="text-sm font-medium text-text-primary">
+                      {t('securitySettings.signInHistoryTitle', 'Sign-in History')}
+                    </p>
                     <p className="text-xs text-text-muted">
-                      {t('securitySettings.signInHistoryDescription', 'View your historical login activity across all devices')}
+                      {t(
+                        'securitySettings.signInHistoryDescription',
+                        'View your historical login activity across all devices'
+                      )}
                     </p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                  style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+                >
                   <Download className="h-3 w-3 mr-1" />
                   {t('securitySettings.downloadHistory', 'Download')}
                 </Button>
               </div>
-              <div className="rounded-lg border border-border-default bg-bg-secondary/30 p-6 text-center">
-                <ListFilter className="h-8 w-8 text-text-muted mx-auto mb-2" />
-                <p className="text-sm text-text-muted">{t('securitySettings.historyComingSoon', 'Full sign-in history coming soon')}</p>
-                <p className="text-xs text-text-muted/70 mt-1">{t('securitySettings.historyNote', 'We track device, IP, location, and timestamp for each sign-in')}</p>
-              </div>
+              <SignInHistoryPanel />
             </TabsContent>
 
             <TabsContent value="settings" className="mt-4 space-y-4">
               <div className="rounded-lg border border-border-default bg-bg-secondary/50 p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-text-primary">{t('securitySettings.rememberDevicesTitle', 'Remember trusted devices')}</p>
+                    <p className="text-sm font-medium text-text-primary">
+                      {t('securitySettings.rememberDevicesTitle', 'Remember trusted devices')}
+                    </p>
                     <p className="text-xs text-text-muted">
-                      {t('securitySettings.rememberDevicesDescription', 'Allow sessions on recognized devices for 30 days')}
+                      {t(
+                        'securitySettings.rememberDevicesDescription',
+                        'Allow sessions on recognized devices for 30 days'
+                      )}
                     </p>
                   </div>
                   <Switch checked={rememberDevices} onCheckedChange={handleRememberDevicesChange} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <p className="text-sm font-medium text-text-primary">{t('securitySettings.sessionTimeoutTitle', 'Session timeout')}</p>
+                    <p className="text-sm font-medium text-text-primary">
+                      {t('securitySettings.sessionTimeoutTitle', 'Session timeout')}
+                    </p>
                     <p className="text-xs text-text-muted">
-                      {t('securitySettings.sessionTimeoutDescription', 'Automatically sign out after period of inactivity')}
+                      {t(
+                        'securitySettings.sessionTimeoutDescription',
+                        'Automatically sign out after period of inactivity'
+                      )}
                     </p>
                   </div>
-                  <Button variant="outline" size="sm" className="text-xs" onClick={() => setTimeoutModalOpen(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setTimeoutModalOpen(true)}
+                  >
                     {t('securitySettings.configureTimeout', 'Configure')}
                   </Button>
                 </div>
@@ -812,7 +920,10 @@ export function SecuritySettingsTab() {
                       {t('securitySettings.suspiciousActivityTitle', 'Suspicious activity?')}
                     </p>
                     <p className="text-xs text-text-muted leading-relaxed">
-                      {t('securitySettings.suspiciousActivityDescription', 'If you see unrecognized sessions, revoke them immediately and change your password')}
+                      {t(
+                        'securitySettings.suspiciousActivityDescription',
+                        'If you see unrecognized sessions, revoke them immediately and change your password'
+                      )}
                     </p>
                   </div>
                 </div>
@@ -845,11 +956,19 @@ export function SecuritySettingsTab() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-text-secondary">
-            {t('securitySettings.dataExportBody')}
-          </p>
-          <Button onClick={handleExportData} disabled={exportingData} className="ff-btn-velocity">
-            {exportingData ? t('securitySettings.preparingExport') : t('securitySettings.exportMyData')}
+          <p className="text-sm text-text-secondary">{t('securitySettings.dataExportBody')}</p>
+          <Button
+            onClick={handleExportData}
+            disabled={exportingData}
+            style={{
+              background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+              color: 'var(--text-on-light)',
+              boxShadow: 'var(--shadow-btn-primary-rest)',
+            }}
+          >
+            {exportingData
+              ? t('securitySettings.preparingExport')
+              : t('securitySettings.exportMyData')}
           </Button>
         </CardContent>
       </Card>
@@ -870,7 +989,13 @@ export function SecuritySettingsTab() {
           </p>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">
+              <Button
+                variant="destructive"
+                style={{
+                  background: 'var(--status-revoked)',
+                  borderColor: 'var(--status-revoked)',
+                }}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 {t('securitySettings.deleteAccount')}
               </Button>
@@ -894,18 +1019,26 @@ export function SecuritySettingsTab() {
                 />
               </div>
               <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setDeleteConfirmation('')}>
+                <AlertDialogCancel
+                  onClick={() => setDeleteConfirmation('')}
+                  style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+                >
                   {t('securitySettings.cancel')}
                 </AlertDialogCancel>
                 <AlertDialogAction
-                  className="bg-red-600 hover:bg-red-700"
+                  style={{
+                    background: 'var(--status-revoked)',
+                    borderColor: 'var(--status-revoked)',
+                  }}
                   onClick={(e) => {
                     e.preventDefault();
                     void handleDeleteAccount();
                   }}
                   disabled={deletingAccount || deleteConfirmation !== 'DELETE'}
                 >
-                  {deletingAccount ? t('securitySettings.deleting') : t('securitySettings.permanentlyDelete')}
+                  {deletingAccount
+                    ? t('securitySettings.deleting')
+                    : t('securitySettings.permanentlyDelete')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -919,72 +1052,265 @@ export function SecuritySettingsTab() {
                     <Clock className="h-5 w-5 text-brand-500" />
                   </div>
                   <div>
-                    <DialogTitle>{t('securitySettings.sessionTimeoutTitle', 'Session Timeout')}</DialogTitle>
+                    <DialogTitle>
+                      {t('securitySettings.sessionTimeoutTitle', 'Session Timeout')}
+                    </DialogTitle>
                     <DialogDescription className="text-xs mt-0.5">
-                      {t('securitySettings.sessionTimeoutModalDescription', 'Choose how long before your session expires due to inactivity')}
+                      {t(
+                        'securitySettings.sessionTimeoutModalDescription',
+                        'Choose how long before your session expires due to inactivity'
+                      )}
                     </DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); void handleSaveTimeout(); }}>
-              <div className="space-y-2">
-                {timeoutOptions.map((option) => (
-                  <button
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handleSaveTimeout();
+                }}
+              >
+                <div className="space-y-2">
+                  {timeoutOptions.map((option) => (
+                    <button
+                      type="button"
+                      key={option.value}
+                      onClick={() => setSelectedTimeout(option.value)}
+                      className={`w-full flex items-start gap-3 rounded-lg border p-3 text-left transition-all ${
+                        selectedTimeout === option.value
+                          ? 'border-brand-500/50 bg-brand-500/5 ring-1 ring-brand-500/30'
+                          : 'border-border-default bg-bg-secondary hover:border-brand-500/30'
+                      }`}
+                    >
+                      <div
+                        className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${
+                          selectedTimeout === option.value
+                            ? 'border-brand-500 bg-brand-500'
+                            : 'border-border-default'
+                        }`}
+                      >
+                        {selectedTimeout === option.value && (
+                          <div className="flex items-center justify-center">
+                            <CheckCircle2 className="h-2.5 w-2.5 text-white" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-0.5 min-w-0">
+                        <p className="text-sm font-medium text-text-primary">{option.label}</p>
+                        <p className="text-xs text-text-muted">{option.description}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                  <Button
                     type="button"
-                    key={option.value}
-                    onClick={() => setSelectedTimeout(option.value)}
-                    className={`w-full flex items-start gap-3 rounded-lg border p-3 text-left transition-all ${
-                      selectedTimeout === option.value
-                        ? 'border-brand-500/50 bg-brand-500/5 ring-1 ring-brand-500/30'
-                        : 'border-border-default bg-bg-secondary hover:border-brand-500/30'
-                    }`}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTimeoutModalOpen(false)}
+                    className="text-xs"
                   >
-                    <div className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${
-                      selectedTimeout === option.value
-                        ? 'border-brand-500 bg-brand-500'
-                        : 'border-border-default'
-                    }`}>
-                      {selectedTimeout === option.value && (
-                        <div className="flex items-center justify-center">
-                          <CheckCircle2 className="h-2.5 w-2.5 text-white" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-0.5 min-w-0">
-                      <p className="text-sm font-medium text-text-primary">{option.label}</p>
-                      <p className="text-xs text-text-muted">{option.description}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                <Button type="button" variant="outline" size="sm" onClick={() => setTimeoutModalOpen(false)} className="text-xs">
-                  {t('securitySettings.cancel', 'Cancel')}
-                </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={savingTimeout}
-                  className="ff-btn-velocity text-xs gap-1.5"
-                >
-                  {savingTimeout ? (
-                    <>
-                      <RefreshCw className="h-3 w-3 animate-spin" />
-                      {t('securitySettings.saving', 'Saving...')}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-3 w-3" />
-                      {t('securitySettings.saveTimeout', 'Save')}
-                    </>
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
+                    {t('securitySettings.cancel', 'Cancel')}
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={savingTimeout}
+                    className="ff-btn-velocity text-xs gap-1.5"
+                  >
+                    {savingTimeout ? (
+                      <>
+                        <RefreshCw className="h-3 w-3 animate-spin" />
+                        {t('securitySettings.saving', 'Saving...')}
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-3 w-3" />
+                        {t('securitySettings.saveTimeout', 'Save')}
+                      </>
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
             </DialogContent>
           </Dialog>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function SignInHistoryPanel() {
+  const { t } = useTranslation();
+  const { data, isLoading, error, refetch } = useLoginHistory({ limit: 100 });
+  const [page, setPage] = useState(0);
+  const pageSize = 20;
+
+  const history = data?.history ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / pageSize);
+
+  const getEventTypeLabel = (eventType: string) => {
+    switch (eventType) {
+      case 'login':
+        return 'Sign In';
+      case 'logout':
+        return 'Sign Out';
+      case 'logout_other':
+        return 'Sign Out Other';
+      case 'session_expired':
+        return 'Session Expired';
+      case 'revoked':
+        return 'Revoked';
+      default:
+        return eventType;
+    }
+  };
+
+  const getEventTypeColor = (eventType: string) => {
+    switch (eventType) {
+      case 'login':
+        return 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30';
+      case 'logout':
+        return 'text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-800';
+      case 'logout_other':
+        return 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30';
+      case 'session_expired':
+        return 'text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/30';
+      case 'revoked':
+        return 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/30';
+      default:
+        return 'text-gray-600 bg-gray-100 dark:text-gray-400 dark:bg-gray-800';
+    }
+  };
+
+  const getLoginMethodIcon = (method?: string) => {
+    if (!method) return <Globe className="h-4 w-4" />;
+    const m = method.toLowerCase();
+    if (m.includes('google')) return <span className="text-xs font-bold">G</span>;
+    if (m.includes('github')) return <span className="text-xs font-bold">Gh</span>;
+    if (m.includes('password')) return <KeyRound className="h-4 w-4" />;
+    if (m.includes('webauthn') || m.includes('passkey')) return <ShieldCheck className="h-4 w-4" />;
+    return <Globe className="h-4 w-4" />;
+  };
+
+  const paginatedHistory = history.slice(page * pageSize, (page + 1) * pageSize);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <RefreshCw className="h-5 w-5 animate-spin text-text-muted" />
+        <span className="ml-2 text-sm text-text-muted">Loading sign-in history...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-sm text-red-500 mb-3">Failed to load sign-in history</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <RefreshCw className="h-3 w-3 mr-1" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  if (history.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <Clock className="h-8 w-8 text-text-muted mx-auto mb-2" />
+        <p className="text-sm text-text-muted">No sign-in history found</p>
+        <p className="text-xs text-text-muted/70 mt-1">
+          {t('securitySettings.historyNote', 'We track device, IP, location, and timestamp for each sign-in')}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        {paginatedHistory.map((item: LoginHistoryItem) => (
+          <div
+            key={item.id}
+            className="flex items-start gap-3 p-3 rounded-lg border border-border-default bg-bg-secondary hover:border-brand-500/30 transition-colors"
+          >
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-bg-tertiary shrink-0">
+              {getLoginMethodIcon(item.loginMethod)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-text-primary">{item.device}</span>
+                <span
+                  className={`px-1.5 py-0.5 text-[10px] font-medium rounded-full ${getEventTypeColor(
+                    item.eventType
+                  )}`}
+                >
+                  {getEventTypeLabel(item.eventType)}
+                </span>
+                {item.mfaUsed && (
+                  <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    MFA
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5 flex-wrap">
+                <span className="font-mono">{item.ip}</span>
+                {item.location && (
+                  <>
+                    <span>·</span>
+                    <span>{item.location}</span>
+                  </>
+                )}
+                {item.loginMethod && (
+                  <>
+                    <span>·</span>
+                    <span className="capitalize">{item.loginMethod}</span>
+                  </>
+                )}
+                <span>·</span>
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {item.createdAt}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-3 border-t border-border-default">
+          <p className="text-xs text-text-muted">
+            {page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} of {total}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="h-7 px-2 text-xs"
+            >
+              Prev
+            </Button>
+            <span className="text-xs text-text-muted">
+              {page + 1}/{totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="h-7 px-2 text-xs"
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

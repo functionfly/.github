@@ -62,6 +62,19 @@ func (db *PostgresDB) DeleteSessionByIDOnly(ctx context.Context, sessionID uuid.
 	return db.sessionRepository.DeleteSessionByIDOnly(ctx, sessionID, userID)
 }
 
+// Login history operations
+func (db *PostgresDB) CreateLoginHistory(ctx context.Context, userID uuid.UUID, eventType, ipAddress, userAgent, device, loginMethod string, mfaUsed bool, sessionID *uuid.UUID) (*LoginHistory, error) {
+	return db.sessionRepository.CreateLoginHistory(ctx, userID, eventType, ipAddress, userAgent, device, loginMethod, mfaUsed, sessionID)
+}
+
+func (db *PostgresDB) ListUserLoginHistory(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*LoginHistory, error) {
+	return db.sessionRepository.ListUserLoginHistory(ctx, userID, limit, offset)
+}
+
+func (db *PostgresDB) CountUserLoginHistory(ctx context.Context, userID uuid.UUID) (int, error) {
+	return db.sessionRepository.CountUserLoginHistory(ctx, userID)
+}
+
 // Refresh token operations
 func (db *PostgresDB) CreateRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, ipAddress, userAgent string, expiresAt time.Time) (*RefreshToken, error) {
 	return db.refreshTokenRepository.CreateRefreshToken(ctx, userID, tokenHash, ipAddress, userAgent, expiresAt)

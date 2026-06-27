@@ -5,7 +5,7 @@
  * Design direction: containment glass, security foil, instrumentation
  */
 
-@import "./sc-tokens.css";
+@import './sc-tokens.css';
 
 /* ═══════════════════════════════════════════════
    Footer Container
@@ -218,6 +218,29 @@
 
 [data-theme='light'] .sc-footer-divider {
   background: #e2e8f0;
+}
+
+/* ═══════════════════════════════════════════════
+   Theme-Adaptive Navigation Links
+   White in dark mode, black in light mode
+   ═══════════════════════════════════════════════ */
+
+.sc-footer-nav-link {
+  color: #ffffff !important;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.sc-footer-nav-link:hover {
+  color: var(--status-ok) !important;
+}
+
+[data-theme='light'] .sc-footer-nav-link {
+  color: #0a0a0a !important;
+}
+
+[data-theme='light'] .sc-footer-nav-link:hover {
+  color: var(--accent) !important;
 }
 
 [data-theme='light'] .sc-footer-social {

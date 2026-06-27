@@ -822,15 +822,7 @@ var (
 			Help: "Configured retention age in days for each table",
 		},
 		[]string{"table_name"},
-	)
-
-	executionLogTableRecords = promauto.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "functionfly_execution_log_table_records",
-			Help: "Number of records in execution log tables (from stats queries)",
-		},
-		[]string{"table_name", "age_range"}, // age_range: total, older_than_30d, older_than_90d, older_than_365d
-	)
+)
 
 	// Team Memory metrics (memory extraction and agent context)
 	teamMemoryExtractionsTotal = promauto.NewCounterVec(
@@ -915,6 +907,79 @@ var (
 			Help: "Total number of team memory context cache misses",
 		},
 		[]string{"team_id"},
+	)
+
+	executionLogTableRecords = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_execution_log_table_records",
+			Help: "Number of records in execution log tables (from stats queries)",
+		},
+		[]string{"table_name", "age_range"},
+	)
+
+	dataRetentionCleanupRecordsDeleted = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_data_retention_cleanup_records_deleted_total",
+			Help: "Total number of cost allocation records deleted by data retention policy",
+		},
+		[]string{"policy_type"},
+	)
+
+	dataRetentionCleanupDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "functionfly_data_retention_cleanup_duration_seconds",
+			Help:    "Duration of data retention cleanup operations",
+			Buckets: []float64{10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0},
+		},
+		[]string{"result"},
+	)
+
+	dataRetentionCleanupErrors = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_data_retention_cleanup_errors_total",
+			Help: "Total number of data retention cleanup errors",
+		},
+		[]string{"operation", "error_type"},
+	)
+
+	dataRetentionLockStatus = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_data_retention_lock_status",
+			Help: "Status of the data retention distributed lock (1=locked, 0=unlocked)",
+		},
+		[]string{"lock_holder"},
+	)
+
+	dataRetentionLegalHoldsBlocked = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_data_retention_legal_holds_blocked_total",
+			Help: "Number of times data retention was blocked by active legal holds",
+		},
+		[]string{},
+	)
+
+	dataRetentionAuditLogEntries = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "functionfly_data_retention_audit_log_entries_total",
+			Help: "Total number of audit log entries created by data retention operations",
+		},
+		[]string{"policy_type"},
+	)
+
+	costAllocationRetentionEligible = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_cost_allocation_retention_eligible_records",
+			Help: "Number of cost allocation records eligible for retention deletion",
+		},
+		[]string{"retention_tier"},
+	)
+
+	costAllocationRetentionValueCents = promauto.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "functionfly_cost_allocation_retention_value_cents",
+			Help: "Financial value in cents of cost allocation records eligible for deletion",
+		},
+		[]string{"retention_tier"},
 	)
 )
 
@@ -1474,6 +1539,52 @@ func UpdateExecutionLogRetentionAge(tableName string, days int) {
 // UpdateExecutionLogTableRecords updates the record count metrics for a table
 func UpdateExecutionLogTableRecords(tableName, ageRange string, count int64) {
 	executionLogTableRecords.WithLabelValues(tableName, ageRange).Set(float64(count))
+}
+
+// Data retention (cost allocation) metrics recording functions
+
+// RecordDataRetentionCleanupDeleted records the number of records deleted during data retention cleanup
+func RecordDataRetentionCleanupDeleted(policyType string, count int64) {
+	dataRetentionCleanupRecordsDeleted.WithLabelValues(policyType).Add(float64(count))
+}
+
+// RecordDataRetentionCleanupDuration records the duration of data retention cleanup operations
+func RecordDataRetentionCleanupDuration(result string, duration time.Duration) {
+	dataRetentionCleanupDuration.WithLabelValues(result).Observe(duration.Seconds())
+}
+
+// RecordDataRetentionCleanupError records errors during data retention cleanup
+func RecordDataRetentionCleanupError(operation, errorType string) {
+	dataRetentionCleanupErrors.WithLabelValues(operation, errorType).Inc()
+}
+
+// UpdateDataRetentionLockStatus updates the distributed lock status metric
+func UpdateDataRetentionLockStatus(lockHolder string, locked bool) {
+	value := 0.0
+	if locked {
+		value = 1.0
+	}
+	dataRetentionLockStatus.WithLabelValues(lockHolder).Set(value)
+}
+
+// RecordDataRetentionLegalHoldsBlocked increments the counter when legal holds block cleanup
+func RecordDataRetentionLegalHoldsBlocked() {
+	dataRetentionLegalHoldsBlocked.WithLabelValues().Inc()
+}
+
+// RecordDataRetentionAuditLogEntry records an audit log entry creation
+func RecordDataRetentionAuditLogEntry(policyType string) {
+	dataRetentionAuditLogEntries.WithLabelValues(policyType).Inc()
+}
+
+// UpdateCostAllocationRetentionEligible updates the count of records eligible for retention
+func UpdateCostAllocationRetentionEligible(retentionTier string, count int64) {
+	costAllocationRetentionEligible.WithLabelValues(retentionTier).Set(float64(count))
+}
+
+// UpdateCostAllocationRetentionValue updates the financial value of records eligible for deletion
+func UpdateCostAllocationRetentionValue(retentionTier string, valueCents int64) {
+	costAllocationRetentionValueCents.WithLabelValues(retentionTier).Set(float64(valueCents))
 }
 
 // Team Memory metrics recording functions

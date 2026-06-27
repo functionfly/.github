@@ -52,6 +52,23 @@ func (r *TenantRepository) GetTenantByID(ctx context.Context, tenantID uuid.UUID
 	return tenant, nil
 }
 
+// GetTenantPlan retrieves just the plan for a tenant
+func (r *TenantRepository) GetTenantPlan(ctx context.Context, tenantID uuid.UUID) (string, error) {
+	var plan sql.NullString
+	err := r.db.QueryRowContext(ctx, `
+		SELECT plan FROM tenants WHERE id = $1`, tenantID).Scan(&plan)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to get tenant plan: %w", err)
+	}
+	if plan.Valid {
+		return plan.String, nil
+	}
+	return "", nil
+}
+
 // GetTenantByStripeCustomerID retrieves a tenant by Stripe customer ID
 func (r *TenantRepository) GetTenantByStripeCustomerID(ctx context.Context, stripeCustomerID string) (*Tenant, error) {
 	if stripeCustomerID == "" {

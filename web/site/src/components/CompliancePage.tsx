@@ -57,32 +57,34 @@ const CompliancePage: React.FC = () => {
           <Chamber variant="ribs">
             <CornerBrace position="tl" />
             <CornerBrace position="br" />
-            <div style={{
-              fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em',
-              textTransform: 'uppercase', color: 'var(--status-ok)',
-              marginBottom: 'var(--space-5)',
-              display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
-            }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-ok)', boxShadow: '0 0 12px var(--status-ok)' }} />
-              Security & Compliance
-            </div>
-            <h1 style={{
-              fontFamily: 'var(--font-display)', fontSize: '58px', fontWeight: 700,
-              letterSpacing: '-0.01em', lineHeight: 1.08, color: 'var(--text)',
-              marginBottom: 'var(--space-5)',
-            }}>
-              Enterprise-grade security<br />and compliance
-            </h1>
-            <p style={{ fontSize: 17, lineHeight: 1.6, color: 'var(--text-dim)', maxWidth: 720, marginBottom: 'var(--space-6)' }}>
-              FunctionFly is built with security-first principles. Our platform meets the most demanding compliance requirements for enterprise deployments.
-            </p>
-            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
-              <SealedButton onClick={() => window.location.href = '/contact'}>
-                Contact sales
-              </SealedButton>
-              <FrameButton onClick={() => window.location.href = '/trust'}>
-                Trust center
-              </FrameButton>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em',
+                textTransform: 'uppercase', color: 'var(--status-ok)',
+                marginBottom: 'var(--space-5)',
+                display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
+              }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-ok)', boxShadow: '0 0 12px var(--status-ok)' }} />
+                Security & Compliance
+              </div>
+              <h1 style={{
+                fontFamily: 'var(--font-display)', fontSize: '58px', fontWeight: 700,
+                letterSpacing: '-0.01em', lineHeight: 1.08, color: 'var(--text)',
+                marginBottom: 'var(--space-5)',
+              }}>
+                Enterprise-grade security<br />and compliance
+              </h1>
+              <p style={{ fontSize: 17, lineHeight: 1.6, color: 'var(--text-dim)', maxWidth: 720, margin: '0 auto var(--space-6)' }}>
+                FunctionFly is built with security-first principles. Our platform meets the most demanding compliance requirements for enterprise deployments.
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <SealedButton onClick={() => window.location.href = '/contact'}>
+                  Contact sales
+                </SealedButton>
+                <FrameButton onClick={() => window.location.href = '/trust'}>
+                  Trust center
+                </FrameButton>
+              </div>
             </div>
           </Chamber>
         </Container>

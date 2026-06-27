@@ -1,10 +1,5 @@
-import { useState } from "react";
-import { Key, Trash2, CheckCircle2, XCircle, RefreshCw, Copy } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { deployKeysApi, type DeployKey } from '@/api/deploy-keys';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,19 +7,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
-import { deployKeysApi, type DeployKey } from "@/api/deploy-keys";
-import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { formatDate, getApiErrorMessage } from "../settings-utils";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, Key, RefreshCw, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { formatDate, getApiErrorMessage } from '../settings-utils';
 
 export function DeployKeysSettingsSection() {
   const { t } = useTranslation();
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [createPublicKey, setCreatePublicKey] = useState("");
+  const [createName, setCreateName] = useState('');
+  const [createPublicKey, setCreatePublicKey] = useState('');
   const [creating, setCreating] = useState(false);
 
   const [verifyKeyId, setVerifyKeyId] = useState<string | null>(null);
@@ -32,11 +30,11 @@ export function DeployKeysSettingsSection() {
   const [verificationSuccess, setVerificationSuccess] = useState(false);
 
   const [deleteKeyId, setDeleteKeyId] = useState<string | null>(null);
-  const [deleteKeyName, setDeleteKeyName] = useState("");
+  const [deleteKeyName, setDeleteKeyName] = useState('');
   const [deleting, setDeleting] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["deploy-keys"],
+    queryKey: ['deploy-keys'],
     queryFn: async () => {
       try {
         return await deployKeysApi.list();
@@ -53,8 +51,8 @@ export function DeployKeysSettingsSection() {
   const deployKeys: DeployKey[] = data?.deploy_keys ?? [];
 
   const handleOpenCreateModal = () => {
-    setCreateName("");
-    setCreatePublicKey("");
+    setCreateName('');
+    setCreatePublicKey('');
     setCreateModalOpen(true);
   };
 
@@ -86,7 +84,8 @@ export function DeployKeysSettingsSection() {
     setVerifyKeyId(key.id);
     setVerifying(true);
     setVerificationSuccess(false);
-    deployKeysApi.verify(key.id)
+    deployKeysApi
+      .verify(key.id)
       .then(() => {
         setVerificationSuccess(true);
         toast.success(t('deployKeysSettings.verificationSuccess'));
@@ -116,7 +115,7 @@ export function DeployKeysSettingsSection() {
       await deployKeysApi.delete(deleteKeyId);
       refetch();
       setDeleteKeyId(null);
-      setDeleteKeyName("");
+      setDeleteKeyName('');
       toast.success(t('deployKeysSettings.toastDeleted'));
     } catch (err: unknown) {
       const msg = getApiErrorMessage(err, { default: t('deployKeysSettings.errorFailedToDelete') });
@@ -128,86 +127,127 @@ export function DeployKeysSettingsSection() {
 
   return (
     <>
-      <Card className="settings-panel">
-        <CardHeader>
-          <CardTitle className="font-display">{t('deployKeysSettings.title')}</CardTitle>
-          <CardDescription className="text-text-secondary">
+      <div
+        className="rounded-lg p-5"
+        style={{
+          background: 'var(--panel)',
+          border: '1px solid var(--panel-edge)',
+          boxShadow: 'var(--shadow-chamber)',
+        }}
+      >
+        <div className="mb-4">
+          <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+            {t('deployKeysSettings.title')}
+          </h3>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
             {t('deployKeysSettings.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {isLoading ? (
-              <p className="text-text-muted text-sm">{t('deployKeysSettings.loading')}</p>
-            ) : deployKeys.length === 0 ? (
-              <div className="rounded-lg border border-border-default bg-bg-secondary/50 p-6 text-center">
-                <p className="text-text-muted text-sm">{t('deployKeysSettings.noKeysYet')}</p>
-                <Button className="ff-btn-velocity mt-4 gap-2" onClick={handleOpenCreateModal} disabled={creating}>
-                  <Key className="h-4 w-4" />
-                  {t('deployKeysSettings.addDeployKey')}
-                </Button>
-              </div>
-            ) : (
-              <>
-                {deployKeys.map((key) => (
-                  <div
-                    key={key.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-default bg-bg-secondary p-4"
-                  >
-                    <div className="min-w-0">
-                      <h4 className="font-medium text-text-primary">{key.name}</h4>
-                      <p className="text-sm text-text-muted">
-                        {t('deployKeysSettings.fingerprint', { fingerprint: key.fingerprint })}
-                      </p>
-                      <p className="text-xs text-text-muted">
-                        {t('deployKeysSettings.createdAt', { date: formatDate(key.created_at) })}
-                        {key.last_used_at && ` · ${t('deployKeysSettings.lastUsed', { date: formatDate(key.last_used_at) })}`}
-                        {key.expires_at && ` · ${t('deployKeysSettings.expiresAt', { date: formatDate(key.expires_at) })}`}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleVerifyClick(key)}
-                        title={t('deployKeysSettings.verify')}
-                        disabled={verifying && verifyKeyId === key.id}
-                      >
-                        {verificationSuccess && verifyKeyId === key.id ? (
-                          <CheckCircle2 className="h-4 w-4 text-success" />
-                        ) : (
-                          <RefreshCw className={`h-4 w-4 ${verifying && verifyKeyId === key.id ? 'animate-spin' : ''}`} />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteClick(key)}
-                        title={t('deployKeysSettings.delete')}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+          </p>
+        </div>
+        <div className="space-y-4">
+          {isLoading ? (
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+              {t('deployKeysSettings.loading')}
+            </p>
+          ) : deployKeys.length === 0 ? (
+            <div
+              className="rounded-lg p-6 text-center"
+              style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}
+            >
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                {t('deployKeysSettings.noKeysYet')}
+              </p>
+              <Button
+                className="mt-4 gap-2"
+                onClick={handleOpenCreateModal}
+                disabled={creating}
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
+              >
+                <Key className="h-4 w-4" />
+                {t('deployKeysSettings.addDeployKey')}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {deployKeys.map((key) => (
+                <div
+                  key={key.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"
+                  style={{
+                    background: 'var(--panel-raised)',
+                    border: '1px solid var(--panel-edge)',
+                  }}
+                >
+                  <div className="min-w-0">
+                    <h4 className="font-medium" style={{ color: 'var(--text)' }}>
+                      {key.name}
+                    </h4>
+                    <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                      {t('deployKeysSettings.fingerprint', { fingerprint: key.fingerprint })}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                      {t('deployKeysSettings.createdAt', { date: formatDate(key.created_at) })}
+                      {key.last_used_at &&
+                        ` · ${t('deployKeysSettings.lastUsed', { date: formatDate(key.last_used_at) })}`}
+                      {key.expires_at &&
+                        ` · ${t('deployKeysSettings.expiresAt', { date: formatDate(key.expires_at) })}`}
+                    </p>
                   </div>
-                ))}
-                <Button className="ff-btn-velocity gap-2" onClick={handleOpenCreateModal} disabled={creating}>
-                  <Key className="h-4 w-4" />
-                  {t('deployKeysSettings.addDeployKey')}
-                </Button>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleVerifyClick(key)}
+                      title={t('deployKeysSettings.verify')}
+                      disabled={verifying && verifyKeyId === key.id}
+                      style={{ color: 'var(--text-dim)' }}
+                    >
+                      {verificationSuccess && verifyKeyId === key.id ? (
+                        <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--status-ok)' }} />
+                      ) : (
+                        <RefreshCw
+                          className={`h-4 w-4 ${verifying && verifyKeyId === key.id ? 'animate-spin' : ''}`}
+                        />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteClick(key)}
+                      title={t('deployKeysSettings.delete')}
+                      style={{ color: 'var(--status-revoked)' }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button
+                className="gap-2"
+                onClick={handleOpenCreateModal}
+                disabled={creating}
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
+              >
+                <Key className="h-4 w-4" />
+                {t('deployKeysSettings.addDeployKey')}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
       <Dialog open={createModalOpen} onOpenChange={(open) => !open && setCreateModalOpen(false)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('deployKeysSettings.createDialogTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('deployKeysSettings.createDialogDescription')}
-            </DialogDescription>
+            <DialogDescription>{t('deployKeysSettings.createDialogDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -235,14 +275,18 @@ export function DeployKeysSettingsSection() {
               <Button
                 type="button"
                 onClick={() => setCreateModalOpen(false)}
-                className="hover:bg-brand-500 hover:text-white hover:border-brand-500"
+                style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
               >
                 {t('deployKeysSettings.cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={creating}
-                className="bg-brand-500 hover:bg-brand-600 text-white"
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
               >
                 {creating ? t('deployKeysSettings.creating') : t('deployKeysSettings.create')}
               </Button>
@@ -260,7 +304,11 @@ export function DeployKeysSettingsSection() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteKeyId(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteKeyId(null)}
+              style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+            >
               {t('deployKeysSettings.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>

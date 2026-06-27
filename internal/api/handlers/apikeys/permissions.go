@@ -207,7 +207,7 @@ func (h *Handler) HandleRemovePermission(w http.ResponseWriter, r *http.Request)
 
 // RegisterPermissionRoutes registers the permission routes
 func RegisterPermissionRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys/{id}/permissions", h.HandleListPermissions).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api-keys/{id}/permissions", h.HandleAddPermission).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api-keys/{id}/permissions/{perm_id}", h.HandleRemovePermission).Methods("DELETE", "OPTIONS")

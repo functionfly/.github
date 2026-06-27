@@ -10,6 +10,7 @@ export const userKeys = {
   me: () => [...userKeys.all, 'me'] as const,
   profile: (username: string) => [...userKeys.all, 'profile', username] as const,
   sessions: () => [...userKeys.all, 'sessions'] as const,
+  loginHistory: () => [...userKeys.all, 'login-history'] as const,
   settings: () => [...userKeys.all, 'settings'] as const,
   analytics: (username: string) => [...userKeys.all, 'analytics', username] as const,
   achievements: (username: string) => [...userKeys.all, 'achievements', username] as const,
@@ -93,6 +94,15 @@ export function useRevokeOtherSessions() {
     onError: (error: Error) => {
       toast.error(`Failed to revoke sessions: ${error.message}`);
     },
+  });
+}
+
+// Get user login history
+export function useLoginHistory(params?: { limit?: number; offset?: number }) {
+  return useQuery({
+    queryKey: userKeys.loginHistory(),
+    queryFn: () => usersApi.listLoginHistory(params),
+    staleTime: 1000 * 60 * 2, // 2 minutes
   });
 }
 

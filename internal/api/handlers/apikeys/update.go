@@ -117,6 +117,6 @@ func (h *Handler) HandleUpdate(w http.ResponseWriter, r *http.Request) {
 
 // RegisterUpdateRoutes registers the update route
 func RegisterUpdateRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys/{id}", h.HandleUpdate).Methods("PATCH", "OPTIONS")
 }

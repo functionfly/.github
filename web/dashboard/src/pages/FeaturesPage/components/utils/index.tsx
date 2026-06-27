@@ -45,7 +45,7 @@ export const StructuredData = () => {
           "description": "Professional plan with advanced features",
           "price": "29",
           "priceCurrency": "USD",
-          "priceValidUntil": "2026-12-31"
+          "priceValidUntil": "2028-12-31"
         }
       ],
       "featureList": features.map(feature => ({

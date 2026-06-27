@@ -1,0 +1,136 @@
+/**
+ * Sealed Containment Navbar Theme
+ * FunctionFly Dashboard
+ *
+ * Design direction: containment glass, security foil, instrumentation
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Navbar Container
+   ═══════════════════════════════════════════════ */
+
+.sc-navbar {
+  background: var(--chamber-bg);
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+[data-theme='light'] .sc-navbar {
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom-color: #e2e8f0;
+}
+
+/* ═══════════════════════════════════════════════
+   Navbar Text
+   ═══════════════════════════════════════════════ */
+
+.sc-navbar-text {
+  color: var(--text);
+}
+
+.sc-navbar-text-secondary {
+  color: var(--text-dim);
+}
+
+.sc-navbar-link {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.sc-navbar-link:hover {
+  color: var(--text);
+}
+
+.sc-navbar-link-active {
+  color: var(--text);
+}
+
+/* ═══════════════════════════════════════════════
+   Navbar Link with Active Indicator
+   ═══════════════════════════════════════════════ */
+
+.sc-navbar-link-indicator {
+  position: relative;
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  padding-bottom: 4px;
+}
+
+.sc-navbar-link-indicator:hover {
+  color: var(--text);
+}
+
+.sc-navbar-link-indicator.active {
+  color: var(--text);
+}
+
+.sc-navbar-link-indicator .active-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
+  border-radius: 9999px;
+}
+
+/* ═══════════════════════════════════════════════
+   Navbar Button
+   ═══════════════════════════════════════════════ */
+
+.sc-navbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--steel);
+  color: var(--text);
+  font-weight: 500;
+  font-size: 0.875rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--chamber-edge);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sc-navbar-btn:hover:not(:disabled) {
+  background: var(--steel-light);
+  border-color: var(--status-ok);
+  transform: translateY(-1px);
+}
+
+.sc-navbar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ═══════════════════════════════════════════════
+   Navbar Icon Button
+   ═══════════════════════════════════════════════ */
+
+.sc-navbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: var(--radius);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sc-navbar-icon-btn:hover {
+  background: var(--steel);
+  color: var(--text);
+}
+
+[data-theme='light'] .sc-navbar-icon-btn:hover {
+  background: #f1f5f9;
+}

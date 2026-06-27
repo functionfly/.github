@@ -2,16 +2,26 @@ package scheduler
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	retentionLockKey        = "functionfly:retention:lock"
+	retentionLockTTL        = 30 * time.Minute
+	retentionMetricsPrefix  = "functionfly_retention_"
 )
 
 // DataRetentionSchedulerConfig holds configuration for the data retention scheduler
@@ -98,12 +108,27 @@ type DataRetentionScheduler struct {
 	config      *DataRetentionSchedulerConfig
 	stopOnce    sync.Once
 	cancel      context.CancelFunc
+	redisClient RedisClient
+	isRunning   atomic.Bool
+	lockAcquired atomic.Bool
 }
+
+// RedisClient interface for distributed locking (compatible with redis/go-redis/v9)
+type RedisClient interface {
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
+	Get(ctx context.Context, key string) *redis.StringCmd
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
+	Eval(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd
+}
+
+// Ensure *redis.Client implements RedisClient
+var _ RedisClient = (*redis.Client)(nil)
 
 // NewDataRetentionScheduler creates a new data retention scheduler
 func NewDataRetentionScheduler(
 	billingRepo *storage.BillingRepository,
 	notifySvc *notification.Service,
+	redisClient RedisClient,
 ) *DataRetentionScheduler {
 	return &DataRetentionScheduler{
 		cron:        cron.New(),
@@ -111,6 +136,7 @@ func NewDataRetentionScheduler(
 		notifySvc:   notifySvc,
 		logger:      logrus.New(),
 		config:      LoadDataRetentionSchedulerConfig(),
+		redisClient: redisClient,
 	}
 }
 
@@ -162,10 +188,24 @@ func (s *DataRetentionScheduler) Stop() error {
 	return nil
 }
 
-// runRetentionCleanup executes the retention cleanup
+// runRetentionCleanup executes the retention cleanup with distributed locking
 func (s *DataRetentionScheduler) runRetentionCleanup(ctx context.Context) {
 	start := time.Now()
 	s.logger.Info("Starting scheduled data retention cleanup")
+
+	// Acquire distributed lock to prevent concurrent cleanup runs
+	if !s.acquireLock(ctx) {
+		s.logger.Warn("Could not acquire retention cleanup lock - another cleanup may be running")
+		return
+	}
+	defer s.releaseLock(ctx)
+
+	// Check if already running
+	if !s.isRunning.CompareAndSwap(false, true) {
+		s.logger.Warn("Retention cleanup already in progress, skipping")
+		return
+	}
+	defer s.isRunning.Store(false)
 
 	// Check for legal holds if configured
 	if s.config.SkipIfLegalHold {
@@ -227,6 +267,90 @@ func (s *DataRetentionScheduler) runRetentionCleanup(ctx context.Context) {
 	if detailedDeleted > 0 && s.notifySvc != nil {
 		s.sendRetentionSuccessNotification(ctx, detailedDeleted, duration)
 	}
+}
+
+// acquireLock attempts to acquire a distributed lock for the cleanup operation
+func (s *DataRetentionScheduler) acquireLock(ctx context.Context) bool {
+	if s.redisClient == nil {
+		s.logger.Debug("No Redis client, skipping distributed lock")
+		return true
+	}
+
+	lockValue := fmt.Sprintf("%s-%d", s.hostname(), time.Now().UnixNano())
+	script := `
+		if redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2]) then
+			return 1
+		else
+			return 0
+		end
+	`
+
+	result := s.redisClient.Eval(ctx, script, []string{retentionLockKey}, lockValue, int(retentionLockTTL.Seconds()))
+	if err := result.Err(); err != nil {
+		s.logger.WithError(err).Warn("Failed to acquire retention lock via Redis, proceeding without lock")
+		return true
+	}
+
+	acquired, _ := result.Int64()
+	if acquired == 1 {
+		s.lockAcquired.Store(true)
+	}
+	return acquired == 1
+}
+
+// releaseLock releases the distributed lock
+func (s *DataRetentionScheduler) releaseLock(ctx context.Context) {
+	if s.redisClient == nil || !s.lockAcquired.Load() {
+		return
+	}
+
+	script := `
+		if redis.call('GET', KEYS[1]) == ARGV[1] then
+			return redis.call('DEL', KEYS[1])
+		else
+			return 0
+		end
+	`
+
+	lockValue := fmt.Sprintf("%s-%d", s.hostname(), time.Now().UnixNano())
+	_ = s.redisClient.Eval(ctx, script, []string{retentionLockKey}, lockValue).Err()
+	s.lockAcquired.Store(false)
+}
+
+// hostname returns the current hostname for lock identification
+func (s *DataRetentionScheduler) hostname() string {
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		hostname = "unknown"
+	}
+	return hostname
+}
+
+// GenerateVerificationHash creates a SHA-256 hash of the audit log data for tamper detection
+func GenerateVerificationHash(tableName, policy string, cutoffDate time.Time, recordsAffected int64, tenantCount int, financialImpactCents int64) string {
+	data := fmt.Sprintf("%s|%s|%s|%d|%d|%d",
+		tableName,
+		policy,
+		cutoffDate.Format(time.RFC3339),
+		recordsAffected,
+		tenantCount,
+		financialImpactCents,
+	)
+	hash := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(hash[:])
+}
+
+// GetRetentionLockStatus returns the current lock status for monitoring
+func (s *DataRetentionScheduler) GetRetentionLockStatus(ctx context.Context) (locked bool, holder string, err error) {
+	if s.redisClient == nil {
+		return false, "no_redis", nil
+	}
+
+	val := s.redisClient.Get(ctx, retentionLockKey)
+	if err := val.Err(); err != nil {
+		return false, "", err
+	}
+	return val.Val() != "", val.Val(), nil
 }
 
 // checkLegalHolds queries if any active legal holds exist that should block cleanup

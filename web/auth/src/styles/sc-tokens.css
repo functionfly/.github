@@ -33,6 +33,7 @@
   --foil-a: #9fd8ff;
   --foil-b: #d9c4ff;
   --foil-c: #8fffd0;
+  --foil-d: #ffd9f0;
 
   /* ===== RADIUS ===== */
   --radius-sm: 3px;
@@ -51,9 +52,9 @@
   --space-9: 96px;
 
   /* ===== TYPOGRAPHY ===== */
-  --font-display: 'Space Grotesk', sans-serif;
-  --font-body: 'Inter', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 
   /* Legacy aliases for existing code compatibility */
   --font-sans: var(--font-body);
@@ -70,18 +71,22 @@
   /* ===== SHADOW / ELEVATION SYSTEM ===== */
 
   /* Chamber elevation (the containment panels) */
-  --shadow-chamber: 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.35);
+  --shadow-chamber:
+    0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 20px 40px rgba(0, 0, 0, 0.35);
 
   /* Primary button (SealedButton) — embossed metal */
-  --shadow-btn-primary-rest:    0 1px 0 rgba(255,255,255,0.4) inset, 0 6px 16px rgba(0,0,0,0.35);
-  --shadow-btn-primary-hover:   0 1px 0 rgba(255,255,255,0.5) inset, 0 8px 20px rgba(0,0,0,0.4);
-  --shadow-btn-primary-active:   0 1px 0 rgba(255,255,255,0.15) inset, 0 2px 6px rgba(0,0,0,0.3);
+  --shadow-btn-primary-rest:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 6px 16px rgba(0, 0, 0, 0.35);
+  --shadow-btn-primary-hover:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 8px 20px rgba(0, 0, 0, 0.4);
+  --shadow-btn-primary-active:
+    0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 2px 6px rgba(0, 0, 0, 0.3);
   --shadow-btn-primary-disabled: none;
 
   /* Secondary button (FrameButton) — flat, border-only, no drop shadow ever */
   --shadow-btn-secondary-rest: none;
   --shadow-btn-secondary-hover: none;
-  --shadow-btn-secondary-active: 0 1px 2px rgba(0,0,0,0.25) inset;
+  --shadow-btn-secondary-active: 0 1px 2px rgba(0, 0, 0, 0.25) inset;
 
   /* Focus ring — identical on every interactive element */
   --shadow-focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--status-ok);
@@ -146,10 +151,14 @@
   --foil-b: #8b5cf6;
   --foil-c: #059669;
 
-  --shadow-chamber: 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.08);
-  --shadow-btn-primary-rest: 0 1px 0 rgba(255,255,255,0.4) inset, 0 6px 16px rgba(0,0,0,0.1);
-  --shadow-btn-primary-hover: 0 1px 0 rgba(255,255,255,0.5) inset, 0 8px 20px rgba(0,0,0,0.12);
-  --shadow-btn-primary-active: 0 1px 0 rgba(255,255,255,0.15) inset, 0 2px 6px rgba(0,0,0,0.08);
+  --shadow-chamber:
+    0 1px 0 rgba(255, 255, 255, 0.02) inset, 0 20px 40px rgba(0, 0, 0, 0.08);
+  --shadow-btn-primary-rest:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 6px 16px rgba(0, 0, 0, 0.1);
+  --shadow-btn-primary-hover:
+    0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 8px 20px rgba(0, 0, 0, 0.12);
+  --shadow-btn-primary-active:
+    0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 2px 6px rgba(0, 0, 0, 0.08);
   --shadow-seal: 0 0 12px rgba(5, 150, 105, 0.2);
   --shadow-input-focus: 0 0 0 1px var(--steel-light) inset;
   --shadow-input-error: 0 0 0 1px var(--status-revoked) inset;

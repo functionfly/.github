@@ -1,5 +1,5 @@
 ---
-import { SITE_ORIGIN, BLOG_ORIGIN, AUTH_ORIGIN } from '../config';
+import { BLOG_ORIGIN, AUTH_ORIGIN } from '../config';
 import { t, getLocale } from '../i18n';
 import CornerBrace from './containment/CornerBrace.astro';
 
@@ -16,9 +16,6 @@ function navClass(href: string): string {
 
 <header class="header" id="site-header">
   <nav class="nav">
-    <CornerBrace position="tl" />
-    <CornerBrace position="br" />
-
     <a href="/" class="logo" aria-label="FunctionFly Home">
       <img src="/functionfly.png" alt="" class="logo-mark" width="32" height="32" />
       <span class="logo-text">FunctionFly</span>
@@ -203,35 +200,23 @@ function navClass(href: string): string {
     position: sticky;
     top: 0;
     z-index: var(--z-nav);
-    padding: var(--space-4) var(--space-4) 0;
     transition: padding var(--duration-base) var(--ease-out);
   }
 
-  @media (min-width: 960px) {
-    .header {
-      padding: var(--space-5) var(--space-7) 0;
-    }
-  }
-
   .header.scrolled {
-    padding-top: var(--space-3);
+    padding-top: 0;
   }
 
   .nav {
     position: relative;
-    max-width: 1180px;
-    margin: 0 auto;
+    width: 100%;
     padding: 18px var(--space-5);
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: var(--space-6);
-    background:
-      radial-gradient(ellipse 140% 100% at 15% 0%, var(--glass-tint), transparent 55%),
-      var(--panel);
-    border: 1px solid var(--panel-edge);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-chamber);
+    background: transparent;
+    border-bottom: 1px solid var(--panel-edge);
   }
 
   @media (min-width: 960px) {

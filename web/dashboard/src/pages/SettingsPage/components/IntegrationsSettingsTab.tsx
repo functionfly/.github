@@ -25,7 +25,6 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  ChevronRight,
   Clock,
   FileText,
   Info,
@@ -40,8 +39,8 @@ import {
   Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { siGithub, siLinear } from 'simple-icons';
 import { useTranslation } from 'react-i18next';
+import { siGithub, siLinear } from 'simple-icons';
 
 // ─── OAuth Callback Message Types ─────────────────────────────────────────────
 
@@ -274,7 +273,7 @@ function ConnectorRow({
                 size="sm"
                 onClick={onSync}
                 disabled={syncing || !isEnabled}
-                className="text-xs text-text-secondary hover:text-text-primary"
+                style={{ color: 'var(--text-dim)' }}
                 aria-label={t('integrationsSettings.syncNow')}
               >
                 {syncing ? (
@@ -289,7 +288,7 @@ function ConnectorRow({
                 variant="ghost"
                 size="sm"
                 onClick={onConfigure}
-                className="text-xs text-text-secondary hover:text-text-primary"
+                style={{ color: 'var(--text-dim)' }}
                 aria-label={t('integrationsSettings.configure')}
               >
                 <Settings2 className="w-4 h-4" aria-hidden="true" />
@@ -308,7 +307,7 @@ function ConnectorRow({
                 variant="ghost"
                 size="sm"
                 onClick={onDisconnect}
-                className="text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
+                style={{ color: 'var(--status-revoked)' }}
                 aria-label={t('integrationsSettings.disconnect')}
               >
                 <Unlink className="w-4 h-4" aria-hidden="true" />
@@ -321,6 +320,11 @@ function ConnectorRow({
               size="sm"
               onClick={onConfigure}
               className="gap-1.5 text-xs"
+              style={{
+                background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                color: 'var(--text-on-light)',
+                boxShadow: 'var(--shadow-btn-primary-rest)',
+              }}
               aria-label={t('integrationsSettings.connect', { name: connector.name })}
             >
               <Zap className="w-3.5 h-3.5" aria-hidden="true" />

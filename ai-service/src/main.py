@@ -206,21 +206,7 @@ if settings.cors_origins:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_credentials=settings.cors_allow_credentials,
-<<<<<<< Updated upstream
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        allow_headers=[
-            "Authorization",
-            "Content-Type",
-            "X-API-Key",
-            "X-Request-ID",
-            "X-Correlation-ID",
-        ],
-    )
-
-# Add security headers middleware for all responses
-app.add_middleware(SecurityHeadersMiddleware)
-=======
-        allow_methods=settings.cors_allow_methods if settings.cors_allow_methods != ["*"] else ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+allow_methods=settings.cors_allow_methods if settings.cors_allow_methods != ["*"] else ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=settings.cors_allow_headers if settings.cors_allow_headers != ["*"] else ["Authorization", "Content-Type", "X-API-Key"],
         max_age=600,
     )
@@ -241,7 +227,6 @@ app.add_middleware(TenantValidationMiddleware)
 # Add rate limiting middleware (if enabled)
 from .middleware.rate_limit_middleware import setup_rate_limit_middleware
 setup_rate_limit_middleware(app, enabled=settings.enable_rate_limiting)
->>>>>>> Stashed changes
 
 
 # Include API routes

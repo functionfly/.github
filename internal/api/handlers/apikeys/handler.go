@@ -2,6 +2,7 @@
 package apikeys
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -13,19 +14,27 @@ import (
 
 // Handler contains API key HTTP handlers
 type Handler struct {
-	repo     *apikey.Repository
+	repo      *apikey.Repository
+	tenantGetter TenantPlanGetter
 	keyGen   *apikey.Generator
 	hasher   *apikey.Hasher
 	validate *apikey.Validator
 }
 
+// TenantPlanGetter provides tenant plan information (optional)
+type TenantPlanGetter interface {
+	GetTenantPlan(ctx context.Context, tenantID uuid.UUID) (string, error)
+}
+
 // NewHandler creates a new API key handler
-func NewHandler(repo *apikey.Repository) *Handler {
+// tenantGetter is optional - pass nil if tenant plan checking is not needed
+func NewHandler(repo *apikey.Repository, tenantGetter TenantPlanGetter) *Handler {
 	return &Handler{
-		repo:     repo,
-		keyGen:   apikey.NewGenerator(),
-		hasher:   apikey.NewHasher(),
-		validate: apikey.NewValidator(),
+		repo:        repo,
+		tenantGetter: tenantGetter,
+		keyGen:      apikey.NewGenerator(),
+		hasher:      apikey.NewHasher(),
+		validate:    apikey.NewValidator(),
 	}
 }
 

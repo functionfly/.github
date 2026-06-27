@@ -36,6 +36,7 @@ import {
   markVaultApiKeyStored,
 } from "@/services/vault-api-key-storage";
 import { toast } from "sonner";
+import { usePlan } from "@/hooks";
 
 interface CreateAPIKeyModalProps {
   open: boolean;
@@ -50,6 +51,7 @@ export function CreateAPIKeyModal({
 }: CreateAPIKeyModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { isEnterprise } = usePlan();
   const [isLoading, setIsLoading] = useState(false);
   const [showKey, setShowKey] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState(20);
@@ -303,7 +305,11 @@ export function CreateAPIKeyModal({
                 <SelectValue placeholder={t("createApiKey.selectKeyType")} />
               </SelectTrigger>
               <SelectContent className="create-api-key-key-type-dropdown">
-                {(Object.keys(API_KEY_TYPE_LABELS) as APIKeyType[]).map((type) => (
+                {(Object.keys(API_KEY_TYPE_LABELS) as APIKeyType[]).filter((type) => {
+                  // MicroPython runtime keys are Enterprise-only
+                  if (type === 'micropython' && !isEnterprise) return false;
+                  return true;
+                }).map((type) => (
                   <SelectItem key={type} value={type}>
                     <div className="flex flex-col">
                       <span>{API_KEY_TYPE_LABELS[type]}</span>

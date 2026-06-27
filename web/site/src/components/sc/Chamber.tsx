@@ -1,6 +1,6 @@
-import React from 'react';
+import React from "react";
 
-interface ChamberProps {
+export interface ChamberProps {
   children: React.ReactNode;
   ribs?: boolean;
   nested?: boolean;
@@ -12,25 +12,23 @@ export const Chamber: React.FC<ChamberProps> = ({
   children,
   ribs = false,
   nested = false,
-  className = '',
+  className = "",
   style,
 }) => {
-  const bgColor = nested ? 'var(--panel-raised)' : 'var(--panel)';
+  const bgColor = nested ? "var(--panel-raised)" : "var(--panel)";
   const radialGradient = nested
     ? undefined
-    : 'radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%)';
+    : "radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%)";
 
   return (
     <div
       className={`relative ${className}`}
       style={{
-        background: radialGradient
-          ? `${radialGradient}, ${bgColor}`
-          : bgColor,
-        boxShadow: nested ? undefined : 'var(--shadow-chamber)',
-        borderRadius: 'var(--radius-lg)',
+        background: radialGradient ? `${radialGradient}, ${bgColor}` : bgColor,
+        boxShadow: nested ? undefined : "var(--shadow-chamber)",
+        borderRadius: "var(--radius-lg)",
         border: `1px solid var(--panel-edge)`,
-        padding: 'var(--space-7)',
+        padding: "var(--space-7)",
       }}
     >
       <style>{`
@@ -47,8 +45,8 @@ export const Chamber: React.FC<ChamberProps> = ({
             style={{
               opacity: 0.025,
               backgroundImage:
-                'repeating-linear-gradient(90deg, transparent 0px, transparent 119px, rgba(255,255,255,0.025) 120px)',
-              borderRadius: 'inherit',
+                "repeating-linear-gradient(90deg, transparent 0px, transparent 119px, rgba(255,255,255,0.025) 120px)",
+              borderRadius: "inherit",
             }}
             aria-hidden="true"
           />

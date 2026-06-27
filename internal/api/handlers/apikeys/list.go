@@ -88,6 +88,6 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 
 // RegisterListRoutes registers the list route
 func RegisterListRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys", h.HandleList).Methods("GET", "OPTIONS")
 }

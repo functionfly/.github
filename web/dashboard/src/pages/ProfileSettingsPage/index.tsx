@@ -8,7 +8,7 @@
  * <Route path="/settings/profile" element={<ProfileSettingsPage />} />
  */
 
-import { usersApi, type UpdateProfileRequest } from '@/api/users';
+import { usersApi, type UpdateProfileRequest, type SessionItem } from '@/api/users';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
+import { useUserSessions, useRevokeSession, useRevokeOtherSessions } from '@/hooks';
 import { Icon } from '@iconify/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -50,6 +51,8 @@ import {
   Lock,
   Mail,
   MapPin,
+  Monitor,
+  RefreshCw,
   Save,
   Shield,
   Smartphone,
@@ -199,6 +202,7 @@ export function ProfileSettingsPage() {
                   <TabsContent value="privacy" className="mt-0">
                     <PrivacyTab />
                   </TabsContent>
+
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -688,6 +692,30 @@ function AccountTab() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isRevoking, setIsRevoking] = useState<string | null>(null);
+
+  const { data, isLoading: isLoadingSessions, error: errorSessions, refetch: refetchSessions } = useUserSessions();
+  const revokeMutation = useRevokeSession();
+  const revokeOthersMutation = useRevokeOtherSessions();
+
+  const sessions: SessionItem[] = data?.sessions ?? [];
+
+  const handleRevokeSession = (sessionId: string) => {
+    setIsRevoking(sessionId);
+    revokeMutation.mutate(sessionId, {
+      onSettled: () => setIsRevoking(null),
+    });
+  };
+
+  const handleRevokeAllOthers = () => {
+    if (!confirm('Are you sure you want to sign out all other devices? This action cannot be undone.')) {
+      return;
+    }
+    setIsRevoking('all');
+    revokeOthersMutation.mutate(undefined, {
+      onSettled: () => setIsRevoking(null),
+    });
+  };
 
   const handleChangePassword = async () => {
     if (newPassword !== confirmPassword) {
@@ -799,18 +827,127 @@ function AccountTab() {
 
       {/* Sessions */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Smartphone className="w-5 h-5 text-brand-500" />
-            Active Sessions
-          </CardTitle>
-          <CardDescription>Manage your active login sessions</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Smartphone className="w-5 h-5 text-brand-500" />
+              Active Sessions
+            </CardTitle>
+            <CardDescription>Manage your active login sessions</CardDescription>
+          </div>
+          {sessions.length > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRevokeAllOthers}
+              disabled={isRevoking !== null}
+              className="gap-2 text-error border-error/30 hover:bg-error/10"
+            >
+              <Trash2 className="w-4 h-4" />
+              Sign Out All Other Devices
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-text-muted">
-            Session management coming soon. You can currently sign out of all devices by changing
-            your password.
-          </p>
+          {isLoadingSessions ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-text-muted" />
+              <span className="ml-2 text-sm text-text-muted">Loading sessions...</span>
+            </div>
+          ) : errorSessions ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-error">Failed to load sessions</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => refetchSessions()}
+                className="mt-2"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Retry
+              </Button>
+            </div>
+          ) : sessions.length === 0 ? (
+            <p className="text-sm text-text-muted">No active sessions found.</p>
+          ) : (
+            <div className="space-y-3">
+              {sessions.map((session) => (
+                <div
+                  key={session.id}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    session.currentSession
+                      ? 'border-green-200 bg-green-50/50'
+                      : 'border-border-subtle bg-bg-secondary'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`p-2 rounded-full ${
+                        session.currentSession
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-bg-tertiary text-text-muted'
+                      }`}
+                    >
+                      {session.device.toLowerCase().includes('iphone') ||
+                      session.device.toLowerCase().includes('android') ||
+                      session.device.toLowerCase().includes('mobile') ? (
+                        <Smartphone className="w-4 h-4" />
+                      ) : session.device.toLowerCase().includes('mac') ||
+                        session.device.toLowerCase().includes('windows') ||
+                        session.device.toLowerCase().includes('linux') ||
+                        session.device.toLowerCase().includes('desktop') ? (
+                        <Monitor className="w-4 h-4" />
+                      ) : (
+                        <Globe className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-text-primary text-sm">
+                          {session.device}
+                        </p>
+                        {session.currentSession && (
+                          <span className="px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-text-muted mt-0.5">
+                        <span>{session.ip}</span>
+                        {session.location && (
+                          <>
+                            <span>•</span>
+                            <span>{session.location}</span>
+                          </>
+                        )}
+                        <span>•</span>
+                        <span>{session.lastActive}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {!session.currentSession && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRevokeSession(session.id)}
+                      disabled={isRevoking === session.id}
+                      className="text-error hover:text-error hover:bg-error/10"
+                    >
+                      {isRevoking === session.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          Sign Out
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

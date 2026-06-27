@@ -30,7 +30,6 @@ import (
 	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/docs"
-	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
@@ -65,8 +64,8 @@ import (
 	githubhandler "github.com/functionfly/functionfly/internal/api/handlers/github"
 	marketplacehandler "github.com/functionfly/functionfly/internal/api/handlers/marketplace"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
-	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	"github.com/functionfly/functionfly/internal/api/handlers/microvm"
+	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
 	notificationHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	payoutsHandler "github.com/functionfly/functionfly/internal/api/handlers/payouts"
@@ -74,10 +73,10 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/plugin"
 	privacyhandler "github.com/functionfly/functionfly/internal/api/handlers/privacy"
 	"github.com/functionfly/functionfly/internal/api/handlers/providers"
+	receipthandler "github.com/functionfly/functionfly/internal/api/handlers/receipt"
 	"github.com/functionfly/functionfly/internal/api/handlers/recommendations"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
 	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
-	drecert "github.com/functionfly/functionfly/internal/dre/cert"
 	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
 	"github.com/functionfly/functionfly/internal/api/handlers/schedule"
@@ -101,8 +100,10 @@ import (
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/captcha"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/currency"
 	"github.com/functionfly/functionfly/internal/dna"
+	drecert "github.com/functionfly/functionfly/internal/dre/cert"
 	"github.com/functionfly/functionfly/internal/logging"
 	"github.com/functionfly/functionfly/internal/manifest"
 	monitoringPkg "github.com/functionfly/functionfly/internal/monitoring"
@@ -113,8 +114,9 @@ import (
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
-	enterpriseaudit "github.com/functionfly/functionfly/internal/storage/enterprise_audit"
 	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
+	enterpriseaudit "github.com/functionfly/functionfly/internal/storage/enterprise_audit"
+	receiptstorage "github.com/functionfly/functionfly/internal/storage/receipt"
 	"github.com/functionfly/functionfly/internal/storage/registry"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
@@ -126,8 +128,8 @@ import (
 	"github.com/functionfly/functionfly/internal/support"
 	"github.com/functionfly/functionfly/internal/versioning"
 	"github.com/functionfly/functionfly/internal/wallet"
-	wasmpoolclient "github.com/functionfly/functionfly/internal/wasmpool/client"
 	wasmpool "github.com/functionfly/functionfly/internal/wasm"
+	wasmpoolclient "github.com/functionfly/functionfly/internal/wasmpool/client"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -195,7 +197,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	followHandler := followHandlerPkg.NewHandler(followService, s.repo, s.authSvc)
 
 	apikeyRepo := apikey.NewRepository(s.postgresDB.GORM)
-	apiKeysHandler := apikeys.NewHandler(apikeyRepo)
+	apiKeysHandler := apikeys.NewHandler(apikeyRepo, s.postgresDB.TenantRepository())
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		s.logger.Fatal("FATAL: JWT_SECRET environment variable is required. Refusing to start with empty secret.")
@@ -870,6 +872,22 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		s.logger.WithError(err).Error("failed to start exchange rate scheduler")
 	}
 
+	// Data Retention Scheduler - compliance-based cleanup of cost allocation entries
+	// Cleans up detailed execution logs older than 90 days while keeping financial aggregates for 7 years (SOX)
+	billingRetentionRepo := storage.NewBillingRepository(s.postgresDB)
+	dataRetentionScheduler := scheduler.NewDataRetentionScheduler(billingRetentionRepo, s.notificationSvc, s.redisClient)
+	if err := dataRetentionScheduler.Start(s.Context()); err != nil {
+		s.logger.WithError(err).Error("failed to start data retention scheduler")
+	} else {
+		schedule := dataRetentionScheduler.GetSchedule()
+		s.logger.WithFields(logrus.Fields{
+			"enabled":   schedule["enabled"],
+			"cron":      schedule["cleanup_cron"],
+			"next_run":  schedule["next_run"],
+			"dry_run":   schedule["dry_run_mode"],
+		}).Info("Data retention scheduler started")
+	}
+
 	experimentService := factorysvc.NewExperimentService(s.postgresDB.GORM)
 	experimentAdapter := factorysvc.NewGenerationExperimentAdapter(s.postgresDB.GORM, experimentService)
 	experimentHandler := factoryhandler.NewExperimentHandler(s.postgresDB.GORM, experimentService, experimentAdapter)
@@ -919,6 +937,46 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	authMiddleware := middleware.NewAuthMiddleware(s.authSvc)
 	advancedSecurityMiddleware := middleware.NewAdvancedSecurityMiddleware(s.repo)
 	featureMiddleware := middleware.NewFeatureMiddleware()
+
+	// ---------------------------------------------------------------------------
+	// Execution Receipt — public shareable execution receipts with milestone notifications
+	// ---------------------------------------------------------------------------
+	receiptRepo, err := receiptstorage.NewRepository(s.postgresDB.GORM, s.redisClient)
+	if err != nil {
+		s.logger.WithError(err).Error("Failed to create receipt repository; receipt feature disabled")
+	} else {
+		receiptCfg := receipthandler.DefaultConfig()
+		receiptNotifier := newReceiptNotifierAdapter(nil, s.postgresDB.GORM)
+		milestoneWorker := receipthandler.NewMilestone(receiptRepo, receiptNotifier, receiptCfg, s.logger)
+		receiptHandler := receipthandler.NewHandler(
+			receiptRepo,
+			registryHandler,
+			registryRepo,
+			privacyService,
+			s.redisClient,
+			s.logger,
+			receiptCfg,
+		)
+		// Wire the milestone hook so every successful execution fires milestone checks
+		registryHandler.ReceiptMilestoneHook = milestoneWorker.OnExecution
+
+		// Mount public receipt routes on the root router (no auth, rate-limited)
+		registerReceiptPublicRoutes(s.router, receiptHandler)
+		// Mount owner-only revoke route behind auth
+		registerReceiptAuthedRoutes(s.router, receiptHandler, authMiddleware.RequireAuth)
+
+		// Start the daily sweep scheduler for missed milestones
+		receiptSchedulerCfg := scheduler.DefaultReceiptMilestoneSchedulerConfig()
+		receiptSchedulerCfg.Enabled = receiptCfg.MilestoneEnabled
+		receiptSchedulerCfg.Logger = s.logger
+		s.receiptMilestoneScheduler = scheduler.NewReceiptMilestoneScheduler(milestoneWorker, receiptSchedulerCfg)
+		if err := s.receiptMilestoneScheduler.Start(s.Context()); err != nil {
+			s.logger.WithError(err).Error("Failed to start receipt milestone scheduler")
+		} else if receiptCfg.MilestoneEnabled {
+			s.logger.Info("Receipt milestone scheduler started")
+		}
+		s.logger.Info("Execution receipt feature wired up")
+	}
 
 	captchaService := captcha.NewCaptchaService(nil)
 	if recaptchaV2SiteKey := os.Getenv("RECAPTCHA_V2_SITE_KEY"); recaptchaV2SiteKey != "" {

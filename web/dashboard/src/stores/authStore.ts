@@ -362,14 +362,13 @@ const authStore = create<AuthState>()(
         // All retries exhausted due to network errors - preserve session if we have a valid-looking token
         const finalPayload = safeDecodeJwtPayload(jwtToken);
         if (finalPayload && finalPayload.exp && finalPayload.exp > Math.floor(Date.now() / 1000) - 60) {
-          // Token looks valid (has future expiration), don't clear auth due to network issues
+          // Token looks valid (has future expiration), don't clear auth due to network issues.
+          // Keep the existing persisted user/session so the dashboard remains usable offline.
           console.warn('Auth initialization failed due to network errors, but token appears valid - keeping session');
           set({
-            user: null,
-            session: null,
-            isAuthenticated: false,
-            error: 'Network error - please refresh',
+            isAuthenticated: true,
             authChecked: true,
+            error: 'Network error - please refresh',
           });
           return;
         }
@@ -578,8 +577,22 @@ const authStore = create<AuthState>()(
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        authChecked: state.authChecked,
+        // authChecked is intentionally NOT persisted.
+        // It must start as false on every page load so ProtectedRoute and the
+        // COMING_SOON_ONLY guard show a loading spinner until initialize()
+        // has validated the token. Persisting a stale `true` value causes
+        // an immediate redirect before initialize() can run.
       }),
+      merge: (persisted: unknown, current: AuthState) => {
+        const p = persisted as Partial<AuthState>;
+        return {
+          ...current,
+          ...p,
+          // Always reset authChecked on rehydration — it must be re-earned
+          // by initialize() on every page load.
+          authChecked: false,
+        };
+      },
     }
   )
 );

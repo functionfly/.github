@@ -100,6 +100,6 @@ func (h *Handler) HandleRotate(w http.ResponseWriter, r *http.Request) {
 
 // RegisterRotateRoutes registers the rotate route
 func RegisterRotateRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys/{id}/rotate", h.HandleRotate).Methods("POST", "OPTIONS")
 }

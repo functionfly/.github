@@ -15,7 +15,6 @@ import {
 import { getCostSummary } from '@/api/usageAnalytics';
 import { EnterpriseSettingsSection } from '@/components/enterprise';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -36,10 +35,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '../../settings-utils';
+import { BundleStatusSection } from './BundleStatusSection';
 import { CurrentPlanSection } from './CurrentPlanSection';
 import { FreeTierSection } from './FreeTierSection';
 import { InvoicesSection } from './InvoicesSection';
-import { BundleStatusSection } from './BundleStatusSection';
 import { MAX_WALLET_TOP_UP_USD, MIN_WALLET_TOP_UP_USD, WalletSection } from './WalletSection';
 
 export interface BillingSettingsTabProps {
@@ -340,22 +339,40 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
     <div className="space-y-6">
       <EnterpriseSettingsSection />
       <BundleStatusSection />
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display">Current Plan</CardTitle>
-          <CardDescription className="text-text-secondary">
+      <div
+        className="rounded-lg p-5"
+        style={{
+          background: 'var(--panel)',
+          border: '1px solid var(--panel-edge)',
+          boxShadow: 'var(--shadow-chamber)',
+        }}
+      >
+        <div className="mb-4">
+          <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+            Current Plan
+          </h3>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
             Manage your subscription
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div>
           {subscriptionLoading ? (
             <div className="flex items-center justify-center p-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-500" />
+              <div
+                className="animate-spin rounded-full h-6 w-6 border-b-2"
+                style={{ borderColor: 'var(--accent)' }}
+              />
             </div>
           ) : subscriptionError ? (
-            <div className="flex items-center gap-2 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <AlertCircle className="w-5 h-5 text-amber-500" />
-              <p className="text-amber-500 text-sm">
+            <div
+              className="flex items-center gap-2 p-4 rounded-lg"
+              style={{
+                background: 'rgba(232, 196, 104, 0.06)',
+                border: '1px solid rgba(232, 196, 104, 0.3)',
+              }}
+            >
+              <AlertCircle className="w-5 h-5" style={{ color: 'var(--status-pending)' }} />
+              <p className="text-sm" style={{ color: 'var(--status-pending)' }}>
                 {getSubscriptionErrorMessage(subscriptionError)}
               </p>
             </div>
@@ -387,15 +404,22 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
               variant="default"
               onClick={() => openPortal(returnUrl)}
               disabled={billingPortalLoading}
-              className="bg-brand-500 hover:bg-brand-500/90"
+              style={{
+                background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                color: 'var(--text-on-light)',
+                boxShadow: 'var(--shadow-btn-primary-rest)',
+              }}
             >
               {billingPortalLoading ? 'Opening…' : 'Manage billing'}
             </Button>
             <Button
               variant="outline"
-              className="border-border-strong"
               disabled={billingPortalLoading}
               onClick={() => (window.location.href = '/pricing')}
+              style={{
+                borderColor: 'var(--steel)',
+                color: 'var(--text)',
+              }}
             >
               {billingPortalLoading ? 'Opening…' : 'Upgrade Plan'}
             </Button>
@@ -403,7 +427,10 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
-                  className="border-border-strong border-brand-500/50 text-brand-500 hover:bg-brand-500/10"
+                  style={{
+                    borderColor: 'var(--steel)',
+                    color: 'var(--text)',
+                  }}
                 >
                   Contact Sales
                 </Button>
@@ -460,11 +487,7 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                   <Button variant="outline" onClick={() => setContactModalOpen(false)}>
                     Cancel
                   </Button>
-                  <Button
-                    onClick={handleContactSales}
-                    disabled={contactSubmitting}
-                    className="bg-brand-500 hover:bg-brand-500/90"
-                  >
+                  <Button onClick={handleContactSales} disabled={contactSubmitting}>
                     {contactSubmitting ? 'Sending...' : 'Send Message'}
                   </Button>
                 </DialogFooter>
@@ -477,7 +500,10 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                   <DialogTrigger asChild>
                     <Button
                       variant="outline"
-                      className="border-border-strong border-red-500/50 text-red-400 hover:bg-red-500/10"
+                      style={{
+                        borderColor: 'var(--steel)',
+                        color: 'var(--text)',
+                      }}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Cancel Subscription
@@ -492,8 +518,14 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
-                      <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                        <p className="text-amber-400 text-sm">
+                      <div
+                        className="p-4 rounded-lg"
+                        style={{
+                          background: 'rgba(232, 196, 104, 0.06)',
+                          border: '1px solid rgba(232, 196, 104, 0.3)',
+                        }}
+                      >
+                        <p className="text-sm" style={{ color: 'var(--status-pending)' }}>
                           Your subscription will remain active until{' '}
                           {formatDate(subscription.current_period_end)}. After that, you'll be
                           downgraded to the free plan.
@@ -516,8 +548,8 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                 </Dialog>
               )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <WalletSection
         walletData={walletData}

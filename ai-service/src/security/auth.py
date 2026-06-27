@@ -233,9 +233,7 @@ class APIKeyValidator:
 
         self._lock = threading.Lock()
         self._cache: Dict[str, tuple[Optional[APIKeyInfo], float]] = {}  # key_hash -> (info, expiry)
-<<<<<<< Updated upstream
         self._failed_attempts: Dict[str, tuple[int, float]] = {}  # key_hash -> (attempts, first_failure_time)
-=======
         self._is_degraded = False
 
     def set_degraded(self, degraded: bool) -> None:
@@ -253,7 +251,6 @@ class APIKeyValidator:
     def is_degraded(self) -> bool:
         """Check if validator is in degraded mode."""
         return self._is_degraded
->>>>>>> Stashed changes
 
     def _get_cache_key(self, key: str) -> str:
         """Generate a cache key from the API key."""
@@ -636,18 +633,6 @@ def require_api_key_with_scope(scope: KeyScope):
         return info
 
     return dependency
-
-    validator = get_api_key_validator()
-    info = await validator.validate_key_async(x_api_key)
-
-    if not info:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired API key",
-            headers={"WWW-Authenticate": "ApiKey"},
-        )
-
-    return info
 
 
 def require_api_key_with_scope(scope: KeyScope):

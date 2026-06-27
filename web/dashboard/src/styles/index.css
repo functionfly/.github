@@ -463,31 +463,31 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(232, 90, 42, 0.1) !important;
 }
 
-/* Brand colored links */
+/* Brand colored links — keep default global link color, but let sidebar links use sidebar text colors */
 a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ) {
+  ):not(.v-sidebar-link) {
   color: #ff6b35;
   transition: color 0.2s ease;
 }
 
 a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ):hover {
+  ):not(.v-sidebar-link):hover {
   color: #ff8c42;
 }
 
 [data-theme='light']
   a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ) {
+  ):not(.v-sidebar-link) {
   color: #e85a2a;
 }
 
 [data-theme='light']
   a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ):hover {
+  ):not(.v-sidebar-link):hover {
   color: #c43e1a;
 }
 

@@ -1,9 +1,8 @@
+import { usersApi } from '@/api/users';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import {
   Select,
   SelectContent,
@@ -11,26 +10,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Dna,
-  Zap,
-  Shield,
-  GitBranch,
-  Server,
-  Gauge,
-  Bell,
   AlertTriangle,
+  Bell,
   CheckCircle2,
   ChevronRight,
-  Loader2,
   Clock,
+  Dna,
+  Gauge,
+  GitBranch,
   Info,
+  Loader2,
+  Server,
+  Shield,
+  Zap,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { usersApi } from '@/api/users';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // PlatformSettingsTab — Function DNA, runtime defaults, canary, and security
@@ -71,20 +71,34 @@ export function PlatformSettingsTab() {
 
       // Build a summary of what changed
       const changes: string[] = [];
-      if ('auto_evolve' in variables) changes.push(`Auto-Evolution ${variables.auto_evolve ? 'enabled' : 'disabled'}`);
-      if ('require_approval' in variables) changes.push(`Manual approval ${variables.require_approval ? 'required' : 'auto-approved'}`);
-      if ('sandbox_validation' in variables) changes.push(`Sandbox validation ${variables.sandbox_validation ? 'enabled' : 'disabled'}`);
-      if ('default_canary_pct' in variables) changes.push(`Canary default: ${variables.default_canary_pct}%`);
-      if ('max_mutations_per_day' in variables) changes.push(`Max mutations: ${variables.max_mutations_per_day}/day`);
-      if ('notify_on_proposal' in variables) changes.push(`Proposal notifications ${variables.notify_on_proposal ? 'on' : 'off'}`);
-      if ('notify_on_deploy' in variables) changes.push(`Deploy notifications ${variables.notify_on_deploy ? 'on' : 'off'}`);
-      if ('notify_on_rollback' in variables) changes.push(`Rollback notifications ${variables.notify_on_rollback ? 'on' : 'off'}`);
-      if ('auto_rollback_on_error' in variables) changes.push(`Auto-rollback ${variables.auto_rollback_on_error ? 'enabled' : 'disabled'}`);
-      if ('auto_rollback_error_threshold' in variables) changes.push(`Rollback threshold: ${variables.auto_rollback_error_threshold}%`);
+      if ('auto_evolve' in variables)
+        changes.push(`Auto-Evolution ${variables.auto_evolve ? 'enabled' : 'disabled'}`);
+      if ('require_approval' in variables)
+        changes.push(
+          `Manual approval ${variables.require_approval ? 'required' : 'auto-approved'}`
+        );
+      if ('sandbox_validation' in variables)
+        changes.push(`Sandbox validation ${variables.sandbox_validation ? 'enabled' : 'disabled'}`);
+      if ('default_canary_pct' in variables)
+        changes.push(`Canary default: ${variables.default_canary_pct}%`);
+      if ('max_mutations_per_day' in variables)
+        changes.push(`Max mutations: ${variables.max_mutations_per_day}/day`);
+      if ('notify_on_proposal' in variables)
+        changes.push(`Proposal notifications ${variables.notify_on_proposal ? 'on' : 'off'}`);
+      if ('notify_on_deploy' in variables)
+        changes.push(`Deploy notifications ${variables.notify_on_deploy ? 'on' : 'off'}`);
+      if ('notify_on_rollback' in variables)
+        changes.push(`Rollback notifications ${variables.notify_on_rollback ? 'on' : 'off'}`);
+      if ('auto_rollback_on_error' in variables)
+        changes.push(`Auto-rollback ${variables.auto_rollback_on_error ? 'enabled' : 'disabled'}`);
+      if ('auto_rollback_error_threshold' in variables)
+        changes.push(`Rollback threshold: ${variables.auto_rollback_error_threshold}%`);
 
       if (changes.length > 0) {
         toast.success('Platform settings saved', {
-          description: changes.slice(0, 5).join(' · ') + (changes.length > 5 ? ` · +${changes.length - 5} more` : ''),
+          description:
+            changes.slice(0, 5).join(' · ') +
+            (changes.length > 5 ? ` · +${changes.length - 5} more` : ''),
           icon: <CheckCircle2 className="h-4 w-4 text-success" />,
           duration: 4000,
         });
@@ -101,21 +115,15 @@ export function PlatformSettingsTab() {
   });
 
   // Local state for optimistic updates
-  const [autoEvolve, setAutoEvolve] = useState(
-    (dna.auto_evolve as boolean) ?? true
-  );
-  const [requireApproval, setRequireApproval] = useState(
-    (dna.require_approval as boolean) ?? true
-  );
+  const [autoEvolve, setAutoEvolve] = useState((dna.auto_evolve as boolean) ?? true);
+  const [requireApproval, setRequireApproval] = useState((dna.require_approval as boolean) ?? true);
   const [defaultCanaryPct, setDefaultCanaryPct] = useState(
     String((dna.default_canary_pct as number) ?? 10)
   );
   const [notifyOnProposal, setNotifyOnProposal] = useState(
     (dna.notify_on_proposal as boolean) ?? true
   );
-  const [notifyOnDeploy, setNotifyOnDeploy] = useState(
-    (dna.notify_on_deploy as boolean) ?? true
-  );
+  const [notifyOnDeploy, setNotifyOnDeploy] = useState((dna.notify_on_deploy as boolean) ?? true);
   const [notifyOnRollback, setNotifyOnRollback] = useState(
     (dna.notify_on_rollback as boolean) ?? true
   );
@@ -125,9 +133,7 @@ export function PlatformSettingsTab() {
   const [sandboxValidation, setSandboxValidation] = useState(
     (dna.sandbox_validation as boolean) ?? true
   );
-  const [autoRollback, setAutoRollback] = useState(
-    (dna.auto_rollback_on_error as boolean) ?? true
-  );
+  const [autoRollback, setAutoRollback] = useState((dna.auto_rollback_on_error as boolean) ?? true);
   const [autoRollbackThreshold, setAutoRollbackThreshold] = useState(
     String((dna.auto_rollback_error_threshold as number) ?? 5)
   );
@@ -165,8 +171,8 @@ export function PlatformSettingsTab() {
             Function DNA
           </CardTitle>
           <CardDescription>
-            Control how your functions evolve. Function DNA tracks execution patterns
-            and proposes AI-powered code optimizations.
+            Control how your functions evolve. Function DNA tracks execution patterns and proposes
+            AI-powered code optimizations.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -213,16 +219,13 @@ export function PlatformSettingsTab() {
               checked={requireApproval}
               onCheckedChange={(val) => {
                 setRequireApproval(val);
-                toast.info(
-                  val ? 'Manual approval required' : 'Mutations auto-approved',
-                  {
-                    description: val
-                      ? 'All proposed mutations require your review before deployment'
-                      : 'Accepted mutations will automatically trigger canary deployment',
-                    icon: <Info className="h-4 w-4 text-info" />,
-                    duration: 3000,
-                  }
-                );
+                toast.info(val ? 'Manual approval required' : 'Mutations auto-approved', {
+                  description: val
+                    ? 'All proposed mutations require your review before deployment'
+                    : 'Accepted mutations will automatically trigger canary deployment',
+                  icon: <Info className="h-4 w-4 text-info" />,
+                  duration: 3000,
+                });
               }}
             />
           </div>
@@ -244,16 +247,13 @@ export function PlatformSettingsTab() {
               checked={sandboxValidation}
               onCheckedChange={(val) => {
                 setSandboxValidation(val);
-                toast.info(
-                  val ? 'Sandbox validation enabled' : 'Sandbox validation disabled',
-                  {
-                    description: val
-                      ? 'Mutations will be tested in a sandbox before acceptance'
-                      : 'Mutations will be accepted without sandbox testing',
-                    icon: <Info className="h-4 w-4 text-info" />,
-                    duration: 3000,
-                  }
-                );
+                toast.info(val ? 'Sandbox validation enabled' : 'Sandbox validation disabled', {
+                  description: val
+                    ? 'Mutations will be tested in a sandbox before acceptance'
+                    : 'Mutations will be accepted without sandbox testing',
+                  icon: <Info className="h-4 w-4 text-info" />,
+                  duration: 3000,
+                });
               }}
             />
           </div>
@@ -271,14 +271,17 @@ export function PlatformSettingsTab() {
                 Percentage of traffic routed to the mutated code during canary deployment
               </p>
             </div>
-            <Select value={defaultCanaryPct} onValueChange={(val) => {
-              setDefaultCanaryPct(val);
-              toast.success(`Canary default set to ${val}%`, {
-                description: `${val}% of traffic will route to new mutations during canary`,
-                icon: <GitBranch className="h-4 w-4 text-success" />,
-                duration: 2500,
-              });
-            }}>
+            <Select
+              value={defaultCanaryPct}
+              onValueChange={(val) => {
+                setDefaultCanaryPct(val);
+                toast.success(`Canary default set to ${val}%`, {
+                  description: `${val}% of traffic will route to new mutations during canary`,
+                  icon: <GitBranch className="h-4 w-4 text-success" />,
+                  duration: 2500,
+                });
+              }}
+            >
               <SelectTrigger className="w-24">
                 <SelectValue />
               </SelectTrigger>
@@ -305,14 +308,17 @@ export function PlatformSettingsTab() {
                 Limit how many mutations the AI can propose per function per day
               </p>
             </div>
-            <Select value={maxMutationsPerDay} onValueChange={(val) => {
-              setMaxMutationsPerDay(val);
-              toast.success(`Max mutations set to ${val}/day`, {
-                description: `AI will propose at most ${val} mutations per function per day`,
-                icon: <Clock className="h-4 w-4 text-success" />,
-                duration: 2500,
-              });
-            }}>
+            <Select
+              value={maxMutationsPerDay}
+              onValueChange={(val) => {
+                setMaxMutationsPerDay(val);
+                toast.success(`Max mutations set to ${val}/day`, {
+                  description: `AI will propose at most ${val} mutations per function per day`,
+                  icon: <Clock className="h-4 w-4 text-success" />,
+                  duration: 2500,
+                });
+              }}
+            >
               <SelectTrigger className="w-24">
                 <SelectValue />
               </SelectTrigger>
@@ -354,16 +360,13 @@ export function PlatformSettingsTab() {
               checked={autoRollback}
               onCheckedChange={(val) => {
                 setAutoRollback(val);
-                toast.info(
-                  val ? 'Auto-rollback enabled' : 'Auto-rollback disabled',
-                  {
-                    description: val
-                      ? 'Mutations will automatically roll back if error rate exceeds threshold'
-                      : 'Manual rollback required — errors will not auto-revert',
-                    icon: <Info className="h-4 w-4 text-info" />,
-                    duration: 3000,
-                  }
-                );
+                toast.info(val ? 'Auto-rollback enabled' : 'Auto-rollback disabled', {
+                  description: val
+                    ? 'Mutations will automatically roll back if error rate exceeds threshold'
+                    : 'Manual rollback required — errors will not auto-revert',
+                  icon: <Info className="h-4 w-4 text-info" />,
+                  duration: 3000,
+                });
               }}
             />
           </div>
@@ -378,14 +381,17 @@ export function PlatformSettingsTab() {
                     Roll back when canary error rate exceeds this percentage
                   </p>
                 </div>
-                <Select value={autoRollbackThreshold} onValueChange={(val) => {
-                  setAutoRollbackThreshold(val);
-                  toast.success(`Rollback threshold set to ${val}%`, {
-                    description: `Canary will auto-rollback if error rate exceeds ${val}%`,
-                    icon: <AlertTriangle className="h-4 w-4 text-success" />,
-                    duration: 2500,
-                  });
-                }}>
+                <Select
+                  value={autoRollbackThreshold}
+                  onValueChange={(val) => {
+                    setAutoRollbackThreshold(val);
+                    toast.success(`Rollback threshold set to ${val}%`, {
+                      description: `Canary will auto-rollback if error rate exceeds ${val}%`,
+                      icon: <AlertTriangle className="h-4 w-4 text-success" />,
+                      duration: 2500,
+                    });
+                  }}
+                >
                   <SelectTrigger className="w-24">
                     <SelectValue />
                   </SelectTrigger>
@@ -410,9 +416,7 @@ export function PlatformSettingsTab() {
             <Bell className="h-5 w-5 text-brand-500" />
             DNA Notifications
           </CardTitle>
-          <CardDescription>
-            Choose which DNA events trigger notifications
-          </CardDescription>
+          <CardDescription>Choose which DNA events trigger notifications</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {[
@@ -503,11 +507,15 @@ export function PlatformSettingsTab() {
           <div>
             <p className="text-sm font-medium text-text-primary">Mutation Cost</p>
             <p className="text-xs text-text-muted">
-              Each accepted mutation costs <span className="font-mono text-velocity-500">50 credits</span> from your wallet.
+              Each accepted mutation costs{' '}
+              <span className="font-mono text-velocity-500">50 credits</span> from your wallet.
               Rejected mutations are free.
             </p>
           </div>
-          <Badge variant="outline" className="ml-auto font-mono text-velocity-500 border-velocity-500/30">
+          <Badge
+            variant="outline"
+            className="ml-auto font-mono text-velocity-500 border-velocity-500/30"
+          >
             50 cr
           </Badge>
         </div>
@@ -519,6 +527,11 @@ export function PlatformSettingsTab() {
           onClick={handleSave}
           disabled={updateSettings.isPending}
           className="gap-2"
+          style={{
+            background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+            color: 'var(--text-on-light)',
+            boxShadow: 'var(--shadow-btn-primary-rest)',
+          }}
         >
           {updateSettings.isPending ? (
             <>

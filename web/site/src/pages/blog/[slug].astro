@@ -1,43 +1,25 @@
 ---
 import ContentPage from '../../layouts/ContentPage.astro';
 import { SITE_ORIGIN } from '../../config';
-import { readFile } from 'node:fs/promises';
+import { getReports, getReport } from '../../lib/sanity';
 import { marked } from 'marked';
 
 export async function getStaticPaths() {
-  const reportsDir = new URL('../../content/reports/', import.meta.url);
-  let files: string[] = [];
-  try {
-    const dir = await import('node:fs/promises');
-    files = (await dir.readdir(reportsDir)).filter((f) => f.endsWith('.md')).sort().reverse();
-  } catch {
-    return [];
-  }
-  return files.map((f) => {
-    const slug = f.replace(/\.md$/, '');
-    return { params: { slug } };
-  });
+  const reports = await getReports();
+  return reports.map((r) => ({
+    params: { slug: r.slug },
+  }));
 }
 
 const { slug } = Astro.params;
+const report = await getReport(slug!);
 
-let raw = '';
-let title = slug;
-let description = 'State of AI Builders report';
-try {
-  const path = new URL(`../../content/reports/${slug}.md`, import.meta.url);
-  raw = await readFile(path, 'utf-8');
-  const titleMatch = raw.match(/^# (.+)$/m);
-  if (titleMatch) title = titleMatch[1];
-  const periodMatch = raw.match(/_Period: ([\d-]+) → ([\d-]+)/);
-  if (periodMatch) {
-    description = `Monthly State of AI Builders report for ${periodMatch[1]} → ${periodMatch[2]}. Top cities, universities, and ambassadors ranked by FunctionFly activity.`;
-  }
-} catch {
-  // No file for this slug.
-}
+const title = report?.title ?? slug ?? 'Report not found';
+const description = report
+  ? `Monthly State of AI Builders report for ${report.periodStart} → ${report.periodEnd}. Top cities, universities, and ambassadors ranked by FunctionFly activity.`
+  : 'State of AI Builders report';
 
-const html = raw ? await marked.parse(raw) : '<p>Report not found.</p>';
+const html = report?.body ? await marked.parse(report.body) : '<p>Report not found.</p>';
 
 const schema = {
   '@context': 'https://schema.org',

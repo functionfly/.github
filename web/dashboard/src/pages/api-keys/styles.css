@@ -1,227 +1,397 @@
 /* ==========================================================================
-   FunctionFly API Keys Page - Aviation Theme
-   Cockpit-inspired styling with full light/dark mode support
-   Uses the aviation theme CSS variables for consistent theming
+   FunctionFly API Keys Page - Sealed Containment Design System
+   Single source of truth for all design values.
    ========================================================================== */
-
-/* ----------------------------------------
-   CSS Variables (API Keys Theme - Aviation)
-   ---------------------------------------- */
-:root {
-  /* API Keys Brand Colors - Aviation */
-  --apikey-primary: var(--ff-flame);
-  --apikey-primary-hover: var(--ff-flame-dark);
-  --apikey-primary-light: rgba(255, 107, 53, 0.1);
-  --apikey-primary-border: rgba(255, 107, 53, 0.2);
-
-  /* Key Status Colors - Aviation LED */
-  --apikey-active-bg: rgba(16, 185, 129, 0.15);
-  --apikey-active-text: var(--color-aviation-green);
-  --apikey-active-border: rgba(16, 185, 129, 0.3);
-
-  --apikey-expired-bg: rgba(245, 158, 11, 0.15);
-  --apikey-expired-text: var(--color-aviation-amber);
-  --apikey-expired-border: rgba(245, 158, 11, 0.3);
-
-  --apikey-revoked-bg: rgba(239, 68, 68, 0.15);
-  --apikey-revoked-text: var(--color-aviation-red);
-  --apikey-revoked-border: rgba(239, 68, 68, 0.3);
-
-  --apikey-pending-bg: rgba(107, 114, 128, 0.15);
-  --apikey-pending-text: var(--color-aviation-text-secondary);
-  --apikey-pending-border: rgba(107, 114, 128, 0.3);
-
-  /* API Key Card Styles - Aviation Panel */
-  --apikey-card-bg: var(--color-aviation-bg-panel);
-  --apikey-card-border: var(--color-aviation-border-panel);
-  --apikey-card-hover-border: var(--color-aviation-amber-dim);
-  --apikey-card-text: var(--color-aviation-text-primary);
-  --apikey-card-text-secondary: var(--color-aviation-text-secondary);
-
-  /* Key Type Colors */
-  --apikey-type-standard-bg: rgba(59, 130, 246, 0.15);
-  --apikey-type-standard-text: #3b82f6;
-  --apikey-type-standard-border: rgba(59, 130, 246, 0.3);
-
-  --apikey-type-admin-bg: rgba(239, 68, 68, 0.15);
-  --apikey-type-admin-text: var(--color-aviation-red);
-  --apikey-type-admin-border: rgba(239, 68, 68, 0.3);
-
-  --apikey-type-readonly-bg: rgba(16, 185, 129, 0.15);
-  --apikey-type-readonly-text: var(--color-aviation-green);
-  --apikey-type-readonly-border: rgba(16, 185, 129, 0.3);
-
-  /* Input/Select - Aviation Instrument */
-  --apikey-input-bg: var(--color-aviation-bg-instrument);
-  --apikey-input-border: var(--color-aviation-border-instrument);
-  --apikey-input-text: var(--color-aviation-text-primary);
-  --apikey-input-placeholder: var(--color-aviation-text-dim);
-
-  /* Animation Durations */
-  --apikey-transition-fast: 150ms ease;
-  --apikey-transition-normal: 250ms ease;
-  --apikey-transition-slow: 350ms ease;
-
-  /* Shadows - Aviation Glow */
-  --apikey-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --apikey-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --apikey-shadow-glow: 0 0 20px rgba(255, 107, 53, 0.15);
-}
-
-/* Light Mode Overrides */
-[data-theme='light'] {
-  --apikey-card-bg: var(--color-aviation-bg-panel-light);
-  --apikey-card-border: var(--color-aviation-border-panel-light);
-  --apikey-card-hover-border: var(--color-aviation-amber-dim-light);
-  --apikey-card-text: var(--color-aviation-text-primary-light);
-  --apikey-card-text-secondary: var(--color-aviation-text-secondary-light);
-
-  --apikey-input-bg: var(--color-aviation-bg-instrument-light);
-  --apikey-input-border: var(--color-aviation-border-instrument-light);
-  --apikey-input-text: var(--color-aviation-text-primary-light);
-  --apikey-input-placeholder: var(--color-aviation-text-dim-light);
-
-  --apikey-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --apikey-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
-  --apikey-shadow-glow: 0 0 20px rgba(232, 90, 42, 0.1);
-}
 
 /* ----------------------------------------
    Page Container
    ---------------------------------------- */
 .apikeys-page {
-  animation: apikeys-fade-in 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-7);
+  max-width: 1180px;
+  margin: 0 auto;
 }
 
-@keyframes apikeys-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+@media (max-width: 480px) {
+  .apikeys-page {
+    padding: var(--space-4);
+    gap: var(--space-5);
   }
 }
 
 /* ----------------------------------------
-   API Keys Header
+   API Keys Header (Chamber)
    ---------------------------------------- */
 .apikeys-header {
+  padding: var(--space-7);
+}
+
+.apikeys-header-inner {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-5);
 }
 
 @media (min-width: 768px) {
-  .apikeys-header {
+  .apikeys-header-inner {
     flex-direction: row;
     align-items: flex-start;
     justify-content: space-between;
+    gap: var(--space-6);
   }
 }
 
+.apikeys-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-bottom: var(--space-2);
+}
+
+.apikeys-breadcrumb-link {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.apikeys-breadcrumb-link:hover {
+  color: var(--text);
+}
+
+.apikeys-breadcrumb-sep {
+  color: var(--text-faint);
+}
+
 .apikeys-title {
-  font-size: 1.875rem;
+  font-family: var(--font-display);
+  font-size: 36px;
   font-weight: 700;
-  color: var(--apikey-card-text);
-  line-height: 1.2;
-  font-family: var(--font-mono);
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .apikeys-title {
+    font-size: 28px;
+  }
 }
 
 .apikeys-subtitle {
-  color: var(--apikey-card-text-secondary);
-  margin-top: 0.25rem;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 600px;
+  margin-top: var(--space-2);
 }
 
 .apikeys-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 /* ----------------------------------------
-   API Key Card - Aviation Panel
+   API Key Card (Collapsible Chambers)
    ---------------------------------------- */
 .apikey-card {
-  background-color: var(--apikey-card-bg);
-  border: 1px solid var(--apikey-card-border);
-  border-radius: 12px;
-  transition:
-    border-color var(--apikey-transition-normal),
-    box-shadow var(--apikey-transition-normal),
-    transform var(--apikey-transition-fast);
-  position: relative;
+  padding: 0;
   overflow: hidden;
 }
 
-.apikey-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-aviation-border-panel) 30%,
-    var(--color-aviation-border-panel) 70%,
-    transparent 100%
-  );
-}
-
-.apikey-card:hover {
-  border-color: var(--apikey-card-hover-border);
-  box-shadow:
-    var(--apikey-shadow-glow),
-    0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.apikey-card-hoverable {
+.apikey-card-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: var(--space-5);
   cursor: pointer;
+  text-align: left;
+  transition: background var(--duration-fast) var(--ease-out);
 }
 
-.apikey-card-hoverable:hover {
-  transform: translateY(-2px);
+.apikey-card-toggle:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
-/* ----------------------------------------
-   Status Badge - Aviation LED
-   ---------------------------------------- */
-.apikey-status-badge {
-  display: inline-flex;
+.apikey-card-header {
+  display: flex;
+  flex-direction: row;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  justify-content: space-between;
+  color: var(--text);
+}
+
+.apikey-card-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.apikey-card-content {
+  padding: 0 var(--space-5) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.apikey-card-text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.apikey-card-text--sm {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.apikey-code {
   font-family: var(--font-mono);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  border: 1px solid transparent;
+  font-size: 12px;
+  background: var(--panel-raised);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--status-ok);
+}
+
+.apikey-code-block {
   position: relative;
 }
 
-.apikey-status-badge::before {
-  content: '';
+.apikey-copy-btn {
   position: absolute;
-  top: 50%;
-  left: 0.5rem;
-  transform: translateY(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  box-shadow: 0 0 6px currentColor;
+  top: var(--space-2);
+  right: var(--space-2);
 }
 
-.apikey-status-active {
-  background-color: var(--apikey-active-bg);
-  color: var(--apikey-active-text);
-  border-color: var(--apikey-active-border);
+.apikey-pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  overflow-x: auto;
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.apikey-security-list {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  list-style: disc;
+  list-style-position: inside;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+}
+
+/* ----------------------------------------
+   Stats Grid (Gauge Strip)
+   ---------------------------------------- */
+.apikeys-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+}
+
+@media (max-width: 960px) {
+  .apikeys-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .apikeys-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gauge__sublabel {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-faint);
+  margin-top: var(--space-1);
+}
+
+.gauge__value--success {
+  color: var(--status-ok);
+}
+
+.gauge__value--warning {
+  color: var(--status-pending);
+}
+
+.gauge__value--accent {
+  color: var(--accent);
+}
+
+/* ----------------------------------------
+   Two Column Grid
+   ---------------------------------------- */
+.apikeys-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-5);
+}
+
+@media (max-width: 960px) {
+  .apikeys-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ----------------------------------------
+   Table Chamber
+   ---------------------------------------- */
+.apikey-table-chamber {
+  padding: 0;
+  overflow: hidden;
+}
+
+.apikey-table-header {
+  padding: var(--space-5);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.apikey-table-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0;
+}
+
+.apikey-table-description {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin-top: var(--space-2);
+}
+
+/* ----------------------------------------
+   API Key List Styles
+   ---------------------------------------- */
+.apikey-list-container {
+  padding: var(--space-5);
+}
+
+/* ----------------------------------------
+   Empty State
+   ---------------------------------------- */
+.apikey-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+}
+
+.apikey-empty-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+.apikey-empty-text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-dim);
+  max-width: 400px;
+}
+
+/* ----------------------------------------
+   Filter Bar
+   ---------------------------------------- */
+.apikey-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.apikey-filter-btn {
+  font-family: var(--font-body);
+  font-size: 14px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--steel);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.apikey-filter-btn:hover {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+
+.apikey-filter-btn--active {
+  background: var(--panel-raised);
+  border-color: var(--status-ok);
+  color: var(--status-ok);
+}
+
+/* ----------------------------------------
+   Key Row
+   ---------------------------------------- */
+.apikey-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--space-4);
+  align-items: center;
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.apikey-row:last-child {
+  border-bottom: none;
+}
+
+.apikey-row:hover {
+  background: var(--panel-raised);
+}
+
+.apikey-row-name {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.apikey-row-meta {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.apikey-row-actions {
+  display: flex;
+  gap: var(--space-2);
 }
 
 .apikey-status-expired {
@@ -310,11 +480,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: linear-gradient(
-    145deg,
-    var(--apikey-primary) 0%,
-    var(--apikey-primary-hover) 100%
-  );
+  background: linear-gradient(145deg, var(--apikey-primary) 0%, var(--apikey-primary-hover) 100%);
   border: 1px solid var(--apikey-primary-border);
   color: white;
   font-family: var(--font-mono);

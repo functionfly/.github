@@ -1,4 +1,4 @@
-import '@/styles/professional-dashboard.css';
+import '@/styles/sc-dashboard.css';
 
 import { providersApi } from '@/api';
 import { appsApi } from '@/api/apps';
@@ -6,6 +6,7 @@ import { createCheckoutSession } from '@/api/billing';
 import { dashboardApi } from '@/api/dashboard';
 import { functionsApi } from '@/api/functions';
 import { ProviderStatus } from '@/components/common/ProviderStatus';
+import { Chamber, CornerBrace, PageGrid } from '@/components/containment';
 import type { AgentActivityItem } from '@/components/dashboard';
 import {
   AgentActivityFeed,
@@ -32,7 +33,7 @@ import {
 import { EnterpriseStatusCard, PlanSelectionModal } from '@/components/enterprise';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { usePlan } from '@/hooks';
+import { usePageTitle, usePlan } from '@/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -41,7 +42,6 @@ import { Activity, Building2, FunctionSquare, Globe, Loader2, Play, X, Zap } fro
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { usePageTitle } from '@/hooks';
 
 export function DashboardPage() {
   usePageTitle('Dashboard');
@@ -513,7 +513,10 @@ export function DashboardPage() {
             transition={{ duration: 0.5, delay: 0.28 }}
             className="grid grid-cols-1 lg:grid-cols-3 gap-4"
           >
-            <ErrorRateWidget data={errorRateDataPrecomputed} className="error-rate-widget lg:col-span-2" />
+            <ErrorRateWidget
+              data={errorRateDataPrecomputed}
+              className="error-rate-widget lg:col-span-2"
+            />
             <QuickActionsPanel
               onCreateFunction={() => navigate('/functions/new')}
               onCreateGraph={() => navigate('/frg')}
@@ -541,7 +544,11 @@ export function DashboardPage() {
               totalFunctions={activeFunctions}
               className="region-distribution-widget"
             />
-            <PerformanceLeaderboard functions={performanceDataPrecomputed} maxItems={3} className="performance-leaderboard" />
+            <PerformanceLeaderboard
+              functions={performanceDataPrecomputed}
+              maxItems={3}
+              className="performance-leaderboard"
+            />
           </motion.div>
         ),
       },
@@ -714,9 +721,7 @@ export function DashboardPage() {
                   </div>
                 ) : functions.length === 0 ? (
                   <div className="empty-state">
-                    <p className="empty-state-text">
-                      {t('dashboard.noFunctionsDeployedYet')}
-                    </p>
+                    <p className="empty-state-text">{t('dashboard.noFunctionsDeployedYet')}</p>
                     <Button
                       variant="outline"
                       size="sm"
@@ -739,7 +744,9 @@ export function DashboardPage() {
                       >
                         <div className="recent-list-dot w-2 h-2 mt-2 rounded-full bg-linear-to-r from-[#6366f1] to-[#8b5cf6]" />
                         <div>
-                          <p className="recent-list-name text-sm text-text-primary font-medium">{fn.name}</p>
+                          <p className="recent-list-name text-sm text-text-primary font-medium">
+                            {fn.name}
+                          </p>
                           <p className="recent-list-status text-xs text-text-muted capitalize">
                             {fn.status || 'unknown'}
                           </p>
@@ -816,13 +823,16 @@ export function DashboardPage() {
   ]);
 
   return (
-    <div className="professional-dashboard relative space-y-6">
+    <div className="sc-dashboard">
+      {/* PageGrid - blueprint paper texture backdrop */}
+      <PageGrid />
+
       {/* Resume Onboarding Banner - pinned to top, not draggable */}
       {canResume() && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="onboarding-banner glow hover-lift p-4"
+          className="onboarding-banner hover-lift p-4"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -830,9 +840,7 @@ export function DashboardPage() {
                 <Play className="w-5 h-5 text-[#6366f1]" />
               </div>
               <div>
-                <h3 className="onboarding-title">
-                  {t('dashboard.completeYourSetup')}
-                </h3>
+                <h3 className="onboarding-title">{t('dashboard.completeYourSetup')}</h3>
                 <p className="onboarding-description">
                   {t('dashboard.onboardingProgress', { completed: completedSteps.length })}
                 </p>
@@ -858,8 +866,12 @@ export function DashboardPage() {
         </motion.div>
       )}
 
-      {/* Draggable Dashboard Sections */}
-      <DraggableDashboardGrid sections={dashboardSections} storageKey="dashboard-section-order" />
+      {/* Draggable Dashboard Sections wrapped in Chamber */}
+      <Chamber ribs className="relative">
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <DraggableDashboardGrid sections={dashboardSections} storageKey="dashboard-section-order" />
+      </Chamber>
 
       {/* Plan Selection Modal for free users */}
       <PlanSelectionModal

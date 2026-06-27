@@ -1,6 +1,7 @@
-/** Public site URLs (override at build/dev time with PUBLIC_* env vars). */
+/** Public site origin. Dev: http://localhost:4321, Prod: https://functionfly.com */
 export const SITE_ORIGIN =
   (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.replace(/\/$/, "") ||
+  (import.meta.env.DEV ? "http://localhost:4321" : undefined) ||
   "https://functionfly.com";
 export const DOCS_ORIGIN =
   (import.meta.env.PUBLIC_DOCS_URL as string | undefined)?.replace(/\/$/, "") ||

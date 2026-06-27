@@ -1,23 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import {
-  Key,
-  Plus,
-  AlertTriangle,
-  Shield,
-  BookOpen,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  Check,
-  KeyRound,
-  Clock,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { APIKeyList, APIKeyRotationModal, CreateAPIKeyModal } from '@/components/api-keys';
+import { VaultSetupDialog } from '@/components/api-keys/VaultSetupDialog';
+import { Chamber } from '@/components/ui/Chamber';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,18 +10,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
+} from '@/components/ui/alert-dialog';
+import { getApiBaseUrl } from '@/lib/constants';
+import { apiKeysService, getStoredApiKey } from '@/services/api-keys';
+import { APIKey, APIKeyFilters, DEFAULT_RATE_LIMIT } from '@/types/api-key';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  APIKeyList,
-  CreateAPIKeyModal,
-  APIKeyRotationModal,
-} from "@/components/api-keys";
-import { VaultSetupDialog } from "@/components/api-keys/VaultSetupDialog";
-import { APIKey, APIKeyFilters, DEFAULT_RATE_LIMIT } from "@/types/api-key";
-import { apiKeysService, getStoredApiKey } from "@/services/api-keys";
-import { getApiBaseUrl } from "@/lib/constants";
-import "./styles.css";
+  AlertTriangle,
+  BookOpen,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Key,
+  Plus,
+  Shield,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
+import './styles.css';
 
 const PAGE_SIZE = 10;
 const EXPIRING_DAYS = 30;
@@ -71,7 +62,7 @@ export function APIKeysPage() {
   useEffect(() => {
     const stored = getStoredApiKey();
     if (stored) {
-      toast.success("API key created successfully", {
+      toast.success('API key created successfully', {
         description: "Copy your new API key now. It won't be shown again.",
         duration: 10000,
       });
@@ -79,7 +70,7 @@ export function APIKeysPage() {
   }, []);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["api-keys", filters, page],
+    queryKey: ['api-keys', filters, page],
     queryFn: () => apiKeysService.listKeys(filters, page, PAGE_SIZE),
   });
 
@@ -88,13 +79,13 @@ export function APIKeysPage() {
     onSuccess: (_data, deletedId) => {
       const idStr = String(deletedId);
       setDeletedIds((prev) => new Set(prev).add(idStr));
-      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
-      toast.success("API key deleted");
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+      toast.success('API key deleted');
       setDeleteKey(null);
     },
     onError: (error) => {
-      toast.error("Failed to delete API key", {
-        description: error instanceof Error ? error.message : "Unknown error",
+      toast.error('Failed to delete API key', {
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     },
   });
@@ -157,12 +148,12 @@ export function APIKeysPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
-      toast.success("Selected API keys deleted");
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+      toast.success('Selected API keys deleted');
     },
     onError: (err) => {
-      toast.error("Failed to delete some keys", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      toast.error('Failed to delete some keys', {
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     },
   });
@@ -175,17 +166,17 @@ export function APIKeysPage() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["api-keys"] });
-      toast.success("Selected API keys rotated");
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] });
+      toast.success('Selected API keys rotated');
     },
     onError: (err) => {
-      toast.error("Failed to rotate some keys", {
-        description: err instanceof Error ? err.message : "Unknown error",
+      toast.error('Failed to rotate some keys', {
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     },
   });
 
-  const apiBase = getApiBaseUrl() || (typeof window !== "undefined" ? window.location.origin : "");
+  const apiBase = getApiBaseUrl() || (typeof window !== 'undefined' ? window.location.origin : '');
   const curlExample = `curl -X GET "${apiBase}/v1/functions" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json"`;
@@ -194,217 +185,195 @@ export function APIKeysPage() {
     try {
       await navigator.clipboard.writeText(curlExample);
       setCopiedSnippet(true);
-      toast.success("Copied to clipboard");
+      toast.success('Copied to clipboard');
       setTimeout(() => setCopiedSnippet(false), 2000);
     } catch {
-      toast.error("Failed to copy. Your browser may block clipboard access.");
+      toast.error('Failed to copy. Your browser may block clipboard access.');
     }
   };
 
   return (
-    <div className="apikeys-page space-y-8">
+    <div className="apikeys-page">
       {/* Page header */}
-      <div className="apikeys-header">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Link to="/dashboard" className="hover:text-foreground">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span>API Keys</span>
+      <Chamber className="apikeys-header" ribs>
+        <div className="apikeys-header-inner">
+          <div>
+            <div className="apikeys-breadcrumb">
+              <Link to="/dashboard" className="apikeys-breadcrumb-link">
+                Dashboard
+              </Link>
+              <span className="apikeys-breadcrumb-sep">/</span>
+              <span>API Keys</span>
+            </div>
+            <h1 className="apikeys-title">API Keys</h1>
+            <p className="apikeys-subtitle">
+              Create and manage API keys for programmatic access. Use keys in headers or environment
+              variables; rotate them regularly and revoke if compromised.
+            </p>
           </div>
-          <h1 className="apikeys-title">API Keys</h1>
-          <p className="apikeys-subtitle max-w-2xl">
-            Create and manage API keys for programmatic access. Use keys in headers or environment
-            variables; rotate them regularly and revoke if compromised.
-          </p>
+          <div className="apikeys-header-actions">
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="sealed-button sealed-button--lg"
+            >
+              <Plus className="sealed-button__icon sealed-button__icon--left" />
+              Create API Key
+            </button>
+          </div>
         </div>
-        <div className="apikeys-header-actions">
-          <Button onClick={() => setShowCreateModal(true)} size="lg" className="btn-apikey-primary shrink-0">
-            <Plus className="w-4 h-4 mr-2" />
-            Create API Key
-          </Button>
-        </div>
-      </div>
+      </Chamber>
 
       {/* Stats row */}
-      <div className="apikey-stats-grid">
-        <Card className="apikey-stat-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total keys
-            </CardTitle>
-            <KeyRound className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="apikey-stat-value apikey-stat-value-primary">{displayTotal}</div>
-            <p className="apikey-stat-label">Across all pages</p>
-          </CardContent>
-        </Card>
-        <Card className="apikey-stat-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active (this page)
-            </CardTitle>
-            <CheckCircle2 className="w-4 h-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="apikey-stat-value apikey-stat-value-success">{stats.active}</div>
-            <p className="apikey-stat-label">Can be used for requests</p>
-          </CardContent>
-        </Card>
-        <Card className="apikey-stat-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Inactive (this page)
-            </CardTitle>
-            <XCircle className="w-4 h-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="apikey-stat-value apikey-stat-value-warning">{stats.inactive}</div>
-            <p className="apikey-stat-label">Revoked or disabled</p>
-          </CardContent>
-        </Card>
-        <Card className="apikey-stat-card">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Expiring soon
-            </CardTitle>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="apikey-stat-value apikey-stat-value-accent">{stats.expiringSoon}</div>
-            <p className="apikey-stat-label">Within {EXPIRING_DAYS} days</p>
-          </CardContent>
-        </Card>
+      <div className="gauge-strip">
+        <div className="gauge gauge--first">
+          <div className="gauge__value">
+            <span className="gauge__dot" />
+            {displayTotal}
+          </div>
+          <div className="gauge__label">Total keys</div>
+          <p className="gauge__sublabel">Across all pages</p>
+        </div>
+        <div className="gauge">
+          <div className="gauge__value gauge__value--success">
+            <span className="gauge__dot" />
+            {stats.active}
+          </div>
+          <div className="gauge__label">Active</div>
+          <p className="gauge__sublabel">Can be used for requests</p>
+        </div>
+        <div className="gauge">
+          <div className="gauge__value gauge__value--warning">{stats.inactive}</div>
+          <div className="gauge__label">Inactive</div>
+          <p className="gauge__sublabel">Revoked or disabled</p>
+        </div>
+        <div className="gauge">
+          <div className="gauge__value gauge__value--accent">{stats.expiringSoon}</div>
+          <div className="gauge__label">Expiring soon</div>
+          <p className="gauge__sublabel">Within {EXPIRING_DAYS} days</p>
+        </div>
       </div>
 
-{/* How to use & Security */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="apikey-card">
+      {/* How to use & Security */}
+      <div className="apikeys-grid-2">
+        <Chamber className="apikey-card" annotation="USAGE / HOW TO">
           <button
             type="button"
             onClick={toggleUsage}
-            className="w-full text-left"
+            className="apikey-card-toggle"
             aria-expanded={usageOpen}
           >
-            <CardHeader className="flex flex-row items-center justify-between hover:bg-muted/50 rounded-t-lg transition-colors">
+            <div className="apikey-card-header">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-primary" />
-                <CardTitle className="text-base">How to use your API key</CardTitle>
+                <BookOpen className="w-5 h-5" />
+                <span className="apikey-card-title">How to use your API key</span>
               </div>
               {usageOpen ? (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <ChevronDown className="w-4 h-4" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <ChevronRight className="w-4 h-4" />
               )}
-            </CardHeader>
+            </div>
           </button>
           {usageOpen && (
-            <CardContent className="pt-0">
-              <p className="text-sm text-muted-foreground mb-3">
-                Send your API key in the{" "}
-                <code className="text-xs bg-muted px-1 rounded">
-                  Authorization: Bearer {'<key>'}
-                </code>{" "}
-                header.
+            <div className="apikey-card-content">
+              <p className="apikey-card-text">
+                Send your API key in the{' '}
+                <code className="apikey-code">Authorization: Bearer {'<key>'}</code> header.
               </p>
-              <pre className="relative text-xs bg-muted/80 rounded-lg p-4 overflow-x-auto">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-2 right-2 h-7 w-7"
+              <div className="apikey-code-block">
+                <button
                   onClick={(e) => {
                     e.preventDefault();
                     copyCurl();
                   }}
+                  className="frame-button frame-button--sm apikey-copy-btn"
                 >
                   {copiedSnippet ? (
-                    <Check className="w-3.5 h-3.5 text-green-600" />
+                    <Check className="w-3.5 h-3.5" />
                   ) : (
                     <Copy className="w-3.5 h-3.5" />
                   )}
-                </Button>
-                <code>{curlExample}</code>
-              </pre>
-              <p className="text-xs text-muted-foreground mt-2">
-                Default rate limits: {DEFAULT_RATE_LIMIT.rpm.toLocaleString()} RPM,{" "}
+                </button>
+                <pre className="apikey-pre">
+                  <code>{curlExample}</code>
+                </pre>
+              </div>
+              <p className="apikey-card-text apikey-card-text--sm">
+                Default rate limits: {DEFAULT_RATE_LIMIT.rpm.toLocaleString()} RPM,{' '}
                 {DEFAULT_RATE_LIMIT.rph.toLocaleString()} RPH. Adjust when creating a key.
               </p>
-            </CardContent>
+            </div>
           )}
-        </Card>
+        </Chamber>
 
-        <Card className="apikey-card">
+        <Chamber className="apikey-card" annotation="SECURITY / BEST PRACTICES">
           <button
             type="button"
             onClick={toggleSecurity}
-            className="w-full text-left"
+            className="apikey-card-toggle"
             aria-expanded={securityOpen}
           >
-            <CardHeader className="flex flex-row items-center justify-between hover:bg-muted/50 rounded-t-lg transition-colors">
+            <div className="apikey-card-header">
               <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
-                <CardTitle className="text-base">Security best practices</CardTitle>
+                <Shield className="w-5 h-5" />
+                <span className="apikey-card-title">Security best practices</span>
               </div>
               {securityOpen ? (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <ChevronDown className="w-4 h-4" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <ChevronRight className="w-4 h-4" />
               )}
-            </CardHeader>
+            </div>
           </button>
           {securityOpen && (
-            <CardContent className="pt-0">
-              <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
+            <div className="apikey-card-content">
+              <ul className="apikey-security-list">
                 <li>Never commit keys to git or share them in public.</li>
                 <li>Use environment variables or a secrets manager in production.</li>
                 <li>Rotate keys periodically and immediately if compromised.</li>
                 <li>Create separate keys per environment (e.g. staging vs production).</li>
                 <li>Prefer scoped keys (e.g. function type) over platform keys when possible.</li>
               </ul>
-            </CardContent>
+            </div>
           )}
-</Card>
+        </Chamber>
       </div>
 
       {/* Keys table */}
-      <Card className="apikey-card">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Chamber className="apikey-table-chamber" corners={['tl', 'br']}>
+        <div className="apikey-table-header">
+          <div className="flex items-center gap-2">
             <Key className="w-5 h-5" />
-            Your API Keys
-          </CardTitle>
-          <CardDescription>
+            <h2 className="apikey-table-title">Your API Keys</h2>
+          </div>
+          <p className="apikey-table-description">
             Search, filter, and manage keys. Click a key to edit permissions and environments.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <APIKeyList
-            apiKeys={apiKeys}
-            isLoading={isLoading}
-            isError={isError}
-            error={error as Error | null}
-            onRetry={() => refetch()}
-            total={displayTotal}
-            page={page}
-            pageSize={PAGE_SIZE}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            onPageChange={handlePageChange}
-            onCreateNew={() => setShowCreateModal(true)}
-            onRotate={handleRotate}
-            onDelete={handleDelete}
-            onBulkDelete={(ids) => bulkDeleteMutation.mutate(ids)}
-            onBulkRotate={(ids) => bulkRotateMutation.mutate(ids)}
-          />
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <APIKeyList
+          apiKeys={apiKeys}
+          isLoading={isLoading}
+          isError={isError}
+          error={error as Error | null}
+          onRetry={() => refetch()}
+          total={displayTotal}
+          page={page}
+          pageSize={PAGE_SIZE}
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          onPageChange={handlePageChange}
+          onCreateNew={() => setShowCreateModal(true)}
+          onRotate={handleRotate}
+          onDelete={handleDelete}
+          onBulkDelete={(ids) => bulkDeleteMutation.mutate(ids)}
+          onBulkRotate={(ids) => bulkRotateMutation.mutate(ids)}
+        />
+      </Chamber>
 
       <CreateAPIKeyModal
         open={showCreateModal}
         onOpenChange={setShowCreateModal}
-        onSuccess={() => queryClient.invalidateQueries({ queryKey: ["api-keys"] })}
+        onSuccess={() => queryClient.invalidateQueries({ queryKey: ['api-keys'] })}
       />
 
       <APIKeyRotationModal
@@ -413,7 +382,7 @@ export function APIKeysPage() {
         apiKey={selectedKey}
         onSuccess={() => {
           refetch();
-          toast.success("API key rotated successfully");
+          toast.success('API key rotated successfully');
         }}
       />
 
@@ -421,22 +390,22 @@ export function APIKeysPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
+              <AlertTriangle className="w-5 h-5" />
               Delete API Key
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the API key &quot;{deleteKey?.name}&quot;? This
-              action cannot be undone and any applications using this key will stop working.
+              Are you sure you want to delete the API key &quot;{deleteKey?.name}&quot;? This action
+              cannot be undone and any applications using this key will stop working.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
+              className="sealed-button sealed-button--sm"
               disabled={deleteMutation.isPending}
             >
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

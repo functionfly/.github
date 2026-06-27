@@ -9,8 +9,21 @@ const blogSiteUrl =
 
 // All supported locales (matches web/dashboard/src/lib/i18n/languages.ts)
 const SUPPORTED_LOCALES = [
-  "en", "es", "fr", "de", "zh", "ja", "ko",
-  "pt", "ar", "ru", "hi", "nl", "pl", "tr", "vi",
+  "en",
+  "es",
+  "fr",
+  "de",
+  "zh",
+  "ja",
+  "ko",
+  "pt",
+  "ar",
+  "ru",
+  "hi",
+  "nl",
+  "pl",
+  "tr",
+  "vi",
 ];
 
 const isDev = process.env.NODE_ENV === "development" || !process.env.NODE_ENV;
@@ -24,11 +37,10 @@ export default defineConfig({
       changefreq: "weekly",
       priority: 0.7,
       lastmod: new Date(),
-      filter: (page) => !page.includes("/blog/"),
       i18n: {
         defaultLocale: "en",
         locales: Object.fromEntries(
-          SUPPORTED_LOCALES.map((code) => [code, code])
+          SUPPORTED_LOCALES.map((code) => [code, code]),
         ),
       },
     }),
@@ -53,12 +65,6 @@ export default defineConfig({
   },
   build: {
     format: "directory",
-  },
-  redirects: {
-    "/blog": {
-      destination: blogSiteUrl,
-      status: 301,
-    },
   },
   vite: {
     server: {

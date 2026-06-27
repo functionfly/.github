@@ -350,6 +350,11 @@ func (db *PostgresDB) LoginAttemptRepository() *LoginAttemptRepository {
 	return db.loginAttemptRepository
 }
 
+// TenantRepository accessor
+func (db *PostgresDB) TenantRepository() *TenantRepository {
+	return db.tenantRepository
+}
+
 func (db *PostgresDB) IsEncryptionEnabled() bool {
 	return db.encryptionManager.IsEncryptionEnabled()
 }

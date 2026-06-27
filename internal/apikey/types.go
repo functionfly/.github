@@ -57,7 +57,9 @@ const (
 	KeyTypeEdge     KeyType = "edge" // FunctionFly Edge API keys
 	KeyTypeEnvironment KeyType = "environment"
 	KeyTypeOAuth    KeyType = "oauth"
-	KeyTypeTrust    KeyType = "trust" // Trust API partner keys
+	KeyTypeTrust       KeyType = "trust"       // Trust API partner keys
+	KeyTypeMicroPython KeyType = "micropython" // MicroPython runtime access for Enterprise
+	KeyTypeRuntime     KeyType = "runtime"     // Runtime execution keys (bun, deno, kotlin, ruby, nodejs, wasmedge, prism)
 )
 
 // Key prefixes by type
@@ -68,7 +70,9 @@ const (
 	PrefixEdge        = "ffx_"
 	PrefixEnvironment = "ffe_"
 	PrefixOAuth       = "ffo_"
-	PrefixTrust       = "fft_" // Trust API key prefix
+	PrefixTrust       = "fft_"  // Trust API key prefix
+	PrefixMicroPython = "ffmp_" // MicroPython runtime key prefix
+	PrefixRuntime     = "ffr_"  // Runtime execution key prefix
 )
 
 // Default rate limits
@@ -320,6 +324,10 @@ func GetPrefixForKeyType(keyType KeyType) string {
 		return PrefixOAuth
 	case KeyTypeTrust:
 		return PrefixTrust
+	case KeyTypeMicroPython:
+		return PrefixMicroPython
+	case KeyTypeRuntime:
+		return PrefixRuntime
 	default:
 		return PrefixPlatform
 	}
@@ -365,7 +373,7 @@ func (k *APIKey) ToResponse() *APIKeyResponse {
 // IsValidKeyType checks if the given string is a valid key type
 func IsValidKeyType(s string) bool {
 	switch KeyType(s) {
-	case KeyTypePlatform, KeyTypeFunction, KeyTypeAgent, KeyTypeEdge, KeyTypeEnvironment, KeyTypeOAuth, KeyTypeTrust:
+	case KeyTypePlatform, KeyTypeFunction, KeyTypeAgent, KeyTypeEdge, KeyTypeEnvironment, KeyTypeOAuth, KeyTypeTrust, KeyTypeMicroPython, KeyTypeRuntime:
 		return true
 	default:
 		return false

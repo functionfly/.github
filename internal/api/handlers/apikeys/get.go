@@ -56,6 +56,6 @@ func (h *Handler) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 // RegisterGetRoutes registers the get route
 func RegisterGetRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys/{id}", h.HandleGet).Methods("GET", "OPTIONS")
 }

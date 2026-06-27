@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/apikey"
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -23,6 +24,17 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get tenant plan for Enterprise feature gating
+	tenantPlan := ""
+	if h.tenantGetter != nil {
+		plan, err := h.tenantGetter.GetTenantPlan(r.Context(), claims.TenantID)
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to get tenant plan for API key validation")
+		} else {
+			tenantPlan = plan
+		}
+	}
+
 	// Parse request body
 	var req apikey.CreateAPIKeyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -30,10 +42,10 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate request
-	if err := h.validateCreateRequest(&req); err != nil {
+	// Validate request (pass tenant plan for Enterprise feature gating)
+	if err := h.validateCreateRequest(&req, tenantPlan); err != nil {
 		logrus.WithError(err).Info("apikeys: validation failed")
-		h.writeError(w, http.StatusBadRequest, "validation_error", "Invalid API key request")
+		h.writeError(w, http.StatusBadRequest, "validation_error", "Invalid API key request: "+err.Error())
 		return
 	}
 
@@ -83,7 +95,8 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 // validateCreateRequest validates the create API key request
-func (h *Handler) validateCreateRequest(req *apikey.CreateAPIKeyRequest) error {
+// tenantPlan is passed directly to avoid circular dependencies with tenant repository
+func (h *Handler) validateCreateRequest(req *apikey.CreateAPIKeyRequest, tenantPlan string) error {
 	var errors []string
 
 	// Validate name (required)
@@ -96,6 +109,11 @@ func (h *Handler) validateCreateRequest(req *apikey.CreateAPIKeyRequest) error {
 		errors = append(errors, "key_type is required")
 	} else if !apikey.IsValidKeyType(string(req.KeyType)) {
 		errors = append(errors, "invalid key_type")
+	}
+
+	// MicroPython runtime keys require Enterprise plan
+	if req.KeyType == apikey.KeyTypeMicroPython && !plans.IsEnterpriseTier(tenantPlan) {
+		errors = append(errors, "MicroPython runtime keys require Enterprise plan")
 	}
 
 	// Validate rotation frequency
@@ -161,7 +179,7 @@ func init() {
 
 // HandleCreateWithRouter creates the handler with router access
 func HandleCreateWithRouter(repo *apikey.Repository) func(w http.ResponseWriter, r *http.Request) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	return func(w http.ResponseWriter, r *http.Request) {
 		h.HandleCreate(w, r)
 	}
@@ -169,7 +187,7 @@ func HandleCreateWithRouter(repo *apikey.Repository) func(w http.ResponseWriter,
 
 // RegisterRoutes registers the API key routes
 func RegisterRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 
 	// API Keys CRUD
 	router.HandleFunc("/api-keys", h.HandleCreate).Methods("POST", "OPTIONS")

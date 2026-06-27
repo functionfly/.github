@@ -27,7 +27,7 @@ func registerReceiptPublicRoutes(root *mux.Router, h *receipt.Handler) {
 // registerReceiptAuthedRoutes wires the owner-only revoke route behind the
 // supplied auth middleware. The auth middleware is the same one used for
 // other authed registry routes (e.g. function settings).
-func registerReceiptAuthedRoutes(root *mux.Router, h *receipt.Handler, authMiddleware func(http.Handler) http.Handler) {
+func registerReceiptAuthedRoutes(root *mux.Router, h *receipt.Handler, authMiddleware func(http.HandlerFunc) http.HandlerFunc) {
 	if h == nil {
 		return
 	}

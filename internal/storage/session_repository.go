@@ -324,3 +324,130 @@ func (r *SessionRepository) DeleteSessionByIDOnly(ctx context.Context, sessionID
 
 	return nil
 }
+
+// LoginHistory represents a login event record
+type LoginHistory struct {
+	ID          uuid.UUID  `json:"id" db:"id"`
+	UserID      uuid.UUID  `json:"user_id" db:"user_id"`
+	EventType   string     `json:"event_type" db:"event_type"` // 'login', 'logout', 'logout_other', 'session_expired', 'revoked'
+	IPAddress   string     `json:"ip_address" db:"ip_address"`
+	UserAgent   string     `json:"user_agent,omitempty" db:"user_agent"`
+	Device      string     `json:"device,omitempty" db:"device"`
+	Location    string     `json:"location,omitempty" db:"location"`
+	LoginMethod string     `json:"login_method,omitempty" db:"login_method"`
+	MFAUsed     bool       `json:"mfa_used" db:"mfa_used"`
+	SessionID   *uuid.UUID `json:"session_id,omitempty" db:"session_id"`
+	Metadata    []byte     `json:"metadata,omitempty" db:"metadata"` // JSONB
+	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+}
+
+// CreateLoginHistory records a login event
+func (r *SessionRepository) CreateLoginHistory(ctx context.Context, userID uuid.UUID, eventType, ipAddress, userAgent, device, loginMethod string, mfaUsed bool, sessionID *uuid.UUID) (*LoginHistory, error) {
+	loginHistory := &LoginHistory{
+		ID:          uuid.New(),
+		UserID:      userID,
+		EventType:   eventType,
+		IPAddress:   ipAddress,
+		UserAgent:   userAgent,
+		Device:      device,
+		LoginMethod: loginMethod,
+		MFAUsed:     mfaUsed,
+		SessionID:   sessionID,
+		CreatedAt:   time.Now(),
+	}
+
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO login_history (id, user_id, event_type, ip_address, user_agent, device, login_method, mfa_used, session_id, metadata, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+		loginHistory.ID, loginHistory.UserID, loginHistory.EventType, loginHistory.IPAddress,
+		loginHistory.UserAgent, loginHistory.Device, loginHistory.LoginMethod, loginHistory.MFAUsed,
+		loginHistory.SessionID, loginHistory.Metadata, loginHistory.CreatedAt)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create login history: %w", err)
+	}
+
+	return loginHistory, nil
+}
+
+// ListUserLoginHistory retrieves login history for a user with pagination
+func (r *SessionRepository) ListUserLoginHistory(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*LoginHistory, error) {
+	query := `
+		SELECT id, user_id, event_type, ip_address, user_agent, device, location, login_method, mfa_used, session_id, metadata, created_at
+		FROM login_history
+		WHERE user_id = $1
+		ORDER BY created_at DESC`
+
+	args := []interface{}{userID}
+
+	if limit > 0 {
+		query += fmt.Sprintf(" LIMIT %d", limit)
+	}
+	if offset > 0 {
+		query += fmt.Sprintf(" OFFSET %d", offset)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list login history: %w", err)
+	}
+	defer rows.Close()
+
+	var history []*LoginHistory
+	for rows.Next() {
+		var h LoginHistory
+		var userAgent, device, location, loginMethod sql.NullString
+		var sessionID sql.NullString
+		var metadata []byte
+
+		err := rows.Scan(
+			&h.ID, &h.UserID, &h.EventType, &h.IPAddress,
+			&userAgent, &device, &location, &loginMethod,
+			&h.MFAUsed, &sessionID, &metadata, &h.CreatedAt)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan login history: %w", err)
+		}
+
+		if userAgent.Valid {
+			h.UserAgent = userAgent.String
+		}
+		if device.Valid {
+			h.Device = device.String
+		}
+		if location.Valid {
+			h.Location = location.String
+		}
+		if loginMethod.Valid {
+			h.LoginMethod = loginMethod.String
+		}
+		if sessionID.Valid {
+			id, _ := uuid.Parse(sessionID.String)
+			h.SessionID = &id
+		}
+		h.Metadata = metadata
+
+		history = append(history, &h)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating login history: %w", err)
+	}
+
+	return history, nil
+}
+
+// CountUserLoginHistory counts total login history entries for a user
+func (r *SessionRepository) CountUserLoginHistory(ctx context.Context, userID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM login_history
+		WHERE user_id = $1`, userID).Scan(&count)
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to count login history: %w", err)
+	}
+
+	return count, nil
+}

@@ -151,6 +151,10 @@ func GetKeyTypeFromPrefix(prefix string) (KeyType, error) {
 		return KeyTypeOAuth, nil
 	case PrefixTrust:
 		return KeyTypeTrust, nil
+	case PrefixMicroPython:
+		return KeyTypeMicroPython, nil
+	case PrefixRuntime:
+		return KeyTypeRuntime, nil
 	default:
 		return "", fmt.Errorf("unknown key prefix: %s", prefix)
 	}

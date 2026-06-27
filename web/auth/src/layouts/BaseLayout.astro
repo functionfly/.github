@@ -1,4 +1,6 @@
 ---
+import { PageGrid } from "../components/sc";
+
 interface Props {
   title: string;
   description?: string;
@@ -12,7 +14,13 @@ const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefine
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <meta name="theme-color" content="#0a0d11" />
     <title>{title}</title>
+
+    <!-- Google Fonts: Space Grotesk, Inter, IBM Plex Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -27,7 +35,11 @@ const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefine
     <link rel="dns-prefetch" href="https://accounts.google.com" />
     <link rel="dns-prefetch" href="https://challenges.cloudflare.com" />
 
-    <!-- Velocity Theme + Auth Component Styles -->
+    <!-- Sealed Containment Design System -->
+    <link rel="stylesheet" href="/src/styles/sc-tokens.css" />
+    <link rel="stylesheet" href="/src/styles/sc-main.css" />
+    <link rel="stylesheet" href="/src/styles/sc-components.css" />
+    <!-- Legacy Velocity Theme (for compatibility with existing components) -->
     <link rel="stylesheet" href="/src/styles/velocity-theme.css" />
     <link rel="stylesheet" href="/src/styles/auth-components.css" />
 
@@ -82,6 +94,41 @@ const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefine
     </script>
   </head>
   <body class="antialiased font-sans bg-[var(--ff-tarmac)] text-[var(--ff-primary-text)]">
+    <PageGrid client:load />
     <slot />
+    <style is:global>
+      /* Webkit Scrollbar Styling */
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--panel);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--steel);
+        border-radius: 5px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--steel-light);
+      }
+
+      /* Text Selection */
+      ::selection {
+        background: var(--status-ok);
+        color: var(--bg);
+      }
+
+      /* Focus Visible Only */
+      :focus-visible {
+        outline: none;
+        box-shadow: var(--shadow-focus);
+      }
+
+      /* Smooth Scrolling */
+      html {
+        scroll-behavior: smooth;
+      }
+    </style>
   </body>
 </html>

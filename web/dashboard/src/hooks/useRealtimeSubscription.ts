@@ -199,14 +199,11 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
           errorSetForAttemptRef.current = true;
           setError('Failed to reconnect after maximum attempts');
         } else if (isAuthFailure) {
-          // Clear invalid token on authentication failure and log out properly
-          // This ensures the auth store state is consistent (isAuthenticated: false)
-          tokenVault.clearTokens();
+          // Delegate to auth store's logout — it handles token cleanup, state reset,
+          // and cross-tab sync. Don't clear tokens directly as it races with initialize().
           if (!errorSetForAttemptRef.current) {
             errorSetForAttemptRef.current = true;
             setError('Authentication failed - please log in again');
-            // Call logout(false) to properly clear auth state without redirecting
-            // This broadcasts a logout event so other tabs/listeners know auth failed
             import('@/stores/authStore').then(({ useAuthStore }) => {
               useAuthStore.getState().logout(false);
             });
@@ -353,9 +350,10 @@ export function useRealtimeSubscription<T extends RealtimeEvent>(
         }
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.log('Session validation failed, clearing auth state');
+          console.log('Session validation failed, deferring to auth store');
         }
-        tokenVault.clearTokens();
+        // Don't clear tokens directly — this races with initialize() on page refresh.
+        // Let the auth store handle token lifecycle via its own validation/refresh flow.
         disconnect();
       } finally {
         connectionAttemptRef.current = false;

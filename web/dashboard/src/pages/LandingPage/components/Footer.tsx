@@ -1,28 +1,28 @@
 import { Logo } from '@/components/common/Logo';
-import '@/styles/sc-footer.css';
+import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { useNewsletter } from '@/hooks/useNewsletter';
-import { BLOG_SITE_URL, DOCS_SITE_URL, getMarketingPageUrl, STATUS_SITE_URL } from '@/lib/constants';
+import { BLOG_SITE_URL, getMarketingPageUrl, STATUS_SITE_URL } from '@/lib/constants';
 import { isValidEmail } from '@/lib/url-utils';
 import {
-  GitHubIcon,
-  InstagramIcon,
-  LinkedInIcon,
-  XIcon,
+    GitHubIcon,
+    InstagramIcon,
+    LinkedInIcon,
+    XIcon,
 } from '@/pages/LandingPage/components/icons';
 import { useAuthStore } from '@/stores/authStore';
+import '@/styles/sc-footer.css';
 import { motion } from 'framer-motion';
 import { AlertCircle, ArrowUp, Check, Heart, Mail } from 'lucide-react';
 import { FormEvent, useState } from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 interface FooterProps {
   /** Set to false when another fixed bottom-right element (e.g. fly guide) is shown to avoid overlap. Default true. */
@@ -81,14 +81,13 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
 
   return (
     <footer
-      className="relative overflow-hidden footer-enhanced"
-      style={{ backgroundColor: 'var(--bg-primary)' }}
+      className="relative overflow-hidden sc-footer"
       role="contentinfo"
       aria-label="Site footer"
     >
       {/* Background Effects */}
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/5 rounded-full blur-[128px] light-mode-enhanced" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-[128px] light-mode-enhanced" />
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/5 rounded-full blur-[128px]" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-[128px]" />
 
       <div className="relative border-t border-border-subtle">
         {/* Main Footer Content */}
@@ -99,7 +98,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
               <div className="mb-6">
                 <Logo size="md" />
               </div>
-              <p className="text-text-secondary mb-6 max-w-sm">
+              <p className="sc-footer-text mb-6 max-w-sm">
                 Serverless functions & AI agent infrastructure. Deploy to edge, build AI agents with
                 built-in cost controls, and scale with confidence.
               </p>
@@ -108,7 +107,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   href="https://github.com/functionfly"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect shine-effect"
+                  className="sc-footer-social"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="FunctionFly on GitHub"
@@ -119,7 +118,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   href="https://x.com/functionflycom"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
+                  className="sc-footer-social"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="FunctionFly on X"
@@ -130,7 +129,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   href="https://instagram.com/functionfly"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
+                  className="sc-footer-social"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="FunctionFly on Instagram"
@@ -139,7 +138,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                 </motion.a>
                 <motion.a
                   href="#"
-                  className="w-10 h-10 rounded-xl bg-bg-hover border border-border-subtle flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover hover:border-brand-500/30 transition-all duration-200 shine-effect"
+                  className="sc-footer-social"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   aria-label="FunctionFly on LinkedIn"
@@ -151,53 +150,38 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
 
             {/* Product */}
             <div className="lg:col-span-2">
-              <h3 className="text-text-primary font-semibold mb-4">Product</h3>
+              <h3 className="sc-footer-text-primary font-semibold mb-4">Product</h3>
               <ul className="space-y-3">
                 <li>
-                  <a
-                    href="/features"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation underline-animation"
-                  >
+                  <a href="/features" className="sc-footer-nav-link text-sm">
                     Features
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/pricing"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/pricing" className="sc-footer-nav-link text-sm">
                     Pricing
                   </a>
                 </li>
                 <li>
                   <a
                     href={isAuthenticated ? '/state-fabric' : '/products/state-fabric'}
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     State Fabric
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/agents"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/agents" className="sc-footer-nav-link text-sm">
                     AI Agents
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/registry"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/registry" className="sc-footer-nav-link text-sm">
                     Function Registry
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/security"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/security" className="sc-footer-nav-link text-sm">
                     Security
                   </a>
                 </li>
@@ -206,16 +190,13 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     href={STATUS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     System Status
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/changelog"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/changelog" className="sc-footer-nav-link text-sm">
                     Changelog
                   </a>
                 </li>
@@ -224,39 +205,30 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
 
             {/* Resources */}
             <div className="lg:col-span-2">
-              <h3 className="text-text-primary font-semibold mb-4">Resources</h3>
+              <h3 className="sc-footer-text-primary font-semibold mb-4">Resources</h3>
               <ul className="space-y-3">
                 <li>
                   <a
                     href={STATUS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     System Status
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="#" className="sc-footer-nav-link text-sm">
                     API Reference
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="#" className="sc-footer-nav-link text-sm">
                     MCP Protocol
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="#" className="sc-footer-nav-link text-sm">
                     Guides
                   </a>
                 </li>
@@ -265,16 +237,13 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     href={BLOG_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     Blog
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/faq"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/faq" className="sc-footer-nav-link text-sm">
                     FAQ
                   </a>
                 </li>
@@ -283,29 +252,20 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
 
             {/* Support */}
             <div className="lg:col-span-2">
-              <h3 className="text-text-primary font-semibold mb-4">Support</h3>
+              <h3 className="sc-footer-text-primary font-semibold mb-4">Support</h3>
               <ul className="space-y-3">
                 <li>
-                  <a
-                    href="/help"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/help" className="sc-footer-nav-link text-sm">
                     Help Center
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/community"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/community" className="sc-footer-nav-link text-sm">
                     Community
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/contact"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/contact" className="sc-footer-nav-link text-sm">
                     Contact Us
                   </a>
                 </li>
@@ -314,16 +274,13 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     href={STATUS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     System Status
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="/feedback"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
-                  >
+                  <a href="/feedback" className="sc-footer-nav-link text-sm">
                     Feedback
                   </a>
                 </li>
@@ -332,14 +289,14 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
 
             {/* Community */}
             <div className="lg:col-span-2">
-              <h3 className="text-text-primary font-semibold mb-4">Community</h3>
+              <h3 className="sc-footer-text-primary font-semibold mb-4">Community</h3>
               <ul className="space-y-3">
                 <li>
                   <a
                     href="https://discord.gg/functionfly"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     Discord
                   </a>
@@ -349,7 +306,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     href="https://github.com/functionfly/functionfly/discussions"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     GitHub Discussions
                   </a>
@@ -359,7 +316,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     href="https://x.com/functionflycom"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     X (Twitter)
                   </a>
@@ -369,7 +326,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     href="https://linkedin.com/company/functionfly"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors underline-animation text-sm underline-animation"
+                    className="sc-footer-nav-link text-sm"
                   >
                     LinkedIn
                   </a>
@@ -379,8 +336,8 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
 
             {/* Newsletter */}
             <div className="lg:col-span-2">
-              <h3 className="text-text-primary font-semibold mb-4">Stay Updated</h3>
-              <p className="text-text-secondary text-sm mb-4">
+              <h3 className="sc-footer-text-primary font-semibold mb-4">Stay Updated</h3>
+              <p className="sc-footer-text text-sm mb-4">
                 Get the latest updates and news about FunctionFly™.
               </p>
               <form onSubmit={handleSubscribe} className="space-y-3">
@@ -391,12 +348,12 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email"
                     disabled={isLoading || isSuccess}
-                    className="newsletter-input flex-1 px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-text-primary placeholder-text-muted text-sm focus:outline-none focus:border-brand-500/50 focus:ring-1 focus:ring-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="sc-footer-input flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
                   />
                   <motion.button
                     type="submit"
                     disabled={isLoading || isSuccess || !email.trim()}
-                    className="px-4 py-2 bg-gradient-to-r from-brand-500 to-purple-500 rounded-lg text-white text-sm font-medium hover:shadow-lg hover:shadow-brand-500/25 transition-all duration-200 glow hover-lift disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="sc-footer-btn"
                     whileHover={!isLoading && !isSuccess ? { scale: 1.02 } : {}}
                     whileTap={!isLoading && !isSuccess ? { scale: 0.98 } : {}}
                   >
@@ -422,7 +379,7 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   </div>
                 )}
                 {!error && !isSuccess && (
-                  <p className="text-text-muted text-xs">
+                  <p className="sc-footer-text text-xs">
                     We respect your privacy.{' '}
                     <button
                       type="button"
@@ -444,28 +401,30 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-sm text-text-muted">
-                <span>© {new Date().getFullYear()} FunctionFly™ LLC. Made with</span>
+                <span className="sc-footer-text">
+                  © {new Date().getFullYear()} FunctionFly™ LLC. Made with
+                </span>
                 <Heart className="w-4 h-4 text-error fill-current" />
-                <span>for indie developers.</span>
+                <span className="sc-footer-text">for indie developers.</span>
               </div>
               <div className="flex items-center gap-6 text-sm">
                 <a
                   href={getMarketingPageUrl('/terms')}
-                  className="text-text-secondary hover:text-text-primary transition-colors underline-animation"
+                  className="sc-footer-nav-link"
                   rel="noopener noreferrer"
                 >
                   Terms of Service
                 </a>
                 <a
                   href={getMarketingPageUrl('/privacy')}
-                  className="text-text-secondary hover:text-text-primary transition-colors underline-animation"
+                  className="sc-footer-nav-link"
                   rel="noopener noreferrer"
                 >
                   Privacy Policy
                 </a>
                 <a
                   href={getMarketingPageUrl('/privacy#cookies')}
-                  className="text-text-secondary hover:text-text-primary transition-colors underline-animation"
+                  className="sc-footer-nav-link"
                   rel="noopener noreferrer"
                 >
                   Cookie Policy
@@ -526,7 +485,11 @@ export function Footer({ showScrollToTop = true }: FooterProps) {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={!unsubscribeEmail.trim() || unsubscribeLoading || !isValidEmail(unsubscribeEmail.trim())}
+                    disabled={
+                      !unsubscribeEmail.trim() ||
+                      unsubscribeLoading ||
+                      !isValidEmail(unsubscribeEmail.trim())
+                    }
                   >
                     {unsubscribeLoading ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

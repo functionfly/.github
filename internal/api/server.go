@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/functionfly/functionfly/internal/agent/browser"
 	"github.com/functionfly/functionfly/internal/adapters/aws"
 	"github.com/functionfly/functionfly/internal/adapters/cloudflare"
 	"github.com/functionfly/functionfly/internal/adapters/common"
@@ -21,19 +20,20 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/fly"
 	"github.com/functionfly/functionfly/internal/adapters/functionfly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
+	"github.com/functionfly/functionfly/internal/agent/browser"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
-	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
 	"github.com/functionfly/functionfly/internal/api/handlers/billing"
+	dnahandler "github.com/functionfly/functionfly/internal/api/handlers/dna"
 	"github.com/functionfly/functionfly/internal/api/handlers/notifications"
 	regexec "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/auth"
 	billingpkg "github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/config"
 	"github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/dna"
-	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/logging"
@@ -45,6 +45,7 @@ import (
 	"github.com/functionfly/functionfly/internal/scheduler"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/storage"
+	dnaStorage "github.com/functionfly/functionfly/internal/storage/dna"
 	staterepo "github.com/functionfly/functionfly/internal/storage/state"
 	statefabricrepo "github.com/functionfly/functionfly/internal/storage/statefabric"
 	trustapirepo "github.com/functionfly/functionfly/internal/storage/trustapi"
@@ -54,7 +55,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
-	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 type Server struct {
@@ -180,6 +180,9 @@ type Server struct {
 	browserSvc           browser.Browser
 
 	walletService *wallet.Service
+
+	// Receipt milestone scheduler for daily sweep of missed milestones
+	receiptMilestoneScheduler *scheduler.ReceiptMilestoneScheduler
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -981,6 +984,12 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	if s.consciousnessRetryScheduler != nil {
 		s.consciousnessRetryScheduler.Stop()
 		logging.Logger().Info("Consciousness retry scheduler stopped")
+	}
+
+	// Stop receipt milestone scheduler
+	if s.receiptMilestoneScheduler != nil {
+		s.receiptMilestoneScheduler.Stop()
+		logging.Logger().Info("Receipt milestone scheduler stopped")
 	}
 
 	// Shutdown the HTTP server gracefully

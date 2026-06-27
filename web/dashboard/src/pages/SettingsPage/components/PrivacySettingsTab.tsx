@@ -5,39 +5,35 @@
  * Includes visibility preferences, notification settings, and privacy controls.
  */
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { usersApi, type UpdateProfileRequest } from '@/api/users';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { CUSTOM_STATUS_OPTIONS, useCustomStatus } from '@/hooks/useCustomStatus';
+import { tabContentVariants } from '@/pages/ProfilePage/animations';
+import { useAuthStore } from '@/stores/authStore';
+import type { UserProfile } from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import {
-  Settings,
-  Eye,
   Bell,
+  Check,
+  CircleDot,
+  Eye,
+  Globe,
+  Link as LinkIcon,
+  Loader2,
+  Lock,
+  Save,
   Shield,
   User,
-  Link as LinkIcon,
-  Save,
-  Loader2,
-  Globe,
-  Lock,
   Users,
-  Check,
-  AlertCircle,
-  CircleDot,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { tabContentVariants } from "@/pages/ProfilePage/animations";
-import { usersApi, type UpdateProfileRequest } from "@/api/users";
-import { useAuthStore } from "@/stores/authStore";
-import { toast } from "sonner";
-import type { UserProfile } from "@/types";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCustomStatus, CUSTOM_STATUS_OPTIONS, type CustomStatusValue } from "@/hooks/useCustomStatus";
+} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface PrivacySettingsTabProps {
   profile?: UserProfile;
@@ -45,7 +41,7 @@ interface PrivacySettingsTabProps {
 
 interface ProfileSettings {
   // Visibility settings
-  profileVisibility: "public" | "followers" | "private";
+  profileVisibility: 'public' | 'followers' | 'private';
   showEmail: boolean;
   showLocation: boolean;
   showCompany: boolean;
@@ -68,7 +64,7 @@ interface ProfileSettings {
 }
 
 const defaultSettings: ProfileSettings = {
-  profileVisibility: "public",
+  profileVisibility: 'public',
   showEmail: false,
   showLocation: true,
   showCompany: true,
@@ -89,12 +85,12 @@ const defaultSettings: ProfileSettings = {
 export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
   const currentUser = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
-  const username = profile?.username || currentUser?.username || "";
+  const username = profile?.username || currentUser?.username || '';
   const { status: customStatus, isLoading: isLoadingCustomStatus, setStatus } = useCustomStatus();
 
   // Fetch settings from backend
   const { data: settingsData, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ["my-settings"],
+    queryKey: ['my-settings'],
     queryFn: async () => {
       const response = await usersApi.getMySettings();
       return response.settings as unknown as ProfileSettings;
@@ -104,10 +100,10 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
   // Local state for settings
   const [settings, setSettings] = useState<ProfileSettings>(defaultSettings);
   const [socialLinks, setSocialLinks] = useState({
-    website: profile?.website || "",
-    github: profile?.socialLinks?.github || "",
-    twitter: profile?.socialLinks?.twitter || "",
-    linkedin: profile?.socialLinks?.linkedin || "",
+    website: profile?.website || '',
+    github: profile?.socialLinks?.github || '',
+    twitter: profile?.socialLinks?.twitter || '',
+    linkedin: profile?.socialLinks?.linkedin || '',
   });
 
   // Update local state when data is fetched
@@ -121,10 +117,10 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
   useEffect(() => {
     if (profile) {
       setSocialLinks({
-        website: profile.website || "",
-        github: profile.socialLinks?.github || "",
-        twitter: profile.socialLinks?.twitter || "",
-        linkedin: profile.socialLinks?.linkedin || "",
+        website: profile.website || '',
+        github: profile.socialLinks?.github || '',
+        twitter: profile.socialLinks?.twitter || '',
+        linkedin: profile.socialLinks?.linkedin || '',
       });
     }
   }, [profile]);
@@ -133,28 +129,28 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
   const updateVisibilityMutation = useMutation({
     mutationFn: (data: Partial<ProfileSettings>) => usersApi.updateMyVisibilitySettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-settings"] });
-      toast.success("Visibility settings saved");
+      queryClient.invalidateQueries({ queryKey: ['my-settings'] });
+      toast.success('Visibility settings saved');
     },
-    onError: () => toast.error("Failed to save visibility settings"),
+    onError: () => toast.error('Failed to save visibility settings'),
   });
 
   const updateNotificationsMutation = useMutation({
     mutationFn: (data: Record<string, boolean>) => usersApi.updateMyNotificationSettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-settings"] });
-      toast.success("Notification settings saved");
+      queryClient.invalidateQueries({ queryKey: ['my-settings'] });
+      toast.success('Notification settings saved');
     },
-    onError: () => toast.error("Failed to save notification settings"),
+    onError: () => toast.error('Failed to save notification settings'),
   });
 
   const updatePrivacyMutation = useMutation({
     mutationFn: (data: Record<string, boolean>) => usersApi.updateMyPrivacySettings(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-settings"] });
-      toast.success("Privacy settings saved");
+      queryClient.invalidateQueries({ queryKey: ['my-settings'] });
+      toast.success('Privacy settings saved');
     },
-    onError: () => toast.error("Failed to save privacy settings"),
+    onError: () => toast.error('Failed to save privacy settings'),
   });
 
   const updateSocialLinksMutation = useMutation({
@@ -178,16 +174,13 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["enhanced-profile", username] });
-      toast.success("Social links saved");
+      queryClient.invalidateQueries({ queryKey: ['enhanced-profile', username] });
+      toast.success('Social links saved');
     },
-    onError: () => toast.error("Failed to save social links"),
+    onError: () => toast.error('Failed to save social links'),
   });
 
-  const updateSetting = <K extends keyof ProfileSettings>(
-    key: K,
-    value: ProfileSettings[K]
-  ) => {
+  const updateSetting = <K extends keyof ProfileSettings>(key: K, value: ProfileSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -256,26 +249,27 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
       }),
       updateSocialLinksMutation.mutateAsync(),
     ]);
-    toast.success("All settings saved successfully");
+    toast.success('All settings saved successfully');
   };
 
   const getVisibilityIcon = (visibility: string) => {
     switch (visibility) {
-      case "public":
+      case 'public':
         return <Globe className="w-4 h-4" />;
-      case "followers":
+      case 'followers':
         return <Users className="w-4 h-4" />;
-      case "private":
+      case 'private':
         return <Lock className="w-4 h-4" />;
       default:
         return <Globe className="w-4 h-4" />;
     }
   };
 
-  const isSaving = updateVisibilityMutation.isPending ||
-                   updateNotificationsMutation.isPending ||
-                   updatePrivacyMutation.isPending ||
-                   updateSocialLinksMutation.isPending;
+  const isSaving =
+    updateVisibilityMutation.isPending ||
+    updateNotificationsMutation.isPending ||
+    updatePrivacyMutation.isPending ||
+    updateSocialLinksMutation.isPending;
 
   if (isLoadingSettings) {
     return (
@@ -307,9 +301,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         {/* Header with save button */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display text-xl font-semibold text-white">
-              Profile Settings
-            </h2>
+            <h2 className="font-display text-xl font-semibold text-white">Profile Settings</h2>
             <p className="text-sm text-gray-400">
               Manage your profile visibility, notifications, and privacy preferences
             </p>
@@ -317,14 +309,19 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
           <Button
             onClick={handleSaveAll}
             disabled={isSaving}
-            className="ff-btn-velocity min-w-[120px]"
+            style={{
+              background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+              color: 'var(--text-on-light)',
+              boxShadow: 'var(--shadow-btn-primary-rest)',
+            }}
+            className="min-w-[120px]"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            {isSaving ? "Saving..." : "Save All"}
+            {isSaving ? 'Saving...' : 'Save All'}
           </Button>
         </div>
 
@@ -344,35 +341,39 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             <div className="space-y-3">
               <Label className="text-sm font-medium">Profile Visibility Level</Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {(["public", "followers", "private"] as const).map((level) => (
+                {(['public', 'followers', 'private'] as const).map((level) => (
                   <button
                     key={level}
-                    onClick={() => updateSetting("profileVisibility", level)}
+                    onClick={() => updateSetting('profileVisibility', level)}
                     className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                       settings.profileVisibility === level
-                        ? "border-brand-500 bg-brand-500/10"
-                        : "border-border-subtle hover:border-border-default bg-bg-secondary"
+                        ? 'border-brand-500 bg-brand-500/10'
+                        : 'border-border-subtle hover:border-border-default bg-bg-secondary'
                     }`}
                   >
-                    <div className={`p-2 rounded-md ${
-                      settings.profileVisibility === level
-                        ? "bg-brand-500 text-white"
-                        : "bg-bg-tertiary text-text-secondary"
-                    }`}>
+                    <div
+                      className={`p-2 rounded-md ${
+                        settings.profileVisibility === level
+                          ? 'bg-brand-500 text-white'
+                          : 'bg-bg-tertiary text-text-secondary'
+                      }`}
+                    >
                       {getVisibilityIcon(level)}
                     </div>
                     <div className="text-left">
-                      <p className={`font-medium capitalize ${
-                        settings.profileVisibility === level
-                          ? "text-brand-400"
-                          : "text-text-primary"
-                      }`}>
+                      <p
+                        className={`font-medium capitalize ${
+                          settings.profileVisibility === level
+                            ? 'text-brand-400'
+                            : 'text-text-primary'
+                        }`}
+                      >
                         {level}
                       </p>
                       <p className="text-xs text-text-muted">
-                        {level === "public" && "Everyone can see"}
-                        {level === "followers" && "Followers only"}
-                        {level === "private" && "Only you"}
+                        {level === 'public' && 'Everyone can see'}
+                        {level === 'followers' && 'Followers only'}
+                        {level === 'private' && 'Only you'}
                       </p>
                     </div>
                     {settings.profileVisibility === level && (
@@ -401,7 +402,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.showEmail}
-                  onCheckedChange={(checked) => updateSetting("showEmail", checked)}
+                  onCheckedChange={(checked) => updateSetting('showEmail', checked)}
                 />
               </div>
 
@@ -417,7 +418,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.showLocation}
-                  onCheckedChange={(checked) => updateSetting("showLocation", checked)}
+                  onCheckedChange={(checked) => updateSetting('showLocation', checked)}
                 />
               </div>
 
@@ -433,7 +434,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.showCompany}
-                  onCheckedChange={(checked) => updateSetting("showCompany", checked)}
+                  onCheckedChange={(checked) => updateSetting('showCompany', checked)}
                 />
               </div>
 
@@ -449,7 +450,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.showActivity}
-                  onCheckedChange={(checked) => updateSetting("showActivity", checked)}
+                  onCheckedChange={(checked) => updateSetting('showActivity', checked)}
                 />
               </div>
 
@@ -465,7 +466,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.showAnalytics}
-                  onCheckedChange={(checked) => updateSetting("showAnalytics", checked)}
+                  onCheckedChange={(checked) => updateSetting('showAnalytics', checked)}
                 />
               </div>
             </div>
@@ -474,9 +475,15 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSaveVisibility}
                 disabled={updateVisibilityMutation.isPending}
-                className="ff-btn-velocity"
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
               >
-                {updateVisibilityMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {updateVisibilityMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
                 Save Visibility
               </Button>
             </div>
@@ -490,9 +497,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <LinkIcon className="w-5 h-5 text-brand-500" />
               Social Links
             </CardTitle>
-            <CardDescription>
-              Connect your social profiles to help others find you
-            </CardDescription>
+            <CardDescription>Connect your social profiles to help others find you</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Personal Website */}
@@ -509,7 +514,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   type="url"
                   placeholder="https://yourwebsite.com"
                   value={socialLinks.website}
-                  onChange={(e) => updateSocialLink("website", e.target.value)}
+                  onChange={(e) => updateSocialLink('website', e.target.value)}
                   className="pl-12 bg-bg-secondary transition-all focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
@@ -523,7 +528,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-md bg-bg-tertiary text-text-secondary group-hover:bg-[#333] group-hover:text-white transition-colors">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
                   </svg>
                 </div>
                 <Input
@@ -531,7 +536,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   type="url"
                   placeholder="https://github.com/username"
                   value={socialLinks.github}
-                  onChange={(e) => updateSocialLink("github", e.target.value)}
+                  onChange={(e) => updateSocialLink('github', e.target.value)}
                   className="pl-12 bg-bg-secondary transition-all focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
@@ -545,7 +550,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-md bg-bg-tertiary text-text-secondary group-hover:bg-black group-hover:text-white transition-colors">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                 </div>
                 <Input
@@ -553,7 +558,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   type="url"
                   placeholder="https://twitter.com/username"
                   value={socialLinks.twitter}
-                  onChange={(e) => updateSocialLink("twitter", e.target.value)}
+                  onChange={(e) => updateSocialLink('twitter', e.target.value)}
                   className="pl-12 bg-bg-secondary transition-all focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
@@ -567,7 +572,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-md bg-bg-tertiary text-text-secondary group-hover:bg-[#0077b5] group-hover:text-white transition-colors">
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
                   </svg>
                 </div>
                 <Input
@@ -575,7 +580,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   type="url"
                   placeholder="https://linkedin.com/in/username"
                   value={socialLinks.linkedin}
-                  onChange={(e) => updateSocialLink("linkedin", e.target.value)}
+                  onChange={(e) => updateSocialLink('linkedin', e.target.value)}
                   className="pl-12 bg-bg-secondary transition-all focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
@@ -585,10 +590,16 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSaveSocialLinks}
                 disabled={updateSocialLinksMutation.isPending}
-                className="ff-btn-velocity"
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
               >
-                {updateSocialLinksMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {updateSocialLinksMutation.isPending ? "Saving..." : "Save Links"}
+                {updateSocialLinksMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                {updateSocialLinksMutation.isPending ? 'Saving...' : 'Save Links'}
               </Button>
             </div>
           </CardContent>
@@ -602,7 +613,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               Presence Status
             </CardTitle>
             <CardDescription>
-              Set how you appear to others. Choose "Auto" to let your activity determine your status.
+              Set how you appear to others. Choose "Auto" to let your activity determine your
+              status.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -621,16 +633,18 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                       disabled={option.value === customStatus.customStatus}
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all ${
                         option.value === customStatus.customStatus
-                          ? "border-brand-500 bg-brand-500/10"
-                          : "border-border-subtle hover:border-border-default bg-bg-secondary disabled:opacity-50"
+                          ? 'border-brand-500 bg-brand-500/10'
+                          : 'border-border-subtle hover:border-border-default bg-bg-secondary disabled:opacity-50'
                       }`}
                     >
                       <span className="text-xl">{option.emoji}</span>
-                      <span className={`text-xs font-medium ${
-                        option.value === customStatus.customStatus
-                          ? "text-brand-400"
-                          : "text-text-primary"
-                      }`}>
+                      <span
+                        className={`text-xs font-medium ${
+                          option.value === customStatus.customStatus
+                            ? 'text-brand-400'
+                            : 'text-text-primary'
+                        }`}
+                      >
                         {option.label}
                       </span>
                     </button>
@@ -655,9 +669,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Bell className="w-5 h-5 text-brand-500" />
               Notification Preferences
             </CardTitle>
-            <CardDescription>
-              Choose what notifications you want to receive
-            </CardDescription>
+            <CardDescription>Choose what notifications you want to receive</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Master Toggles */}
@@ -665,20 +677,16 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <div className="flex items-center gap-2">
                 <Switch
                   checked={settings.emailNotifications}
-                  onCheckedChange={(checked) => updateSetting("emailNotifications", checked)}
+                  onCheckedChange={(checked) => updateSetting('emailNotifications', checked)}
                 />
-                <Label className="text-sm font-medium cursor-pointer">
-                  Email Notifications
-                </Label>
+                <Label className="text-sm font-medium cursor-pointer">Email Notifications</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={settings.pushNotifications}
-                  onCheckedChange={(checked) => updateSetting("pushNotifications", checked)}
+                  onCheckedChange={(checked) => updateSetting('pushNotifications', checked)}
                 />
-                <Label className="text-sm font-medium cursor-pointer">
-                  Push Notifications
-                </Label>
+                <Label className="text-sm font-medium cursor-pointer">Push Notifications</Label>
               </div>
             </div>
 
@@ -695,7 +703,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.notifyOnFollow}
-                  onCheckedChange={(checked) => updateSetting("notifyOnFollow", checked)}
+                  onCheckedChange={(checked) => updateSetting('notifyOnFollow', checked)}
                   disabled={!settings.emailNotifications && !settings.pushNotifications}
                 />
               </div>
@@ -707,7 +715,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.notifyOnMention}
-                  onCheckedChange={(checked) => updateSetting("notifyOnMention", checked)}
+                  onCheckedChange={(checked) => updateSetting('notifyOnMention', checked)}
                   disabled={!settings.emailNotifications && !settings.pushNotifications}
                 />
               </div>
@@ -719,7 +727,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.notifyOnFunctionUsage}
-                  onCheckedChange={(checked) => updateSetting("notifyOnFunctionUsage", checked)}
+                  onCheckedChange={(checked) => updateSetting('notifyOnFunctionUsage', checked)}
                   disabled={!settings.emailNotifications && !settings.pushNotifications}
                 />
               </div>
@@ -731,7 +739,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.notifyOnReviews}
-                  onCheckedChange={(checked) => updateSetting("notifyOnReviews", checked)}
+                  onCheckedChange={(checked) => updateSetting('notifyOnReviews', checked)}
                   disabled={!settings.emailNotifications && !settings.pushNotifications}
                 />
               </div>
@@ -743,7 +751,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <Switch
                   checked={settings.weeklyDigest}
-                  onCheckedChange={(checked) => updateSetting("weeklyDigest", checked)}
+                  onCheckedChange={(checked) => updateSetting('weeklyDigest', checked)}
                   disabled={!settings.emailNotifications}
                 />
               </div>
@@ -753,9 +761,15 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSaveNotifications}
                 disabled={updateNotificationsMutation.isPending}
-                className="ff-btn-velocity"
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
               >
-                {updateNotificationsMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {updateNotificationsMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
                 Save Notifications
               </Button>
             </div>
@@ -769,9 +783,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Shield className="w-5 h-5 text-brand-500" />
               Privacy & Security
             </CardTitle>
-            <CardDescription>
-              Control your privacy and security preferences
-            </CardDescription>
+            <CardDescription>Control your privacy and security preferences</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between py-2">
@@ -781,12 +793,14 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <div>
                   <p className="font-medium text-text-primary">Allow Tagging</p>
-                  <p className="text-sm text-text-muted">Let others tag you in posts and comments</p>
+                  <p className="text-sm text-text-muted">
+                    Let others tag you in posts and comments
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={settings.allowTagging}
-                onCheckedChange={(checked) => updateSetting("allowTagging", checked)}
+                onCheckedChange={(checked) => updateSetting('allowTagging', checked)}
               />
             </div>
 
@@ -797,12 +811,14 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 <div>
                   <p className="font-medium text-text-primary">Search Engine Indexing</p>
-                  <p className="text-sm text-text-muted">Allow search engines to index your profile</p>
+                  <p className="text-sm text-text-muted">
+                    Allow search engines to index your profile
+                  </p>
                 </div>
               </div>
               <Switch
                 checked={settings.allowIndexing}
-                onCheckedChange={(checked) => updateSetting("allowIndexing", checked)}
+                onCheckedChange={(checked) => updateSetting('allowIndexing', checked)}
               />
             </div>
 
@@ -818,7 +834,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               </div>
               <Switch
                 checked={settings.showLastActive}
-                onCheckedChange={(checked) => updateSetting("showLastActive", checked)}
+                onCheckedChange={(checked) => updateSetting('showLastActive', checked)}
               />
             </div>
 
@@ -826,9 +842,15 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
               <Button
                 onClick={handleSavePrivacy}
                 disabled={updatePrivacyMutation.isPending}
-                className="ff-btn-velocity"
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
               >
-                {updatePrivacyMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {updatePrivacyMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
                 Save Privacy
               </Button>
             </div>
@@ -841,14 +863,19 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             onClick={handleSaveAll}
             disabled={isSaving}
             size="lg"
-            className="ff-btn-velocity min-w-[160px]"
+            style={{
+              background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+              color: 'var(--text-on-light)',
+              boxShadow: 'var(--shadow-btn-primary-rest)',
+            }}
+            className="min-w-[160px]"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            {isSaving ? "Saving..." : "Save All Changes"}
+            {isSaving ? 'Saving...' : 'Save All Changes'}
           </Button>
         </div>
       </motion.div>

@@ -1,27 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
-import { Shield } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import {
   createTrustAPICheckout,
   formatCurrency,
   formatNumber,
-  getTrustAPIErrorMessage,
-  getTrustAPITierPricing,
   getTrustAPIBillingStatus,
-  getTrustAPIUsageReport,
+  getTrustAPIErrorMessage,
   getTrustAPIInvoices,
-  type TrustAPITierPricing,
+  getTrustAPITierPricing,
+  getTrustAPIUsageReport,
   type TrustAPIBillingStatus,
-  type TrustAPIUsageReport,
   type TrustAPIInvoice,
+  type TrustAPITierPricing,
 } from '@/api/trustapi';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
-import { Progress } from '@/components/ui/progress';
-import { Zap } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Shield, Zap } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { formatDate } from '../../settings-utils';
 
 export interface TrustAPISettingsTabProps {
@@ -69,10 +66,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
     retry: false,
   });
 
-  const {
-    data: usageData,
-    isLoading: usageLoading,
-  } = useQuery({
+  const { data: usageData, isLoading: usageLoading } = useQuery({
     queryKey: ['trustapi', 'usage'],
     queryFn: async () => {
       try {
@@ -84,10 +78,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
     retry: false,
   });
 
-  const {
-    data: invoicesData,
-    isLoading: invoicesLoading,
-  } = useQuery({
+  const { data: invoicesData, isLoading: invoicesLoading } = useQuery({
     queryKey: ['trustapi', 'invoices'],
     queryFn: () => getTrustAPIInvoices(10, 0),
     retry: false,
@@ -103,11 +94,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
     try {
       const returnUrlObj = new URL(returnUrl);
       returnUrlObj.searchParams.set('trustApiCheckout', tier);
-      const { url } = await createTrustAPICheckout(
-        tier,
-        returnUrlObj.toString(),
-        returnUrl
-      );
+      const { url } = await createTrustAPICheckout(tier, returnUrlObj.toString(), returnUrl);
       window.location.href = url;
     } catch (e: unknown) {
       toast.error(getTrustAPIErrorMessage(e, 'Failed to create checkout session'));
@@ -181,7 +168,8 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                   <div>
                     <p className="text-sm text-text-muted">Billing Period</p>
                     <p className="text-text-primary font-medium">
-                      {formatDate(billing.billing_period_start)} - {formatDate(billing.billing_period_end)}
+                      {formatDate(billing.billing_period_start)} -{' '}
+                      {formatDate(billing.billing_period_end)}
                     </p>
                   </div>
                 </div>
@@ -204,7 +192,8 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                         isOverLimit ? 'text-red-400' : 'text-text-secondary'
                       }`}
                     >
-                      {formatNumber(billing.current_usage)} / {formatNumber(billing.included_requests)}
+                      {formatNumber(billing.current_usage)} /{' '}
+                      {formatNumber(billing.included_requests)}
                     </span>
                   </div>
                   <div className="relative">
@@ -247,7 +236,11 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
               </p>
               <Button
                 onClick={() => (window.location.href = '/trust-api/register')}
-                className="bg-brand-500 hover:bg-brand-500/90"
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
               >
                 Register as Partner
               </Button>
@@ -328,7 +321,9 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                         {formatDate(invoice.invoice_date)}
                       </p>
                       <p className="text-xs text-text-muted">
-                        {invoice.stripe_invoice_id ? `Invoice ${invoice.stripe_invoice_id}` : 'Trust API'}
+                        {invoice.stripe_invoice_id
+                          ? `Invoice ${invoice.stripe_invoice_id}`
+                          : 'Trust API'}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -346,6 +341,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                           variant="ghost"
                           size="sm"
                           onClick={() => window.open(invoice.hosted_invoice_url!, '_blank')}
+                          style={{ color: 'var(--text-dim)' }}
                         >
                           View
                         </Button>
@@ -370,8 +366,12 @@ function buildTierOptions(
 
   return tiers.map((tier) => {
     const tierId = tier.tier.toLowerCase();
-    const currentTierIndex = ['developer', 'payg', 'startup', 'business', 'enterprise'].indexOf(currentTier);
-    const thisTierIndex = ['developer', 'payg', 'startup', 'business', 'enterprise'].indexOf(tierId);
+    const currentTierIndex = ['developer', 'payg', 'startup', 'business', 'enterprise'].indexOf(
+      currentTier
+    );
+    const thisTierIndex = ['developer', 'payg', 'startup', 'business', 'enterprise'].indexOf(
+      tierId
+    );
 
     return {
       id: tierId,

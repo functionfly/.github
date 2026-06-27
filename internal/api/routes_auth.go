@@ -128,6 +128,7 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/me/sessions", authMiddleware.RequireAuth(usersHandler.HandleListSessions)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/revoke-others", authMiddleware.RequireAuth(usersHandler.HandleRevokeOtherSessions)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/me/sessions/{id}", authMiddleware.RequireAuth(usersHandler.HandleRevokeSession)).Methods("DELETE", "OPTIONS")
+	api.HandleFunc("/users/me/login-history", authMiddleware.RequireAuth(usersHandler.HandleListLoginHistory)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/settings", authMiddleware.RequireAuth(usersHandler.HandleGetUserSettingsMe)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/me/settings/profile", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsProfileMe)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/me/settings/notifications", authMiddleware.RequireAuth(usersHandler.HandlePatchUserSettingsNotificationsMe)).Methods("PATCH", "OPTIONS")

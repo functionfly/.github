@@ -1,6 +1,6 @@
 import React from 'react';
 
-interface ChamberProps {
+export interface ChamberProps {
   children: React.ReactNode;
   /** Show ribbed texture overlay */
   ribs?: boolean;
@@ -10,7 +10,7 @@ interface ChamberProps {
 
 /**
  * Chamber - A container with containment glass styling.
- * 
+ *
  * Features:
  * - Radial gradient background with chamber-bg
  * - Inset highlight and box-shadow for depth

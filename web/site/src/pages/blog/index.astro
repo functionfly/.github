@@ -1,8 +1,7 @@
 ---
 import ContentPage from '../../layouts/ContentPage.astro';
 import { SITE_ORIGIN } from '../../config';
-import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { getReports } from '../../lib/sanity';
 
 const schema = {
   '@context': 'https://schema.org',
@@ -12,41 +11,7 @@ const schema = {
   url: `${SITE_ORIGIN}/blog`,
 };
 
-interface ReportSummary {
-  slug: string;
-  title: string;
-  periodStart: string;
-  periodEnd: string;
-  generatedAt: string;
-  metros: number;
-  universities: number;
-  users: number;
-}
-
-const reportsDir = 'src/content/reports';
-let reports: ReportSummary[] = [];
-try {
-  const files = (await readdir(reportsDir)).filter((f) => f.endsWith('.md')).sort().reverse();
-  for (const file of files) {
-    const content = await readFile(join(reportsDir, file), 'utf-8');
-    const slug = file.replace(/\.md$/, '');
-    const titleMatch = content.match(/^# (.+)$/m);
-    const periodMatch = content.match(/_Period: ([\d-]+) → ([\d-]+) · Generated (.+?)_/m);
-    const tldrMatch = content.match(/\*\*(\d+) metros\*\* ranked, \*\*(\d+) universities\*\* ranked\.\n\n- \*\*(\d+)/);
-    reports.push({
-      slug,
-      title: titleMatch?.[1] ?? slug,
-      periodStart: periodMatch?.[1] ?? '',
-      periodEnd: periodMatch?.[2] ?? '',
-      generatedAt: periodMatch?.[3] ?? '',
-      metros: Number(tldrMatch?.[1] ?? 0),
-      universities: Number(tldrMatch?.[2] ?? 0),
-      users: Number(tldrMatch?.[3] ?? 0),
-    });
-  }
-} catch {
-  // Content dir missing — first deploy before any report ran.
-}
+const reports = await getReports();
 
 const title = 'State of AI Builders — Monthly Reports | FunctionFly';
 const description = 'Monthly reports on the top cities, universities, and ambassadors on FunctionFly. Generated automatically from live data, k≥5 privacy threshold enforced.';
@@ -71,11 +36,11 @@ const description = 'Monthly reports on the top cities, universities, and ambass
             <div class="report-card">
               <span class="badge">Monthly Report</span>
               <h2>{r.title}</h2>
-              <p class="meta">Period: {r.periodStart} → {r.periodEnd} · Generated {r.generatedAt}</p>
+              <p class="meta">Period: {r.periodStart} → {r.periodEnd} · Generated {r.generatedAt?.split('T')[0]}</p>
               <div class="stats">
-                <span><strong>{r.metros}</strong> metros</span>
-                <span><strong>{r.universities}</strong> universities</span>
-                <span><strong>{r.users}</strong> active builders</span>
+                <span><strong>{r.tldrMetros}</strong> metros</span>
+                <span><strong>{r.tldrUniversities}</strong> universities</span>
+                <span><strong>{r.tldrActiveBuilders}</strong> active builders</span>
               </div>
             </div>
           </a>

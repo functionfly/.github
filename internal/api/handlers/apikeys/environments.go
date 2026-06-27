@@ -207,7 +207,7 @@ func (h *Handler) HandleRemoveEnvironment(w http.ResponseWriter, r *http.Request
 
 // RegisterEnvironmentRoutes registers the environment routes
 func RegisterEnvironmentRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys/{id}/environments", h.HandleListEnvironments).Methods("GET", "OPTIONS")
 	router.HandleFunc("/api-keys/{id}/environments", h.HandleAddEnvironment).Methods("POST", "OPTIONS")
 	router.HandleFunc("/api-keys/{id}/environments/{env_id}", h.HandleRemoveEnvironment).Methods("DELETE", "OPTIONS")

@@ -1,6 +1,6 @@
 import React from "react";
 
-interface ChamberProps {
+export interface ChamberProps {
   children: React.ReactNode;
   ribs?: boolean;
   nested?: boolean;
@@ -26,9 +26,7 @@ export const Chamber: React.FC<ChamberProps> = ({
       style={{
         position: "relative",
         borderRadius: "var(--radius-lg)",
-        background: radialGradient
-          ? `${radialGradient}, ${bgColor}`
-          : bgColor,
+        background: radialGradient ? `${radialGradient}, ${bgColor}` : bgColor,
         boxShadow: nested ? undefined : "var(--shadow-chamber)",
         border: "1px solid var(--panel-edge)",
         padding: "var(--space-7)",

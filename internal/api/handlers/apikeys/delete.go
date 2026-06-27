@@ -63,6 +63,6 @@ func (h *Handler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 
 // RegisterDeleteRoutes registers the delete route
 func RegisterDeleteRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys/{id}", h.HandleDelete).Methods("DELETE", "OPTIONS")
 }

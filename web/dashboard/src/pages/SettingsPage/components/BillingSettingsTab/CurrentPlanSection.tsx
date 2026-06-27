@@ -55,11 +55,22 @@ export function CurrentPlanSection({
 }: CurrentPlanSectionProps) {
   return (
     <>
-      <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-brand-500/10 to-brand-600/10 border border-border-default">
+      <div
+        className="flex items-center justify-between p-5 rounded-lg"
+        style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}
+      >
         <div>
-          <h3 className="font-semibold font-display text-text-primary capitalize">{subscription.plan} Plan</h3>
+          <h3
+            className="font-display text-lg font-semibold capitalize"
+            style={{ color: 'var(--text)' }}
+          >
+            {subscription.plan} Plan
+          </h3>
           <div className="flex items-center gap-2 mt-1">
-            <Badge variant={subscription.status === 'active' ? 'success' : 'secondary'} className={subscription.status === 'active' ? 'ff-badge-success' : ''}>
+            <Badge
+              variant={subscription.status === 'active' ? 'success' : 'secondary'}
+              className={subscription.status === 'active' ? 'ff-badge-success' : ''}
+            >
               {subscription.status}
             </Badge>
             {subscription.cancel_at_period_end && (
@@ -85,6 +96,11 @@ export function CurrentPlanSection({
               ? 'bg-amber-500/10 border-amber-500/20'
               : 'bg-blue-500/10 border-blue-500/20'
           }`}
+          style={{
+            background: 'var(--panel-raised)',
+            borderColor:
+              subscription.trial_days_remaining <= 3 ? 'var(--status-pending)' : 'var(--accent)',
+          }}
         >
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm font-medium">Trial Period</span>
@@ -110,19 +126,26 @@ export function CurrentPlanSection({
       )}
 
       {(subscription.current_period_start || subscription.current_period_end) && (
-        <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-bg-secondary border border-border-default">
+        <div
+          className="grid grid-cols-2 gap-4 p-4 rounded-lg"
+          style={{ background: 'var(--panel)', border: '1px solid var(--panel-edge)' }}
+        >
           <div className="flex items-center gap-3">
             <div>
-              <p className="text-sm text-text-muted">Current Period Start</p>
-              <p className="text-text-primary font-medium">
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                Current Period Start
+              </p>
+              <p className="font-medium" style={{ color: 'var(--text)' }}>
                 {formatDate(subscription.current_period_start)}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <div>
-              <p className="text-sm text-text-muted">Next Billing Date</p>
-              <p className="text-text-primary font-medium">
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                Next Billing Date
+              </p>
+              <p className="font-medium" style={{ color: 'var(--text)' }}>
                 {formatDate(subscription.current_period_end)}
               </p>
             </div>
@@ -130,9 +153,7 @@ export function CurrentPlanSection({
         </div>
       )}
       {/* Payment Method Manager - shown for active subscriptions */}
-      {subscription.status === 'active' && (
-        <PaymentMethodManager returnUrl={returnUrl} />
-      )}
+      {subscription.status === 'active' && <PaymentMethodManager returnUrl={returnUrl} />}
 
       {/* Spending Summary Widget */}
       {costData && (
@@ -229,14 +250,14 @@ export function CurrentPlanSection({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-text-muted mb-1">By period end</p>
-               <p className="text-lg font-semibold font-mono text-text-primary tabular-nums">
-                 {projectedBilling.projectedTotal.toLocaleString()}
-                 <span className="text-xs text-text-muted ml-1">requests</span>
-               </p>
-             </div>
-             <div>
-               <p className="text-xs text-text-muted mb-1">Daily rate</p>
-               <p className="text-lg font-semibold font-mono text-text-primary tabular-nums">
+              <p className="text-lg font-semibold font-mono text-text-primary tabular-nums">
+                {projectedBilling.projectedTotal.toLocaleString()}
+                <span className="text-xs text-text-muted ml-1">requests</span>
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-text-muted mb-1">Daily rate</p>
+              <p className="text-lg font-semibold font-mono text-text-primary tabular-nums">
                 {projectedBilling.dailyRate > 0
                   ? Math.round(projectedBilling.dailyRate).toLocaleString()
                   : '—'}
@@ -251,12 +272,14 @@ export function CurrentPlanSection({
                 {projectedBilling.projectedTotal > usageMetrics[0].limit ? (
                   <button
                     onClick={() => (window.location.href = '/pricing')}
-                    className="text-amber-400 font-medium"
+                    style={{ color: 'var(--status-pending)', fontWeight: 500 }}
                   >
                     May exceed limit → Upgrade
                   </button>
                 ) : (
-                  <span className="font-medium text-green-400">Within limits</span>
+                  <span className="font-medium" style={{ color: 'var(--status-ok)' }}>
+                    Within limits
+                  </span>
                 )}
               </div>
             </div>
@@ -266,7 +289,9 @@ export function CurrentPlanSection({
 
       {/* Plan Comparison */}
       <div className="space-y-3">
-        <p className="text-sm font-medium text-text-primary">Change Plan</p>
+        <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+          Change Plan
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {planOptions
             .filter((p) => p.tier > 0)
@@ -277,21 +302,31 @@ export function CurrentPlanSection({
                   key={plan.id}
                   onClick={() => (window.location.href = '/pricing')}
                   disabled={billingPortalLoading}
-                  className={`p-4 rounded-lg border text-left transition-colors ${
-                    plan.isCurrent
-                      ? 'border-brand-500 bg-brand-500/10'
-                      : 'border-border-default bg-bg-secondary hover:border-border-strong'
-                  }`}
+                  className="p-4 rounded-lg border text-left transition-colors hover:border-border-strong"
+                  style={{
+                    background: plan.isCurrent ? 'rgba(59, 130, 246, 0.1)' : 'var(--panel-raised)',
+                    borderColor: plan.isCurrent ? 'var(--status-ok)' : 'var(--panel-edge)',
+                  }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{plan.name}</span>
+                    <span className="font-medium" style={{ color: 'var(--text)' }}>
+                      {plan.name}
+                    </span>
                     {plan.isCurrent && <Badge variant="success">Current</Badge>}
                     {recommended && !plan.isCurrent && (
                       <Badge variant="secondary">Recommended</Badge>
                     )}
                   </div>
-                  {plan.isUpgrade && <span className="text-xs text-green-400">Upgrade</span>}
-                  {plan.isDowngrade && <span className="text-xs text-amber-400">Downgrade</span>}
+                  {plan.isUpgrade && (
+                    <span className="text-xs" style={{ color: 'var(--status-ok)' }}>
+                      Upgrade
+                    </span>
+                  )}
+                  {plan.isDowngrade && (
+                    <span className="text-xs" style={{ color: 'var(--status-pending)' }}>
+                      Downgrade
+                    </span>
+                  )}
                 </button>
               );
             })}

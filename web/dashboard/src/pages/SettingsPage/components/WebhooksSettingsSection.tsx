@@ -1,10 +1,9 @@
-import { useState } from "react";
-import { Webhook, Trash2, RefreshCw, ChevronRight, Copy, CheckCircle2, XCircle } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import {
+  functionWebhooksApi,
+  type FunctionWebhook,
+  type WebhookDelivery,
+} from '@/api/function-webhooks';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,41 +11,49 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { functionWebhooksApi, type FunctionWebhook, type WebhookDelivery } from "@/api/function-webhooks";
-import { useQuery } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
-import { formatDate, getApiErrorMessage } from "../settings-utils";
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2, ChevronRight, RefreshCw, Trash2, Webhook, XCircle } from 'lucide-react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
+import { formatDate, getApiErrorMessage } from '../settings-utils';
 
 const EVENT_TYPE_OPTIONS = [
-  "function.executed",
-  "function.failed",
-  "function.completed",
-  "function.deployed",
-  "graph.executed",
-  "graph.failed",
+  'function.executed',
+  'function.failed',
+  'function.completed',
+  'function.deployed',
+  'graph.executed',
+  'graph.failed',
 ];
 
 export function WebhooksSettingsSection() {
   const { t } = useTranslation();
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [createUrl, setCreateUrl] = useState("");
-  const [createEventTypes, setCreateEventTypes] = useState<string[]>(["function.executed"]);
-  const [createSecret, setCreateSecret] = useState("");
+  const [createUrl, setCreateUrl] = useState('');
+  const [createEventTypes, setCreateEventTypes] = useState<string[]>(['function.executed']);
+  const [createSecret, setCreateSecret] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const [viewDeliveryKey, setViewDeliveryKey] = useState<{ webhookId: string; delivery: WebhookDelivery } | null>(null);
+  const [viewDeliveryKey, setViewDeliveryKey] = useState<{
+    webhookId: string;
+    delivery: WebhookDelivery;
+  } | null>(null);
   const [testWebhookId, setTestWebhookId] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; delivery_id?: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ success: boolean; delivery_id?: string } | null>(
+    null
+  );
 
   const [deleteWebhookId, setDeleteWebhookId] = useState<string | null>(null);
-  const [deleteWebhookName, setDeleteWebhookName] = useState("");
+  const [deleteWebhookName, setDeleteWebhookName] = useState('');
   const [deleting, setDeleting] = useState(false);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["function-webhooks"],
+    queryKey: ['function-webhooks'],
     queryFn: async () => {
       try {
         return await functionWebhooksApi.list();
@@ -63,9 +70,9 @@ export function WebhooksSettingsSection() {
   const webhooks: FunctionWebhook[] = data?.subscriptions ?? [];
 
   const handleOpenCreateModal = () => {
-    setCreateUrl("");
-    setCreateEventTypes(["function.executed"]);
-    setCreateSecret("");
+    setCreateUrl('');
+    setCreateEventTypes(['function.executed']);
+    setCreateSecret('');
     setCreateModalOpen(true);
   };
 
@@ -95,9 +102,7 @@ export function WebhooksSettingsSection() {
 
   const handleToggleEventType = (eventType: string) => {
     setCreateEventTypes((prev) =>
-      prev.includes(eventType)
-        ? prev.filter((e) => e !== eventType)
-        : [...prev, eventType]
+      prev.includes(eventType) ? prev.filter((e) => e !== eventType) : [...prev, eventType]
     );
   };
 
@@ -105,7 +110,8 @@ export function WebhooksSettingsSection() {
     setTestWebhookId(webhook.id);
     setTestResult(null);
     setTesting(true);
-    functionWebhooksApi.test(webhook.id)
+    functionWebhooksApi
+      .test(webhook.id)
       .then((result) => {
         setTestResult(result);
         if (result.success) {
@@ -148,7 +154,7 @@ export function WebhooksSettingsSection() {
       await functionWebhooksApi.delete(deleteWebhookId);
       refetch();
       setDeleteWebhookId(null);
-      setDeleteWebhookName("");
+      setDeleteWebhookName('');
       toast.success(t('webhooksSettings.toastDeleted'));
     } catch (err: unknown) {
       const msg = getApiErrorMessage(err, { default: t('webhooksSettings.errorFailedToDelete') });
@@ -160,101 +166,149 @@ export function WebhooksSettingsSection() {
 
   return (
     <>
-      <Card className="settings-panel">
-        <CardHeader>
-          <CardTitle className="font-display">{t('webhooksSettings.title')}</CardTitle>
-          <CardDescription className="text-text-secondary">
+      <div
+        className="rounded-lg p-5"
+        style={{
+          background: 'var(--panel)',
+          border: '1px solid var(--panel-edge)',
+          boxShadow: 'var(--shadow-chamber)',
+        }}
+      >
+        <div className="mb-4">
+          <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+            {t('webhooksSettings.title')}
+          </h3>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
             {t('webhooksSettings.description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {isLoading ? (
-              <p className="text-text-muted text-sm">{t('webhooksSettings.loading')}</p>
-            ) : webhooks.length === 0 ? (
-              <div className="rounded-lg border border-border-default bg-bg-secondary/50 p-6 text-center">
-                <p className="text-text-muted text-sm">{t('webhooksSettings.noWebhooksYet')}</p>
-                <Button className="ff-btn-velocity mt-4 gap-2" onClick={handleOpenCreateModal} disabled={creating}>
-                  <Webhook className="h-4 w-4" />
-                  {t('webhooksSettings.addWebhook')}
-                </Button>
-              </div>
-            ) : (
-              <>
-                {webhooks.map((webhook) => (
-                  <div
-                    key={webhook.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-default bg-bg-secondary p-4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-text-primary truncate">{webhook.url}</h4>
-                        <Badge variant={webhook.active ? "default" : "secondary"} className={webhook.active ? "ff-badge-success" : ""}>
-                          {webhook.active ? t('webhooksSettings.active') : t('webhooksSettings.inactive')}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-text-muted">
-                        {t('webhooksSettings.events', { events: webhook.event_types.join(", ") })}
-                      </p>
-                      <p className="text-xs text-text-muted">
-                        {t('webhooksSettings.createdAt', { date: formatDate(webhook.created_at) })}
-                      </p>
+          </p>
+        </div>
+        <div className="space-y-4">
+          {isLoading ? (
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+              {t('webhooksSettings.loading')}
+            </p>
+          ) : webhooks.length === 0 ? (
+            <div
+              className="rounded-lg p-6 text-center"
+              style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}
+            >
+              <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                {t('webhooksSettings.noWebhooksYet')}
+              </p>
+              <Button
+                className="mt-4 gap-2"
+                onClick={handleOpenCreateModal}
+                disabled={creating}
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
+              >
+                <Webhook className="h-4 w-4" />
+                {t('webhooksSettings.addWebhook')}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {webhooks.map((webhook) => (
+                <div
+                  key={webhook.id}
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"
+                  style={{
+                    background: 'var(--panel-raised)',
+                    border: '1px solid var(--panel-edge)',
+                  }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-medium truncate" style={{ color: 'var(--text)' }}>
+                        {webhook.url}
+                      </h4>
+                      <span
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                        style={{
+                          background: webhook.active ? 'rgba(143, 255, 208, 0.06)' : 'var(--panel)',
+                          color: webhook.active ? 'var(--status-ok)' : 'var(--text-dim)',
+                        }}
+                      >
+                        {webhook.active
+                          ? t('webhooksSettings.active')
+                          : t('webhooksSettings.inactive')}
+                      </span>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleTestClick(webhook)}
-                        title={t('webhooksSettings.test')}
-                        disabled={testing && testWebhookId === webhook.id}
-                      >
-                        {testResult && testWebhookId === webhook.id ? (
-                          testResult.success ? (
-                            <CheckCircle2 className="h-4 w-4 text-success" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-destructive" />
-                          )
-                        ) : (
-                          <RefreshCw className={`h-4 w-4 ${testing && testWebhookId === webhook.id ? 'animate-spin' : ''}`} />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDeliveriesClick(webhook)}
-                        title={t('webhooksSettings.viewDeliveries')}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteClick(webhook)}
-                        title={t('webhooksSettings.delete')}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                      {t('webhooksSettings.events', { events: webhook.event_types.join(', ') })}
+                    </p>
+                    <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                      {t('webhooksSettings.createdAt', { date: formatDate(webhook.created_at) })}
+                    </p>
                   </div>
-                ))}
-                <Button className="ff-btn-velocity gap-2" onClick={handleOpenCreateModal} disabled={creating}>
-                  <Webhook className="h-4 w-4" />
-                  {t('webhooksSettings.addWebhook')}
-                </Button>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleTestClick(webhook)}
+                      title={t('webhooksSettings.test')}
+                      disabled={testing && testWebhookId === webhook.id}
+                      style={{ color: 'var(--text-dim)' }}
+                    >
+                      {testResult && testWebhookId === webhook.id ? (
+                        testResult.success ? (
+                          <CheckCircle2 className="h-4 w-4" style={{ color: 'var(--status-ok)' }} />
+                        ) : (
+                          <XCircle className="h-4 w-4" style={{ color: 'var(--status-revoked)' }} />
+                        )
+                      ) : (
+                        <RefreshCw
+                          className={`h-4 w-4 ${testing && testWebhookId === webhook.id ? 'animate-spin' : ''}`}
+                        />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewDeliveriesClick(webhook)}
+                      title={t('webhooksSettings.viewDeliveries')}
+                      style={{ color: 'var(--text-dim)' }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteClick(webhook)}
+                      title={t('webhooksSettings.delete')}
+                      style={{ color: 'var(--status-revoked)' }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button
+                className="gap-2"
+                onClick={handleOpenCreateModal}
+                disabled={creating}
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
+              >
+                <Webhook className="h-4 w-4" />
+                {t('webhooksSettings.addWebhook')}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
       <Dialog open={createModalOpen} onOpenChange={(open) => !open && setCreateModalOpen(false)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{t('webhooksSettings.createDialogTitle')}</DialogTitle>
-            <DialogDescription>
-              {t('webhooksSettings.createDialogDescription')}
-            </DialogDescription>
+            <DialogDescription>{t('webhooksSettings.createDialogDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -269,7 +323,9 @@ export function WebhooksSettingsSection() {
               />
             </div>
             <div className="space-y-2">
-              <Label>{t('webhooksSettings.eventTypesLabel')}</Label>
+              <Label style={{ color: 'var(--text)' }}>
+                {t('webhooksSettings.eventTypesLabel')}
+              </Label>
               <div className="flex flex-wrap gap-2">
                 {EVENT_TYPE_OPTIONS.map((eventType) => {
                   const isSelected = createEventTypes.includes(eventType);
@@ -278,13 +334,13 @@ export function WebhooksSettingsSection() {
                       key={eventType}
                       type="button"
                       onClick={() => handleToggleEventType(eventType)}
-                      className={`
-                        inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200
-                        ${isSelected
-                          ? 'border-[var(--ff-flame)] bg-[var(--ff-flame)]/15 text-[var(--ff-flame)] shadow-[0_0_12px_rgba(var(--ff-flame-rgb),0.25)]'
-                          : 'border-[var(--ff-border-default)] bg-[var(--ff-bg-secondary)] text-[var(--ff-text-secondary)] hover:border-[var(--ff-border-strong)] hover:text-[var(--ff-text-primary)]'
-                        }
-                      `}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-all duration-200"
+                      style={{
+                        borderColor: isSelected ? 'var(--accent)' : 'var(--panel-edge)',
+                        background: isSelected ? 'rgba(143, 255, 208, 0.06)' : 'var(--panel)',
+                        color: isSelected ? 'var(--accent)' : 'var(--text-dim)',
+                        boxShadow: isSelected ? '0 0 12px rgba(143, 255, 208, 0.15)' : 'none',
+                      }}
                     >
                       {isSelected && (
                         <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 8 8">
@@ -298,7 +354,9 @@ export function WebhooksSettingsSection() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="webhook-secret">{t('webhooksSettings.secretLabel')}</Label>
+              <Label htmlFor="webhook-secret" style={{ color: 'var(--text)' }}>
+                {t('webhooksSettings.secretLabel')}
+              </Label>
               <Input
                 id="webhook-secret"
                 type="password"
@@ -306,20 +364,26 @@ export function WebhooksSettingsSection() {
                 onChange={(e) => setCreateSecret(e.target.value)}
                 placeholder={t('webhooksSettings.secretPlaceholder')}
               />
-              <p className="text-xs text-text-muted">{t('webhooksSettings.secretHint')}</p>
+              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                {t('webhooksSettings.secretHint')}
+              </p>
             </div>
             <DialogFooter>
               <Button
                 type="button"
                 onClick={() => setCreateModalOpen(false)}
-                className="hover:bg-brand-500 hover:text-white hover:border-brand-500"
+                style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
               >
                 {t('webhooksSettings.cancel')}
               </Button>
               <Button
                 type="submit"
                 disabled={creating}
-                className="bg-brand-500 hover:bg-brand-600 text-white"
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
               >
                 {creating ? t('webhooksSettings.creating') : t('webhooksSettings.create')}
               </Button>
@@ -337,7 +401,11 @@ export function WebhooksSettingsSection() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteWebhookId(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteWebhookId(null)}
+              style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+            >
               {t('webhooksSettings.cancel')}
             </Button>
             <Button variant="destructive" onClick={handleDeleteConfirm} disabled={deleting}>

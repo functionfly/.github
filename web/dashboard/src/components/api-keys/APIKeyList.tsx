@@ -1,29 +1,14 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
-import {
-  Search,
-  Filter,
-  Plus,
-  Key,
-  ChevronLeft,
-  ChevronRight,
-  AlertCircle,
-  RefreshCw,
-  CheckSquare,
-  Square,
-  Trash2,
-  RotateCcw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -31,15 +16,24 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+} from '@/components/ui/table';
+import { API_KEY_TYPE_LABELS, APIKey, APIKeyFilters, APIKeyType } from '@/types/api-key';
 import {
-  APIKey,
-  APIKeyFilters,
-  API_KEY_TYPE_LABELS,
-  APIKeyType,
-} from "@/types/api-key";
+  AlertCircle,
+  CheckSquare,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  Key,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Square,
+  Trash2,
+} from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface APIKeyListProps {
   apiKeys: APIKey[];
@@ -85,14 +79,14 @@ export function APIKeyList({
   onBulkDelete,
   onBulkRotate,
 }: APIKeyListProps) {
-  const [searchValue, setSearchValue] = useState(filters?.search || "");
+  const [searchValue, setSearchValue] = useState(filters?.search || '');
   const [localSelected, setLocalSelected] = useState<Set<string>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [bulkAction, setBulkAction] = useState<"delete" | "rotate" | null>(null);
+  const [bulkAction, setBulkAction] = useState<'delete' | 'rotate' | null>(null);
 
   // Keep local state in sync if upstream filters change (e.g. on reset).
   useEffect(() => {
-    setSearchValue(filters?.search || "");
+    setSearchValue(filters?.search || '');
   }, [filters?.search]);
 
   useEffect(() => {
@@ -111,10 +105,7 @@ export function APIKeyList({
   const activeSelected = selectedKeys ?? localSelected;
   const setActiveSelected = onSelectionChange ?? setLocalSelected;
 
-  const allCurrentIds = useCallback(
-    () => new Set(apiKeys.map((k) => k.id)),
-    [apiKeys]
-  );
+  const allCurrentIds = useCallback(() => new Set(apiKeys.map((k) => k.id)), [apiKeys]);
 
   const isAllSelected = apiKeys.length > 0 && activeSelected.size === apiKeys.length;
   const isSomeSelected = activeSelected.size > 0 && !isAllSelected;
@@ -148,7 +139,7 @@ export function APIKeyList({
   const handleTypeFilter = (value: string) => {
     const newFilters: APIKeyFilters = {
       ...filters,
-      key_type: value === "all" ? undefined : (value as APIKeyType),
+      key_type: value === 'all' ? undefined : (value as APIKeyType),
       page: 1,
     };
     onFiltersChange?.(newFilters);
@@ -157,7 +148,7 @@ export function APIKeyList({
   const handleStatusFilter = (value: string) => {
     const newFilters: APIKeyFilters = {
       ...filters,
-      is_active: value === "all" ? undefined : value === "active",
+      is_active: value === 'all' ? undefined : value === 'active',
       page: 1,
     };
     onFiltersChange?.(newFilters);
@@ -169,13 +160,13 @@ export function APIKeyList({
 
   const executeBulkDelete = async () => {
     if (!onBulkDelete || activeSelected.size === 0) return;
-    setBulkAction("delete");
+    setBulkAction('delete');
     try {
       await onBulkDelete(Array.from(activeSelected));
       setActiveSelected(new Set());
-      toast.success("Selected API keys deleted");
+      toast.success('Selected API keys deleted');
     } catch {
-      toast.error("Some keys could not be deleted");
+      toast.error('Some keys could not be deleted');
     } finally {
       setBulkAction(null);
     }
@@ -183,13 +174,13 @@ export function APIKeyList({
 
   const executeBulkRotate = async () => {
     if (!onBulkRotate || activeSelected.size === 0) return;
-    setBulkAction("rotate");
+    setBulkAction('rotate');
     try {
       await onBulkRotate(Array.from(activeSelected));
       setActiveSelected(new Set());
-      toast.success("Selected API keys rotated");
+      toast.success('Selected API keys rotated');
     } catch {
-      toast.error("Some keys could not be rotated");
+      toast.error('Some keys could not be rotated');
     } finally {
       setBulkAction(null);
     }
@@ -204,7 +195,7 @@ export function APIKeyList({
     }
     // Fallback: iterate single-delete callback if present.
     if (onDelete && activeSelected.size > 0) {
-      setBulkAction("delete");
+      setBulkAction('delete');
       for (const id of Array.from(activeSelected)) {
         const key = apiKeys.find((k) => k.id === id);
         if (key) onDelete(key);
@@ -220,7 +211,7 @@ export function APIKeyList({
       return;
     }
     if (onRotate && activeSelected.size > 0) {
-      setBulkAction("rotate");
+      setBulkAction('rotate');
       // Rotate one at a time to respect per-key rate limits; pause briefly
       // between calls so the user-session limiter is not tripped.
       for (const id of Array.from(activeSelected)) {
@@ -234,24 +225,24 @@ export function APIKeyList({
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "Never";
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+    if (!dateString) return 'Never';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   };
 
   const getKeyTypeBadgeVariant = (type: string) => {
     switch (type) {
-      case "platform":
-        return "default";
-      case "function":
-        return "secondary";
+      case 'platform':
+        return 'default';
+      case 'function':
+        return 'secondary';
       default:
-        return "outline";
+        return 'outline';
     }
   };
 
@@ -268,7 +259,7 @@ export function APIKeyList({
           Failed to load API keys
         </h3>
         <p className="text-sm text-red-600 dark:text-red-400 max-w-md text-center">
-          {error?.message || "An unexpected error occurred."}
+          {error?.message || 'An unexpected error occurred.'}
         </p>
         {onRetry && (
           <Button variant="outline" onClick={onRetry} className="mt-2">
@@ -293,9 +284,7 @@ export function APIKeyList({
       {/* Bulk action toolbar */}
       {activeSelected.size > 0 && (
         <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-2">
-          <span className="text-sm font-medium px-2">
-            {activeSelected.size} selected
-          </span>
+          <span className="text-sm font-medium px-2">{activeSelected.size} selected</span>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -304,7 +293,7 @@ export function APIKeyList({
               disabled={bulkAction !== null}
             >
               <RotateCcw className="w-4 h-4 mr-2" />
-              {bulkAction === "rotate" ? "Rotating…" : "Rotate Selected"}
+              {bulkAction === 'rotate' ? 'Rotating…' : 'Rotate Selected'}
             </Button>
             <Button
               variant="outline"
@@ -314,13 +303,9 @@ export function APIKeyList({
               disabled={bulkAction !== null}
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              {bulkAction === "delete" ? "Deleting…" : "Delete Selected"}
+              {bulkAction === 'delete' ? 'Deleting…' : 'Delete Selected'}
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setActiveSelected(new Set())}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setActiveSelected(new Set())}>
               Clear
             </Button>
           </div>
@@ -340,7 +325,7 @@ export function APIKeyList({
               aria-label="Search API keys"
             />
           </div>
-          <Select value={filters?.key_type || "all"} onValueChange={handleTypeFilter}>
+          <Select value={filters?.key_type || 'all'} onValueChange={handleTypeFilter}>
             <SelectTrigger className="w-[140px]">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Type" />
@@ -357,11 +342,7 @@ export function APIKeyList({
           </Select>
           <Select
             value={
-              filters?.is_active === undefined
-                ? "all"
-                : filters.is_active
-                ? "active"
-                : "inactive"
+              filters?.is_active === undefined ? 'all' : filters.is_active ? 'active' : 'inactive'
             }
             onValueChange={handleStatusFilter}
           >
@@ -375,30 +356,18 @@ export function APIKeyList({
             </SelectContent>
           </Select>
         </div>
-        {onCreateNew && (
-          <Button onClick={onCreateNew}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create API Key
-          </Button>
-        )}
       </div>
 
       {/* Table */}
       {apiKeys.length === 0 ? (
-        <div className="text-center py-12 border rounded-lg">
-          <Key className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="text-lg font-semibold mb-2">No API Keys Found</h3>
-          <p className="text-muted-foreground mb-4">
+        <div className="apikey-empty">
+          <Key className="w-12 h-12" />
+          <h3 className="apikey-empty-title">No API Keys Found</h3>
+          <p className="apikey-empty-text">
             {filters?.search || filters?.key_type
-              ? "Try adjusting your search or filters"
-              : "Create your first API key to get started"}
+              ? 'Try adjusting your search or filters'
+              : 'Create your first API key to get started'}
           </p>
-          {!filters?.search && !filters?.key_type && onCreateNew && (
-            <Button onClick={onCreateNew}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create API Key
-            </Button>
-          )}
         </div>
       ) : (
         <>
@@ -412,7 +381,7 @@ export function APIKeyList({
                       size="icon"
                       className="h-6 w-6"
                       onClick={toggleAll}
-                      aria-label={isAllSelected ? "Deselect all" : "Select all"}
+                      aria-label={isAllSelected ? 'Deselect all' : 'Select all'}
                     >
                       {isAllSelected ? (
                         <CheckSquare className="h-4 w-4" />
@@ -436,7 +405,7 @@ export function APIKeyList({
                 {apiKeys.map((apiKey) => (
                   <TableRow
                     key={apiKey.id}
-                    className={activeSelected.has(apiKey.id) ? "bg-muted/40" : undefined}
+                    className={activeSelected.has(apiKey.id) ? 'bg-muted/40' : undefined}
                   >
                     <TableCell>
                       <Checkbox
@@ -464,14 +433,14 @@ export function APIKeyList({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={apiKey.is_active ? "default" : "secondary"}>
-                        {apiKey.is_active ? "Active" : "Inactive"}
+                      <Badge variant={apiKey.is_active ? 'default' : 'secondary'}>
+                        {apiKey.is_active ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {apiKey.rate_limit_rpm
                         ? `${apiKey.rate_limit_rpm.toLocaleString()}/min`
-                        : "-"}
+                        : '-'}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(apiKey.last_used_at)}
@@ -487,11 +456,7 @@ export function APIKeyList({
                           </Button>
                         </Link>
                         {onRotate && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onRotate(apiKey)}
-                          >
+                          <Button variant="ghost" size="sm" onClick={() => onRotate(apiKey)}>
                             Rotate
                           </Button>
                         )}
@@ -517,8 +482,8 @@ export function APIKeyList({
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
-                Showing {(page - 1) * pageSize + 1} to{" "}
-                {Math.min(page * pageSize, total)} of {total} results
+                Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, total)} of {total}{' '}
+                results
               </p>
               <div className="flex items-center gap-2">
                 <Button

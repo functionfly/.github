@@ -690,6 +690,8 @@ type Repository interface {
 	GetUserLockoutStatus(ctx context.Context, userID uuid.UUID) (*time.Time, error)
 	ClearUserLockout(ctx context.Context, userID uuid.UUID) error
 	DeleteOldLoginAttempts(ctx context.Context, before time.Time) (int64, error)
+	ListUserLoginHistory(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*LoginHistory, error)
+	CountUserLoginHistory(ctx context.Context, userID uuid.UUID) (int, error)
 
 	// Auth event operations (for security auditing)
 	LogAuthEvent(ctx context.Context, event *AuthEvent) error

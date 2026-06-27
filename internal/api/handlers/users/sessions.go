@@ -194,3 +194,113 @@ func (h *Handler) HandleRevokeOtherSessions(w http.ResponseWriter, r *http.Reque
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "All other sessions revoked"})
 }
+
+// loginHistoryResponseItem is the safe login history payload returned to the client.
+type loginHistoryResponseItem struct {
+	ID          string `json:"id"`
+	EventType   string `json:"eventType"`
+	IP          string `json:"ip"`
+	Device      string `json:"device"`
+	Location    string `json:"location,omitempty"`
+	LoginMethod string `json:"loginMethod,omitempty"`
+	MFAUsed     bool   `json:"mfaUsed"`
+	CreatedAt   string `json:"createdAt"`
+}
+
+// HandleListLoginHistory returns GET /v1/users/me/login-history - list login history for the current user
+func (h *Handler) HandleListLoginHistory(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	ctx := r.Context()
+
+	// Parse pagination parameters
+	limit := 50
+	offset := 0
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := parsePositiveInt(limitStr); err == nil && l <= 100 {
+			limit = l
+		}
+	}
+	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+		if o, err := parsePositiveInt(offsetStr); err == nil {
+			offset = o
+		}
+	}
+
+	history, err := h.repo.ListUserLoginHistory(ctx, claims.UserID, limit, offset)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to list login history")
+		apierror.WriteError(w, apierror.NewInternal("Failed to load login history"))
+		return
+	}
+
+	total, err := h.repo.CountUserLoginHistory(ctx, claims.UserID)
+	if err != nil {
+		logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to count login history")
+	}
+
+	items := make([]loginHistoryResponseItem, 0, len(history))
+	for _, h := range history {
+		items = append(items, loginHistoryResponseItem{
+			ID:          h.ID.String(),
+			EventType:   h.EventType,
+			IP:          h.IPAddress,
+			Device:      parseUserAgent(h.UserAgent),
+			Location:    h.Location,
+			LoginMethod: h.LoginMethod,
+			MFAUsed:     h.MFAUsed,
+			CreatedAt:   formatLoginHistoryTime(h.CreatedAt),
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"history": items,
+		"total":   total,
+		"limit":   limit,
+		"offset":  offset,
+	})
+}
+
+func parsePositiveInt(s string) (int, error) {
+	var n int
+	_, err := fmt.Sscanf(s, "%d", &n)
+	if err != nil || n < 0 {
+		return 0, fmt.Errorf("invalid number")
+	}
+	return n, nil
+}
+
+func formatLoginHistoryTime(t time.Time) string {
+	now := time.Now()
+	diff := now.Sub(t)
+
+	if diff < time.Minute {
+		return "Just now"
+	}
+	if diff < time.Hour {
+		m := int(diff.Minutes())
+		if m == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", m)
+	}
+	if diff < 24*time.Hour {
+		h := int(diff.Hours())
+		if h == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", h)
+	}
+	if diff < 7*24*time.Hour {
+		d := int(diff.Hours() / 24)
+		if d == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", d)
+	}
+	return t.Format("Jan 2, 2006")
+}

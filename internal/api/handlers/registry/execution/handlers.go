@@ -396,6 +396,11 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	// Generate public execution ID if successful and shareable
 	executionID := h.generateExecutionID(statusCode, fnVersion, fn, execReq.Input, result, durationMs, cached, verificationResult, r)
 
+	// Fire receipt milestone hook if receipt was created (executionID != nil)
+	if executionID != nil && h.ReceiptMilestoneHook != nil {
+		go h.ReceiptMilestoneHook(r.Context(), fn.ID, fn.TenantID, *executionID)
+	}
+
 	// Format response
 	if executionErr != nil || statusCode >= 400 {
 		h.writeErrorResponse(w, executionErr, statusCode, errorCode, durationMs, fnVersion.Version)

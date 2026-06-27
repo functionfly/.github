@@ -25,12 +25,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useActiveEnvironment } from '@/hooks/useActiveEnvironment';
 import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 import { useStatusBadge } from '@/hooks/useNavigationStatus';
@@ -81,17 +76,13 @@ import { ErrorBoundary } from 'react-error-boundary';
 
 function SidebarErrorFallback({ resetErrorBoundary }: { resetErrorBoundary: () => void }) {
   return (
-    <div className="flex items-center justify-center h-screen bg-aviation-bg-primary text-aviation-text-secondary p-6">
+    <div className="flex items-center justify-center h-screen bg-panel text-text-dim p-6">
       <div className="text-center">
-        <p className="text-sm font-medium text-aviation-red mb-1">
-          Sidebar failed to load
-        </p>
-        <p className="text-xs text-aviation-text-muted">
-          Refresh the page or sign out to continue.
-        </p>
+        <p className="text-sm font-medium text-status-revoked mb-1">Sidebar failed to load</p>
+        <p className="text-xs text-text-faint">Refresh the page or sign out to continue.</p>
         <button
           onClick={resetErrorBoundary}
-          className="mt-2 text-xs text-aviation-text-muted hover:text-aviation-text-secondary underline"
+          className="mt-2 text-xs text-text-faint hover:text-text-dim underline"
         >
           Try again
         </button>
@@ -101,8 +92,6 @@ function SidebarErrorFallback({ resetErrorBoundary }: { resetErrorBoundary: () =
 }
 
 function SidebarErrorBoundary({ children }: { children: React.ReactNode }) {
-
-
   return (
     <ErrorBoundary
       onError={(error, info) => {
@@ -342,7 +331,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
   const favoriteItems = useMemo(() => {
     return favorites
       .map((path) => searchableItems.find((item) => item.path === path))
-      .filter((item): item is (NavItem & { section: string }) => item != null);
+      .filter((item): item is NavItem & { section: string } => item != null);
   }, [favorites, searchableItems]);
 
   // ─── Drag and drop ─────────────────────────────────────────────────────────
@@ -414,11 +403,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
       title={isCollapsed ? 'Expand sidebar (⌘B)' : 'Collapse sidebar (⌘B)'}
       aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
     >
-      {isCollapsed ? (
-        <ChevronRight className="w-4 h-4" />
-      ) : (
-        <ChevronLeft className="w-4 h-4" />
-      )}
+      {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
     </button>
   );
 
@@ -436,10 +421,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             onClick={() => setEnvironment(env)}
             data-env={env}
             disabled={isEnvironmentLoading}
-            className={cn(
-              'aviation-environment-tab',
-              currentEnvironment === env && 'active'
-            )}
+            className={cn('aviation-environment-tab', currentEnvironment === env && 'active')}
             title={`Switch to ${env} environment`}
           >
             {env.charAt(0).toUpperCase()}
@@ -502,19 +484,12 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             to={resolveNavPath(item)}
             onClick={onClose}
             className={cn(
-              'aviation-sidebar-item group',
+              'aviation-sidebar-item v-sidebar-link group',
               isActive && 'aviation-sidebar-item-active',
-              isFocused && 'ring-2 ring-aviation-amber/50'
+              isFocused && 'aviation-sidebar-item-focused'
             )}
             title={item.description}
           >
-            {isActive && (
-              <motion.div
-                layoutId="activeNavIndicator"
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-full bg-linear-to-b from-aviation-amber to-aviation-amber-glow"
-                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-              />
-            )}
             {Icon && <Icon className="aviation-sidebar-icon flex-shrink-0" />}
             <span className="aviation-sidebar-item-label flex-1 font-medium truncate">
               {translateLabel(t, item.label)}
@@ -526,7 +501,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                 toggleFavorite(item.path);
               }}
               className={cn(
-                'aviation-favorite-btn p-1 rounded hover:bg-aviation-bg-instrument',
+                'aviation-favorite-btn p-1 rounded hover:bg-steel',
                 favorite && 'is-favorite'
               )}
               title={favorite ? 'Remove from favorites' : 'Add to favorites'}
@@ -554,9 +529,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
         <TooltipContent side="right">
           <p>{item.description || item.label}</p>
           {item.shortcut && (
-            <p className="text-xs text-aviation-text-muted mt-1">
-              Shortcut: ⌘{item.shortcut}
-            </p>
+            <p className="text-xs text-text-faint mt-1">Shortcut: ⌘{item.shortcut}</p>
           )}
         </TooltipContent>
       </Tooltip>
@@ -587,15 +560,22 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                 (hasActiveItem || activeItem) && 'aviation-sidebar-section-active'
               )}
             >
-              <SectionIcon className="w-5 h-5 flex-shrink-0 text-aviation-cyan" />
+              <SectionIcon
+                className={cn(
+                  'w-5 h-5 flex-shrink-0',
+                  hasActiveItem || activeItem ? 'text-status-ok' : 'text-text-dim'
+                )}
+              />
             </button>
           </TooltipTrigger>
-          <TooltipContent
-            side="right"
-            className="p-0 bg-aviation-bg-panel border-aviation-border-panel"
-          >
+          <TooltipContent side="right" className="p-0 bg-chamber-bg border-chamber-edge">
             <div className="py-2">
-              <p className="px-3 py-1 text-xs font-semibold text-aviation-cyan uppercase tracking-wider">
+              <p
+                className={cn(
+                  'px-3 py-1 text-xs font-semibold uppercase tracking-wider',
+                  hasActiveItem || activeItem ? 'text-status-ok' : 'text-text-dim'
+                )}
+              >
                 {translateLabel(t, section.title)}
               </p>
               <div className="mt-1 space-y-0.5">
@@ -608,8 +588,10 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                       to={resolveNavPath(item)}
                       onClick={onClose}
                       className={cn(
-                        'flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-aviation-bg-instrument transition-colors',
-                        isActive ? 'text-aviation-amber' : 'text-aviation-text-secondary'
+                        'v-sidebar-link flex items-center gap-2 px-3 py-1.5 text-sm rounded transition-colors',
+                        isActive
+                          ? 'text-status-ok bg-transparent hover:bg-[rgba(255,255,255,0.04)]'
+                          : 'text-text-dim hover:bg-[rgba(255,255,255,0.04)] hover:text-text'
                       )}
                     >
                       <Icon className="w-4 h-4" />
@@ -626,10 +608,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     return (
       <div
-        className={cn(
-          'flex items-center gap-2',
-          section.collapsible && 'cursor-pointer'
-        )}
+        className={cn('flex items-center gap-2', section.collapsible && 'cursor-pointer')}
         onClick={() => section.collapsible && toggleSection(section.id)}
       >
         {isLg && section.collapsible && (
@@ -654,8 +633,18 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}
           title={section.title}
         >
-          <SectionIcon className="w-4 h-4 flex-shrink-0 text-aviation-cyan" />
-          <span className="flex-1 text-aviation-cyan font-semibold">
+          <SectionIcon
+            className={cn(
+              'w-4 h-4 flex-shrink-0',
+              hasActiveItem ? 'text-status-ok' : 'text-text-dim'
+            )}
+          />
+          <span
+            className={cn(
+              'flex-1 font-semibold',
+              hasActiveItem ? 'text-status-ok' : 'text-text-dim'
+            )}
+          >
             {translateLabel(t, section.title)}
           </span>
         </div>
@@ -740,7 +729,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           {!isLg && <div className="aviation-sidebar-mobile-handle lg:hidden" />}
 
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-aviation-border-panel">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-chamber-edge">
             <Logo size={isCollapsed ? 'xs' : 'sm'} />
             <div className="flex items-center gap-1">
               {!isCollapsed && (
@@ -752,7 +741,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                           new KeyboardEvent('keydown', { key: 'k', metaKey: true })
                         );
                       }}
-                      className="hidden lg:flex items-center gap-1.5 px-2 py-1.5 rounded-md bg-aviation-bg-instrument/50 border border-aviation-border-instrument text-aviation-text-muted hover:text-aviation-text-secondary hover:border-aviation-amber/30 transition-colors"
+                      className="hidden lg:flex items-center gap-1.5 px-2 py-1.5 rounded-md aviation-sidebar-search-hint"
                     >
                       <Command className="w-3.5 h-3.5" />
                       <span className="text-[10px] font-medium">K</span>
@@ -766,7 +755,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
               <button
                 onClick={onClose}
                 aria-label="Close navigation"
-                className="lg:hidden p-2 rounded-lg hover:bg-aviation-bg-instrument text-aviation-text-secondary hover:text-aviation-text-primary transition-colors"
+                className="lg:hidden p-2 rounded-lg aviation-sidebar-close-btn"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -785,22 +774,25 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {/* Mobile Search — debounced */}
           {!isCollapsed && (
-            <div className="px-3 py-3 lg:hidden border-b border-aviation-border-panel">
+            <div className="px-3 py-3 lg:hidden border-b border-chamber-edge">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-aviation-text-muted" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-faint" />
                 <Input
                   ref={searchInputRef}
                   placeholder="Search navigation..."
                   value={mobileSearchQuery}
                   onChange={(e) => debouncedSetSearch(e.target.value)}
-                  className="pl-9 bg-aviation-bg-instrument border-aviation-border-instrument text-aviation-text-primary placeholder:text-aviation-text-dim focus:border-aviation-amber focus:ring-aviation-amber/20"
+                  className="pl-9 aviation-sidebar-search"
                 />
               </div>
             </div>
           )}
 
           {/* Navigation */}
-          <nav className="flex-1 min-h-0 overflow-y-auto aviation-scroll py-3" aria-label="Primary navigation">
+          <nav
+            className="flex-1 min-h-0 overflow-y-auto aviation-scroll py-3"
+            aria-label="Primary navigation"
+          >
             {/* Search Results */}
             <AnimatePresence mode="wait">
               {mobileSearchQuery && !isCollapsed && (
@@ -810,7 +802,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                   exit={{ opacity: 0, y: -10 }}
                   className="px-3 pb-3"
                 >
-                  <p className="px-3 text-xs font-medium text-aviation-text-muted mb-2">
+                  <p className="px-3 text-xs font-medium text-text-faint mb-2">
                     {translateLabel(t, 'Search Results')}
                   </p>
                   {searchResults.length > 0 ? (
@@ -828,9 +820,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                               setMobileSearchQuery('');
                             }}
                             className={cn(
-                              'aviation-sidebar-item',
+                              'aviation-sidebar-item v-sidebar-link',
                               isActive && 'aviation-sidebar-item-active',
-                              isFocused && 'ring-2 ring-aviation-amber/50'
+                              isFocused && 'aviation-sidebar-item-focused'
                             )}
                           >
                             <Icon className="aviation-sidebar-icon" />
@@ -838,7 +830,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                               <span className="font-medium block truncate">
                                 {translateLabel(t, item.label)}
                               </span>
-                              <span className="text-xs text-aviation-text-muted block truncate">
+                              <span className="text-xs text-text-faint block truncate">
                                 {item.section}
                               </span>
                             </div>
@@ -849,7 +841,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                   ) : (
                     <div className="px-3 py-8 text-center">
                       <Search className="w-8 h-8 text-aviation-text-dim mx-auto mb-2" />
-                      <p className="text-sm text-aviation-text-muted">No results found</p>
+                      <p className="text-sm text-text-faint">No results found</p>
                     </div>
                   )}
                 </motion.div>
@@ -859,9 +851,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Favorites */}
             {!mobileSearchQuery && favoriteItems.length > 0 && !isCollapsed && (
               <div className="aviation-sidebar-favorites px-3 mb-4">
-                <p className="aviation-sidebar-favorites-title">
-                  {translateLabel(t, 'Favorites')}
-                </p>
+                <p className="aviation-sidebar-favorites-title">{translateLabel(t, 'Favorites')}</p>
                 <div className="space-y-0.5">
                   {favoriteItems.map((item) => {
                     const isActive = isItemActive(item.path, location.pathname);
@@ -873,7 +863,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                             to={resolveNavPath(item)}
                             onClick={onClose}
                             className={cn(
-                              'aviation-sidebar-item',
+                              'aviation-sidebar-item v-sidebar-link',
                               isActive && 'aviation-sidebar-item-active'
                             )}
                           >
@@ -906,9 +896,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* Recent */}
             {!mobileSearchQuery && recentItems.length > 0 && !isCollapsed && (
               <div className="aviation-sidebar-recent px-3 mb-4">
-                <p className="aviation-sidebar-recent-title">
-                  {translateLabel(t, 'Recent')}
-                </p>
+                <p className="aviation-sidebar-recent-title">{translateLabel(t, 'Recent')}</p>
                 <div className="space-y-0.5">
                   {recentItems.map((item) => {
                     const isActive = isItemActive(item.path, location.pathname);
@@ -920,7 +908,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                             to={resolveNavPath(item)}
                             onClick={onClose}
                             className={cn(
-                              'aviation-sidebar-item',
+                              'aviation-sidebar-item v-sidebar-link',
                               isActive && 'aviation-sidebar-item-active'
                             )}
                           >
@@ -1035,10 +1023,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                                   const globalIndex =
                                     allSections
                                       .slice(0, sectionIndex)
-                                      .reduce(
-                                        (acc, s) => acc + s.items.length,
-                                        0
-                                      ) + itemIndex;
+                                      .reduce((acc, s) => acc + s.items.length, 0) + itemIndex;
                                   const isFocused = focusedIndex === globalIndex;
                                   return (
                                     <NavItemComponent
@@ -1065,7 +1050,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           {!isCollapsed && <div className="aviation-sidebar-divider mt-auto" />}
 
           {/* Footer */}
-          <div className="p-3 border-t border-aviation-border-panel">
+          <div className="p-3 border-t border-chamber-edge">
             {/* Quick links */}
             {!isCollapsed && (
               <div className="flex items-center justify-center gap-4 mb-3 px-2">
@@ -1073,20 +1058,20 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
                   to="/changelog"
                   className={({ isActive }) =>
                     cn(
-                      'text-xs text-aviation-text-muted hover:text-aviation-text-primary transition-colors',
-                      isActive && 'text-aviation-text-primary font-medium'
+                      'text-xs text-text-faint hover:text-text transition-colors',
+                      isActive && 'text-text font-medium'
                     )
                   }
                 >
                   {translateLabel(t, 'Changelog')}
                 </NavLink>
-                <span className="text-aviation-border-subtle">·</span>
+                <span className="text-text-faint">·</span>
                 <NavLink
                   to="/feedback"
                   className={({ isActive }) =>
                     cn(
-                      'text-xs text-aviation-text-muted hover:text-aviation-text-primary transition-colors',
-                      isActive && 'text-aviation-text-primary font-medium'
+                      'text-xs text-text-faint hover:text-text transition-colors',
+                      isActive && 'text-text font-medium'
                     )
                   }
                 >
@@ -1133,17 +1118,12 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className={cn(
-                    'aviation-signout',
-                    isCollapsed && 'justify-center px-0'
-                  )}
+                  className={cn('aviation-signout', isCollapsed && 'justify-center px-0')}
                   onClick={() => setShowLogoutDialog(true)}
                 >
                   <LogOut className="aviation-signout-icon" />
                   {!isCollapsed && (
-                    <span className="aviation-signout-text">
-                      {translateLabel(t, 'Sign Out')}
-                    </span>
+                    <span className="aviation-signout-text">{translateLabel(t, 'Sign Out')}</span>
                   )}
                 </button>
               </TooltipTrigger>
@@ -1171,4 +1151,3 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
 export type { SidebarProps } from './navigation';
 export { Sidebar };
-

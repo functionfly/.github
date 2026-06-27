@@ -47,6 +47,6 @@ func (h *Handler) HandleGetRotationHistory(w http.ResponseWriter, r *http.Reques
 
 // RegisterRotationHistoryRoutes registers the rotation history route.
 func RegisterRotationHistoryRoutes(router *mux.Router, repo *apikey.Repository) {
-	h := NewHandler(repo)
+	h := NewHandler(repo, nil)
 	router.HandleFunc("/api-keys/{id}/rotations", h.HandleGetRotationHistory).Methods("GET", "OPTIONS")
 }

@@ -238,7 +238,7 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 }
 
 // RegisterAuthedRoutes adds the owner-only revoke route.
-func (h *Handler) RegisterAuthedRoutes(r *mux.Router, authMW func(http.Handler) http.Handler) {
+func (h *Handler) RegisterAuthedRoutes(r *mux.Router, authMW func(http.HandlerFunc) http.HandlerFunc) {
 	if !h.Cfg.Enabled {
 		return
 	}

@@ -17,6 +17,7 @@ export {
   useChangePassword,
   useChangeUsername,
   useDeleteAccount,
+  useLoginHistory,
   useMe,
   usePublicProfile,
   useRemoveSkill,

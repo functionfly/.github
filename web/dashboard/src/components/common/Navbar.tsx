@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { useProvidersStore } from '@/stores/providersStore';
 import { useThemeStore } from '@/stores/themeStore';
+import '@/styles/sc-navbar.css';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bot, Cloud, Command, CreditCard, FunctionSquare, Home, Menu, MessageCircle, ShoppingBag, Sparkles, X, Zap } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -73,10 +74,6 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
   const connectedProviders = useProvidersStore((state) => state.providers);
   const totalProviders = Object.keys(PROVIDERS).length;
   const connectedCount = connectedProviders.length;
-
-  const isLanding = variant === 'landing';
-  const landingTextColor = theme === 'light' ? '#0a0a0a' : '#ffffff';
-  const landingNavLinkStyle = isLanding ? { color: landingTextColor } : {};
 
   // Scroll-aware background
   useEffect(() => {
@@ -145,16 +142,9 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
       <>
         <nav
           className={cn(
-            'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
-            variant === 'dashboard'
-              ? 'bg-bg-primary/95 backdrop-blur-xl border-b border-border-default'
-              : cn(
-                  'bg-glass backdrop-blur-md border-b border-subtle landing-nav',
-                  scrolled && 'bg-bg-primary/80 backdrop-blur-md border-b border-border-subtle'
-                ),
+            'fixed top-0 left-0 right-0 z-50 transition-all duration-300 sc-navbar',
             className
           )}
-          style={variant === 'landing' ? { color: theme === 'light' ? '#0a0a0a' : '#ffffff' } : undefined}
         >
           <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
             {/* Left: menu button + logo */}
@@ -225,14 +215,13 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   <Link
                     to="/dashboard"
                     className={cn(
-                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                      location.pathname === '/dashboard' && 'text-text-primary'
+                      'sc-navbar-link-indicator',
+                      location.pathname === '/dashboard' && 'active'
                     )}
-                    style={landingNavLinkStyle}
                   >
                     Dashboard
                     {location.pathname === '/dashboard' && (
-                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                      <span className="active-bar" />
                     )}
                   </Link>
 
@@ -240,22 +229,21 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   <Link
                     to="/functions/my"
                     className={cn(
-                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                      (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'text-text-primary'
+                      'sc-navbar-link-indicator',
+                      (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'active'
                     )}
-                    style={landingNavLinkStyle}
                   >
                     Functions
                     {(location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && (
-                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                      <span className="active-bar" />
                     )}
                   </Link>
 
                   {/* Marketplace - dropdown */}
-                  <MarketplaceDropdown style={landingNavLinkStyle} />
+                  <MarketplaceDropdown />
 
                   {/* Providers - dropdown */}
-                  <ProvidersDropdown style={landingNavLinkStyle} />
+                  <ProvidersDropdown />
                 </>
               ) : (
                 <>
@@ -263,14 +251,13 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   <Link
                     to="/"
                     className={cn(
-                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                      location.pathname === '/' && 'text-text-primary'
+                      'sc-navbar-link-indicator',
+                      location.pathname === '/' && 'active'
                     )}
-                    style={landingNavLinkStyle}
                   >
                     Home
                     {location.pathname === '/' && (
-                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                      <span className="active-bar" />
                     )}
                   </Link>
 
@@ -278,39 +265,36 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   <Link
                     to="/functions/discovery"
                     className={cn(
-                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                      location.pathname === '/functions/discovery' && 'text-text-primary'
+                      'sc-navbar-link-indicator',
+                      location.pathname === '/functions/discovery' && 'active'
                     )}
-                    style={landingNavLinkStyle}
                   >
                     Functions
                     {location.pathname === '/functions/discovery' && (
-                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                      <span className="active-bar" />
                     )}
                   </Link>
 
                   {/* Marketplace - dropdown */}
-                  <MarketplaceDropdown style={landingNavLinkStyle} />
+                  <MarketplaceDropdown />
 
                   <Link
                     to="/pricing"
                     className={cn(
-                      'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
-                      location.pathname === '/pricing' && 'text-text-primary'
+                      'sc-navbar-link-indicator',
+                      location.pathname === '/pricing' && 'active'
                     )}
-                    style={landingNavLinkStyle}
                   >
                     Pricing
                     {location.pathname === '/pricing' && (
-                      <span className="absolute left-0 -bottom-0.5 w-full h-[3px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full" />
+                      <span className="active-bar" />
                     )}
                   </Link>
                   <a
                     href={DOCS_SITE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-text-secondary hover:text-text-primary transition-colors font-medium"
-                    style={landingNavLinkStyle}
+                    className="sc-navbar-link"
                   >
                     Docs
                   </a>

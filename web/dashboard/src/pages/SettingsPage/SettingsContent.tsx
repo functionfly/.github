@@ -18,22 +18,21 @@
  * Use getSettingsUrl(username, tab) from settings-utils.ts for generating URLs.
  */
 
-import './styles.css';
 import '@/styles/aviation-dashboard.css';
+import './styles.css';
 
 import { usersApi } from '@/api/users';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PrivacySettingsTab } from './components/PrivacySettingsTab';
+import { usePageTitle } from '@/hooks';
 import { GitHubSettingsPage } from '@/pages/GitHubSettingsPage';
 import { useApiReachableStore } from '@/stores/apiReachableStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserProfile } from '@/types';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, CreditCard, Code, Dna, Key, Link2, Shield, ShieldCheck, User } from 'lucide-react';
+import { Bell, Code, CreditCard, Dna, Link2, Shield, ShieldCheck, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { usePageTitle } from '@/hooks';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   AccountSettingsTab,
@@ -46,6 +45,7 @@ import {
   SecuritySettingsTab,
   TrustAPISettingsTab,
 } from './components';
+import { PrivacySettingsTab } from './components/PrivacySettingsTab';
 import { VALID_TABS, type SettingsTabValue } from './settings-utils';
 
 export interface SettingsContentProps {
@@ -172,9 +172,7 @@ export function SettingsContent({
     <div className="settings-page space-y-6">
       {showHeader && (
         <div className="settings-page-header">
-          <h1 className="settings-page-title">
-            {t('settings.title')}
-          </h1>
+          <h1 className="settings-page-title">{t('settings.title')}</h1>
           <p className="settings-page-subtitle">{t('settings.manageAccount')}</p>
         </div>
       )}
@@ -184,66 +182,66 @@ export function SettingsContent({
         onValueChange={(v) => setActiveTab(v as SettingsTabValue)}
         className="settings-tab-content space-y-6"
       >
-        <TabsList className="settings-page-tabs inline-flex h-auto flex-wrap gap-0 text-text-secondary">
+        <TabsList className="settings-page-tabs">
           <TabsTrigger
             value="account"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <User className="h-4 w-4 shrink-0" />
             {t('settings.account')}
           </TabsTrigger>
           <TabsTrigger
             value="billing"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <CreditCard className="h-4 w-4 shrink-0" />
             {t('settings.billing')}
           </TabsTrigger>
           <TabsTrigger
             value="developer"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <Code className="h-4 w-4 shrink-0" />
             {t('settings.developer')}
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <Bell className="h-4 w-4 shrink-0" />
             {t('settings.notifications')}
           </TabsTrigger>
           <TabsTrigger
             value="security"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <ShieldCheck className="h-4 w-4 shrink-0" />
             {t('settings.security')}
           </TabsTrigger>
           <TabsTrigger
             value="privacy"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <Shield className="h-4 w-4 shrink-0" />
             {t('settings.privacy')}
           </TabsTrigger>
           <TabsTrigger
             value="platform"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <Dna className="h-4 w-4 shrink-0" />
             Platform
           </TabsTrigger>
           <TabsTrigger
             value="integrations"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <Link2 className="h-4 w-4 shrink-0" />
             Integrations
           </TabsTrigger>
           <TabsTrigger
             value="github"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <svg
               role="img"
@@ -260,7 +258,7 @@ export function SettingsContent({
           </TabsTrigger>
           <TabsTrigger
             value="trust-api"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200 data-[state=active]:text-brand-500 [&>svg]:data-[state=active]:text-brand-500"
+            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
           >
             <Shield className="h-4 w-4 shrink-0" />
             Trust API

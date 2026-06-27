@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import React from "react";
 import { cn } from "../lib/utils";
+import { StatusPill } from "./sc";
 
 interface Props {
   title: string;
@@ -24,56 +24,115 @@ export default function FormCard({
   className,
 }: Props) {
   return (
-    <div className={cn("ff-card", className)}>
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-[var(--ff-primary-text)] tracking-tight">
+    <div className={cn("form-card", className)}>
+      <div className="form-card-header">
+        <h1
+          className="form-card-title"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "22px",
+            fontWeight: 500,
+            lineHeight: 1.25,
+            color: "var(--text)",
+            letterSpacing: 0,
+          }}
+        >
           {title}
         </h1>
         {subtitle && (
-          <p className="mt-1.5 text-[var(--ff-secondary-text)] text-[0.9375rem]">
+          <p
+            className="form-card-subtitle"
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "15px",
+              lineHeight: 1.6,
+              color: "var(--text-dim)",
+              marginTop: "var(--space-2)",
+            }}
+          >
             {subtitle}
           </p>
         )}
         {tagline && (
-          <p className="mt-4 text-[var(--ff-muted-text)] text-sm italic border-l-2 border-[var(--ff-flame)] pl-3">
+          <p
+            className="form-card-tagline"
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "13px",
+              lineHeight: 1.6,
+              color: "var(--text-faint)",
+              fontStyle: "italic",
+              borderLeft: "2px solid var(--accent)",
+              paddingLeft: "var(--space-3)",
+              marginTop: "var(--space-4)",
+            }}
+          >
             {tagline}
           </p>
         )}
       </div>
 
       {error && (
-        <div 
-          className="ff-status-banner ff-status-banner--error mb-4" 
-          role="alert"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          {error}
+        <div className="form-card-status" role="alert">
+          <StatusPill status="revoked" label="Error" />
+          <span
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "14px",
+              color: "var(--text)",
+              marginLeft: "var(--space-2)",
+            }}
+          >
+            {error}
+          </span>
         </div>
       )}
-      
+
       {success && (
-        <div 
-          className="ff-status-banner ff-status-banner--success mb-4" 
-          role="status"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
-          {success}
+        <div className="form-card-status" role="status">
+          <StatusPill status="live" label="Success" />
+          <span
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: "14px",
+              color: "var(--text)",
+              marginLeft: "var(--space-2)",
+            }}
+          >
+            {success}
+          </span>
         </div>
       )}
 
       {children}
 
       {footer && (
-        <div className="mt-5 pt-5 text-center text-sm text-[var(--ff-muted-text)] border-t border-[var(--ff-border-default)]">
+        <div
+          className="form-card-footer"
+          style={{
+            marginTop: "var(--space-5)",
+            paddingTop: "var(--space-5)",
+            textAlign: "center",
+            fontFamily: "var(--font-body)",
+            fontSize: "14px",
+            color: "var(--text-faint)",
+            borderTop: "1px solid var(--panel-edge)",
+          }}
+        >
           {footer}
         </div>
       )}
+
+      <style>{`
+        .form-card {
+          padding: 0;
+        }
+        .form-card-status {
+          display: flex;
+          align-items: center;
+          margin-bottom: var(--space-4);
+        }
+      `}</style>
     </div>
   );
 }

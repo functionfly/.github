@@ -1,10 +1,9 @@
+import { apiClient } from '@/api/client';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -12,14 +11,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuthStore } from '@/stores/authStore';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type {
+  PasswordPolicy,
+  TenantAuthSettings,
+  TenantInviteCode,
+  TenantMembership,
+  TenantOAuthProvider,
+} from '@/types';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building, Copy, Eye, EyeOff, Key, Shield, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
-import { apiClient } from '@/api/client';
-import type { TenantAuthSettings, TenantOAuthProvider, TenantMembership, TenantInviteCode, PasswordPolicy } from '@/types';
 
 interface OAuthProviderInput {
   provider: string;
@@ -33,7 +39,9 @@ async function fetchAuthSettings(): Promise<TenantAuthSettings> {
   return apiClient.get<TenantAuthSettings>('/v1/auth/settings');
 }
 
-async function updateAuthSettings(updates: Partial<TenantAuthSettings>): Promise<TenantAuthSettings> {
+async function updateAuthSettings(
+  updates: Partial<TenantAuthSettings>
+): Promise<TenantAuthSettings> {
   return apiClient.patch<TenantAuthSettings>('/v1/auth/settings', updates);
 }
 
@@ -56,7 +64,10 @@ async function fetchMembers(): Promise<TenantMembership[]> {
 }
 
 async function inviteMember(email: string, role: string): Promise<TenantInviteCode> {
-  const data = await apiClient.post<{ invite: TenantInviteCode }>('/v1/auth/members/invite', { email, role });
+  const data = await apiClient.post<{ invite: TenantInviteCode }>('/v1/auth/members/invite', {
+    email,
+    role,
+  });
   return data.invite;
 }
 
@@ -161,7 +172,15 @@ function PasswordPolicyEditor({
         </div>
       </div>
 
-      <Button onClick={handleSave} disabled={saving}>
+      <Button
+        onClick={handleSave}
+        disabled={saving}
+        style={{
+          background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+          color: 'var(--text-on-light)',
+          boxShadow: 'var(--shadow-btn-primary-rest)',
+        }}
+      >
         {saving ? 'Saving...' : 'Save Policy'}
       </Button>
     </div>
@@ -205,10 +224,20 @@ function OAuthProviderCard({
       </CardHeader>
       <CardContent className="pt-0">
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={onEdit}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+            style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+          >
             Edit
           </Button>
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+            style={{ color: 'var(--status-revoked)' }}
+          >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -308,10 +337,23 @@ function OAuthProviderForm({
       </div>
 
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>
+        <Button
+          variant="outline"
+          onClick={onCancel}
+          style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+        >
           Cancel
         </Button>
-        <Button onClick={handleSave}>Save Provider</Button>
+        <Button
+          onClick={handleSave}
+          style={{
+            background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+            color: 'var(--text-on-light)',
+            boxShadow: 'var(--shadow-btn-primary-rest)',
+          }}
+        >
+          Save Provider
+        </Button>
       </div>
     </div>
   );
@@ -483,7 +525,8 @@ export function AuthSettingsTab() {
   });
 
   const updateRoleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: string }) => updateMemberRole(userId, role),
+    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
+      updateMemberRole(userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
       toast.success('Role updated');
@@ -516,321 +559,424 @@ export function AuthSettingsTab() {
 
   return (
     <div className="settings-page space-y-6">
-    <Tabs defaultValue="security" className="space-y-6">
-      <TabsList>
-        <TabsTrigger value="security">
-          <Shield className="w-4 h-4 mr-2" />
-          Security
-        </TabsTrigger>
-        <TabsTrigger value="oauth">
-          <Key className="w-4 h-4 mr-2" />
-          OAuth
-        </TabsTrigger>
-        <TabsTrigger value="team">
-          <Building className="w-4 h-4 mr-2" />
-          Team
-        </TabsTrigger>
-      </TabsList>
+      <Tabs defaultValue="security" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="security">
+            <Shield className="w-4 h-4 mr-2" />
+            Security
+          </TabsTrigger>
+          <TabsTrigger value="oauth">
+            <Key className="w-4 h-4 mr-2" />
+            OAuth
+          </TabsTrigger>
+          <TabsTrigger value="team">
+            <Building className="w-4 h-4 mr-2" />
+            Team
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Security Tab */}
-      <TabsContent value="security" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Password Policy</CardTitle>
-            <CardDescription>Configure minimum password requirements</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PasswordPolicyEditor
-              policy={settings?.password_policy || {
-                min_length: 8,
-                require_uppercase: true,
-                require_lowercase: true,
-                require_digit: true,
-                require_special: true,
-              }}
-              onSave={(policy) => updateSettingsMutation.mutate({ password_policy: policy })}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Session Settings</CardTitle>
-            <CardDescription>Configure session timeout and security</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Session Timeout</Label>
-                <p className="text-sm text-text-muted">
-                  How long until a session expires
-                </p>
-              </div>
-              <Select
-                value={String(settings?.session_timeout_minutes || 480)}
-                onValueChange={(value) =>
-                  updateSettingsMutation.mutate({ session_timeout_minutes: parseInt(value) })
-                }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="60">1 hour</SelectItem>
-                  <SelectItem value="240">4 hours</SelectItem>
-                  <SelectItem value="480">8 hours</SelectItem>
-                  <SelectItem value="1440">24 hours</SelectItem>
-                  <SelectItem value="10080">1 week</SelectItem>
-                </SelectContent>
-              </Select>
+        {/* Security Tab */}
+        <TabsContent value="security" className="space-y-6">
+          <div
+            className="rounded-lg p-5"
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--panel-edge)',
+              boxShadow: 'var(--shadow-chamber)',
+            }}
+          >
+            <div className="mb-4">
+              <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+                Password Policy
+              </h3>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
+                Configure minimum password requirements
+              </p>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Require Multi-Factor Authentication</Label>
-                <p className="text-sm text-text-muted">
-                  Require MFA for all users in your organization
-                </p>
-              </div>
-              <Select
-                value={settings?.mfa_mode || 'optional'}
-                onValueChange={(value) =>
-                  updateSettingsMutation.mutate({ mfa_mode: value as 'optional' | 'required' | 'enforced' })
+            <div className="space-y-4">
+              <PasswordPolicyEditor
+                policy={
+                  settings?.password_policy || {
+                    min_length: 8,
+                    require_uppercase: true,
+                    require_lowercase: true,
+                    require_digit: true,
+                    require_special: true,
+                  }
                 }
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="optional">Optional</SelectItem>
-                  <SelectItem value="required">Required</SelectItem>
-                  <SelectItem value="enforced">Enforced</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Login Methods</CardTitle>
-            <CardDescription>Configure how users can sign in</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Password Login</Label>
-                <p className="text-sm text-text-muted">
-                  Allow users to sign in with email and password
-                </p>
-              </div>
-              <Switch
-                checked={settings?.allow_password_login ?? true}
-                onCheckedChange={(checked) =>
-                  updateSettingsMutation.mutate({ allow_password_login: checked })
-                }
+                onSave={(policy) => updateSettingsMutation.mutate({ password_policy: policy })}
               />
             </div>
+          </div>
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Magic Link</Label>
-                <p className="text-sm text-text-muted">
-                  Allow passwordless sign-in via email link
-                </p>
-              </div>
-              <Switch
-                checked={settings?.allow_magic_link ?? true}
-                onCheckedChange={(checked) =>
-                  updateSettingsMutation.mutate({ allow_magic_link: checked })
-                }
-              />
+          <div
+            className="rounded-lg p-5"
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--panel-edge)',
+              boxShadow: 'var(--shadow-chamber)',
+            }}
+          >
+            <div className="mb-4">
+              <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+                Session Settings
+              </h3>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
+                Configure session timeout and security
+              </p>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Email Verification</Label>
-                <p className="text-sm text-text-muted">
-                  Require users to verify their email
-                </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label style={{ color: 'var(--text)' }}>Session Timeout</Label>
+                  <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                    How long until a session expires
+                  </p>
+                </div>
+                <Select
+                  value={String(settings?.session_timeout_minutes || 480)}
+                  onValueChange={(value) =>
+                    updateSettingsMutation.mutate({ session_timeout_minutes: parseInt(value) })
+                  }
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="60">1 hour</SelectItem>
+                    <SelectItem value="240">4 hours</SelectItem>
+                    <SelectItem value="480">8 hours</SelectItem>
+                    <SelectItem value="1440">24 hours</SelectItem>
+                    <SelectItem value="10080">1 week</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <Switch
-                checked={settings?.require_email_verification ?? true}
-                onCheckedChange={(checked) =>
-                  updateSettingsMutation.mutate({ require_email_verification: checked })
-                }
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
 
-      {/* OAuth Tab */}
-      <TabsContent value="oauth" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label style={{ color: 'var(--text)' }}>
+                    Require Multi-Factor Authentication
+                  </Label>
+                  <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                    Require MFA for all users in your organization
+                  </p>
+                </div>
+                <Select
+                  value={settings?.mfa_mode || 'optional'}
+                  onValueChange={(value) =>
+                    updateSettingsMutation.mutate({
+                      mfa_mode: value as 'optional' | 'required' | 'enforced',
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="optional">Optional</SelectItem>
+                    <SelectItem value="required">Required</SelectItem>
+                    <SelectItem value="enforced">Enforced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="rounded-lg p-5"
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--panel-edge)',
+              boxShadow: 'var(--shadow-chamber)',
+            }}
+          >
+            <div className="mb-4">
+              <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+                Login Methods
+              </h3>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
+                Configure how users can sign in
+              </p>
+            </div>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label style={{ color: 'var(--text)' }}>Password Login</Label>
+                  <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                    Allow users to sign in with email and password
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.allow_password_login ?? true}
+                  onCheckedChange={(checked) =>
+                    updateSettingsMutation.mutate({ allow_password_login: checked })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label style={{ color: 'var(--text)' }}>Magic Link</Label>
+                  <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                    Allow passwordless sign-in via email link
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.allow_magic_link ?? true}
+                  onCheckedChange={(checked) =>
+                    updateSettingsMutation.mutate({ allow_magic_link: checked })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label style={{ color: 'var(--text)' }}>Email Verification</Label>
+                  <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                    Require users to verify their email
+                  </p>
+                </div>
+                <Switch
+                  checked={settings?.require_email_verification ?? true}
+                  onCheckedChange={(checked) =>
+                    updateSettingsMutation.mutate({ require_email_verification: checked })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* OAuth Tab */}
+        <TabsContent value="oauth" className="space-y-6">
+          <div
+            className="rounded-lg p-5"
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--panel-edge)',
+              boxShadow: 'var(--shadow-chamber)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <CardTitle>Social Login</CardTitle>
-                <CardDescription>
+                <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+                  Social Login
+                </h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
                   Configure OAuth providers for social login
-                </CardDescription>
+                </p>
               </div>
-              <Button onClick={() => setShowOAuthForm(true)}>
+              <Button
+                onClick={() => setShowOAuthForm(true)}
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
+              >
                 <Key className="w-4 h-4 mr-2" />
                 Add Provider
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            {showOAuthForm ? (
-              <OAuthProviderForm
-                provider={editingProvider || undefined}
-                onSave={(config) => oauthMutation.mutate(config)}
-                onCancel={() => {
-                  setShowOAuthForm(false);
-                  setEditingProvider(null);
-                }}
-              />
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {oauthProviders.map((provider) => (
-                  <OAuthProviderCard
-                    key={provider.provider}
-                    provider={provider}
-                    onEdit={() => {
-                      setEditingProvider({
-                        provider: provider.provider,
-                        client_id: provider.client_id,
-                        client_secret: '',
-                        enabled: provider.enabled,
-                        callback_url: provider.callback_url,
-                      });
-                      setShowOAuthForm(true);
-                    }}
-                    onDelete={() => deleteOAuthMutation.mutate(provider.provider)}
-                  />
-                ))}
-                {oauthProviders.length === 0 && (
-                  <div className="col-span-2 text-center py-8 text-text-muted">
-                    No OAuth providers configured. Click "Add Provider" to get started.
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </TabsContent>
+            <div>
+              {showOAuthForm ? (
+                <OAuthProviderForm
+                  provider={editingProvider || undefined}
+                  onSave={(config) => oauthMutation.mutate(config)}
+                  onCancel={() => {
+                    setShowOAuthForm(false);
+                    setEditingProvider(null);
+                  }}
+                />
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {oauthProviders.map((provider) => (
+                    <OAuthProviderCard
+                      key={provider.provider}
+                      provider={provider}
+                      onEdit={() => {
+                        setEditingProvider({
+                          provider: provider.provider,
+                          client_id: provider.client_id,
+                          client_secret: '',
+                          enabled: provider.enabled,
+                          callback_url: provider.callback_url,
+                        });
+                        setShowOAuthForm(true);
+                      }}
+                      onDelete={() => deleteOAuthMutation.mutate(provider.provider)}
+                    />
+                  ))}
+                  {oauthProviders.length === 0 && (
+                    <div
+                      className="col-span-2 text-center py-8"
+                      style={{ color: 'var(--text-dim)' }}
+                    >
+                      No OAuth providers configured. Click "Add Provider" to get started.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
 
-      {/* Team Tab */}
-      <TabsContent value="team" className="space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+        {/* Team Tab */}
+        <TabsContent value="team" className="space-y-6">
+          <div
+            className="rounded-lg p-5"
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--panel-edge)',
+              boxShadow: 'var(--shadow-chamber)',
+            }}
+          >
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <CardTitle>Team Members</CardTitle>
-                <CardDescription>Manage who has access to your organization</CardDescription>
+                <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+                  Team Members
+                </h3>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
+                  Manage who has access to your organization
+                </p>
               </div>
               {canManageTeam && (
-                <Button onClick={() => setShowInviteForm(true)}>
+                <Button
+                  onClick={() => setShowInviteForm(true)}
+                  style={{
+                    background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                    color: 'var(--text-on-light)',
+                    boxShadow: 'var(--shadow-btn-primary-rest)',
+                  }}
+                >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Invite
                 </Button>
               )}
             </div>
-          </CardHeader>
-          <CardContent>
-            {showInviteForm && (
-              <div className="mb-6 p-4 bg-bg-secondary rounded-lg space-y-4">
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <Label>Email</Label>
-                    <Input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="colleague@company.com"
-                    />
-                  </div>
-                  <div className="w-40">
-                    <Label>Role</Label>
-                    <Select value={inviteRole} onValueChange={setInviteRole}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="team_admin">Admin</SelectItem>
-                        <SelectItem value="team_member">Member</SelectItem>
-                        <SelectItem value="team_viewer">Viewer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowInviteForm(false);
-                      setInviteEmail('');
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={() => inviteMutation.mutate({ email: inviteEmail, role: inviteRole })}
-                    disabled={!inviteEmail}
-                  >
-                    Send Invite
-                  </Button>
-                </div>
-              </div>
-            )}
-
             <div>
-              {members.map((member) => (
-                <MemberRow
-                  key={member.id}
-                  member={member}
-                  onRoleChange={(role) =>
-                    updateRoleMutation.mutate({ userId: member.user_id, role })
-                  }
-                  onRemove={() => removeMemberMutation.mutate(member.user_id)}
-                  canManage={canManageTeam}
-                />
-              ))}
-              {members.length === 0 && (
-                <div className="text-center py-8 text-text-muted">No team members found</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Pending Invitations</CardTitle>
-            <CardDescription>Invitations that haven't been accepted yet</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div>
-              {pendingInvites.map((invite) => (
-                <InviteRow
-                  key={invite.id}
-                  invite={invite}
-                  onCopy={() => {
-                    navigator.clipboard.writeText(`${window.location.origin}/invite/${invite.code}`);
-                    toast.success('Link copied');
+              {showInviteForm && (
+                <div
+                  className="mb-6 p-4 rounded-lg space-y-4"
+                  style={{
+                    background: 'var(--panel-raised)',
+                    border: '1px solid var(--panel-edge)',
                   }}
-                  onRevoke={() => revokeInviteMutation.mutate(invite.code)}
-                />
-              ))}
-              {pendingInvites.length === 0 && (
-                <div className="text-center py-8 text-text-muted">No pending invitations</div>
+                >
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Label style={{ color: 'var(--text)' }}>Email</Label>
+                      <Input
+                        type="email"
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        placeholder="colleague@company.com"
+                      />
+                    </div>
+                    <div className="w-40">
+                      <Label style={{ color: 'var(--text)' }}>Role</Label>
+                      <Select value={inviteRole} onValueChange={setInviteRole}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="team_admin">Admin</SelectItem>
+                          <SelectItem value="team_member">Member</SelectItem>
+                          <SelectItem value="team_viewer">Viewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowInviteForm(false);
+                        setInviteEmail('');
+                      }}
+                      style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={() =>
+                        inviteMutation.mutate({ email: inviteEmail, role: inviteRole })
+                      }
+                      disabled={!inviteEmail}
+                      style={{
+                        background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                        color: 'var(--text-on-light)',
+                        boxShadow: 'var(--shadow-btn-primary-rest)',
+                      }}
+                    >
+                      Send Invite
+                    </Button>
+                  </div>
+                </div>
               )}
+
+              <div>
+                {members.map((member) => (
+                  <MemberRow
+                    key={member.id}
+                    member={member}
+                    onRoleChange={(role) =>
+                      updateRoleMutation.mutate({ userId: member.user_id, role })
+                    }
+                    onRemove={() => removeMemberMutation.mutate(member.user_id)}
+                    canManage={canManageTeam}
+                  />
+                ))}
+                {members.length === 0 && (
+                  <div className="text-center py-8" style={{ color: 'var(--text-dim)' }}>
+                    No team members found
+                  </div>
+                )}
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    </Tabs>
+          </div>
+
+          <div
+            className="rounded-lg p-5"
+            style={{
+              background: 'var(--panel)',
+              border: '1px solid var(--panel-edge)',
+              boxShadow: 'var(--shadow-chamber)',
+            }}
+          >
+            <div className="mb-4">
+              <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
+                Pending Invitations
+              </h3>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
+                Invitations that haven't been accepted yet
+              </p>
+            </div>
+            <div>
+              <div>
+                {pendingInvites.map((invite) => (
+                  <InviteRow
+                    key={invite.id}
+                    invite={invite}
+                    onCopy={() => {
+                      navigator.clipboard.writeText(
+                        `${window.location.origin}/invite/${invite.code}`
+                      );
+                      toast.success('Link copied');
+                    }}
+                    onRevoke={() => revokeInviteMutation.mutate(invite.code)}
+                  />
+                ))}
+                {pendingInvites.length === 0 && (
+                  <div className="text-center py-8" style={{ color: 'var(--text-dim)' }}>
+                    No pending invitations
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

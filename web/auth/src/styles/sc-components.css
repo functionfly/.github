@@ -47,8 +47,15 @@
    ───────────────────────────────────────────────── */
 
 @keyframes ff-pulse-live {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
 }
 
 .ff-pulse-dot {
@@ -79,18 +86,34 @@
   flex-shrink: 0;
 }
 
-.sealed-btn-icon-left { margin-right: 6px; }
-.sealed-btn-icon-right { margin-left: 6px; }
+.sealed-btn-icon-left {
+  margin-right: 6px;
+}
+.sealed-btn-icon-right {
+  margin-left: 6px;
+}
 
-.sealed-btn-loading { cursor: wait; }
+.sealed-btn-loading {
+  cursor: wait;
+}
 
-.sealed-btn-sm .sealed-btn-label { font-size: 12px; }
-.sealed-btn-sm { padding: 9px 14px; }
+.sealed-btn-sm .sealed-btn-label {
+  font-size: 12px;
+}
+.sealed-btn-sm {
+  padding: 9px 14px;
+}
 
-.sealed-btn-md { padding: 13px 22px; }
+.sealed-btn-md {
+  padding: 13px 22px;
+}
 
-.sealed-btn-lg .sealed-btn-label { font-size: 15px; }
-.sealed-btn-lg { padding: 15px 26px; }
+.sealed-btn-lg .sealed-btn-label {
+  font-size: 15px;
+}
+.sealed-btn-lg {
+  padding: 15px 26px;
+}
 
 /* Primary — brushed metal embossed button */
 .sealed-button-primary {
@@ -191,7 +214,9 @@
   gap: var(--space-3);
 }
 
-.sealed-button-group > * { flex-shrink: 0; }
+.sealed-button-group > * {
+  flex-shrink: 0;
+}
 
 .sealed-button-group-responsive {
   flex-direction: column;
@@ -205,14 +230,18 @@
     align-items: center;
     gap: var(--space-3);
   }
-  .sealed-button-group-responsive > * { flex-shrink: 0; }
+  .sealed-button-group-responsive > * {
+    flex-shrink: 0;
+  }
 }
 
 /* ─────────────────────────────────────────────────
    Light mode overrides
    ───────────────────────────────────────────────── */
 
-[data-theme="light"] .sealed-button-primary { color: #0f172a; }
+[data-theme="light"] .sealed-button-primary {
+  color: #0f172a;
+}
 
 [data-theme="light"] .sealed-button-secondary {
   color: #0f172a;
@@ -228,13 +257,142 @@
   background: rgba(15, 23, 42, 0.1);
 }
 
-[data-theme="light"] .trust-seal-label { color: #059669 !important; }
+[data-theme="light"] .trust-seal-label {
+  color: #059669 !important;
+}
 
-[data-theme="light"] .gauge-strip-value { color: #059669 !important; }
-[data-theme="light"] .gauge-strip-label { color: #6b7280 !important; }
-[data-theme="light"] .gauge-strip-divider { background: #e5e7eb !important; }
+[data-theme="light"] .gauge-strip-value {
+  color: #059669 !important;
+}
+[data-theme="light"] .gauge-strip-label {
+  color: #6b7280 !important;
+}
+[data-theme="light"] .gauge-strip-divider {
+  background: #e5e7eb !important;
+}
 
 [data-theme="light"] .ff-pulse-dot {
   background: #059669;
   box-shadow: 0 0 12px #059669;
+}
+
+/* ─────────────────────────────────────────────────
+   NavLink Hover
+   ───────────────────────────────────────────────── */
+
+.nav-link:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ─────────────────────────────────────────────────
+   Input Styles
+   ───────────────────────────────────────────────── */
+
+.sealed-input::placeholder {
+  color: var(--text-faint);
+}
+.sealed-input:focus {
+  border-color: var(--steel-light);
+  box-shadow: var(--shadow-input-focus);
+}
+.sealed-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────────
+   IconButton Styles
+   ───────────────────────────────────────────────── */
+
+.icon-button:hover:not(:disabled) {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+.icon-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.icon-button:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+/* ─────────────────────────────────────────────────
+   CodeBlock Styles
+   ───────────────────────────────────────────────── */
+
+.code-block-copy:hover {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+.code-block pre::-webkit-scrollbar {
+  height: 10px;
+}
+.code-block pre::-webkit-scrollbar-track {
+  background: var(--panel);
+}
+.code-block pre::-webkit-scrollbar-thumb {
+  background: var(--steel);
+  border-radius: 5px;
+}
+.code-block pre::-webkit-scrollbar-thumb:hover {
+  background: var(--steel-light);
+}
+
+/* ─────────────────────────────────────────────────
+   Table Styles
+   ───────────────────────────────────────────────── */
+
+.table-row:hover {
+  background: var(--panel-raised);
+}
+.table-row:last-child {
+  border-bottom: none;
+}
+.table-wrapper table {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────────
+   Keyframe Animations
+   ───────────────────────────────────────────────── */
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes modalOverlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalBodyIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }

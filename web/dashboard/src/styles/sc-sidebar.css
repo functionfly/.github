@@ -5,7 +5,7 @@
  * Design direction: containment glass, security foil, instrumentation
  */
 
-@import "./sc-tokens.css";
+@import './sc-tokens.css';
 
 /* ═══════════════════════════════════════════════
    Sidebar Container
@@ -14,6 +14,41 @@
 .sc-sidebar {
   --sc-sidebar-font-display: var(--font-display);
   --sc-sidebar-font-mono: var(--font-mono);
+  --sc-sidebar-hover-bg: rgba(255, 255, 255, 0.04);
+  --sc-sidebar-input-bg: var(--panel-raised);
+  --sc-sidebar-input-border: var(--steel);
+  --sc-sidebar-input-text: var(--text);
+  --sc-sidebar-input-placeholder: var(--text-faint);
+  --sc-sidebar-input-focus-border: var(--steel-light);
+  --sc-sidebar-close-btn-bg: transparent;
+  --sc-sidebar-close-btn-text: var(--text-dim);
+  --sc-sidebar-close-btn-hover-bg: var(--steel);
+  --sc-sidebar-close-btn-hover-text: var(--text);
+  --sc-sidebar-divider: var(--chamber-edge);
+  --sc-sidebar-text-muted: var(--text-dim);
+  --sc-sidebar-text-faint: var(--text-faint);
+  --sc-sidebar-border-panel: var(--chamber-edge);
+  --sc-sidebar-bg-instrument: var(--steel);
+}
+
+/* ═══════════════════════════════════════════════
+   Border helpers for inline styles
+   ═══════════════════════════════════════════════ */
+
+.border-chamber-edge {
+  border-color: var(--chamber-edge);
+}
+
+.text-text-dim {
+  color: var(--text-dim);
+}
+
+.text-text-faint {
+  color: var(--text-faint);
+}
+
+.bg-steel {
+  background: var(--steel);
 }
 
 /* ═══════════════════════════════════════════════
@@ -71,27 +106,108 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: var(--radius);
-  color: var(--text);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
   text-decoration: none;
-  transition: all 0.15s ease;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 400;
+  white-space: nowrap;
 }
 
 .aviation-sidebar-item:hover {
-  background: rgba(143, 255, 208, 0.05);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
 }
 
+/* Sidebar links should use sidebar text colors, not global brand link color */
+.v-sidebar-link {
+  color: var(--text-dim);
+}
+
+.v-sidebar-link:hover {
+  color: var(--text);
+}
+
+[data-theme='light'] .v-sidebar-link {
+  color: #000000;
+}
+
+[data-theme='light'] .v-sidebar-link:hover {
+  color: #0f172a;
+}
+
+/* Active state: border-bottom indicator, NO filled background per SC spec 3.11 */
 .aviation-sidebar-item-active {
-  background: rgba(143, 255, 208, 0.08);
   color: var(--status-ok);
+  font-weight: 500;
+  border-bottom: 2px solid var(--status-ok);
 }
 
 .aviation-sidebar-item-active:hover {
-  background: rgba(143, 255, 208, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--status-ok);
+}
+
+/* Focus-visible ring using token — not :focus (which fires on mouse clicks) */
+.aviation-sidebar-item:focus-visible,
+.aviation-sidebar-item-focused {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ═══════════════════════════════════════════════
+   Sidebar Header Controls (Search, Close)
+   ═══════════════════════════════════════════════ */
+
+.aviation-sidebar-search {
+  background: var(--sc-sidebar-input-bg);
+  border: 1px solid var(--sc-sidebar-input-border);
+  color: var(--sc-sidebar-input-text);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.aviation-sidebar-search::placeholder {
+  color: var(--sc-sidebar-input-placeholder);
+}
+
+.aviation-sidebar-search:focus {
+  border-color: var(--sc-sidebar-input-focus-border);
+  box-shadow: var(--shadow-input-focus);
+  outline: none;
+}
+
+.aviation-sidebar-close-btn {
+  background: var(--sc-sidebar-close-btn-bg);
+  color: var(--sc-sidebar-close-btn-text);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.aviation-sidebar-close-btn:hover {
+  background: var(--sc-sidebar-close-btn-hover-bg);
+  color: var(--sc-sidebar-close-btn-hover-text);
+}
+
+/* Search hint button in header */
+.aviation-sidebar-search-hint {
+  background: var(--sc-sidebar-hover-bg);
+  border: 1px solid var(--chamber-edge);
+  color: var(--text-dim);
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.aviation-sidebar-search-hint:hover {
+  color: var(--text);
+  border-color: var(--chamber-edge);
 }
 
 .aviation-sidebar-icon {
@@ -135,11 +251,12 @@
 }
 
 .aviation-sidebar-section-title {
-  color: var(--text-dim);
-  font-size: 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
 }
 
 .aviation-sidebar-section-active {
@@ -158,11 +275,11 @@
 
 .aviation-sidebar-toggle {
   color: var(--text-faint);
-  transition: color 0.15s ease;
+  transition: color var(--duration-fast) var(--ease-out);
 }
 
 .aviation-sidebar-toggle:hover {
-  color: var(--text-primary);
+  color: var(--text);
 }
 
 .aviation-sidebar-toggle-icon {
@@ -223,13 +340,13 @@
   border: 1px solid var(--chamber-edge);
 }
 
-.aviation-status-badge-count[data-type="warning"] {
-  background: rgba(255, 122, 61, 0.15);
-  color: var(--accent);
-  border-color: rgba(255, 122, 61, 0.3);
+.aviation-status-badge-count[data-type='warning'] {
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--text);
+  border-color: rgba(255, 107, 107, 0.25);
 }
 
-.aviation-status-badge-count[data-type="success"] {
+.aviation-status-badge-count[data-type='success'] {
   background: rgba(143, 255, 208, 0.1);
   color: var(--status-ok);
   border-color: rgba(143, 255, 208, 0.3);
@@ -277,12 +394,21 @@
 }
 
 .aviation-favorite-btn:hover {
-  color: var(--accent);
+  color: var(--text);
 }
 
 .aviation-favorite-btn.is-favorite {
   opacity: 1;
-  color: var(--accent);
+  color: var(--text);
+}
+
+/* Light mode favorites use status-ok (green) for visual distinction */
+[data-theme='light'] .aviation-favorite-btn:hover {
+  color: #059669;
+}
+
+[data-theme='light'] .aviation-favorite-btn.is-favorite {
+  color: #059669;
 }
 
 /* ═══════════════════════════════════════════════
@@ -385,7 +511,7 @@
 }
 
 .aviation-signout:hover {
-  background: rgba(255, 122, 61, 0.08);
+  background: rgba(255, 107, 107, 0.08);
   color: var(--status-revoked);
 }
 
@@ -502,7 +628,9 @@
   background: var(--chamber-bg);
   border: 1px solid var(--chamber-edge);
   border-radius: var(--radius);
-  box-shadow: var(--chamber-shadow), 0 0 20px rgba(143, 255, 208, 0.1);
+  box-shadow:
+    var(--chamber-shadow),
+    0 0 20px rgba(143, 255, 208, 0.1);
   font-size: 0.75rem;
   color: var(--text-dim);
   opacity: 0;
@@ -552,7 +680,9 @@
 .aviation-sidebar-mobile-sheet {
   background: var(--chamber-bg);
   border-right: 1px solid var(--chamber-edge);
-  box-shadow: var(--chamber-shadow), 0 0 40px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    var(--chamber-shadow),
+    0 0 40px rgba(0, 0, 0, 0.5);
 }
 
 .aviation-sidebar-mobile-handle {
@@ -650,13 +780,13 @@
   color: #475569;
 }
 
-[data-theme='light'] .aviation-status-badge-count[data-type="warning"] {
-  background: rgba(232, 90, 42, 0.1);
-  color: #e85a2a;
-  border-color: rgba(232, 90, 42, 0.3);
+[data-theme='light'] .aviation-status-badge-count[data-type='warning'] {
+  background: rgba(5, 150, 105, 0.1);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
 }
 
-[data-theme='light'] .aviation-status-badge-count[data-type="success"] {
+[data-theme='light'] .aviation-status-badge-count[data-type='success'] {
   background: rgba(5, 150, 105, 0.1);
   color: #059669;
   border-color: rgba(5, 150, 105, 0.3);
@@ -754,7 +884,9 @@
 [data-theme='light'] .aviation-shortcut-hint {
   background: #ffffff;
   border-color: #e2e8f0;
-  box-shadow: 0 0 0 1px #e2e8f0, 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 0 0 1px #e2e8f0,
+    0 4px 12px rgba(0, 0, 0, 0.1);
   color: #475569;
 }
 

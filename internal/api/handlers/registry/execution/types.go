@@ -61,6 +61,8 @@ type Handler struct {
 	RuntimeRouter *RuntimeRouter
 	// BundleService provides eager bundling at publish time (optional).
 	BundleService *bundler.BundleService
+	// ReceiptMilestoneHook is called after a successful public execution receipt is created.
+	ReceiptMilestoneHook func(ctx context.Context, functionID uuid.UUID, tenantID *uuid.UUID, publicID string)
 }
 
 // PrivacyService interface for privacy and compliance features

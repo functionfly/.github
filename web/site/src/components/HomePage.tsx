@@ -1,5 +1,6 @@
 import gsap from "gsap";
 import React, { useCallback, useRef } from "react";
+import Typewriter from "typewriter-effect";
 import "../styles/sc-main.css";
 import { Card } from "./containment/Card";
 import { Chamber } from "./containment/Chamber";
@@ -88,58 +89,114 @@ const DocsIcon = () => (
 
 const CheckIcon = () => <span style={{ color: "var(--status-ok)" }}>✓</span>;
 
+const sampleExecutions = [
+  {
+    id: "rx_3f8a91c",
+    function: "fetch_weather_api",
+    duration: "1.92ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_7c2d4e1",
+    function: "send_email",
+    duration: "3.21ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_a91f3b8",
+    function: "validate_schema",
+    duration: "0.84ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_2b7d41e",
+    function: "process_payment",
+    duration: "1.04ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_5c9f13a",
+    function: "call_external_api",
+    duration: "2.67ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_e4a82f6",
+    function: "ocr_document",
+    duration: "12.30ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_9d3c701",
+    function: "vector_search",
+    duration: "1.76ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_1b6e9a4",
+    function: "run_code_sandbox",
+    duration: "6.48ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_84f2c1d",
+    function: "parse_csv",
+    duration: "0.51ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_6a9e3b2",
+    function: "generate_embedding",
+    duration: "4.13ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_c1f7d83",
+    function: "resize_image",
+    duration: "2.05ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_3e8b94a",
+    function: "translate_text",
+    duration: "3.89ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_72d4f6c",
+    function: "geocode_address",
+    duration: "1.31ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_b5a91e7",
+    function: "verify_signature",
+    duration: "0.62ms",
+    status: "success" as const,
+  },
+  {
+    id: "rx_4f2c8d3",
+    function: "webhook_dispatch",
+    duration: "1.18ms",
+    status: "warning" as const,
+  },
+  {
+    id: "rx_9c3e7a1",
+    function: "query_database",
+    duration: "2.94ms",
+    status: "success" as const,
+  },
+];
+
 const ReceiptStrip: React.FC = () => {
-  const receipts = [
-    {
-      id: "rx_8f3a92c1",
-      fn: "process_payment",
-      status: "live" as const,
-      t: "1.84ms",
-    },
-    {
-      id: "rx_2b7d41e8",
-      fn: "validate_schema",
-      status: "live" as const,
-      t: "0.92ms",
-    },
-    {
-      id: "rx_5c9f13a0",
-      fn: "fetch_weather_api",
-      status: "pending" as const,
-      t: "—",
-    },
-    {
-      id: "rx_1a4e87b2",
-      fn: "send_email",
-      status: "live" as const,
-      t: "3.21ms",
-    },
-    {
-      id: "rx_9d2c58f7",
-      fn: "run_code_sandbox",
-      status: "live" as const,
-      t: "6.48ms",
-    },
-    {
-      id: "rx_3e6b90d4",
-      fn: "ocr_document",
-      status: "pending" as const,
-      t: "12.1ms",
-    },
-    {
-      id: "rx_7f1a23c9",
-      fn: "vector_search",
-      status: "live" as const,
-      t: "2.17ms",
-    },
-    {
-      id: "rx_4b8e62f1",
-      fn: "call_external_api",
-      status: "pending" as const,
-      t: "—",
-    },
-  ];
-  const doubled = [...receipts, ...receipts, ...receipts, ...receipts];
+  // Map sampleExecutions to the receipt format
+  const receipts = sampleExecutions.map((e) => ({
+    id: e.id,
+    fn: e.function,
+    status: e.status === "success" ? ("live" as const) : ("warning" as const),
+    t: e.status === "success" ? `✓ ${e.duration}` : `⚠ ${e.duration}`,
+  }));
+  const doubled = [...receipts, ...receipts];
 
   return (
     <div
@@ -155,7 +212,7 @@ const ReceiptStrip: React.FC = () => {
         style={{
           display: "flex",
           gap: "var(--space-4)",
-          animation: "receipt-scroll 30s linear infinite",
+          animation: "receipt-scroll 15s linear infinite",
           width: "max-content",
         }}
       >
@@ -265,7 +322,7 @@ const HomePage: React.FC<{ authOrigin: string; docsUrl: string }> = ({
       <main>
         <Section>
           <Container>
-            <Chamber variant="ribs">
+            <Chamber variant="ribs" style={{ textAlign: "center" }}>
               <CornerBrace position="tl" />
               <CornerBrace position="br" />
               <div
@@ -295,18 +352,23 @@ const HomePage: React.FC<{ authOrigin: string; docsUrl: string }> = ({
               </div>
               <h1
                 style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: "clamp(36px, 5.5vw, 58px)",
-                  fontWeight: 700,
-                  letterSpacing: "-0.01em",
-                  lineHeight: 1.08,
-                  color: "var(--text)",
-                  marginBottom: "var(--space-5)",
+                  minHeight: "2.6em",
+                  lineHeight: "1.2",
+                  margin: 0,
                 }}
               >
-                Agents execute.
-                <br />
-                <span style={{ color: "var(--accent)" }}>You trust.</span>
+                <Typewriter
+                  onInit={(typewriter) => {
+                    typewriter
+                      .typeString("Agents execute.<br/>")
+                      .typeString(
+                        '<span style="color: var(--accent)">You verify.</span>',
+                      )
+                      .pauseFor(1500)
+                      .deleteAll()
+                      .start();
+                  }}
+                />
               </h1>
               <p
                 style={{
@@ -314,21 +376,23 @@ const HomePage: React.FC<{ authOrigin: string; docsUrl: string }> = ({
                   lineHeight: 1.7,
                   color: "var(--text-dim)",
                   maxWidth: 640,
-                  marginBottom: "var(--space-6)",
+                  margin: "0 auto var(--space-6)",
                 }}
               >
                 The{" "}
                 <strong style={{ color: "var(--text)" }}>
-                  sandboxed execution and trust layer
+                  execution and trust layer
                 </strong>{" "}
-                built for AI agents. MCP, A2A, verifiable receipts — every
-                function call audited, every result provable.
+                for AI agents — built on MCP and A2A, backed by a marketplace of
+                verified, reusable functions. Every call audited. Every result
+                provable.
               </p>
               <div
                 style={{
                   display: "flex",
                   gap: "var(--space-3)",
                   flexWrap: "wrap",
+                  justifyContent: "center",
                   marginBottom: "var(--space-6)",
                 }}
               >
@@ -339,7 +403,7 @@ const HomePage: React.FC<{ authOrigin: string; docsUrl: string }> = ({
                     (window.location.href = `${authOrigin}/signup`)
                   }
                 >
-                  Deploy your first agent
+                  Deploy your first function
                 </SealedButton>
                 <FrameButton
                   size="lg"
@@ -351,9 +415,11 @@ const HomePage: React.FC<{ authOrigin: string; docsUrl: string }> = ({
               </div>
               <div
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+                  display: "flex",
+                  justifyContent: "center",
+                  gap: "var(--space-8)",
                   borderTop: "1px solid var(--panel-edge)",
+                  flexWrap: "wrap",
                 }}
               >
                 {[
@@ -364,9 +430,8 @@ const HomePage: React.FC<{ authOrigin: string; docsUrl: string }> = ({
                   <div
                     key={g.l}
                     style={{
-                      padding: "var(--space-5) 0 var(--space-6)",
-                      paddingLeft: "var(--space-5)",
-                      borderLeft: "1px solid var(--panel-edge)",
+                      padding: "var(--space-5) var(--space-4) var(--space-6)",
+                      textAlign: "center",
                     }}
                   >
                     <div
@@ -454,7 +519,7 @@ const HomePage: React.FC<{ authOrigin: string; docsUrl: string }> = ({
                 {
                   icon: "🌐",
                   title: "Auth Proxy + Routing",
-                  desc: "Centralized auth and intelligent routing across agent calls. The moat between your agents and the open internet.",
+                  desc: "Centralized auth and intelligent routing across agent calls. The most direct, secure path between your agents and the open internet.",
                   tag: "Auth · Routing",
                 },
                 {

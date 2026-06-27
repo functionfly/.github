@@ -1,6 +1,6 @@
 // API Key types matching backend Go types
 
-export type APIKeyType = 'platform' | 'function' | 'agent' | 'environment' | 'oauth' | 'trust';
+export type APIKeyType = 'platform' | 'function' | 'agent' | 'environment' | 'oauth' | 'trust' | 'micropython' | 'runtime';
 
 export type Permission = 'read' | 'write' | 'execute' | 'admin';
 
@@ -172,6 +172,8 @@ export const API_KEY_TYPE_LABELS: Record<APIKeyType, string> = {
   environment: 'Environment',
   oauth: 'OAuth',
   trust: 'Trust API',
+  micropython: 'MicroPython Runtime',
+  runtime: 'Runtime',
 };
 
 export const API_KEY_TYPE_DESCRIPTIONS: Record<APIKeyType, string> = {
@@ -181,6 +183,8 @@ export const API_KEY_TYPE_DESCRIPTIONS: Record<APIKeyType, string> = {
   environment: 'Environment-specific access',
   oauth: 'OAuth-based access',
   trust: 'Trust API partner access for trust scores, verification, and reports',
+  micropython: 'MicroPython runtime access for Enterprise accounts (Firecracker isolation)',
+  runtime: 'Authenticate runtime /execute endpoints (bun, deno, kotlin, ruby, nodejs, wasmedge, prism)',
 };
 
 export const PERMISSION_LABELS: Record<Permission, string> = {

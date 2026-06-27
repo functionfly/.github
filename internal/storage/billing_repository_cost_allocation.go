@@ -2,6 +2,8 @@ package storage
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -665,7 +667,7 @@ func (r *BillingRepository) CleanupFinancialAggregatesAfterRetention(ctx context
 
 	// First, archive/summarize what we're about to delete for audit purposes
 	// (optional - depends on compliance requirements)
-	_, err = r.createRetentionAuditLog(ctx, cutoff)
+	_, err = r.createRetentionAuditLog(ctx, cutoff, "data_retention_policy", nil)
 	if err != nil {
 		// For SOX compliance, audit logging failures must not be silently ignored.
 		// Log the error and alert in production.
@@ -677,16 +679,17 @@ func (r *BillingRepository) CleanupFinancialAggregatesAfterRetention(ctx context
 }
 
 // createRetentionAuditLog records what data was purged for compliance auditing
-func (r *BillingRepository) createRetentionAuditLog(ctx context.Context, cutoff time.Time) (int64, error) {
-	// Aggregate what will be deleted for audit purposes
+// with full tamper-evident verification hash and tenant-level tracking
+func (r *BillingRepository) createRetentionAuditLog(ctx context.Context, cutoff time.Time, triggeredBy string, triggeredByUserID *uuid.UUID) (int64, error) {
 	query := `
-		SELECT 
+		SELECT
 			COUNT(*) as entry_count,
 			COUNT(DISTINCT tenant_id) as tenant_count,
 			MIN(timestamp) as oldest_entry,
 			MAX(timestamp) as newest_entry,
-			SUM(total_cost_cents) as total_cost_cents
-		FROM cost_allocation_entries 
+			SUM(total_cost_cents) as total_cost_cents,
+			ARRAY_AGG(DISTINCT tenant_id) as tenant_ids
+		FROM cost_allocation_entries
 		WHERE timestamp < $1
 	`
 
@@ -696,6 +699,7 @@ func (r *BillingRepository) createRetentionAuditLog(ctx context.Context, cutoff 
 		OldestEntry    *time.Time
 		NewestEntry    *time.Time
 		TotalCostCents int64
+		TenantIDs      []uuid.UUID
 	}
 
 	err := r.db.QueryRowContext(ctx, query, cutoff).Scan(
@@ -704,26 +708,53 @@ func (r *BillingRepository) createRetentionAuditLog(ctx context.Context, cutoff 
 		&summary.OldestEntry,
 		&summary.NewestEntry,
 		&summary.TotalCostCents,
+		pq.Array(&summary.TenantIDs),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create retention audit summary: %w", err)
 	}
 
-	// Insert into retention_audit_log table (if it exists)
-	// This is idempotent - safe to run multiple times
-	_, _ = r.db.ExecContext(ctx, `
+	verificationHash := generateVerificationHash(
+		"cost_allocation_entries",
+		"financial_7_year",
+		cutoff,
+		summary.EntryCount,
+		int(summary.TenantCount),
+		summary.TotalCostCents,
+	)
+
+	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO retention_audit_log (
 			id, table_name, retention_policy, cutoff_date,
 			records_affected, tenant_count, financial_impact_cents,
-			oldest_record, newest_record, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			oldest_record, newest_record, verification_hash,
+			triggered_by, triggered_by_user_id, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT DO NOTHING`,
 		uuid.New(), "cost_allocation_entries", "financial_7_year", cutoff,
 		summary.EntryCount, summary.TenantCount, summary.TotalCostCents,
-		summary.OldestEntry, summary.NewestEntry, time.Now().UTC(),
+		summary.OldestEntry, summary.NewestEntry, verificationHash,
+		triggeredBy, triggeredByUserID, time.Now().UTC(),
 	)
+	if err != nil {
+		return 0, fmt.Errorf("failed to insert retention audit log: %w", err)
+	}
 
 	return summary.EntryCount, nil
+}
+
+// generateVerificationHash creates a SHA-256 hash of the audit log data for tamper detection
+func generateVerificationHash(tableName, policy string, cutoffDate time.Time, recordsAffected int64, tenantCount int, financialImpactCents int64) string {
+	data := fmt.Sprintf("%s|%s|%s|%d|%d|%d",
+		tableName,
+		policy,
+		cutoffDate.Format(time.RFC3339),
+		recordsAffected,
+		tenantCount,
+		financialImpactCents,
+	)
+	hash := sha256.Sum256([]byte(data))
+	return hex.EncodeToString(hash[:])
 }
 
 // GetCostAllocationRetentionSummary returns statistics for retention planning

@@ -62,6 +62,9 @@ type Handler struct {
 		GenerateForVersion(ctx context.Context, functionID uuid.UUID, version string, force bool) (string, error)
 		BackfillAll(ctx context.Context, batchSize int, force bool) (int, error)
 	}
+	// ReceiptMilestoneHook is called after a successful public execution receipt is created.
+	// Set by the receipt milestone wiring in routes.go.
+	ReceiptMilestoneHook func(ctx context.Context, functionID uuid.UUID, tenantID *uuid.UUID, publicID string)
 }
 
 // SetWalletService sets the wallet service for unified wallet operations
