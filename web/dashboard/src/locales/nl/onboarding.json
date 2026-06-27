@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Welkom bij FunctionFly - Instellingen",
+      "description": "Stel je FunctionFly-account in enkele minuten in. Implementeer serverloze functies met automatische failover over meerdere cloudproviders."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Welkom bij FunctionFly",
+        "description": "Leer over multi-provider implementatie en automatische failover"
+      },
+      "connectProvider": {
+        "title": "Verbind Je Eerste Provider",
+        "description": "Koppel een cloudprovider om je functies te gaan implementeren"
+      },
+      "deployFunction": {
+        "title": "Implementeer Je Eerste Functie",
+        "description": "Implementeer een eenvoudige functie om FunctionFly in actie te zien"
+      },
+      "testFailover": {
+        "title": "Test Failover",
+        "description": "Controleer je instellingen door automatische failover te testen"
+      },
+      "teamSetup": {
+        "title": "Stel Je Team In",
+        "description": "Nodig teamleden uit en configureer samenwerkingsinstellingen"
+      }
+    },
+    "roles": {
+      "admin": "Teambeheerder",
+      "member": "Teamlid",
+      "viewer": "Kijker"
+    },
+    "accessibility": {
+      "skipToMain": "Ga naar hoofdinhoud",
+      "goHome": "Ga naar FunctionFly-homepage",
+      "help": "Hulp bij onboarding",
+      "skip": "Sla onboarding voor nu over",
+      "progressBar": "Onboarding-voortgang: {{percent}}% voltooid",
+      "currentStep": "Stap {{current}} van {{total}}: {{title}}",
+      "backButton": "Ga naar vorige stap",
+      "nextButton": "Ga naar volgende stap",
+      "completeButton": "Voltooi onboarding-instellingen",
+      "stepNavigation": "Onboarding-stappen",
+      "stepLabel": "Stap {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "voltooid",
+      "statusActive": "huidig",
+      "statusPending": "in afwachting",
+      "continueOnboarding": "Ga verder met onboarding",
+      "skipOnboarding": "Sla onboarding over"
+    },
+    "stepCounter": "Stap {{current}} van {{total}}",
+    "helpTooltip": "FunctionFly implementeert je functies over meerdere cloudproviders voor hoge beschikbaarheid. Elke stap verbindt een nieuwe provider en test automatisch de failover.",
+    "skip": "Sla voor nu over",
+    "actions": {
+      "back": "Terug",
+      "nextStep": "Volgende Stap",
+      "completeSetup": "Instellingen Voltooien",
+      "completing": "Voltooien...",
+      "retry": "Opnieuw Proberen"
+    },
+    "errors": {
+      "stepLoadFailed": "Kan deze stap niet laden. Probeer het opnieuw."
+    },
+    "tips": {
+      "welcomeTitle": "Welkom bij FunctionFly",
+      "readyToConnect": "Klaar om te Verbinden",
+      "providerConnected": "Top! Provider Verbonden",
+      "functionDeployed": "Functie Succesvol Geïmplementeerd",
+      "setupComplete": "Instellingen Voltooid!",
+      "welcomeDesc": "Neem even de tijd om kennis te maken met FunctionFly's multi-provider implementatie en automatische failover-functies.",
+      "roleGreeting": "Welkom {{role}}!",
+      "adminPrivileges": " Je kunt providers beheren, functies implementeren en teamleden uitnodigen.",
+      "memberAccess": " Je kunt functies implementeren en toegang krijgen tot gedeelde bronnen.",
+      "viewerAccess": " Je hebt alleen-lezen toegang tot teamfuncties en statistieken.",
+      "connectProviderDesc": "Je staat op het punt je eerste cloudprovider te verbinden. Hierdoor kan FunctionFly functies implementeren over meerdere providers voor hoge beschikbaarheid.",
+      "deployFunctionDesc": "Uitstekend! Je provider is verbonden. Laten we nu je eerste functie implementeren om FunctionFly in actie te zien.",
+      "tokenSecure": "API-token veilig opgeslagen en versleuteld",
+      "testFailoverDesc": "Je functie is live! De laatste stap test je failover-instellingen om hoge beschikbaarheid te garanderen.",
+      "autoFailover": "FunctionFly leidt automatisch het verkeer om naar gezonde providers als er een uitvalt",
+      "teamSetupDesc": "Top! Je failover-instellingen werken. Laten nu je team instellen voor samenwerking.",
+      "inviteTeam": "Nodig teamleden uit om samen te werken aan functies en provider-toegang te delen",
+      "setupCompleteDesc": "Uitstekend! Je FunctionFly-instellingen zijn voltooid en klaar voor productie.",
+      "productionReady": "Je bent helemaal klaar om functies te implementeren met hoge beschikbaarheid!",
+      "allCompleteDesc": "Gefeliciteerd! Je FunctionFly-instellingen zijn voltooid en productieklaar.",
+      "multiProviderDeployed": "Je functies zijn nu geïmplementeerd over meerdere providers met automatische failover"
+    },
+    "hints": {
+      "welcome": "Leer over FunctionFly's multi-provider implementatie en automatische failover-functies.",
+      "connectProvider": "Verbind een cloudprovider om implementaties mogelijk te maken.",
+      "deployFunction": "Implementeer je eerste functie om de instellingen te testen.",
+      "testFailover": "Controleer of automatische failover correct werkt.",
+      "teamSetup": "Nodig teamleden uit om samen te werken."
+    },
+    "skipDialog": {
+      "title": "Onboarding Overslaan?",
+      "description": "Je staat op het punt de resterende FunctionFly onboarding-stappen over te slaan. Dit is wat dat betekent:",
+      "continue": "Ga Verder met Onboarding",
+      "skipAnyway": "Toch Overslaan",
+      "warnings": {
+        "noProvider": "Je verbindt geen cloudproviders voor implementatie",
+        "noFunction": "Je implementeert je eerste functie niet om de instellingen te testen",
+        "noFailoverTest": "Je test niet de automatische failover-mogelijkheden"
+      },
+      "hints": {
+        "inviteLater": "Je kunt teamleden later nog steeds uitnodigen vanuit je dashboard",
+        "canResume": "Je kunt onboarding altijd hervatten vanuit je dashboardinstellingen",
+        "basicDeploy": "Basisfuncties kunnen nog steeds geïmplementeerd worden, maar zonder multi-provider voordelen"
+      }
+    },
+    "completion": {
+      "title": "Welkom bij FunctionFly!",
+      "subtitle": "Je instellingen zijn voltooid en productieklaar"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hello World",
+          "description": "Een eenvoudige functie die een begroeting retourneert"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "Echoot verzoekinformatie terug als JSON"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Voorbeeldfuncties",
+        "sampleFunctionsTooltip": "Kies uit kant-en-klare voorbeeldfuncties om snel te beginnen. Deze demonstreren veelgebruikte patronen en zijn klaar om te implementeren.",
+        "customCode": "Aangepaste Code",
+        "customCodeTooltip": "Schrijf je eigen functiecode vanaf nul. Geavanceerde gebruikers kunnen aangepaste logica, API's of integraties implementeren."
+      },
+      "functionListLabel": "Selecteer een voorbeeldfunctie",
+      "functionEdgeHelp": "Edgefuncties draaien dicht bij je gebruikers wereldwijd, waardoor de latentie wordt verminderd en de prestaties worden verbeterd in vergelijking met traditionele servergebaseerde functies.",
+      "codePreview": "Voorbeeld",
+      "codePreviewRegion": "Voorbeeldweergave functiecode",
+      "actions": {
+        "copyCode": "Kopieer functiecode",
+        "chooseSample": "Kies een Voorbeeldfunctie",
+        "copyUrl": "Kopieer functie-URL",
+        "refreshMetrics": "Vernieuw statistieken",
+        "openFunction": "Open Functie",
+        "deploying": "Implementeren naar alle verbonden providers...",
+        "deploy": "Implementeer Functie",
+        "tryAgain": "Opnieuw Proberen",
+        "tryCustomCode": "Probeer Aangepaste Code"
+      },
+      "customCodeNotice": "Je kunt je eigen aangepaste functiecode implementeren. Selecteer voor nu een van onze voorbeeldfuncties om verder te gaan met de onboarding.",
+      "functionNameLabel": "Functienaam",
+      "functionNameTooltip": "Kies een unieke naam voor je functie. Dit wordt onderdeel van de URL van je functie (bijv. mijn-functie.functionfly.app).",
+      "urlSuggestions": "URL-suggesties",
+      "urlSuggestionsHint": "Klik op een suggestie om deze als functienaam te gebruiken",
+      "functionNameHint": "Gebruik alleen kleine letters, cijfers en koppeltekens. Dit wordt gebruikt om je functie-URL te genereren.",
+      "functionNamePreview": "Voorbeeld: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "aanbevolen",
+        "apiPrefix": "API-eindpunt",
+        "versioned": "versiebeheerd eindpunt",
+        "available": "Beschikbaar",
+        "taken": "In gebruik"
+      },
+      "deployed": {
+        "title": "Functie Geïmplementeerd!",
+        "subtitle": "Je functie is nu live en klaar om verzoeken te verwerken.",
+        "functionUrl": "Functie-URL",
+        "liveMetrics": "Live Statistieken"
+      },
+      "metrics": {
+        "requests": "Verzoeken",
+        "latency": "Gem. Latentie",
+        "errors": "Fouten",
+        "uptime": "Bereikbaarheid",
+        "loading": "Statistieken laden..."
+      },
+      "steps": {
+        "validating": "Functieconfiguratie valideren...",
+        "connecting": "Verbinden met implementatieproviders...",
+        "uploading": "Functiecode uploaden...",
+        "deploying": "Implementeren naar primaire provider...",
+        "configuring": "Failover-configuratie instellen...",
+        "complete": "Implementatie voltooid!"
+      },
+      "deployProgress": "Implementatievoortgang: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Implementatie Mislukt",
+        "invalidName": "Ongeldige functienaam",
+        "nameTooShort": "Functienaam moet minimaal 2 tekens bevatten",
+        "nameTooLong": "Functienaam mag maximaal 52 tekens bevatten",
+        "nameInvalidChars": "Gebruik alleen kleine letters, cijfers en koppeltekens",
+        "noProvider": "Verbind eerst een provider",
+        "cancelled": "Implementatie is geannuleerd",
+        "generic": "Implementatie mislukt door een onverwachte fout. Probeer het opnieuw.",
+        "alternative": "Alternatief:",
+        "alternativeDesc": "Je kunt deze functie later ook implementeren vanuit je dashboard, of een andere functienaam proberen als de huidige al in gebruik is."
+      },
+      "toast": {
+        "success": "Functie \"{{name}}\" succesvol geïmplementeerd!",
+        "failed": "Implementatie mislukt",
+        "copied": "Gekopieerd naar klembord!"
+      },
+      "advanced": {
+        "title": "Geavanceerde Configuratie",
+        "tooltip": "Configureer omgevingsvariabelen, schaalinstellingen en andere geavanceerde opties voor je functie.",
+        "envVars": "Omgevingsvariabelen",
+        "envVarsTooltip": "Voeg omgevingsvariabelen toe om je functie tijdens runtime te configureren. Deze worden veilig opgeslagen en versleuteld.",
+        "envKeyPlaceholder": "SLEUTEL",
+        "envValuePlaceholder": "WAARDE",
+        "envVarsHint": "Veelgebruikte variabelen: API-sleutels, database-URL's, configuratie-instellingen",
+        "add": "Toevoegen",
+        "scaling": "Schaalinstellingen",
+        "scalingTooltip": "Beheer hoe je functie schaalt met verkeer. Hogere limieten verwerken meer gelijktijdige verzoeken.",
+        "maxConcurrent": "Max. Gelijktijdige Verzoeken",
+        "maxConcurrentLabel": "Maximaal gelijktijdige verzoeken",
+        "timeout": "Time-out (seconden)",
+        "timeoutLabel": "Verzoek time-out in seconden",
+        "proTipTitle": "Pro Tip",
+        "proTipDesc": "Je kunt deze instellingen altijd bijwerken vanuit je functiedashboard. Geavanceerde configuraties worden van kracht bij de volgende implementatie."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Selecteer een cloudprovider",
+      "providerConnected": "{{name}} Verbonden!",
+      "providerReady": "Je provider is nu klaar om functies te implementeren.",
+      "costPreview": "Kostenoverzicht",
+      "costCalculating": "Kosten berekenen...",
+      "costMonthlyEstimate": "Maandelijkse Schatting",
+      "costBreakdown": "Specificatie:",
+      "costBasedOn": "Gebaseerd op 1.000 verzoeken/dag, 100ms computetijd, 128MB geheugen",
+      "apiToken": "API-token",
+      "apiTokenTooltip": "Een API-token is een sleutel waarmee FunctionFly functies kan implementeren op je provideraccount. Je kunt deze genereren in het dashboard van je provider onder API-instellingen.",
+      "apiTokenPlaceholder": "Voer je {{name}} API-token in",
+      "apiTokenValidated": "API-token succesvol gevalideerd",
+      "apiTokenFind": "Vind je API-token in het dashboard van {{name}} onder API-instellingen.",
+      "apiTokenSecure": "Je API-token is veilig versleuteld en opgeslagen. We delen nooit je inloggegevens.",
+      "shareWithTeam": "Deel met Team",
+      "shareWithTeamDesc": "Sta teamleden toe om deze provider te gebruiken voor implementaties",
+      "connect": "Verbind {{name}}",
+      "connecting": "Verbinden met {{name}}...",
+      "sharing": "Delen met team...",
+      "validating": "Token valideren...",
+      "changeProvider": "Wijzigen",
+      "viewDocs": "Bekijk Documentatie",
+      "status": {
+        "available": "Beschikbaar",
+        "maintenance": "Onderhoud",
+        "outage": "Storing",
+        "unavailable": "Niet beschikbaar"
+      },
+      "someUnavailable": "Sommige providers zijn momenteel niet beschikbaar",
+      "someUnavailableDesc_one": "{{name}} ondergaat onderhoud.",
+      "someUnavailableDesc_other": "{{count}} providers zijn momenteel niet beschikbaar.",
+      "stillAvailable": "Je kunt nog steeds beginnen met de {{count}} beschikbare provider",
+      "maintenanceNote": "Tijdelijk niet beschikbaar voor gepland onderhoud",
+      "outageNote": "Dienst ondervindt momenteel problemen",
+      "errors": {
+        "connectionFailed": "Kan provider niet verbinden. Controleer je API-token en probeer het opnieuw.",
+        "invalidToken": "Ongeldig API-token",
+        "tokenSuggestion": "Controleer je API-token in het {{name}}-dashboard en zorg ervoor dat het de juiste machtigingen heeft",
+        "networkError": "Kan geen verbinding maken met de {{name}} API. Controleer je internetverbinding en probeer het opnieuw.",
+        "shareFailed": "Provider verbonden maar kon niet worden gedeeld met team",
+        "noTeamFound": "Provider verbonden maar nog geen team gevonden om mee te delen."
+      },
+      "toast": {
+        "connected": "{{name}} succesvol verbonden!",
+        "shareSuccess": "Provider succesvol gedeeld met team!",
+        "shareFailed": "Provider verbonden maar kon niet worden gedeeld met team"
+      }
+    },
+    "testFailover": {
+      "title": "Test Failover",
+      "description": "Test je failover-instellingen door een providerstoring te simuleren. We controleren of het verkeer automatisch wordt doorgestuurd naar je back-up.",
+      "tooltip": "Failover zorgt ervoor dat je functies online blijven, zelfs als een provider problemen ondervindt. FunctionFly leidt automatisch verkeer om naar gezonde back-upproviders.",
+      "runTest": "Voer Failover-test Uit",
+      "testing": "Failover Testen...",
+      "retryTest": "Test Opnieuw Uitvoeren",
+      "runAgain": "Test Opnieuw Uitvoeren",
+      "primary": "Primair",
+      "backup": "Back-up",
+      "primaryHelp": "Je primaire provider verwerkt al het verkeer onder normale omstandigheden. Het is de eerste keuze voor het bedienen van je functies.",
+      "backupHelp": "Je back-upprovider neemt automatisch over als de primaire uitvalt. Dit zorgt ervoor dat je functies 24/7 beschikbaar blijven.",
+      "steps": {
+        "checking": "Primair eindpunt controleren",
+        "checkingDesc": "Verbinding met primaire provider testen",
+        "simulating": "Storing simuleren",
+        "simulatingDesc": "Primair eindpunt tijdelijk uitschakelen",
+        "detecting": "Failover detecteren",
+        "detectingDesc": "Wachten tot automatische failover wordt geactiveerd",
+        "verifying": "Back-up verifiëren",
+        "verifyingDesc": "Bevestigen dat verzoek door back-upprovider is verwerkt",
+        "restoring": "Primair herstellen",
+        "restoringDesc": "Primair eindpunt weer online brengen"
+      },
+      "results": {
+        "title": "Testresultaten",
+        "passed": "Failover-test Geslaagd!",
+        "passedDesc": "Je instellingen werken correct. Automatische failover is gereed.",
+        "failed": "Failover-test Mislukt",
+        "failedDesc": "Er was een probleem met je failover-configuratie.",
+        "whatHappened": "Wat is er gebeurd?",
+        "whatHappenedDesc": "Toen de primaire provider (Cloudflare) tijdelijk niet beschikbaar was, leidde FunctionFly automatisch het verkeer om naar je back-upprovider (Vercel) zonder downtime."
+      },
+      "errors": {
+        "testFailed": "Failover-test mislukt door een onverwachte fout.",
+        "suggestion": "Controleer je providerverbindingen en probeer het opnieuw."
+      },
+      "toast": {
+        "success": "Failover-test succesvol voltooid!",
+        "failed": "Failover-test mislukt"
+      },
+      "latency": "Latentie",
+      "latencyHelp": "Latentie meet responstijd. Lagere waarden betekenen snellere prestaties voor je gebruikers."
+    },
+    "teamSetup": {
+      "yourRole": "Je Rol",
+      "roleTooltip": "Kies je rol in het team. Je kunt dit later wijzigen in teaminstellingen.",
+      "roles": {
+        "admin": {
+          "label": "Beheerder",
+          "description": "Volledige toegang om team, providers en functies te beheren"
+        },
+        "member": {
+          "label": "Lid",
+          "description": "Kan functies implementeren en beheren, teambronnen bekijken"
+        },
+        "viewer": {
+          "label": "Kijker",
+          "description": "Alleen-lezen toegang tot teamfuncties en statistieken"
+        }
+      },
+      "inviteTitle": "Nodig Teamleden Uit",
+      "inviteTooltip": "Voeg teamleden toe om samen te werken aan functies en providerconfiguraties te delen.",
+      "emailLabel": "E-mailadres",
+      "emailPlaceholder": "collega@bedrijf.com",
+      "roleLabel": "Rol",
+      "addMember": "Teamlid Toevoegen",
+      "pendingInvites": "Openstaande Uitnodigingen ({{count}})",
+      "sendInvites": "Verstuur {{count}} Uitnodiging",
+      "sendInvites_one": "Verstuur {{count}} Uitnodiging",
+      "sendInvites_other": "Verstuur {{count}} Uitnodigingen",
+      "continueSolo": "Ga Solo Verder",
+      "skipForNow": "Sla Nu Over",
+      "skipping": "Overslaan...",
+      "teamBenefits": "Teamvoordelen",
+      "teamBenefitsDesc": "Nodig teamleden uit om samen te werken aan functies, providerconfiguraties te delen en implementaties samen te beheren. Je kunt altijd later leden toevoegen vanuit je dashboard.",
+      "errors": {
+        "invalidEmail": "Voer een geldig e-mailadres in",
+        "emailExists": "Dit e-mailadres is al toegevoegd",
+        "sendFailed": "Kan teamuitnodigingen niet versturen"
+      },
+      "toast": {
+        "added": "Teamlid toegevoegd",
+        "invitesSent": "Teamuitnodigingen verstuurd naar {{count}} lid",
+        "invitesSent_one": "Teamuitnodigingen verstuurd naar {{count}} lid!",
+        "invitesSent_other": "Teamuitnodigingen verstuurd naar {{count}} leden!",
+        "soloSetup": "Doorgaan met solo-instellingen"
+      }
+    }
+  }
+}

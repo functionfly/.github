@@ -1,5 +1,6 @@
 import React from 'react'
 import {
+  PageGrid,
   Chamber,
   CornerBrace,
   StatusPill,
@@ -9,7 +10,7 @@ import {
   GaugeLabel,
   AnnotationTag,
 } from './containment'
-import './TrustPage.css'
+import '../styles/sc-main.css';
 
 const ShieldIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -20,7 +21,9 @@ const ShieldIcon = () => (
 
 const SLAPage: React.FC = () => {
   return (
-    <div>
+    <>
+      <PageGrid />
+
       {/* Hero Section */}
       <section className="trust-hero">
         <Chamber variant="ribs" className="trust-hero-chamber">
@@ -256,7 +259,7 @@ const SLAPage: React.FC = () => {
           </p>
         </div>
       </section>
-    </div>
+    </>
   )
 }
 

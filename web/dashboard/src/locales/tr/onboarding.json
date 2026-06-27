@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "FunctionFly'a Hoş Geldiniz - Kurulum",
+      "description": "FunctionFly hesabınızı dakikalar içinde kurun. Birden fazla bulut sağlayıcıda otomatik devre dışı bırakma ile sunucusuz fonksiyonları dağıtın."
+    },
+    "steps": {
+      "welcome": {
+        "title": "FunctionFly'a Hoş Geldiniz",
+        "description": "Çoklu sağlayıcı dağıtımını ve otomatik devre dışı bırakmayı öğrenin"
+      },
+      "connectProvider": {
+        "title": "İlk Sağlayıcınızı Bağlayın",
+        "description": "Fonksiyonlarınızı dağıtmaya başlamak için bir bulut sağlayıcı bağlayın"
+      },
+      "deployFunction": {
+        "title": "İlk Fonksiyonunuzu Dağıtın",
+        "description": "FunctionFly'ı çalışırken görmek için basit bir fonksiyon dağıtın"
+      },
+      "testFailover": {
+        "title": "Devre Dışı Bırakmayı Test Edin",
+        "description": "Otomatik devre dışı bırakmayı test ederek kurulumunuzu doğrulayın"
+      },
+      "teamSetup": {
+        "title": "Ekibinizi Kurun",
+        "description": "Ekip üyelerini davet edin ve işbirliği ayarlarını yapılandırın"
+      }
+    },
+    "roles": {
+      "admin": "Ekip Yöneticisi",
+      "member": "Ekip Üyesi",
+      "viewer": "Görüntüleyici"
+    },
+    "accessibility": {
+      "skipToMain": "Ana içeriğe atla",
+      "goHome": "FunctionFly ana sayfasına git",
+      "help": "Kurulumda yardım alın",
+      "skip": "Kurulumu şimdilik atla",
+      "progressBar": "Kurulum ilerlemesi: {{percent}}% tamamlandı",
+      "currentStep": "Adım {{current}} / {{total}}: {{title}}",
+      "backButton": "Önceki adıma git",
+      "nextButton": "Sonraki adıma git",
+      "completeButton": "Kurulumu tamamla",
+      "stepNavigation": "Kurulum adımları",
+      "stepLabel": "Adım {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "tamamlandı",
+      "statusActive": "mevcut",
+      "statusPending": "beklemede",
+      "continueOnboarding": "Kuruluma devam et",
+      "skipOnboarding": "Kurulumu atla"
+    },
+    "stepCounter": "Adım {{current}} / {{total}}",
+    "helpTooltip": "FunctionFly, yüksek kullanılabilirlik için fonksiyonlarınızı birden fazla bulut sağlayıcıya dağıtır. Her adım yeni bir sağlayıcı bağlar ve devre dışı bırakmayı otomatik olarak test eder.",
+    "skip": "Şimdilik atla",
+    "actions": {
+      "back": "Geri",
+      "nextStep": "Sonraki Adım",
+      "completeSetup": "Kurulumu Tamamla",
+      "completing": "Tamamlanıyor...",
+      "retry": "Tekrar Dene"
+    },
+    "errors": {
+      "stepLoadFailed": "Bu adım yüklenemedi. Lütfen tekrar deneyin."
+    },
+    "tips": {
+      "welcomeTitle": "FunctionFly'a Hoş Geldiniz",
+      "readyToConnect": "Bağlanmaya Hazır",
+      "providerConnected": "Harika! Sağlayıcı Bağlandı",
+      "functionDeployed": "Fonksiyon Başarıyla Dağıtıldı",
+      "setupComplete": "Kurulum Tamamlandı!",
+      "welcomeDesc": "FunctionFly'ın çoklu sağlayıcı dağıtımını ve otomatik devre dışı bırakma özelliklerini öğrenmek için biraz zaman ayırın.",
+      "roleGreeting": "Hoş geldiniz {{role}}!",
+      "adminPrivileges": " Sağlayıcıları yönetebilir, fonksiyonları dağıtabilir ve ekip üyelerini davet edebilirsiniz.",
+      "memberAccess": " Fonksiyonları dağıtabilir ve paylaşılan kaynaklara erişebilirsiniz.",
+      "viewerAccess": " Ekip fonksiyonlarına ve metriklerine yalnızca okuma erişiminiz vardır.",
+      "connectProviderDesc": "İlk bulut sağlayıcınızı bağlamak üzeresiniz. Bu, FunctionFly'ın yüksek kullanılabilirlik için fonksiyonları birden fazla sağlayıcıya dağıtmasına olanak tanır.",
+      "deployFunctionDesc": "Mükemmel! Sağlayıcınız bağlandı. Şimdi FunctionFly'ı çalışırken görmek için ilk fonksiyonunuzu dağıtalım.",
+      "tokenSecure": "API anahtarı güvenli bir şekilde depolandı ve şifrelendi",
+      "testFailoverDesc": "Fonksiyonunuz canlı! Son adım, yüksek kullanılabilirliği sağlamak için devre dışı bırakma kurulumunuzu test eder.",
+      "autoFailover": "FunctionFly, bir sağlayıcı başarısız olursa trafiği otomatik olarak sağlıklı sağlayıcılara yönlendirir",
+      "teamSetupDesc": "Harika! Devre dışı bırakma kurulumunuz çalışıyor. Şimdi işbirliği için ekibinizi kuralım.",
+      "inviteTeam": "Fonksiyonlar üzerinde işbirliği yapmak ve sağlayıcı erişimini paylaşmak için ekip üyelerini davet edin",
+      "setupCompleteDesc": "Mükemmel! FunctionFly kurulumunuz tamamlandı ve üretime hazır.",
+      "productionReady": "Yüksek kullanılabilirlikle fonksiyonları dağıtmaya hazırsınız!",
+      "allCompleteDesc": "Tebrikler! FunctionFly kurulumunuz tamamlandı ve üretime hazır.",
+      "multiProviderDeployed": "Fonksiyonlarınız artık otomatik devre dışı bırakma ile birden fazla sağlayıcıda dağıtıldı"
+    },
+    "hints": {
+      "welcome": "FunctionFly'ın çoklu sağlayıcı dağıtımını ve otomatik devre dışı bırakma özelliklerini öğrenin.",
+      "connectProvider": "Dağıtımları etkinleştirmek için bir bulut sağlayıcı bağlayın.",
+      "deployFunction": "Kurulumu test etmek için ilk fonksiyonunuzu dağıtın.",
+      "testFailover": "Otomatik devre dışı bırakmanın doğru çalıştığını doğrulayın.",
+      "teamSetup": "İşbirliği yapmak için ekip üyelerini davet edin."
+    },
+    "skipDialog": {
+      "title": "Kurulum Atlanacak mı?",
+      "description": "FunctionFly kurulum adımlarının geri kalanını atlamak üzeresiniz. Bunun anlamı:",
+      "continue": "Kuruluma Devam Et",
+      "skipAnyway": "Yine de Atla",
+      "warnings": {
+        "noProvider": "Dağıtım için hiçbir bulut sağlayıcı bağlamayacaksınız",
+        "noFunction": "Kurulumu test etmek için ilk fonksiyonunuzu dağıtmayacaksınız",
+        "noFailoverTest": "Otomatik devre dışı bırakma yeteneklerini test etmeyeceksiniz"
+      },
+      "hints": {
+        "inviteLater": "Ekip üyelerini daha sonra panelinizden davet edebilirsiniz",
+        "canResume": "Kuruluma istediğiniz zaman panel ayarlarınızdan devam edebilirsiniz",
+        "basicDeploy": "Temel fonksiyonlar yine de dağıtılabilir, ancak çoklu sağlayıcı avantajları olmadan"
+      }
+    },
+    "completion": {
+      "title": "FunctionFly'a Hoş Geldiniz!",
+      "subtitle": "Kurulumunuz tamamlandı ve üretime hazır"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hello World",
+          "description": "Bir selamlama döndüren basit fonksiyon"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "İstek bilgisini JSON olarak geri yansıtır"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Örnek Fonksiyonlar",
+        "sampleFunctionsTooltip": "Hızlı başlamak için önceden oluşturulmuş fonksiyon örneklerinden seçim yapın. Bunlar yaygın kalıpları gösterir ve dağıtıma hazırdır.",
+        "customCode": "Özel Kod",
+        "customCodeTooltip": "Kendi fonksiyon kodunuzu sıfırdan yazın. Gelişmiş kullanıcılar özel mantık, API'ler veya entegrasyonlar dağıtabilir."
+      },
+      "functionListLabel": "Bir örnek fonksiyon seçin",
+      "functionEdgeHelp": "Kenar fonksiyonları dünya çapındaki kullanıcılarınıza yakın çalışarak gecikmeyi azaltır ve geleneksel sunucu tabanlı fonksiyonlara göre performansı artırır.",
+      "codePreview": "Önizleme",
+      "codePreviewRegion": "Fonksiyon kodu önizlemesi",
+      "actions": {
+        "copyCode": "Fonksiyon kodunu kopyala",
+        "chooseSample": "Örnek Fonksiyon Seç",
+        "copyUrl": "Fonksiyon URL'sini kopyala",
+        "refreshMetrics": "Metrikleri yenile",
+        "openFunction": "Fonksiyonu Aç",
+        "deploying": "Tüm bağlı sağlayıcılara dağıtılıyor...",
+        "deploy": "Fonksiyonu Dağıt",
+        "tryAgain": "Tekrar Dene",
+        "tryCustomCode": "Özel Kodu Dene"
+      },
+      "customCodeNotice": "Kendi özel fonksiyon kodunuzu dağıtabilirsiniz. Şimdilik kuruluma devam etmek için örnek fonksiyonlarımızdan birini seçin.",
+      "functionNameLabel": "Fonksiyon Adı",
+      "functionNameTooltip": "Fonksiyonunuz için benzersiz bir ad seçin. Bu, fonksiyon URL'nizin bir parçası olacaktır (ör. fonksiyonum.functionfly.app).",
+      "urlSuggestions": "URL Önerileri",
+      "urlSuggestionsHint": "Fonksiyon adı olarak kullanmak için bir öneriye tıklayın",
+      "functionNameHint": "Yalnızca küçük harfler, sayılar ve tire kullanın. Bu, fonksiyon URL'nizi oluşturmak için kullanılacaktır.",
+      "functionNamePreview": "Önizleme: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "önerilen",
+        "apiPrefix": "API uç noktası",
+        "versioned": "sürüm uç noktası",
+        "available": "Mevcut",
+        "taken": "Alınmış"
+      },
+      "deployed": {
+        "title": "Fonksiyon Dağıtıldı!",
+        "subtitle": "Fonksiyonunuz artık canlı ve istekleri işlemeye hazır.",
+        "functionUrl": "Fonksiyon URL'si",
+        "liveMetrics": "Canlı Metrikler"
+      },
+      "metrics": {
+        "requests": "İstekler",
+        "latency": "Ort. Gecikme",
+        "errors": "Hatalar",
+        "uptime": "Çalışma Süresi",
+        "loading": "Metrikler yükleniyor..."
+      },
+      "steps": {
+        "validating": "Fonksiyon yapılandırması doğrulanıyor...",
+        "connecting": "Dağıtım sağlayıcılarına bağlanılıyor...",
+        "uploading": "Fonksiyon kodu yükleniyor...",
+        "deploying": "Birincil sağlayıcıya dağıtılıyor...",
+        "configuring": "Devre dışı bırakma yapılandırması kuruluyor...",
+        "complete": "Dağıtım tamamlandı!"
+      },
+      "deployProgress": "Dağıtım ilerlemesi: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Dağıtım Başarısız Oldu",
+        "invalidName": "Geçersiz fonksiyon adı",
+        "nameTooShort": "Fonksiyon adı en az 2 karakter olmalıdır",
+        "nameTooLong": "Fonksiyon adı en fazla 52 karakter olmalıdır",
+        "nameInvalidChars": "Yalnızca küçük harfler, sayılar ve tire kullanın",
+        "noProvider": "Lütfen önce bir sağlayıcı bağlayın",
+        "cancelled": "Dağıtım iptal edildi",
+        "generic": "Dağıtım beklenmeyen bir hata nedeniyle başarısız oldu. Lütfen tekrar deneyin.",
+        "alternative": "Alternatif:",
+        "alternativeDesc": "Bu fonksiyonu daha sonra panelinizden de dağıtabilirsiniz veya mevcut ad zaten alınmışsa farklı bir fonksiyon adı deneyebilirsiniz."
+      },
+      "toast": {
+        "success": "Fonksiyon \"{{name}}\" başarıyla dağıtıldı!",
+        "failed": "Dağıtım başarısız oldu",
+        "copied": "Panoya kopyalandı!"
+      },
+      "advanced": {
+        "title": "Gelişmiş Yapılandırma",
+        "tooltip": "Fonksiyonunuz için ortam değişkenlerini, ölçeklendirme ayarlarını ve diğer gelişmiş seçenekleri yapılandırın.",
+        "envVars": "Ortam Değişkenleri",
+        "envVarsTooltip": "Fonksiyonunuzu çalışma zamanında yapılandırmak için ortam değişkenleri ekleyin. Bunlar güvenli bir şekilde depolanır ve şifrelenir.",
+        "envKeyPlaceholder": "ANAHTAR",
+        "envValuePlaceholder": "DEĞER",
+        "envVarsHint": "Yaygın değişkenler: API anahtarları, veritabanı URL'leri, yapılandırma ayarları",
+        "add": "Ekle",
+        "scaling": "Ölçeklendirme Ayarları",
+        "scalingTooltip": "Fonksiyonunuzun trafikle nasıl ölçeklendiğini kontrol edin. Daha yüksek limitler daha fazla eşzamanlı isteği işler.",
+        "maxConcurrent": "Maks. Eşzamanlı İstek",
+        "maxConcurrentLabel": "Maksimum eşzamanlı istek sayısı",
+        "timeout": "Zaman Aşımı (saniye)",
+        "timeoutLabel": "İstek zaman aşımı saniye cinsinden",
+        "proTipTitle": "İpucu",
+        "proTipDesc": "Bu ayarları istediğiniz zaman fonksiyon panelinizden güncelleyebilirsiniz. Gelişmiş yapılandırmalar bir sonraki dağıtımda geçerli olur."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Bir bulut sağlayıcı seçin",
+      "providerConnected": "{{name}} Bağlandı!",
+      "providerReady": "Sağlayıcınız artık fonksiyon dağıtmaya hazır.",
+      "costPreview": "Maliyet Önizlemesi",
+      "costCalculating": "Maliyetler hesaplanıyor...",
+      "costMonthlyEstimate": "Aylık Tahmin",
+      "costBreakdown": "Detay:",
+      "costBasedOn": "Günde 1.000 istek, 100ms işlem süresi, 128MB bellek baz alınarak",
+      "apiToken": "API Anahtarı",
+      "apiTokenTooltip": "API anahtarı, FunctionFly'ın sağlayıcı hesabınıza fonksiyon dağıtmasına izin veren güvenli bir anahtardır. Bunu sağlayıcınızın panelinde API ayarları altında oluşturabilirsiniz.",
+      "apiTokenPlaceholder": "{{name}} API anahtarınızı girin",
+      "apiTokenValidated": "API anahtarı başarıyla doğrulandı",
+      "apiTokenFind": "API anahtarınızı {{name}} panelinde API ayarları altında bulun.",
+      "apiTokenSecure": "API anahtarınız güvenli bir şekilde şifrelenir ve depolanır. Kimlik bilgilerinizi asla paylaşmayız.",
+      "shareWithTeam": "Ekiple Paylaş",
+      "shareWithTeamDesc": "Ekip üyelerinin dağıtımlar için bu sağlayıcıyı kullanmasına izin verin",
+      "connect": "{{name}} Bağla",
+      "connecting": "{{name}} bağlanılıyor...",
+      "sharing": "Ekiple paylaşılıyor...",
+      "validating": "Anahtar doğrulanıyor...",
+      "changeProvider": "Değiştir",
+      "viewDocs": "Belgeleri Görüntüle",
+      "status": {
+        "available": "Mevcut",
+        "maintenance": "Bakım",
+        "outage": "Kesinti",
+        "unavailable": "Mevcut Değil"
+      },
+      "someUnavailable": "Bazı sağlayıcılar şu anda mevcut değil",
+      "someUnavailableDesc_one": "{{name}} bakımda.",
+      "someUnavailableDesc_other": "{{count}} sağlayıcı şu anda mevcut değil.",
+      "stillAvailable": "{{count}} mevcut sağlayıcı ile başlayabilirsiniz",
+      "maintenanceNote": "Planlı bakım nedeniyle geçici olarak mevcut değil",
+      "outageNote": "Hizmet şu anda sorun yaşıyor",
+      "errors": {
+        "connectionFailed": "Sağlayıcı bağlanamadı. Lütfen API anahtarınızı kontrol edin ve tekrar deneyin.",
+        "invalidToken": "Geçersiz API anahtarı",
+        "tokenSuggestion": "Lütfen {{name}} panelinde API anahtarınızı kontrol edin ve doğru izinlere sahip olduğundan emin olun",
+        "networkError": "{{name}} API'ye bağlanılamıyor. İnternet bağlantınızı kontrol edin ve tekrar deneyin.",
+        "shareFailed": "Sağlayıcı bağlandı ancak ekiple paylaşılamadı",
+        "noTeamFound": "Sağlayıcı bağlandı ancak paylaşılabilecek bir ekip bulunamadı."
+      },
+      "toast": {
+        "connected": "{{name}} başarıyla bağlandı!",
+        "shareSuccess": "Sağlayıcı ekiple başarıyla paylaşıldı!",
+        "shareFailed": "Sağlayıcı bağlandı ancak ekiple paylaşılamadı"
+      }
+    },
+    "testFailover": {
+      "title": "Devre Dışı Bırakmayı Test Edin",
+      "description": "Bir sağlayıcı arızasını simüle ederek devre dışı bırakma kurulumunuzu test edin. Trafiğin otomatik olarak yedekleyicinize yönlendirildiğini doğrulayacağız.",
+      "tooltip": "Devre dışı bırakma, bir sağlayıcı sorun yaşasa bile fonksiyonlarınızın çevrimiçi kalmasını sağlar. FunctionFly trafiği otomatik olarak sağlıklı yedek sağlayıcılara yönlendirir.",
+      "runTest": "Devre Dışı Bırakma Testini Çalıştır",
+      "testing": "Devre Dışı Bırakma Test Ediliyor...",
+      "retryTest": "Testi Tekrar Çalıştır",
+      "runAgain": "Testi Tekrar Çalıştır",
+      "primary": "Birincil",
+      "backup": "Yedek",
+      "primaryHelp": "Birincil sağlayıcınız normal koşullarda tüm trafiği işler. Fonksiyonlarınızı sunmak için ilk tercihtir.",
+      "backupHelp": "Birincil sağlayıcı başarısız olursa yedek sağlayıcınız otomatik olarak devralır. Bu, fonksiyonlarınızın 7/24 kullanılabilir kalmasını sağlar.",
+      "steps": {
+        "checking": "Birincil uç nokta kontrol ediliyor",
+        "checkingDesc": "Birincil sağlayıcıya bağlantı test ediliyor",
+        "simulating": "Arıza simüle ediliyor",
+        "simulatingDesc": "Birincil uç nokta geçici olarak devre dışı bırakılıyor",
+        "detecting": "Devre dışı bırakma algılanıyor",
+        "detectingDesc": "Otomatik devre dışı bırakmanın tetiklenmesi bekleniyor",
+        "verifying": "Yedek doğrulanıyor",
+        "verifyingDesc": "İsteğin yedek sağlayıcı tarafından işlendiği doğrulanıyor",
+        "restoring": "Birincil geri yükleniyor",
+        "restoringDesc": "Birincil uç nokta tekrar çevrimiçi yapılıyor"
+      },
+      "results": {
+        "title": "Test Sonuçları",
+        "passed": "Devre Dışı Bırakma Testi Başarılı!",
+        "passedDesc": "Kurulumunuz doğru çalışıyor. Otomatik devre dışı bırakma hazır.",
+        "failed": "Devre Dışı Bırakma Testi Başarısız",
+        "failedDesc": "Devre dışı bırakma yapılandırmanızda bir sorun vardı.",
+        "whatHappened": "Ne oldu?",
+        "whatHappenedDesc": "Birincil sağlayıcı (Cloudflare) geçici olarak mevcut olmadığında, FunctionFly trafiği otomatik olarak kesinti süresi olmadan yedek sağlayıcınıza (Vercel) yönlendirdi."
+      },
+      "errors": {
+        "testFailed": "Devre dışı bırakma testi beklenmeyen bir hata nedeniyle başarısız oldu.",
+        "suggestion": "Lütfen sağlayıcı bağlantılarınızı kontrol edin ve tekrar deneyin."
+      },
+      "toast": {
+        "success": "Devre dışı bırakma testi başarıyla tamamlandı!",
+        "failed": "Devre dışı bırakma testi başarısız oldu"
+      },
+      "latency": "Gecikme",
+      "latencyHelp": "Gecikme yanıt süresini ölçer. Daha düşük değerler kullanıcılarınız için daha hızlı performans anlamına gelir."
+    },
+    "teamSetup": {
+      "yourRole": "Rolünüz",
+      "roleTooltip": "Ekipteki rolünüzü seçin. Bunu daha sonra ekip ayarlarından değiştirebilirsiniz.",
+      "roles": {
+        "admin": {
+          "label": "Yönetici",
+          "description": "Ekip, sağlayıcılar ve fonksiyonları yönetmek için tam erişim"
+        },
+        "member": {
+          "label": "Üye",
+          "description": "Fonksiyonları dağıtabilir ve yönetebilir, ekip kaynaklarını görüntüleyebilir"
+        },
+        "viewer": {
+          "label": "Görüntüleyici",
+          "description": "Ekip fonksiyonlarına ve metriklerine yalnızca okuma erişimi"
+        }
+      },
+      "inviteTitle": "Ekip Üyelerini Davet Edin",
+      "inviteTooltip": "Fonksiyonlar üzerinde işbirliği yapmak ve sağlayıcı yapılandırmalarını paylaşmak için ekip üyeleri ekleyin.",
+      "emailLabel": "E-posta Adresi",
+      "emailPlaceholder": "arkadas@sirket.com",
+      "roleLabel": "Rol",
+      "addMember": "Ekip Üyesi Ekle",
+      "pendingInvites": "Bekleyen Davetler ({{count}})",
+      "sendInvites": "{{count}} Davet Gönder",
+      "sendInvites_one": "{{count}} Davet Gönder",
+      "sendInvites_other": "{{count}} Davet Gönder",
+      "continueSolo": "Tek Başına Devam Et",
+      "skipForNow": "Şimdilik Atla",
+      "skipping": "Atlanıyor...",
+      "teamBenefits": "Ekip Avantajları",
+      "teamBenefitsDesc": "Fonksiyonlar üzerinde işbirliği yapmak, sağlayıcı yapılandırmalarını paylaşmak ve dağıtımları birlikte yönetmek için ekip üyelerini davet edin. Üyeleri daha sonra her zaman panelinizden ekleyebilirsiniz.",
+      "errors": {
+        "invalidEmail": "Lütfen geçerli bir e-posta adresi girin",
+        "emailExists": "Bu e-posta adresi zaten eklenmiş",
+        "sendFailed": "Ekip davetleri gönderilemedi"
+      },
+      "toast": {
+        "added": "Ekip üyesi eklendi",
+        "invitesSent": "Ekip davetleri {{count}} üyeye gönderildi",
+        "invitesSent_one": "Ekip davetleri {{count}} üyeye gönderildi!",
+        "invitesSent_other": "Ekip davetleri {{count}} üyeye gönderildi!",
+        "soloSetup": "Tek başına kuruluma devam ediliyor"
+      }
+    }
+  }
+}

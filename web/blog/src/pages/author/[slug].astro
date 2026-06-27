@@ -4,6 +4,7 @@ import BlogGrid from '../../components/BlogGrid.astro';
 import AuthorBio from '../../components/AuthorBio.astro';
 import Pagination from '../../components/Pagination.astro';
 import { getPosts, getAuthors } from '../../lib/api';
+import { getLocaleFromUrl, loadTranslations, createT } from '../../i18n/index';
 
 // Enable server-side rendering
 export const prerender = false;
@@ -32,6 +33,10 @@ if (!author && posts.length === 0) {
 }
 
 const authorName = author?.name || slug.replace(/-/g, ' ');
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <BlogLayout 
@@ -44,7 +49,7 @@ const authorName = author?.name || slug.replace(/-/g, ' ');
         <header class="author-header">
           <a href="/" class="back-link">
             <span class="back-link-icon" aria-hidden="true">&larr;</span>
-            All Posts
+            {t('post.allPosts')}
           </a>
         </header>
 
@@ -54,22 +59,22 @@ const authorName = author?.name || slug.replace(/-/g, ' ');
 
         <div class="author-posts">
           <h2 class="author-posts-title">
-            <span class="gradient-text">Posts by {authorName}</span>
+            <span class="gradient-text">{t('author.postsBy', { name: authorName })}</span>
           </h2>
-          
+
           {posts.length > 0 ? (
             <>
               <BlogGrid posts={posts} />
-              <Pagination 
-                currentPage={currentPage} 
-                totalPages={totalPages} 
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
                 baseUrl={`/author/${slug}`}
               />
             </>
           ) : (
             <div class="author-empty">
-              <p>No posts found for this author.</p>
-              <a href="/" class="btn-primary">Browse all posts</a>
+              <p>{t('author.noPosts')}</p>
+              <a href="/" class="btn-primary">{t('author.browseAll')}</a>
             </div>
           )}
         </div>

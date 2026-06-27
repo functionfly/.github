@@ -115,6 +115,7 @@ export function transformToUserProfile(
     isOnline: apiProfile.isOnline ?? false,
     lastActive: apiProfile.lastActive,
     profileNumber: apiProfile.profileNumber,
+    founderNumber: apiProfile.founderNumber,
     role: apiProfile.role, // Platform admin role for badge display (public or own profile)
     experience: [],
     education: [],

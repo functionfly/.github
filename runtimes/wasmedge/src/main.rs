@@ -47,6 +47,19 @@ impl Default for Args {
 
 impl Args {
     fn from_env() -> Self {
+        let is_production = std::env::var("ENVIRONMENT")
+            .map(|v| v.eq_ignore_ascii_case("production"))
+            .unwrap_or(false);
+
+        // In production, sandbox is always enabled regardless of env var
+        let sandbox_enabled = if is_production {
+            true
+        } else {
+            std::env::var("SANDBOX_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                .to_lowercase() != "false"
+        };
+
         Self {
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "8092".to_string())
@@ -68,9 +81,7 @@ impl Args {
                 .unwrap_or_else(|_| "30".to_string())
                 .parse()
                 .unwrap_or(30),
-            sandbox_enabled: std::env::var("SANDBOX_ENABLED")
-                .unwrap_or_else(|_| "true".to_string())
-                .to_lowercase() != "false",
+            sandbox_enabled,
             nats_url: std::env::var("NATS_URL").ok(),
             orchestrator_url: std::env::var("ORCHESTRATOR_URL").ok(),
             working_dir: std::env::var("WORKING_DIR").ok(),
@@ -84,6 +95,7 @@ struct RuntimeState {
     total_executions: Arc<std::sync::atomic::AtomicU64>,
     successful_executions: Arc<std::sync::atomic::AtomicU64>,
     failed_executions: Arc<std::sync::atomic::AtomicU64>,
+    api_token: Option<String>,
 }
 
 impl RuntimeState {
@@ -145,6 +157,22 @@ async fn main() -> anyhow::Result<()> {
         "Starting FunctionFly WasmEdge Runtime"
     );
 
+    let api_token = std::env::var("RUNTIME_API_TOKEN").ok().filter(|t| !t.is_empty());
+    let is_production = std::env::var("ENVIRONMENT")
+        .map(|v| v.eq_ignore_ascii_case("production"))
+        .unwrap_or(false);
+
+    if api_token.is_none() {
+        if is_production {
+            tracing::error!(
+                "RUNTIME_API_TOKEN is not set in production. \
+                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            );
+        } else {
+            tracing::warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
+        }
+    }
+
     let limits = functionfly_wasmedge_runtime::config::ExecutionLimits {
         max_memory_mb: args.max_memory_mb,
         max_cpu_time_secs: args.max_execution_time_secs,
@@ -172,6 +200,7 @@ async fn main() -> anyhow::Result<()> {
         total_executions: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         successful_executions: Arc::new(std::sync::atomic::AtomicU64::new(0)),
         failed_executions: Arc::new(std::sync::atomic::AtomicU64::new(0)),
+        api_token,
     };
 
     // Run the HTTP server
@@ -200,8 +229,19 @@ async fn run_server_with_state(port: u16, state: RuntimeState) {
 
     async fn execute_handler(
         State(state): State<AppState>,
+        headers: axum::http::HeaderMap,
         Json(req): Json<serde_json::Value>,
     ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+        // Auth check
+        if let Some(ref token) = state.inner.api_token {
+            let auth = headers.get("authorization")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("");
+            if auth != format!("Bearer {}", token) {
+                return Err((axum::http::StatusCode::UNAUTHORIZED, Json(serde_json::json!({"error": "unauthorized"}))));
+            }
+        }
+
         let execution_id = req.get("execution_id")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");

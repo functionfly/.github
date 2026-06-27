@@ -1,0 +1,410 @@
+/* Changelog page — Sealed Containment styling */
+
+.ff-changelog-content {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4) var(--space-9);
+}
+
+@media (min-width: 960px) {
+  .ff-changelog-content {
+    padding: var(--space-7) var(--space-4) var(--space-9);
+  }
+}
+
+/* ── Filters ── */
+.ff-changelog-filters {
+  margin-bottom: var(--space-6);
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+}
+
+.ff-changelog-filters.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ff-changelog-filters-inner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background:
+    radial-gradient(
+      ellipse 140% 100% at 15% 0%,
+      var(--glass-tint),
+      transparent 55%
+    ),
+    var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-chamber);
+}
+
+@media (min-width: 640px) {
+  .ff-changelog-filters-inner {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4);
+  }
+}
+
+.ff-changelog-filters-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.ff-changelog-filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ff-changelog-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.ff-changelog-filter-btn:hover {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+
+.ff-changelog-filter-btn.active {
+  background: var(--filter-bg);
+  border-color: var(--filter-border);
+  color: var(--filter-text);
+}
+
+.ff-changelog-filter-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+.ff-changelog-filter-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.ff-changelog-filter-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  color: var(--text-dim);
+}
+
+.ff-changelog-filter-btn.active .ff-changelog-filter-count {
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+}
+
+/* ── Timeline ── */
+.ff-changelog-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.ff-changelog-release {
+  position: relative;
+  display: flex;
+  gap: var(--space-4);
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity var(--duration-base) var(--ease-out),
+    transform var(--duration-base) var(--ease-out);
+  transition-delay: var(--delay);
+}
+
+.ff-changelog-release.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.ff-changelog-release-marker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 20px;
+  padding-top: var(--space-1);
+}
+
+.ff-changelog-release-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  border: 2px solid var(--panel-edge);
+}
+
+.ff-changelog-release.latest .ff-changelog-release-dot {
+  background: var(--status-ok);
+  box-shadow: 0 0 8px rgba(143, 255, 208, 0.5);
+  border-color: var(--status-ok);
+}
+
+.ff-changelog-release-line {
+  position: absolute;
+  top: 22px;
+  bottom: calc(-1 * var(--space-6));
+  width: 1px;
+  background: var(--panel-edge);
+}
+
+.ff-changelog-release-content {
+  flex: 1;
+  padding: var(--space-5);
+  background:
+    radial-gradient(
+      ellipse 140% 100% at 15% 0%,
+      var(--glass-tint),
+      transparent 55%
+    ),
+    var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-chamber);
+}
+
+.ff-changelog-release.latest .ff-changelog-release-content {
+  border-color: rgba(143, 255, 208, 0.2);
+}
+
+.ff-changelog-release-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.ff-changelog-release-version {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ff-changelog-latest-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--status-ok);
+  color: var(--bg);
+}
+
+.ff-changelog-release-date {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.ff-changelog-changes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.ff-changelog-change {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  opacity: 0;
+  transform: translateY(8px);
+  animation: changelog-change-in var(--duration-base) var(--ease-out) forwards;
+  animation-delay: var(--animation-delay, 0ms);
+}
+
+@keyframes changelog-change-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ff-changelog-change-type {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--change-text);
+}
+
+.ff-changelog-change-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.ff-changelog-change-desc {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text);
+  margin: 0;
+}
+
+.ff-changelog-change-details {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.ff-changelog-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+/* ── Loading skeleton ── */
+.ff-changelog-loading {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+.ff-changelog-skeleton-hero {
+  padding: var(--space-7);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-6);
+}
+
+.ff-changelog-skeleton-filters {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.ff-changelog-skeleton-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.skeleton-badge,
+.skeleton-title,
+.skeleton-lead,
+.skeleton-filter,
+.skeleton-card {
+  background: var(--panel-raised);
+  border-radius: var(--radius);
+  animation: changelog-skeleton-pulse 1.6s ease-in-out infinite;
+}
+
+.skeleton-badge {
+  width: 120px;
+  height: 16px;
+  margin-bottom: var(--space-5);
+}
+
+.skeleton-title {
+  width: 60%;
+  height: 48px;
+  margin-bottom: var(--space-5);
+}
+
+.skeleton-lead {
+  width: 80%;
+  height: 24px;
+}
+
+.skeleton-filter {
+  width: 80px;
+  height: 32px;
+}
+
+.skeleton-card {
+  width: 100%;
+  height: 120px;
+}
+
+@keyframes changelog-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Mobile */
+@media (max-width: 479px) {
+  .ff-changelog-release {
+    gap: var(--space-3);
+  }
+
+  .ff-changelog-release-marker {
+    display: none;
+  }
+
+  .ff-changelog-release-version {
+    font-size: 22px;
+    flex-wrap: wrap;
+  }
+
+  .ff-changelog-release-header {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .ff-changelog-filters-inner {
+    padding: var(--space-4);
+  }
+}

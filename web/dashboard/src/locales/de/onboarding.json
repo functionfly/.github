@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Willkommen bei FunctionFly - Einrichtung",
+      "description": "Richten Sie Ihr FunctionFly-Konto in wenigen Minuten ein. Stellen Sie Serverless-Funktionen mit automatischem Failover über mehrere Cloud-Anbieter bereit."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Willkommen bei FunctionFly",
+        "description": "Erfahren Sie mehr über Multi-Provider-Bereitstellung und automatisches Failover"
+      },
+      "connectProvider": {
+        "title": "Verbinden Sie Ihren Ersten Provider",
+        "description": "Verknüpfen Sie einen Cloud-Provider, um Ihre Funktionen bereitzustellen"
+      },
+      "deployFunction": {
+        "title": "Stellen Sie Ihre Erste Funktion Bereit",
+        "description": "Stellen Sie eine einfache Funktion bereit, um FunctionFly in Aktion zu sehen"
+      },
+      "testFailover": {
+        "title": "Failover Testen",
+        "description": "Überprüfen Sie Ihre Konfiguration durch Testen des automatischen Failovers"
+      },
+      "teamSetup": {
+        "title": "Richten Sie Ihr Team Ein",
+        "description": "Laden Sie Teammitglieder ein und konfigurieren Sie die Zusammenarbeitseinstellungen"
+      }
+    },
+    "roles": {
+      "admin": "Team-Administrator",
+      "member": "Teammitglied",
+      "viewer": "Betrachter"
+    },
+    "accessibility": {
+      "skipToMain": "Zum Hauptinhalt springen",
+      "goHome": "Zur FunctionFly-Startseite",
+      "help": "Hilfe zur Einrichtung erhalten",
+      "skip": "Einrichtung vorerst überspringen",
+      "progressBar": "Einrichtungsfortschritt: {{percent}}% abgeschlossen",
+      "currentStep": "Schritt {{current}} von {{total}}: {{title}}",
+      "backButton": "Zum vorherigen Schritt",
+      "nextButton": "Zum nächsten Schritt",
+      "completeButton": "Einrichtung abschließen",
+      "stepNavigation": "Einrichtungsschritte",
+      "stepLabel": "Schritt {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "abgeschlossen",
+      "statusActive": "aktuell",
+      "statusPending": "ausstehend",
+      "continueOnboarding": "Einrichtung fortsetzen",
+      "skipOnboarding": "Einrichtung überspringen"
+    },
+    "stepCounter": "Schritt {{current}} von {{total}}",
+    "helpTooltip": "FunctionFly stellt Ihre Funktionen über mehrere Cloud-Anbieter für hohe Verfügbarkeit bereit. Jeder Schritt verbindet einen neuen Anbieter und testet das Failover automatisch.",
+    "skip": "Vorerst überspringen",
+    "actions": {
+      "back": "Zurück",
+      "nextStep": "Nächster Schritt",
+      "completeSetup": "Einrichtung Abschließen",
+      "completing": "Wird abgeschlossen...",
+      "retry": "Erneut Versuchen"
+    },
+    "errors": {
+      "stepLoadFailed": "Dieser Schritt konnte nicht geladen werden. Bitte versuchen Sie es erneut."
+    },
+    "tips": {
+      "welcomeTitle": "Willkommen bei FunctionFly",
+      "readyToConnect": "Bereit zum Verbinden",
+      "providerConnected": "Großartig! Provider Verbunden",
+      "functionDeployed": "Funktion Erfolgreich Bereitgestellt",
+      "setupComplete": "Einrichtung Abgeschlossen!",
+      "welcomeDesc": "Nehmen Sie sich einen Moment Zeit, um mehr über FunctionFlays Multi-Provider-Bereitstellung und automatische Failover-Funktionen zu erfahren.",
+      "roleGreeting": "Willkommen {{role}}!",
+      "adminPrivileges": " Sie können Provider verwalten, Funktionen bereitstellen und Teammitglieder einladen.",
+      "memberAccess": " Sie können Funktionen bereitstellen und auf geteilte Ressourcen zugreifen.",
+      "viewerAccess": " Sie haben schreibgeschützten Zugriff auf Teamfunktionen und Metriken.",
+      "connectProviderDesc": "Sie sind dabei, Ihren ersten Cloud-Provider zu verbinden. Dies ermöglicht es FunctionFly, Funktionen über mehrere Anbieter für hohe Verfügbarkeit bereitzustellen.",
+      "deployFunctionDesc": "Ausgezeichnet! Ihr Provider ist verbunden. Lassen Sie uns nun Ihre erste Funktion bereitstellen, um FunctionFly in Aktion zu sehen.",
+      "tokenSecure": "API-Token sicher gespeichert und verschlüsselt",
+      "testFailoverDesc": "Ihre Funktion ist live! Der letzte Schritt testet Ihre Failover-Konfiguration, um hohe Verfügbarkeit sicherzustellen.",
+      "autoFailover": "FunctionFly leitet den Verkehr automatisch an gesunde Provider weiter, wenn einer ausfällt",
+      "teamSetupDesc": "Großartig! Ihre Failover-Konfiguration funktioniert. Richten wir nun Ihr Team für die Zusammenarbeit ein.",
+      "inviteTeam": "Laden Sie Teammitglieder ein, um an Funktionen zusammenzuarbeiten und Provider-Zugang zu teilen",
+      "setupCompleteDesc": "Ausgezeichnet! Ihre FunctionFly-Einrichtung ist abgeschlossen und produktionsbereit.",
+      "productionReady": "Sie sind bereit, Funktionen mit hoher Verfügbarkeit bereitzustellen!",
+      "allCompleteDesc": "Herzlichen Glückwunsch! Ihre FunctionFly-Einrichtung ist abgeschlossen und produktionsbereit.",
+      "multiProviderDeployed": "Ihre Funktionen sind jetzt über mehrere Anbieter mit automatischem Failover bereitgestellt"
+    },
+    "hints": {
+      "welcome": "Erfahren Sie mehr über FunctionFlays Multi-Provider-Bereitstellung und automatische Failover-Funktionen.",
+      "connectProvider": "Verbinden Sie einen Cloud-Provider, um Bereitstellungen zu aktivieren.",
+      "deployFunction": "Stellen Sie Ihre erste Funktion bereit, um die Einrichtung zu testen.",
+      "testFailover": "Überprüfen Sie, ob das automatische Failover korrekt funktioniert.",
+      "teamSetup": "Laden Sie Teammitglieder zur Zusammenarbeit ein."
+    },
+    "skipDialog": {
+      "title": "Einrichtung Überspringen?",
+      "description": "Sie sind dabei, die verbleibenden FunctionFly-Einrichtungsschritte zu überspringen. Das bedeutet:",
+      "continue": "Einrichtung Fortsetzen",
+      "skipAnyway": "Trotzdem Überspringen",
+      "warnings": {
+        "noProvider": "Sie werden keine Cloud-Anbieter für Bereitstellungen verbinden",
+        "noFunction": "Sie werden Ihre erste Funktion nicht bereitstellen, um die Einrichtung zu testen",
+        "noFailoverTest": "Sie werden die automatischen Failover-Funktionen nicht testen"
+      },
+      "hints": {
+        "inviteLater": "Sie können Teammitglieder später weiterhin über Ihr Dashboard einladen",
+        "canResume": "Sie können die Einrichtung jederzeit über Ihre Dashboard-Einstellungen fortsetzen",
+        "basicDeploy": "Basisfunktionen können weiterhin bereitgestellt werden, jedoch ohne Multi-Provider-Vorteile"
+      }
+    },
+    "completion": {
+      "title": "Willkommen bei FunctionFly!",
+      "subtitle": "Ihre Einrichtung ist abgeschlossen und produktionsbereit"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hallo Welt",
+          "description": "Eine einfache Funktion, die eine Begrüßung zurückgibt"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "Gibt Request-Informationen als JSON zurück"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Beispielfunktionen",
+        "sampleFunctionsTooltip": "Wählen Sie aus vorgefertigten Funktionsbeispielen, um schnell zu starten. Diese zeigen gängige Muster und sind bereit zur Bereitstellung.",
+        "customCode": "Eigener Code",
+        "customCodeTooltip": "Schreiben Sie Ihren eigenen Funktionscode von Grund auf. Fortgeschrittene Benutzer können benutzerdefinierte Logik, APIs oder Integrationen bereitstellen."
+      },
+      "functionListLabel": "Wählen Sie eine Beispielfunktion",
+      "functionEdgeHelp": "Edge-Funktionen laufen weltweit in der Nähe Ihrer Benutzer, reduzieren die Latenz und verbessern die Leistung im Vergleich zu herkömmlichen serverbasierten Funktionen.",
+      "codePreview": "Vorschau",
+      "codePreviewRegion": "Funktionscode-Vorschau",
+      "actions": {
+        "copyCode": "Funktionscode kopieren",
+        "chooseSample": "Beispielfunktion Wählen",
+        "copyUrl": "Funktions-URL kopieren",
+        "refreshMetrics": "Metriken aktualisieren",
+        "openFunction": "Funktion Öffnen",
+        "deploying": "Bereitstellung auf allen verbundenen Providern...",
+        "deploy": "Funktion Bereitstellen",
+        "tryAgain": "Erneut Versuchen",
+        "tryCustomCode": "Eigenen Code Versuchen"
+      },
+      "customCodeNotice": "Sie können Ihren eigenen Funktionscode bereitstellen. Wählen Sie für jetzt eine unserer Beispielfunktionen, um mit der Einrichtung fortzufahren.",
+      "functionNameLabel": "Funktionsname",
+      "functionNameTooltip": "Wählen Sie einen eindeutigen Namen für Ihre Funktion. Dieser wird Teil Ihrer Funktions-URL (z.B. meine-funktion.functionfly.app).",
+      "urlSuggestions": "URL-Vorschläge",
+      "urlSuggestionsHint": "Klicken Sie auf einen Vorschlag, um ihn als Funktionsnamen zu verwenden",
+      "functionNameHint": "Verwenden Sie nur Kleinbuchstaben, Zahlen und Bindestriche. Dies wird verwendet, um Ihre Funktions-URL zu generieren.",
+      "functionNamePreview": "Vorschau: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "empfohlen",
+        "apiPrefix": "API-Endpunkt",
+        "versioned": "versionierter Endpunkt",
+        "available": "Verfügbar",
+        "taken": "Belegt"
+      },
+      "deployed": {
+        "title": "Funktion Bereitgestellt!",
+        "subtitle": "Ihre Funktion ist jetzt live und bereit, Anfragen zu bearbeiten.",
+        "functionUrl": "Funktions-URL",
+        "liveMetrics": "Live-Metriken"
+      },
+      "metrics": {
+        "requests": "Anfragen",
+        "latency": "Durchschn. Latenz",
+        "errors": "Fehler",
+        "uptime": "Betriebszeit",
+        "loading": "Metriken werden geladen..."
+      },
+      "steps": {
+        "validating": "Funktionskonfiguration wird validiert...",
+        "connecting": "Verbindung zu Bereitstellungsprovidern wird hergestellt...",
+        "uploading": "Funktionscode wird hochgeladen...",
+        "deploying": "Bereitstellung beim primären Provider...",
+        "configuring": "Failover-Konfiguration wird eingerichtet...",
+        "complete": "Bereitstellung abgeschlossen!"
+      },
+      "deployProgress": "Bereitstellungsfortschritt: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Bereitstellung Fehlgeschlagen",
+        "invalidName": "Ungültiger Funktionsname",
+        "nameTooShort": "Funktionsname muss mindestens 2 Zeichen lang sein",
+        "nameTooLong": "Funktionsname darf maximal 52 Zeichen lang sein",
+        "nameInvalidChars": "Verwenden Sie nur Kleinbuchstaben, Zahlen und Bindestriche",
+        "noProvider": "Bitte verbinden Sie zuerst einen Provider",
+        "cancelled": "Die Bereitstellung wurde abgebrochen",
+        "generic": "Die Bereitstellung ist aufgrund eines unerwarteten Fehlers fehlgeschlagen. Bitte versuchen Sie es erneut.",
+        "alternative": "Alternative:",
+        "alternativeDesc": "Sie können diese Funktion auch später über Ihr Dashboard bereitstellen oder einen anderen Funktionsnamen versuchen, wenn der aktuelle bereits vergeben ist."
+      },
+      "toast": {
+        "success": "Funktion \"{{name}}\" erfolgreich bereitgestellt!",
+        "failed": "Bereitstellung fehlgeschlagen",
+        "copied": "In die Zwischenablage kopiert!"
+      },
+      "advanced": {
+        "title": "Erweiterte Konfiguration",
+        "tooltip": "Konfigurieren Sie Umgebungsvariablen, Skalierungseinstellungen und andere erweiterte Optionen für Ihre Funktion.",
+        "envVars": "Umgebungsvariablen",
+        "envVarsTooltip": "Fügen Sie Umgebungsvariablen hinzu, um Ihre Funktion zur Laufzeit zu konfigurieren. Diese werden sicher gespeichert und verschlüsselt.",
+        "envKeyPlaceholder": "SCHLÜSSEL",
+        "envValuePlaceholder": "WERT",
+        "envVarsHint": "Häufige Variablen: API-Schlüssel, Datenbank-URLs, Konfigurationseinstellungen",
+        "add": "Hinzufügen",
+        "scaling": "Skalierungseinstellungen",
+        "scalingTooltip": "Steuern Sie, wie Ihre Funktion mit dem Verkehr skaliert. Höhere Grenzen bewältigen mehr gleichzeitige Anfragen.",
+        "maxConcurrent": "Max. Gleichzeitige Anfragen",
+        "maxConcurrentLabel": "Maximale gleichzeitige Anfragen",
+        "timeout": "Zeitlimit (Sekunden)",
+        "timeoutLabel": "Anfragezeitlimit in Sekunden",
+        "proTipTitle": "Profi-Tipp",
+        "proTipDesc": "Sie können diese Einstellungen jederzeit über Ihr Funktionsdashboard aktualisieren. Erweiterte Konfigurationen werden bei der nächsten Bereitstellung wirksam."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Wählen Sie einen Cloud-Provider",
+      "providerConnected": "{{name}} Verbunden!",
+      "providerReady": "Ihr Provider ist jetzt bereit, Funktionen bereitzustellen.",
+      "costPreview": "Kostenvorschau",
+      "costCalculating": "Kosten werden berechnet...",
+      "costMonthlyEstimate": "Monatliche Schätzung",
+      "costBreakdown": "Aufschlüsselung:",
+      "costBasedOn": "Basierend auf 1.000 Anfragen/Tag, 100ms Rechenzeit, 128MB Speicher",
+      "apiToken": "API-Token",
+      "apiTokenTooltip": "Ein API-Token ist ein sicherer Schlüssel, der es FunctionFly ermöglicht, Funktionen auf Ihrem Provider-Konto bereitzustellen. Sie können diesen in Ihrem Provider-Dashboard unter API-Einstellungen generieren.",
+      "apiTokenPlaceholder": "Geben Sie Ihren {{name}} API-Token ein",
+      "apiTokenValidated": "API-Token erfolgreich validiert",
+      "apiTokenFind": "Finden Sie Ihren API-Token im Dashboard von {{name}} unter API-Einstellungen.",
+      "apiTokenSecure": "Ihr API-Token wird sicher verschlüsselt und gespeichert. Wir teilen niemals Ihre Anmeldedaten.",
+      "shareWithTeam": "Mit Team Teilen",
+      "shareWithTeamDesc": "Teammitgliedern erlauben, diesen Provider für Bereitstellungen zu nutzen",
+      "connect": "{{name}} Verbinden",
+      "connecting": "Verbindung zu {{name}} wird hergestellt...",
+      "sharing": "Wird mit Team geteilt...",
+      "validating": "Token wird validiert...",
+      "changeProvider": "Ändern",
+      "viewDocs": "Dokumentation Anzeigen",
+      "status": {
+        "available": "Verfügbar",
+        "maintenance": "Wartung",
+        "outage": "Ausfall",
+        "unavailable": "Nicht Verfügbar"
+      },
+      "someUnavailable": "Einige Provider sind derzeit nicht verfügbar",
+      "someUnavailableDesc_one": "{{name}} befindet sich in Wartung.",
+      "someUnavailableDesc_other": "{{count}} Provider sind derzeit nicht verfügbar.",
+      "stillAvailable": "Sie können trotzdem mit dem {{count}} verfügbaren Provider beginnen",
+      "maintenanceNote": "Vorübergehend nicht verfügbar wegen geplanter Wartung",
+      "outageNote": "Der Dienst hat derzeit Probleme",
+      "errors": {
+        "connectionFailed": "Provider-Verbindung fehlgeschlagen. Bitte überprüfen Sie Ihren API-Token und versuchen Sie es erneut.",
+        "invalidToken": "Ungültiger API-Token",
+        "tokenSuggestion": "Bitte überprüfen Sie Ihren API-Token im {{name}}-Dashboard und stellen Sie sicher, dass er die richtigen Berechtigungen hat",
+        "networkError": "Verbindung zur {{name}}-API nicht möglich. Überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+        "shareFailed": "Provider verbunden, konnte aber nicht mit dem Team geteilt werden",
+        "noTeamFound": "Provider verbunden, aber noch kein Team zum Teilen gefunden."
+      },
+      "toast": {
+        "connected": "{{name}} erfolgreich verbunden!",
+        "shareSuccess": "Provider erfolgreich mit dem Team geteilt!",
+        "shareFailed": "Provider verbunden, konnte aber nicht mit dem Team geteilt werden"
+      }
+    },
+    "testFailover": {
+      "title": "Failover Testen",
+      "description": "Testen Sie Ihre Failover-Konfiguration, indem Sie einen Provider-Ausfall simulieren. Wir überprüfen, dass der Verkehr automatisch an Ihr Backup weitergeleitet wird.",
+      "tooltip": "Failover stellt sicher, dass Ihre Funktionen online bleiben, auch wenn ein Provider Probleme hat. FunctionFly leitet den Verkehr automatisch an gesunde Backup-Provider weiter.",
+      "runTest": "Failover-Test Starten",
+      "testing": "Failover wird Getestet...",
+      "retryTest": "Test Wiederholen",
+      "runAgain": "Test Erneut Starten",
+      "primary": "Primär",
+      "backup": "Backup",
+      "primaryHelp": "Ihr primärer Provider verarbeitet unter normalen Bedingungen den gesamten Verkehr. Er ist die erste Wahl für die Bereitstellung Ihrer Funktionen.",
+      "backupHelp": "Ihr Backup-Provider übernimmt automatisch, wenn der primäre ausfällt. Dies stellt sicher, dass Ihre Funktionen 24/7 verfügbar bleiben.",
+      "steps": {
+        "checking": "Primärer Endpunkt wird geprüft",
+        "checkingDesc": "Verbindung zum primären Provider wird getestet",
+        "simulating": "Ausfall wird simuliert",
+        "simulatingDesc": "Primärer Endpunkt wird vorübergehend deaktiviert",
+        "detecting": "Failover wird erkannt",
+        "detectingDesc": "Warten auf automatische Failover-Auslösung",
+        "verifying": "Backup wird verifiziert",
+        "verifyingDesc": "Bestätigung, dass die Anfrage vom Backup-Provider verarbeitet wurde",
+        "restoring": "Primärer wird wiederhergestellt",
+        "restoringDesc": "Primärer Endpunkt wird wieder online gebracht"
+      },
+      "results": {
+        "title": "Testergebnisse",
+        "passed": "Failover-Test Bestanden!",
+        "passedDesc": "Ihre Konfiguration funktioniert korrekt. Automatisches Failover ist bereit.",
+        "failed": "Failover-Test Fehlgeschlagen",
+        "failedDesc": "Es gab ein Problem mit Ihrer Failover-Konfiguration.",
+        "whatHappened": "Was ist passiert?",
+        "whatHappenedDesc": "Als der primäre Provider (Cloudflare) vorübergehend nicht verfügbar war, leitete FunctionFly den Verkehr automatisch an Ihren Backup-Provider (Vercel) ohne Ausfallzeit weiter."
+      },
+      "errors": {
+        "testFailed": "Failover-Test ist aufgrund eines unerwarteten Fehlers fehlgeschlagen.",
+        "suggestion": "Bitte überprüfen Sie Ihre Provider-Verbindungen und versuchen Sie es erneut."
+      },
+      "toast": {
+        "success": "Failover-Test erfolgreich abgeschlossen!",
+        "failed": "Failover-Test fehlgeschlagen"
+      },
+      "latency": "Latenz",
+      "latencyHelp": "Latenz misst die Antwortzeit. Niedrigere Werte bedeuten schnellere Leistung für Ihre Benutzer."
+    },
+    "teamSetup": {
+      "yourRole": "Ihre Rolle",
+      "roleTooltip": "Wählen Sie Ihre Rolle im Team. Sie können diese später in den Team-Einstellungen ändern.",
+      "roles": {
+        "admin": {
+          "label": "Administrator",
+          "description": "Voller Zugriff zur Verwaltung von Team, Providern und Funktionen"
+        },
+        "member": {
+          "label": "Mitglied",
+          "description": "Kann Funktionen bereitstellen und verwalten, Team-Ressourcen einsehen"
+        },
+        "viewer": {
+          "label": "Betrachter",
+          "description": "Schreibgeschützter Zugriff auf Teamfunktionen und Metriken"
+        }
+      },
+      "inviteTitle": "Teammitglieder Einladen",
+      "inviteTooltip": "Fügen Sie Teammitglieder hinzu, um an Funktionen zusammenzuarbeiten und Provider-Konfigurationen zu teilen.",
+      "emailLabel": "E-Mail-Adresse",
+      "emailPlaceholder": "kollege@unternehmen.de",
+      "roleLabel": "Rolle",
+      "addMember": "Teammitglied Hinzufügen",
+      "pendingInvites": "Ausstehende Einladungen ({{count}})",
+      "sendInvites": "{{count}} Einladung Senden",
+      "sendInvites_one": "{{count}} Einladung Senden",
+      "sendInvites_other": "{{count}} Einladungen Senden",
+      "continueSolo": "Allein Fortfahren",
+      "skipForNow": "Vorerst Überspringen",
+      "skipping": "Wird übersprungen...",
+      "teamBenefits": "Team-Vorteile",
+      "teamBenefitsDesc": "Laden Sie Teammitglieder ein, um an Funktionen zusammenzuarbeiten, Provider-Konfigurationen zu teilen und Bereitstellungen gemeinsam zu verwalten. Sie können jederzeit Mitglieder über Ihr Dashboard hinzufügen.",
+      "errors": {
+        "invalidEmail": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
+        "emailExists": "Diese E-Mail wurde bereits hinzugefügt",
+        "sendFailed": "Team-Einladungen konnten nicht gesendet werden"
+      },
+      "toast": {
+        "added": "Teammitglied hinzugefügt",
+        "invitesSent": "Team-Einladungen an {{count}} Mitglied gesendet",
+        "invitesSent_one": "Team-Einladungen an {{count}} Mitglied gesendet!",
+        "invitesSent_other": "Team-Einladungen an {{count}} Mitglieder gesendet!",
+        "soloSetup": "Fortfahren mit Solo-Einrichtung"
+      }
+    }
+  }
+}

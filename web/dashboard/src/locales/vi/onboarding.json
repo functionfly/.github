@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Chào mừng đến với FunctionFly - Thiết lập",
+      "description": "Thiết lập tài khoản FunctionFly của bạn trong vài phút. Triển khai hàm không máy chủ với chuyển đổi dự phòng tự động trên nhiều nhà cung cấp đám mây."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Chào mừng đến với FunctionFly",
+        "description": "Tìm hiểu về triển khai đa nhà cung cấp và chuyển đổi dự phòng tự động"
+      },
+      "connectProvider": {
+        "title": "Kết nối Nhà cung cấp Đầu tiên",
+        "description": "Liên kết nhà cung cấp đám mây để bắt đầu triển khai hàm của bạn"
+      },
+      "deployFunction": {
+        "title": "Triển khai Hàm Đầu tiên",
+        "description": "Triển khai một hàm đơn giản để xem FunctionFly hoạt động"
+      },
+      "testFailover": {
+        "title": "Kiểm tra Chuyển đổi Dự phòng",
+        "description": "Xác minh thiết lập của bạn bằng cách kiểm tra chuyển đổi dự phòng tự động"
+      },
+      "teamSetup": {
+        "title": "Thiết lập Nhóm",
+        "description": "Mời thành viên nhóm và cấu hình cài đặt cộng tác"
+      }
+    },
+    "roles": {
+      "admin": "Quản trị viên Nhóm",
+      "member": "Thành viên Nhóm",
+      "viewer": "Người xem"
+    },
+    "accessibility": {
+      "skipToMain": "Chuyển đến nội dung chính",
+      "goHome": "Đi đến trang chủ FunctionFly",
+      "help": "Nhận trợ giúp về thiết lập",
+      "skip": "Bỏ qua thiết lập lúc này",
+      "progressBar": "Tiến trình thiết lập: {{percent}}% hoàn thành",
+      "currentStep": "Bước {{current}} trên {{total}}: {{title}}",
+      "backButton": "Đi đến bước trước",
+      "nextButton": "Đi đến bước tiếp theo",
+      "completeButton": "Hoàn thành thiết lập",
+      "stepNavigation": "Các bước thiết lập",
+      "stepLabel": "Bước {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "đã hoàn thành",
+      "statusActive": "hiện tại",
+      "statusPending": "đang chờ",
+      "continueOnboarding": "Tiếp tục thiết lập",
+      "skipOnboarding": "Bỏ qua thiết lập"
+    },
+    "stepCounter": "Bước {{current}} trên {{total}}",
+    "helpTooltip": "FunctionFly triển khai hàm của bạn trên nhiều nhà cung cấp đám mây để đảm bảo tính sẵn sàng cao. Mỗi bước kết nối nhà cung cấp mới và tự động kiểm tra chuyển đổi dự phòng.",
+    "skip": "Bỏ qua lúc này",
+    "actions": {
+      "back": "Quay lại",
+      "nextStep": "Bước Tiếp theo",
+      "completeSetup": "Hoàn thành Thiết lập",
+      "completing": "Đang hoàn thành...",
+      "retry": "Thử lại"
+    },
+    "errors": {
+      "stepLoadFailed": "Không thể tải bước này. Vui lòng thử lại."
+    },
+    "tips": {
+      "welcomeTitle": "Chào mừng đến với FunctionFly",
+      "readyToConnect": "Sẵn sàng Kết nối",
+      "providerConnected": "Tuyệt vời! Nhà cung cấp đã Kết nối",
+      "functionDeployed": "Hàm đã Triển khai Thành công",
+      "setupComplete": "Thiết lập Hoàn tất!",
+      "welcomeDesc": "Dành một chút thời gian để tìm hiểu về triển khai đa nhà cung cấp và tính năng chuyển đổi dự phòng tự động của FunctionFly.",
+      "roleGreeting": "Chào mừng {{role}}!",
+      "adminPrivileges": " Bạn có thể quản lý nhà cung cấp, triển khai hàm và mời thành viên nhóm.",
+      "memberAccess": " Bạn có thể triển khai hàm và truy cập tài nguyên chia sẻ.",
+      "viewerAccess": " Bạn có quyền truy cập chỉ đọc vào hàm nhóm và số liệu.",
+      "connectProviderDesc": "Bạn sắp kết nối nhà cung cấp đám mây đầu tiên. Điều này cho phép FunctionFly triển khai hàm trên nhiều nhà cung cấp để đảm bảo tính sẵn sàng cao.",
+      "deployFunctionDesc": "Tuyệt vời! Nhà cung cấp của bạn đã kết nối. Bây giờ hãy triển khai hàm đầu tiên để xem FunctionFly hoạt động.",
+      "tokenSecure": "API token được lưu trữ và mã hóa an toàn",
+      "testFailoverDesc": "Hàm của bạn đang hoạt động! Bước cuối cùng kiểm tra thiết lập chuyển đổi dự phòng để đảm bảo tính sẵn sàng cao.",
+      "autoFailover": "FunctionFly tự động định tuyến lưu lượng đến nhà cung cấp khỏe mạnh nếu một nhà cung cấp gặp sự cố",
+      "teamSetupDesc": "Tuyệt vời! Thiết lập chuyển đổi dự phòng của bạn đang hoạt động. Bây giờ hãy thiết lập nhóm để cộng tác.",
+      "inviteTeam": "Mời thành viên nhóm cộng tác trên hàm và chia sẻ quyền truy cập nhà cung cấp",
+      "setupCompleteDesc": "Tuyệt vời! Thiết lập FunctionFly của bạn đã hoàn tất và sẵn sàng cho sản phẩm.",
+      "productionReady": "Bạn đã sẵn sàng bắt đầu triển khai hàm với tính sẵn sàng cao!",
+      "allCompleteDesc": "Xin chúc mừng! Thiết lập FunctionFly của bạn đã hoàn tất và sẵn sàng cho sản phẩm.",
+      "multiProviderDeployed": "Hàm của bạn giờ đã được triển khai trên nhiều nhà cung cấp với chuyển đổi dự phòng tự động"
+    },
+    "hints": {
+      "welcome": "Tìm hiểu về triển khai đa nhà cung cấp và tính năng chuyển đổi dự phòng tự động của FunctionFly.",
+      "connectProvider": "Kết nối nhà cung cấp đám mây để cho phép triển khai.",
+      "deployFunction": "Triển khai hàm đầu tiên để kiểm tra thiết lập.",
+      "testFailover": "Xác minh chuyển đổi dự phòng tự động hoạt động chính xác.",
+      "teamSetup": "Mời thành viên nhóm để cộng tác."
+    },
+    "skipDialog": {
+      "title": "Bỏ qua Thiết lập?",
+      "description": "Bạn sắp bỏ qua các bước thiết lập còn lại của FunctionFly. Đây là ý nghĩa của việc đó:",
+      "continue": "Tiếp tục Thiết lập",
+      "skipAnyway": "Vẫn Bỏ qua",
+      "warnings": {
+        "noProvider": "Bạn sẽ không kết nối nhà cung cấp đám mây nào để triển khai",
+        "noFunction": "Bạn sẽ không triển khai hàm đầu tiên để kiểm tra thiết lập",
+        "noFailoverTest": "Bạn sẽ không kiểm tra khả năng chuyển đổi dự phòng tự động"
+      },
+      "hints": {
+        "inviteLater": "Bạn vẫn có thể mời thành viên nhóm sau từ bảng điều khiển",
+        "canResume": "Bạn có thể tiếp tục thiết lập bất cứ lúc nào từ cài đặt bảng điều khiển",
+        "basicDeploy": "Hàm cơ bản vẫn có thể được triển khai, nhưng không có lợi ích đa nhà cung cấp"
+      }
+    },
+    "completion": {
+      "title": "Chào mừng đến với FunctionFly!",
+      "subtitle": "Thiết lập của bạn đã hoàn tất và sẵn sàng cho sản phẩm"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hello World",
+          "description": "Một hàm đơn giản trả về lời chào"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "Phản hồi lại thông tin yêu cầu dưới dạng JSON"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Hàm Mẫu",
+        "sampleFunctionsTooltip": "Chọn từ các ví dụ hàm có sẵn để bắt đầu nhanh chóng. Chúng thể hiện các mẫu phổ biến và sẵn sàng triển khai.",
+        "customCode": "Mã Tùy chỉnh",
+        "customCodeTooltip": "Tự viết mã hàm từ đầu. Người dùng nâng cao có thể triển khai logic tùy chỉnh, API hoặc tích hợp."
+      },
+      "functionListLabel": "Chọn một hàm mẫu",
+      "functionEdgeHelp": "Hàm edge chạy gần người dùng trên toàn thế giới, giảm độ trễ và cải thiện hiệu suất so với hàm dựa trên máy chủ truyền thống.",
+      "codePreview": "Xem trước",
+      "codePreviewRegion": "Xem trước mã hàm",
+      "actions": {
+        "copyCode": "Sao chép mã hàm",
+        "chooseSample": "Chọn Hàm Mẫu",
+        "copyUrl": "Sao chép URL hàm",
+        "refreshMetrics": "Làm mới số liệu",
+        "openFunction": "Mở Hàm",
+        "deploying": "Đang triển khai đến tất cả nhà cung cấp đã kết nối...",
+        "deploy": "Triển khai Hàm",
+        "tryAgain": "Thử lại",
+        "tryCustomCode": "Thử Mã Tùy chỉnh"
+      },
+      "customCodeNotice": "Bạn có thể triển khai mã hàm tùy chỉnh của riêng mình. Hiện tại, hãy chọn một trong các hàm mẫu để tiếp tục thiết lập.",
+      "functionNameLabel": "Tên Hàm",
+      "functionNameTooltip": "Chọn một tên duy nhất cho hàm của bạn. Đây sẽ trở thành một phần của URL hàm (ví dụ: ham-cua-toi.functionfly.app).",
+      "urlSuggestions": "Gợi ý URL",
+      "urlSuggestionsHint": "Nhấp vào gợi ý để sử dụng làm tên hàm",
+      "functionNameHint": "Chỉ sử dụng chữ thường, số và dấu gạch ngang. Điều này sẽ được dùng để tạo URL hàm của bạn.",
+      "functionNamePreview": "Xem trước: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "đề xuất",
+        "apiPrefix": "điểm cuối API",
+        "versioned": "điểm cuối có phiên bản",
+        "available": "Có sẵn",
+        "taken": "Đã sử dụng"
+      },
+      "deployed": {
+        "title": "Hàm đã Triển khai!",
+        "subtitle": "Hàm của bạn hiện đang hoạt động và sẵn sàng xử lý yêu cầu.",
+        "functionUrl": "URL Hàm",
+        "liveMetrics": "Số liệu Trực tiếp"
+      },
+      "metrics": {
+        "requests": "Yêu cầu",
+        "latency": "Độ trễ TB",
+        "errors": "Lỗi",
+        "uptime": "Thời gian hoạt động",
+        "loading": "Đang tải số liệu..."
+      },
+      "steps": {
+        "validating": "Đang xác thực cấu hình hàm...",
+        "connecting": "Đang kết nối đến nhà cung cấp triển khai...",
+        "uploading": "Đang tải lên mã hàm...",
+        "deploying": "Đang triển khai đến nhà cung cấp chính...",
+        "configuring": "Đang thiết lập cấu hình chuyển đổi dự phòng...",
+        "complete": "Triển khai hoàn tất!"
+      },
+      "deployProgress": "Tiến trình triển khai: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Triển khai Thất bại",
+        "invalidName": "Tên hàm không hợp lệ",
+        "nameTooShort": "Tên hàm phải có ít nhất 2 ký tự",
+        "nameTooLong": "Tên hàm phải từ 52 ký tự trở xuống",
+        "nameInvalidChars": "Chỉ sử dụng chữ thường, số và dấu gạch ngang",
+        "noProvider": "Vui lòng kết nối nhà cung cấp trước",
+        "cancelled": "Triển khai đã bị hủy",
+        "generic": "Triển khai thất bại do lỗi không mong muốn. Vui lòng thử lại.",
+        "alternative": "Thay thế:",
+        "alternativeDesc": "Bạn cũng có thể triển khai hàm này sau từ bảng điều khiển, hoặc thử tên hàm khác nếu tên hiện tại đã được sử dụng."
+      },
+      "toast": {
+        "success": "Hàm \"{{name}}\" đã triển khai thành công!",
+        "failed": "Triển khai thất bại",
+        "copied": "Đã sao chép vào clipboard!"
+      },
+      "advanced": {
+        "title": "Cấu hình Nâng cao",
+        "tooltip": "Cấu hình biến môi trường, cài đặt mở rộng và các tùy chọn nâng cao khác cho hàm của bạn.",
+        "envVars": "Biến Môi trường",
+        "envVarsTooltip": "Thêm biến môi trường để cấu hình hàm khi chạy. Chúng được lưu trữ và mã hóa an toàn.",
+        "envKeyPlaceholder": "KHÓA",
+        "envValuePlaceholder": "GIÁ TRỊ",
+        "envVarsHint": "Các biến phổ biến: khóa API, URL cơ sở dữ liệu, cài đặt cấu hình",
+        "add": "Thêm",
+        "scaling": "Cài đặt Mở rộng",
+        "scalingTooltip": "Kiểm soát cách hàm mở rộng theo lưu lượng. Giới hạn cao hơn xử lý nhiều yêu cầu đồng thời hơn.",
+        "maxConcurrent": "Yêu cầu Đồng thời Tối đa",
+        "maxConcurrentLabel": "Số lượng yêu cầu đồng thời tối đa",
+        "timeout": "Thời gian Chờ (giây)",
+        "timeoutLabel": "Thời gian chờ yêu cầu tính bằng giây",
+        "proTipTitle": "Mẹo",
+        "proTipDesc": "Bạn có thể cập nhật cài đặt này bất cứ lúc nào từ bảng điều khiển hàm. Cấu hình nâng cao sẽ có hiệu lực trong lần triển khai tiếp theo."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Chọn nhà cung cấp đám mây",
+      "providerConnected": "{{name}} đã Kết nối!",
+      "providerReady": "Nhà cung cấp của bạn giờ đã sẵn sàng triển khai hàm.",
+      "costPreview": "Xem trước Chi phí",
+      "costCalculating": "Đang tính chi phí...",
+      "costMonthlyEstimate": "Ước tính Hàng tháng",
+      "costBreakdown": "Chi tiết:",
+      "costBasedOn": "Dựa trên 1.000 yêu cầu/ngày, 100ms thời gian tính toán, 128MB bộ nhớ",
+      "apiToken": "API Token",
+      "apiTokenTooltip": "API token là khóa bảo mật cho phép FunctionFly triển khai hàm vào tài khoản nhà cung cấp của bạn. Bạn có thể tạo token này trong bảng điều khiển nhà cung cấp dưới phần cài đặt API.",
+      "apiTokenPlaceholder": "Nhập API token {{name}} của bạn",
+      "apiTokenValidated": "API token đã được xác thực thành công",
+      "apiTokenFind": "Tìm API token trong bảng điều khiển {{name}} dưới phần cài đặt API.",
+      "apiTokenSecure": "API token của bạn được mã hóa và lưu trữ an toàn. Chúng tôi không bao giờ chia sẻ thông tin xác thực của bạn.",
+      "shareWithTeam": "Chia sẻ với Nhóm",
+      "shareWithTeamDesc": "Cho phép thành viên nhóm sử dụng nhà cung cấp này để triển khai",
+      "connect": "Kết nối {{name}}",
+      "connecting": "Đang kết nối {{name}}...",
+      "sharing": "Đang chia sẻ với nhóm...",
+      "validating": "Đang xác thực token...",
+      "changeProvider": "Thay đổi",
+      "viewDocs": "Xem Tài liệu",
+      "status": {
+        "available": "Có sẵn",
+        "maintenance": "Bảo trì",
+        "outage": "Gián đoạn",
+        "unavailable": "Không có sẵn"
+      },
+      "someUnavailable": "Một số nhà cung cấp hiện không có sẵn",
+      "someUnavailableDesc_one": "{{name}} đang bảo trì.",
+      "someUnavailableDesc_other": "{{count}} nhà cung cấp hiện không có sẵn.",
+      "stillAvailable": "Bạn vẫn có thể bắt đầu với {{count}} nhà cung cấp có sẵn",
+      "maintenanceNote": "Tạm thời không có sẵn do bảo trì theo lịch trình",
+      "outageNote": "Dịch vụ hiện đang gặp sự cố",
+      "errors": {
+        "connectionFailed": "Không thể kết nối nhà cung cấp. Vui lòng kiểm tra API token và thử lại.",
+        "invalidToken": "API token không hợp lệ",
+        "tokenSuggestion": "Vui lòng kiểm tra API token trong bảng điều khiển {{name}} và đảm bảo nó có quyền phù hợp",
+        "networkError": "Không thể kết nối đến API {{name}}. Kiểm tra kết nối internet và thử lại.",
+        "shareFailed": "Nhà cung cấp đã kết nối nhưng không thể chia sẻ với nhóm",
+        "noTeamFound": "Nhà cung cấp đã kết nối nhưng chưa tìm thấy nhóm để chia sẻ."
+      },
+      "toast": {
+        "connected": "{{name}} đã kết nối thành công!",
+        "shareSuccess": "Nhà cung cấp đã chia sẻ với nhóm thành công!",
+        "shareFailed": "Nhà cung cấp đã kết nối nhưng không thể chia sẻ với nhóm"
+      }
+    },
+    "testFailover": {
+      "title": "Kiểm tra Chuyển đổi Dự phòng",
+      "description": "Kiểm tra thiết lập chuyển đổi dự phòng bằng cách mô phỏng sự cố nhà cung cấp. Chúng tôi sẽ xác minh rằng lưu lượng tự động định tuyến đến bản sao lưu.",
+      "tooltip": "Chuyển đổi dự phòng đảm bảo hàm của bạn luôn trực tuyến ngay cả khi nhà cung cấp gặp sự cố. FunctionFly tự động định tuyến lưu lượng đến các nhà cung cấp sao lưu khỏe mạnh.",
+      "runTest": "Chạy Kiểm tra Chuyển đổi",
+      "testing": "Đang Kiểm tra Chuyển đổi Dự phòng...",
+      "retryTest": "Thử lại Kiểm tra",
+      "runAgain": "Chạy lại Kiểm tra",
+      "primary": "Chính",
+      "backup": "Dự phòng",
+      "primaryHelp": "Nhà cung cấp chính xử lý tất cả lưu lượng trong điều kiện bình thường. Đây là lựa chọn đầu tiên để phục vụ hàm của bạn.",
+      "backupHelp": "Nhà cung cấp dự phòng tự động tiếp quản nếu nhà cung cấp chính gặp sự cố. Điều này đảm bảo hàm của bạn sẵn sàng 24/7.",
+      "steps": {
+        "checking": "Kiểm tra điểm cuối chính",
+        "checkingDesc": "Kiểm tra kết nối đến nhà cung cấp chính",
+        "simulating": "Mô phỏng sự cố",
+        "simulatingDesc": "Tạm thời vô hiệu hóa điểm cuối chính",
+        "detecting": "Phát hiện chuyển đổi",
+        "detectingDesc": "Chờ chuyển đổi dự phòng tự động kích hoạt",
+        "verifying": "Xác minh dự phòng",
+        "verifyingDesc": "Xác nhận yêu cầu được xử lý bởi nhà cung cấp dự phòng",
+        "restoring": "Khôi phục chính",
+        "restoringDesc": "Đưa điểm cuối chính trở lại trực tuyến"
+      },
+      "results": {
+        "title": "Kết quả Kiểm tra",
+        "passed": "Kiểm tra Chuyển đổi Đạt!",
+        "passedDesc": "Thiết lập của bạn hoạt động chính xác. Chuyển đổi dự phòng tự động đã sẵn sàng.",
+        "failed": "Kiểm tra Chuyển đổi Thất bại",
+        "failedDesc": "Có vấn đề với cấu hình chuyển đổi dự phòng của bạn.",
+        "whatHappened": "Điều gì đã xảy ra?",
+        "whatHappenedDesc": "Khi nhà cung cấp chính (Cloudflare) tạm thời không có sẵn, FunctionFly đã tự động định tuyến lưu lượng đến nhà cung cấp dự phòng (Vercel) mà không có thời gian ngừng hoạt động."
+      },
+      "errors": {
+        "testFailed": "Kiểm tra chuyển đổi dự phòng thất bại do lỗi không mong muốn.",
+        "suggestion": "Vui lòng kiểm tra kết nối nhà cung cấp và thử lại."
+      },
+      "toast": {
+        "success": "Kiểm tra chuyển đổi dự phòng hoàn thành thành công!",
+        "failed": "Kiểm tra chuyển đổi dự phòng thất bại"
+      },
+      "latency": "Độ trễ",
+      "latencyHelp": "Độ trễ đo thời gian phản hồi. Giá trị thấp hơn có nghĩa là hiệu suất nhanh hơn cho người dùng của bạn."
+    },
+    "teamSetup": {
+      "yourRole": "Vai trò của Bạn",
+      "roleTooltip": "Chọn vai trò trong nhóm. Bạn có thể thay đổi sau trong cài đặt nhóm.",
+      "roles": {
+        "admin": {
+          "label": "Quản trị viên",
+          "description": "Truy cập đầy đủ để quản lý nhóm, nhà cung cấp và hàm"
+        },
+        "member": {
+          "label": "Thành viên",
+          "description": "Có thể triển khai và quản lý hàm, xem tài nguyên nhóm"
+        },
+        "viewer": {
+          "label": "Người xem",
+          "description": "Truy cập chỉ đọc vào hàm nhóm và số liệu"
+        }
+      },
+      "inviteTitle": "Mời Thành viên Nhóm",
+      "inviteTooltip": "Thêm thành viên nhóm để cộng tác trên hàm và chia sẻ cấu hình nhà cung cấp.",
+      "emailLabel": "Địa chỉ Email",
+      "emailPlaceholder": "dongnghiep@congty.com",
+      "roleLabel": "Vai trò",
+      "addMember": "Thêm Thành viên Nhóm",
+      "pendingInvites": "Lời mời Chờ duyệt ({{count}})",
+      "sendInvites": "Gửi {{count}} Lời mời",
+      "sendInvites_one": "Gửi {{count}} Lời mời",
+      "sendInvites_other": "Gửi {{count}} Lời mời",
+      "continueSolo": "Tiếp tục Một mình",
+      "skipForNow": "Bỏ qua Lúc này",
+      "skipping": "Đang bỏ qua...",
+      "teamBenefits": "Lợi ích Nhóm",
+      "teamBenefitsDesc": "Mời thành viên nhóm cộng tác trên hàm, chia sẻ cấu hình nhà cung cấp và quản lý triển khai cùng nhau. Bạn luôn có thể thêm thành viên sau từ bảng điều khiển.",
+      "errors": {
+        "invalidEmail": "Vui lòng nhập địa chỉ email hợp lệ",
+        "emailExists": "Email này đã được thêm",
+        "sendFailed": "Không thể gửi lời mời nhóm"
+      },
+      "toast": {
+        "added": "Đã thêm thành viên nhóm",
+        "invitesSent": "Đã gửi lời mời nhóm đến {{count}} thành viên",
+        "invitesSent_one": "Đã gửi lời mời nhóm đến {{count}} thành viên!",
+        "invitesSent_other": "Đã gửi lời mời nhóm đến {{count}} thành viên!",
+        "soloSetup": "Tiếp tục thiết lập cá nhân"
+      }
+    }
+  }
+}

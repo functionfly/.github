@@ -1,7 +1,13 @@
 ---
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
+
 const isDev = import.meta.env.DEV;
 const SITE_ORIGIN = import.meta.env.PUBLIC_SITE_URL || (isDev ? 'http://localhost:4321' : 'https://functionfly.com');
 const DOCS_ORIGIN = import.meta.env.PUBLIC_DOCS_URL || (isDev ? 'http://localhost:4322' : 'https://docs.functionfly.com');
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <footer class="footer">
@@ -11,70 +17,70 @@ const DOCS_ORIGIN = import.meta.env.PUBLIC_DOCS_URL || (isDev ? 'http://localhos
         <a href={SITE_ORIGIN} class="footer-logo">
           <img src="/favicon.svg" alt="" width="24" height="24" />
         </a>
-        <p>The trust layer for AI agents.</p>
+        <p>{t('footer.tagline')}</p>
       </div>
       <div class="footer-links">
         <div class="footer-column">
-          <h4>Product</h4>
-          <a href={`${DOCS_ORIGIN}/`}>Documentation</a>
-          <a href={`${SITE_ORIGIN}/trust`}>Trust layer</a>
-          <a href={`${SITE_ORIGIN}/state-fabric`}>State Fabric</a>
-          <a href={`${SITE_ORIGIN}/for-agents`}>For AI agents</a>
-          <a href={`${SITE_ORIGIN}/mcp`}>MCP</a>
-          <a href={`${SITE_ORIGIN}/pricing`}>Pricing</a>
-          <a href={`${SITE_ORIGIN}/changelog`}>Changelog</a>
+          <h4>{t('footer.product')}</h4>
+          <a href={`${DOCS_ORIGIN}/`}>{t('footer.documentation')}</a>
+          <a href={`${SITE_ORIGIN}/trust`}>{t('footer.trustLayer')}</a>
+          <a href={`${SITE_ORIGIN}/state-fabric`}>{t('footer.stateFabric')}</a>
+          <a href={`${SITE_ORIGIN}/for-agents`}>{t('footer.forAiAgents')}</a>
+          <a href={`${SITE_ORIGIN}/mcp`}>{t('footer.mcp')}</a>
+          <a href={`${SITE_ORIGIN}/pricing`}>{t('footer.pricing')}</a>
+          <a href={`${SITE_ORIGIN}/changelog`}>{t('footer.changelog')}</a>
         </div>
         <div class="footer-column">
-          <h4>Developers</h4>
-          <a href={`${DOCS_ORIGIN}/api`}>API Reference</a>
-          <a href={`${DOCS_ORIGIN}/sdks`}>SDKs</a>
-          <a href={`${DOCS_ORIGIN}/openapi`}>OpenAPI Spec</a>
-          <a href={`${DOCS_ORIGIN}/sandbox`}>Sandbox</a>
-          <a href="https://status.functionfly.com" target="_blank" rel="noopener">Status</a>
-          <a href="/rss.xml">RSS Feed</a>
+          <h4>{t('footer.developers')}</h4>
+          <a href={`${DOCS_ORIGIN}/api`}>{t('footer.apiReference')}</a>
+          <a href={`${DOCS_ORIGIN}/sdks`}>{t('footer.sdks')}</a>
+          <a href={`${DOCS_ORIGIN}/openapi`}>{t('footer.openapiSpec')}</a>
+          <a href={`${DOCS_ORIGIN}/sandbox`}>{t('footer.sandbox')}</a>
+          <a href="https://status.functionfly.com" target="_blank" rel="noopener">{t('footer.status')}</a>
+          <a href="/rss.xml">{t('footer.rssFeed')}</a>
         </div>
         <div class="footer-column">
-          <h4>MCP</h4>
-          <a href={`${SITE_ORIGIN}/registry`}>Function Registry</a>
-          <a href={`${DOCS_ORIGIN}/mcp`}>MCP Docs</a>
-          <a href={`${DOCS_ORIGIN}/mcp/publish-mcp`}>Publish a Function</a>
-          <a href={`${DOCS_ORIGIN}/mcp/server`}>MCP Server</a>
-          <a href={`${DOCS_ORIGIN}/mcp/manifest`}>Manifest Spec</a>
+          <h4>{t('footer.mcp')}</h4>
+          <a href={`${SITE_ORIGIN}/registry`}>{t('footer.functionRegistry')}</a>
+          <a href={`${DOCS_ORIGIN}/mcp`}>{t('footer.mcpDocs')}</a>
+          <a href={`${DOCS_ORIGIN}/mcp/publish-mcp`}>{t('footer.publishFunction')}</a>
+          <a href={`${DOCS_ORIGIN}/mcp/server`}>{t('footer.mcpServer')}</a>
+          <a href={`${DOCS_ORIGIN}/mcp/manifest`}>{t('footer.manifestSpec')}</a>
         </div>
         <div class="footer-column">
-          <h4>Company</h4>
-          <a href={`${SITE_ORIGIN}/about`}>About</a>
-          <a href={`${SITE_ORIGIN}/blog`}>Blog</a>
-          <a href={`${SITE_ORIGIN}/careers`}>Careers</a>
-          <a href={`${SITE_ORIGIN}/contact`}>Contact</a>
-          <a href={`${SITE_ORIGIN}/partnerships`}>Partnerships</a>
+          <h4>{t('footer.company')}</h4>
+          <a href={`${SITE_ORIGIN}/about`}>{t('footer.about')}</a>
+          <a href={`${SITE_ORIGIN}/blog`}>{t('footer.blog')}</a>
+          <a href={`${SITE_ORIGIN}/careers`}>{t('footer.careers')}</a>
+          <a href={`${SITE_ORIGIN}/contact`}>{t('footer.contact')}</a>
+          <a href={`${SITE_ORIGIN}/partnerships`}>{t('footer.partnerships')}</a>
         </div>
         <div class="footer-column">
-          <h4>Community</h4>
-          <a href="https://discord.gg/functionfly" target="_blank" rel="noopener">Discord</a>
-          <a href="https://github.com/functionfly/functionfly/discussions" target="_blank" rel="noopener">GitHub Discussions</a>
-          <a href="https://x.com/functionflycom" target="_blank" rel="noopener">X (Twitter)</a>
-          <a href="https://linkedin.com/company/functionfly" target="_blank" rel="noopener">LinkedIn</a>
+          <h4>{t('footer.community')}</h4>
+          <a href="https://discord.gg/functionfly" target="_blank" rel="noopener">{t('footer.discord')}</a>
+          <a href="https://github.com/functionfly/functionfly/discussions" target="_blank" rel="noopener">{t('footer.githubDiscussions')}</a>
+          <a href="https://x.com/functionflycom" target="_blank" rel="noopener">{t('footer.twitter')}</a>
+          <a href="https://linkedin.com/company/functionfly" target="_blank" rel="noopener">{t('footer.linkedin')}</a>
         </div>
         <div class="footer-column">
-          <h4>Legal & Security</h4>
-          <a href={`${SITE_ORIGIN}/privacy`}>Privacy</a>
-          <a href={`${SITE_ORIGIN}/terms`}>Terms</a>
-          <a href={`${SITE_ORIGIN}/sla`}>SLA</a>
-          <a href={`${SITE_ORIGIN}/security`}>Security</a>
-          <a href={`${SITE_ORIGIN}/compliance`}>Compliance</a>
+          <h4>{t('footer.legalSecurity')}</h4>
+          <a href={`${SITE_ORIGIN}/privacy`}>{t('footer.privacy')}</a>
+          <a href={`${SITE_ORIGIN}/terms`}>{t('footer.terms')}</a>
+          <a href={`${SITE_ORIGIN}/sla`}>{t('footer.sla')}</a>
+          <a href={`${SITE_ORIGIN}/security`}>{t('footer.security')}</a>
+          <a href={`${SITE_ORIGIN}/compliance`}>{t('footer.compliance')}</a>
         </div>
       </div>
     </div>
     <div class="footer-bottom">
       <div class="footer-bottom-left">
-        <p>&copy; {new Date().getFullYear()} FunctionFly LLC (d/b/a FunctionFly). All rights reserved.</p>
+        <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
       </div>
       <div class="footer-bottom-right">
         <div class="footer-legal">
-          <a href={`${SITE_ORIGIN}/terms`}>Terms</a>
-          <a href={`${SITE_ORIGIN}/privacy`}>Privacy</a>
-          <a href={`${SITE_ORIGIN}/sla`}>SLA</a>
+          <a href={`${SITE_ORIGIN}/terms`}>{t('footer.terms')}</a>
+          <a href={`${SITE_ORIGIN}/privacy`}>{t('footer.privacy')}</a>
+          <a href={`${SITE_ORIGIN}/sla`}>{t('footer.sla')}</a>
         </div>
         <div class="footer-social">
           <a href="https://github.com/functionfly" target="_blank" rel="noopener" aria-label="GitHub">

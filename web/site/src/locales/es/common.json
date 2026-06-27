@@ -1,11 +1,13 @@
 {
   "nav": {
+    "home": "Inicio",
     "docs": "Docs",
     "forAgents": "Para Agentes IA",
     "trust": "Confianza",
     "pricing": "Precios",
     "blog": "Blog",
-    "dashboard": "Panel"
+    "dashboard": "Panel",
+    "signUp": "Registrarse"
   },
   "footer": {
     "tagline": "La capa de confianza para agentes IA. Publica una vez, ejecuta en todas partes, cobra.",
@@ -22,7 +24,39 @@
     "privacy": "Privacidad",
     "terms": "Términos",
     "sla": "SLA",
-    "copyright": "Todos los derechos reservados."
+    "copyright": "Todos los derechos reservados.",
+    "systemsOperational": "Todos los sistemas operativos",
+    "columnProduct": "Producto",
+    "columnDevelopers": "Desarrolladores",
+    "columnMCP": "MCP",
+    "columnCompany": "Empresa",
+    "columnCommunity": "Comunidad",
+    "columnLegal": "Legal y Seguridad",
+    "functionRegistry": "Registro de Funciones",
+    "stateFabric": "State Fabric",
+    "forAgents": "Para agentes IA",
+    "apiReference": "Referencia de API",
+    "sdks": "SDKs",
+    "openApiSpec": "Especificación OpenAPI",
+    "sandbox": "Sandbox",
+    "status": "Estado",
+    "rssFeed": "Feed RSS",
+    "mcpDocs": "Docs de MCP",
+    "publishFunction": "Publicar una Función",
+    "mcpServer": "Servidor MCP",
+    "manifestSpec": "Especificación de Manifiesto",
+    "aboutLink": "Acerca de",
+    "blog": "Blog",
+    "careersLink": "Empleo",
+    "contactLink": "Contacto",
+    "partnerships": "Socios",
+    "privacyLink": "Privacidad",
+    "termsLink": "Términos",
+    "dpa": "DPA",
+    "cookiePolicy": "Política de Cookies",
+    "security": "Seguridad",
+    "vulnerabilityDisclosure": "Divulgación de Vulnerabilidades",
+    "compliance": "Cumplimiento"
   },
   "language": {
     "title": "Idioma",
@@ -114,5 +148,8 @@
     "lead": "Empieza gratis. Herramientas verificadas e historial de ejecución auditable ayudan a tus agentes a moverse más rápido — con menos sorpresas.",
     "ctaPrimary": "Solicitar Acceso",
     "ctaSecondary": "Contactar Ventas"
+  },
+  "layout": {
+    "skipToContent": "Saltar al contenido principal"
   }
 }

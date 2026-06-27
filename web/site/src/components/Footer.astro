@@ -1,76 +1,107 @@
 ---
 import { SITE_ORIGIN, DOCS_ORIGIN, BLOG_ORIGIN, STATUS_ORIGIN } from '../config';
+import { getLocale, LOCALE_DATA, t } from '../i18n';
+import CornerBrace from './containment/CornerBrace.astro';
+import LanguagePicker from './LanguagePicker.astro';
+
+const currentLang = getLocale(Astro);
+const locales = LOCALE_DATA;
 ---
 
 <footer class="footer">
-  <div class="footer-content">
-    <div class="footer-top">
+  <div class="footer-chamber">
+    <CornerBrace position="tl" />
+    <CornerBrace position="br" />
+
+    <div class="footer-inner">
       <div class="footer-brand">
-        <img src="/favicon.svg" alt="" width="24" height="24" />
-        <p>The trust layer for AI agents.</p>
+        <a href="/" class="brand-link" aria-label="FunctionFly Home">
+          <div class="brand-icon">
+            <img src="/favicon.svg" alt="" width="28" height="28" />
+          </div>
+          <span class="brand-name">FunctionFly</span>
+        </a>
+        <p class="brand-tagline">{t(currentLang, 'footer.tagline')}</p>
+        <div class="brand-status">
+          <span class="status-dot"></span>
+          <span class="status-text">{t(currentLang, 'footer.systemsOperational')}</span>
+        </div>
       </div>
+
       <div class="footer-links">
         <div class="footer-column">
-          <h4>Product</h4>
-          <a href={`${DOCS_ORIGIN}/`}>Documentation</a>
-          <a href="/registry">Function Registry</a>
-          <a href="/trust">Trust layer</a>
-          <a href="/state-fabric">State Fabric</a>
-          <a href="/for-agents">For AI agents</a>
+          <h4 class="column-title">{t(currentLang, 'footer.columnProduct')}</h4>
+          <a href={`${DOCS_ORIGIN}/`}>{t(currentLang, 'footer.documentation')}</a>
+          <a href="/registry">{t(currentLang, 'footer.functionRegistry')}</a>
+          <a href="/trust">{t(currentLang, 'footer.trustLayer')}</a>
+          <a href="/state-fabric">{t(currentLang, 'footer.stateFabric')}</a>
+          <a href="/for-agents">{t(currentLang, 'footer.forAIAgents')}</a>
           <a href="/mcp">MCP</a>
-          <a href="/plans">Plans</a>
-          <a href="/pricing">Pricing</a>
-          <a href="/changelog">Changelog</a>
+          <a href="/pricing">{t(currentLang, 'nav.pricing')}</a>
+          <a href="/changelog">{t(currentLang, 'footer.changelog')}</a>
         </div>
+
         <div class="footer-column">
-          <h4>Developers</h4>
-          <a href={`${DOCS_ORIGIN}/api`}>API Reference</a>
-          <a href={`${DOCS_ORIGIN}/sdks`}>SDKs</a>
-          <a href={`${DOCS_ORIGIN}/openapi`}>OpenAPI Spec</a>
-          <a href={`${DOCS_ORIGIN}/sandbox`}>Sandbox</a>
-          <a href={`${STATUS_ORIGIN}`} target="_blank" rel="noopener">Status</a>
-          <a href="/rss.xml">RSS Feed</a>
+          <h4 class="column-title">{t(currentLang, 'footer.columnDevelopers')}</h4>
+          <a href={`${DOCS_ORIGIN}/api`}>{t(currentLang, 'footer.apiReference')}</a>
+          <a href={`${DOCS_ORIGIN}/sdks`}>{t(currentLang, 'footer.sdks')}</a>
+          <a href={`${DOCS_ORIGIN}/openapi`}>{t(currentLang, 'footer.openApiSpec')}</a>
+          <a href={`${DOCS_ORIGIN}/sandbox`}>{t(currentLang, 'footer.sandbox')}</a>
+          <a href={STATUS_ORIGIN} target="_blank" rel="noopener">{t(currentLang, 'footer.status')}</a>
+          <a href="/rss.xml">{t(currentLang, 'footer.rssFeed')}</a>
         </div>
+
         <div class="footer-column">
-          <h4>MCP</h4>
-          <a href={`${DOCS_ORIGIN}/mcp`}>MCP Docs</a>
-          <a href={`${DOCS_ORIGIN}/mcp/publish-mcp`}>Publish a Function</a>
-          <a href={`${DOCS_ORIGIN}/mcp/server`}>MCP Server</a>
-          <a href={`${DOCS_ORIGIN}/mcp/manifest`}>Manifest Spec</a>
+          <h4 class="column-title">{t(currentLang, 'footer.columnMCP')}</h4>
+          <a href={`${DOCS_ORIGIN}/mcp`}>{t(currentLang, 'footer.mcpDocs')}</a>
+          <a href={`${DOCS_ORIGIN}/mcp/publish-mcp`}>{t(currentLang, 'footer.publishFunction')}</a>
+          <a href={`${DOCS_ORIGIN}/mcp/server`}>{t(currentLang, 'footer.mcpServer')}</a>
+          <a href={`${DOCS_ORIGIN}/mcp/manifest`}>{t(currentLang, 'footer.manifestSpec')}</a>
         </div>
+
         <div class="footer-column">
-          <h4>Company</h4>
-          <a href="/about">About</a>
-          <a href={BLOG_ORIGIN}>Blog</a>
-          <a href="/careers">Careers</a>
-          <a href="/contact">Contact</a>
-          <a href="/partnerships">Partnerships</a>
+          <h4 class="column-title">{t(currentLang, 'footer.columnCompany')}</h4>
+          <a href="/about">{t(currentLang, 'footer.aboutLink')}</a>
+          <a href={BLOG_ORIGIN}>{t(currentLang, 'footer.blog')}</a>
+          <a href="/careers">{t(currentLang, 'footer.careersLink')}</a>
+          <a href="/contact">{t(currentLang, 'footer.contactLink')}</a>
+          <a href="/partnerships">{t(currentLang, 'footer.partnerships')}</a>
         </div>
+
         <div class="footer-column">
-          <h4>Community</h4>
+          <h4 class="column-title">{t(currentLang, 'footer.columnCommunity')}</h4>
           <a href="https://discord.gg/functionfly" target="_blank" rel="noopener">Discord</a>
           <a href="https://github.com/functionfly/functionfly/discussions" target="_blank" rel="noopener">GitHub Discussions</a>
           <a href="https://x.com/functionflycom" target="_blank" rel="noopener">X (Twitter)</a>
           <a href="https://linkedin.com/company/functionfly" target="_blank" rel="noopener">LinkedIn</a>
         </div>
+
         <div class="footer-column">
-          <h4>Legal & Security</h4>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
+          <h4 class="column-title">{t(currentLang, 'footer.columnLegal')}</h4>
+          <a href="/privacy">{t(currentLang, 'footer.privacyLink')}</a>
+          <a href="/terms">{t(currentLang, 'footer.termsLink')}</a>
+          <a href="/dpa">{t(currentLang, 'footer.dpa')}</a>
+          <a href="/cookie-policy">{t(currentLang, 'footer.cookiePolicy')}</a>
           <a href="/sla">SLA</a>
-          <a href="/security">Security</a>
-          <a href="/compliance">Compliance</a>
+          <a href="/security">{t(currentLang, 'footer.security')}</a>
+          <a href="/vulnerability">{t(currentLang, 'footer.vulnerabilityDisclosure')}</a>
+          <a href="/compliance">{t(currentLang, 'footer.compliance')}</a>
         </div>
       </div>
     </div>
+
     <div class="footer-bottom">
       <div class="footer-bottom-left">
-        <p>&copy; {new Date().getFullYear()} FunctionFly LLC (d/b/a FunctionFly). All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} FunctionFly LLC (d/b/a FunctionFly). {t(currentLang, 'footer.copyright')}</p>
+        <div class="footer-lang-picker">
+          <span class="footer-lang-label">{t(currentLang, 'language.title')}</span>
+          <LanguagePicker currentLang={currentLang} locales={locales} />
+        </div>
       </div>
       <div class="footer-bottom-right">
         <div class="footer-legal">
-          <a href="/terms">Terms</a>
-          <a href="/privacy">Privacy</a>
+          <a href="/terms">{t(currentLang, 'footer.termsLink')}</a>
+          <a href="/privacy">{t(currentLang, 'footer.privacyLink')}</a>
           <a href="/sla">SLA</a>
         </div>
         <div class="footer-social">
@@ -92,30 +123,48 @@ import { SITE_ORIGIN, DOCS_ORIGIN, BLOG_ORIGIN, STATUS_ORIGIN } from '../config'
   </div>
 </footer>
 
-<style is:global>
+<style>
   .footer {
-    background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.85);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid var(--color-border);
-    padding: 2.5rem 2rem 1.5rem;
+    position: relative;
+    padding: var(--space-8) var(--space-4) var(--space-6);
   }
 
-  [data-theme='light'] .footer {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(12px);
-    border-top: 1px solid rgba(99, 102, 241, 0.12);
+  @media (min-width: 960px) {
+    .footer {
+      padding: var(--space-9) var(--space-7) var(--space-7);
+    }
   }
 
-  .footer-content {
-    max-width: 1200px;
+  .footer-chamber {
+    position: relative;
+    max-width: 1180px;
     margin: 0 auto;
+    background:
+      radial-gradient(ellipse 140% 100% at 15% 0%, var(--glass-tint), transparent 55%),
+      var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-chamber);
+    padding: var(--space-7);
   }
 
-  .footer-top {
+  @media (max-width: 640px) {
+    .footer-chamber {
+      padding: var(--space-5);
+    }
+  }
+
+  .footer-inner {
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 3rem;
+    gap: var(--space-8);
+    margin-bottom: var(--space-7);
+  }
+
+  @media (max-width: 959px) {
+    .footer-inner {
+      flex-direction: column;
+      gap: var(--space-6);
+    }
   }
 
   .footer-brand {
@@ -123,168 +172,214 @@ import { SITE_ORIGIN, DOCS_ORIGIN, BLOG_ORIGIN, STATUS_ORIGIN } from '../config'
     min-width: 180px;
   }
 
-  .footer-brand img {
-    margin-bottom: 0.5rem;
+  .brand-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    text-decoration: none;
+    margin-bottom: var(--space-3);
   }
 
-  .footer-brand p {
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
+  .brand-link:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: var(--radius);
+  }
+
+  .brand-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .brand-name {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .brand-tagline {
+    font-size: 13px;
+    color: var(--text-dim);
     line-height: 1.5;
-    opacity: 0.7;
+    margin-bottom: var(--space-4);
   }
 
-  [data-theme='light'] .footer-brand p {
-    color: #6B7280;
-    opacity: 0.8;
+  .brand-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--status-ok);
+    box-shadow: 0 0 6px rgba(143, 255, 208, 0.6);
+  }
+
+  .status-text {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
   }
 
   .footer-links {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: clamp(1.5rem, 3vw, 2.5rem);
+    gap: var(--space-5);
     flex: 1;
+  }
+
+  @media (max-width: 1199px) {
+    .footer-links {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 639px) {
+    .footer-links {
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-5) var(--space-4);
+    }
+  }
+
+  @media (max-width: 479px) {
+    .footer-links {
+      grid-template-columns: 1fr;
+    }
   }
 
   .footer-column {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
-  .footer-column h4 {
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: var(--color-text-muted);
-    letter-spacing: 0.02em;
+  .column-title {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-  }
-
-  [data-theme='light'] .footer-column h4 {
-    color: #64748b;
+    color: var(--text-faint);
+    margin-bottom: var(--space-1);
   }
 
   .footer-column a {
-    color: var(--color-text-muted);
-    font-size: 0.8rem;
-    transition: color 0.15s;
+    font-size: 13px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-out);
     padding: 0;
-    margin: 0;
+    line-height: 1.5;
   }
 
   .footer-column a:hover {
-    color: var(--color-text);
+    color: var(--text);
   }
 
-  [data-theme='light'] .footer-column a:hover {
-    color: var(--color-text);
+  .footer-column a:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: var(--radius-sm);
   }
 
   .footer-bottom {
-    max-width: 1200px;
-    margin: 1.5rem auto 0;
-    padding-top: 1rem;
-    border-top: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--panel-edge);
   }
 
-  .footer-bottom-left {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
+  @media (max-width: 639px) {
+    .footer-bottom {
+      flex-direction: column;
+      gap: var(--space-4);
+      text-align: center;
+    }
   }
 
-  .footer-bottom p {
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-    opacity: 0.6;
+  .footer-bottom-left p {
+    font-size: 12px;
+    color: var(--text-faint);
+    margin: 0;
   }
 
   .footer-bottom-right {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: var(--space-5);
   }
 
   .footer-legal {
     display: flex;
-    gap: 1rem;
+    gap: var(--space-4);
   }
 
   .footer-legal a {
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-    transition: color 0.15s;
+    font-size: 12px;
+    color: var(--text-faint);
+    text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-out);
   }
 
   .footer-legal a:hover {
-    color: var(--color-text);
+    color: var(--text-dim);
+  }
+
+  .footer-legal a:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: var(--radius-sm);
   }
 
   .footer-social {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--space-2);
   }
 
   .footer-social a {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    color: var(--color-text-muted);
-    transition: color 0.15s, background 0.15s;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    color: var(--text-dim);
+    transition:
+      color var(--duration-fast) var(--ease-out),
+      background var(--duration-fast) var(--ease-out);
   }
 
   .footer-social a:hover {
-    color: var(--color-text);
-    background: rgba(var(--ff-tarmac-rgb, 13, 17, 23), 0.3);
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.04);
   }
 
-  [data-theme='light'] .footer-social a:hover {
-    background: rgba(99, 102, 241, 0.08);
+  .footer-social a:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
   }
 
-  @media (max-width: 768px) {
-    .footer-top {
-      flex-direction: column;
-      gap: 2rem;
-    }
-
-    .footer-links {
-      grid-template-columns: repeat(3, 1fr);
-      gap: 1.5rem;
-    }
-
-    .footer-bottom {
-      flex-direction: column;
-      gap: 1rem;
-      text-align: center;
-    }
-
-    .footer-bottom-left {
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .footer-bottom-right {
-      flex-direction: column;
-      gap: 0.75rem;
-    }
+  .footer-lang-picker {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
-  @media (max-width: 640px) {
-    .footer {
-      padding: 2rem 1rem 1.5rem;
-    }
-
-    .footer-links {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.5rem;
-    }
+  .footer-lang-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
   }
 </style>

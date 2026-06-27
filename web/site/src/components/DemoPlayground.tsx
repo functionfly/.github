@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import './DemoPlayground.css';
+import '../styles/sc-main.css';
 
 type DemoFunction = {
   name: string;

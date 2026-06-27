@@ -17,11 +17,12 @@ export function CodeBlock({ children, language = 'text' }: CodeBlockProps) {
   };
 
   return (
-    <div className="code-block">
+    <div className="code-block" data-language={language}>
       <pre className="code-block__pre">
         <code>{children}</code>
       </pre>
       <button
+        type="button"
         className="code-block__copy"
         onClick={handleCopy}
         aria-label="Copy code"

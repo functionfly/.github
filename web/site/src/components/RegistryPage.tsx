@@ -1,6 +1,17 @@
 import React from 'react'
-import { API_ORIGIN, DOCS_ORIGIN, AUTH_ORIGIN } from '../config'
-import './homepage.css'
+import { AUTH_ORIGIN, DOCS_ORIGIN } from '../config'
+import '../styles/sc-main.css';
+import { PageGrid } from './containment/PageGrid'
+import { Chamber } from './containment/Chamber'
+import { CornerBrace } from './containment/CornerBrace'
+import { TrustSeal } from './containment/TrustSeal'
+import { SealedButton } from './containment/SealedButton'
+import { FrameButton } from './containment/FrameButton'
+import { Card } from './containment/Card'
+import { StatusPill } from './containment/StatusPill'
+import { CodeBlock } from './containment/CodeBlock'
+import { GaugeStrip } from './containment/GaugeStrip'
+import { Gauge, GaugeValue, GaugeLabel } from './containment/Gauge'
 
 interface ToolMeta {
   author: string
@@ -20,9 +31,7 @@ interface ToolItem {
   description: string
   inputSchema: unknown
   annotations: { category?: string; readOnlyHint?: boolean; openWorldHint?: boolean }
-  _meta: {
-    functionfly: ToolMeta
-  }
+  _meta: { functionfly: ToolMeta }
 }
 
 interface RegistryStats {
@@ -33,11 +42,7 @@ interface RegistryStats {
   runtimes: number
 }
 
-interface Category {
-  slug: string
-  label: string
-  count: number
-}
+interface Category { slug: string; label: string; count: number }
 
 interface RegistryPageProps {
   stats: RegistryStats | null
@@ -55,10 +60,10 @@ const defaultCategories: Category[] = [
 ]
 
 const trustTierColors: Record<string, { bg: string; border: string; text: string; label: string }> = {
-  L1: { bg: 'rgba(100, 116, 139, 0.15)', border: 'rgba(100, 116, 139, 0.3)', text: '#64748b', label: 'Automated' },
+  L1: { bg: 'rgba(100, 116, 139, 0.15)', border: 'rgba(100, 116, 139, 0.3)', text: '#94a3b8', label: 'Automated' },
   L2: { bg: 'rgba(59, 130, 246, 0.15)', border: 'rgba(59, 130, 246, 0.3)', text: '#3b82f6', label: 'Security Scanned' },
   L3: { bg: 'rgba(139, 92, 246, 0.15)', border: 'rgba(139, 92, 246, 0.3)', text: '#8b5cf6', label: 'Code Reviewed' },
-  L4: { bg: 'rgba(16, 185, 129, 0.15)', border: 'rgba(16, 185, 129, 0.3)', text: '#10b981', label: 'Certified' },
+  L4: { bg: 'rgba(143, 255, 208, 0.15)', border: 'rgba(143, 255, 208, 0.3)', text: '#8fffd0', label: 'Certified' },
 }
 
 function formatNumber(num: number): string {
@@ -67,6 +72,23 @@ function formatNumber(num: number): string {
   if (num >= 1000) return `${(num / 1000).toFixed(1)}K+`
   return num.toString()
 }
+
+const Container: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div style={{ maxWidth: 1180, margin: '0 auto', padding: '0 var(--space-4)' }}>{children}</div>
+)
+const Section: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <section style={{ padding: 'var(--space-8) 0', background: 'var(--bg)' }}>{children}</section>
+)
+const SectionTitle: React.FC<{ children: React.ReactNode; lead?: React.ReactNode }> = ({ children, lead }) => (
+  <div style={{ textAlign: 'center', marginBottom: 'var(--space-7)' }}>
+    <h2 style={{
+      fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700,
+      letterSpacing: '-0.005em', color: 'var(--text)',
+      marginBottom: lead ? 'var(--space-4)' : 0,
+    }}>{children}</h2>
+    {lead && <p style={{ color: 'var(--text-dim)', maxWidth: 640, margin: '0 auto', lineHeight: 1.6 }}>{lead}</p>}
+  </div>
+)
 
 const RegistryPage: React.FC<RegistryPageProps> = ({ stats, trendingTools, categories }) => {
   const displayCategories = categories.length > 0 ? categories : defaultCategories
@@ -77,144 +99,102 @@ const RegistryPage: React.FC<RegistryPageProps> = ({ stats, trendingTools, categ
   const runtimes = stats?.runtimes ?? 5
 
   return (
-    <div className="ff-homepage">
-      <section className="ff-hero-section ff-registry-hero">
-        <div className="ff-hero-bg-art" aria-hidden="true">
-          <div className="ff-bg-grid" />
-          <div className="ff-bg-glow ff-bg-glow--1" />
-          <div className="ff-bg-glow ff-bg-glow--2" />
-        </div>
-        <div className="ff-hero-inner">
-          <div className="ff-hero-eyebrow">
-            <span className="ff-pulse-dot" />
-            <span>Model Context Protocol</span>
-          </div>
-          <h1 className="ff-hero-headline">
-            The default directory of<br />
-            <span className="ff-hero-accent">AI agent functions</span>
-          </h1>
-          <p className="ff-hero-sub">
-            Searchable, trust-scored directory of MCP-compatible functions. Install in one click for Claude Desktop, Cursor, and VS Code.
-          </p>
+    <>
+      <PageGrid />
 
-          <div className="ff-registry-search">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"/>
-              <path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Search functions..." className="ff-registry-search-input" />
-            <div className="ff-registry-search-badge">{formatNumber(totalFunctions)} functions</div>
-          </div>
-        </div>
-      </section>
-
-      <div className="ff-registry-stats">
-        <div className="ff-container">
-          <div className="ff-stats-row">
-            <div className="ff-stat-item">
-              <span className="ff-stat-value">{formatNumber(verifiedFunctions)}</span>
-              <span className="ff-stat-label">Verified Functions</span>
+      <Section>
+        <Container>
+          <Chamber variant="ribs">
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: 'var(--status-ok)',
+              marginBottom: 'var(--space-5)',
+              display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-ok)', boxShadow: '0 0 12px var(--status-ok)' }} />
+              Model Context Protocol
             </div>
-            <div className="ff-stat-divider" />
-            <div className="ff-stat-item">
-              <span className="ff-stat-value">{totalExecutions}</span>
-              <span className="ff-stat-label">Total Executions</span>
-            </div>
-            <div className="ff-stat-divider" />
-            <div className="ff-stat-item">
-              <span className="ff-stat-value">{trustTiers}</span>
-              <span className="ff-stat-label">Trust Tiers</span>
-            </div>
-            <div className="ff-stat-divider" />
-            <div className="ff-stat-item">
-              <span className="ff-stat-value">{runtimes}</span>
-              <span className="ff-stat-label">Language Runtimes</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <section className="ff-section">
-        <div className="ff-container">
-          <div className="ff-about-header">
-            <div className="ff-section-tag">
-              <span className="ff-tag-rule" />
-              <span>Features</span>
-            </div>
-            <h2 className="ff-section-title">Everything you need to build with agents</h2>
-            <p className="ff-section-desc">
-              The Function Registry gives AI agents access to verified, trust-scored functions they can call with confidence.
+            <h1 style={{
+              fontFamily: 'var(--font-display)', fontSize: '58px', fontWeight: 700,
+              letterSpacing: '-0.01em', lineHeight: 1.08, color: 'var(--text)',
+              marginBottom: 'var(--space-5)',
+            }}>
+              The default directory of<br />
+              <span style={{ color: 'var(--accent)' }}>AI agent functions</span>
+            </h1>
+            <p style={{ fontSize: 17, lineHeight: 1.6, color: 'var(--text-dim)', maxWidth: 720, marginBottom: 'var(--space-6)' }}>
+              Searchable, trust-scored directory of MCP-compatible functions. Install in one click for Claude Desktop, Cursor, and VS Code.
             </p>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap', marginBottom: 'var(--space-6)' }}>
+              <SealedButton onClick={() => { window.location.href = `${AUTH_ORIGIN}/signup` }}>Get started free</SealedButton>
+              <FrameButton onClick={() => { window.location.href = `${DOCS_ORIGIN}/mcp` }}>Read the docs</FrameButton>
+              <StatusPill status="live" label={`${formatNumber(totalFunctions)} functions live`} />
+            </div>
+          </Chamber>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <Chamber>
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <GaugeStrip>
+              <Gauge>
+                <GaugeValue>{formatNumber(verifiedFunctions)}</GaugeValue>
+                <GaugeLabel>Verified Functions</GaugeLabel>
+              </Gauge>
+              <Gauge>
+                <GaugeValue>{totalExecutions}</GaugeValue>
+                <GaugeLabel>Total Executions</GaugeLabel>
+              </Gauge>
+              <Gauge>
+                <GaugeValue>{trustTiers.toString()}</GaugeValue>
+                <GaugeLabel>Trust Tiers</GaugeLabel>
+              </Gauge>
+              <Gauge>
+                <GaugeValue>{runtimes.toString()}</GaugeValue>
+                <GaugeLabel>Language Runtimes</GaugeLabel>
+              </Gauge>
+            </GaugeStrip>
+          </Chamber>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <SectionTitle lead="The Function Registry gives AI agents access to verified, trust-scored functions they can call with confidence.">
+            Everything you need to build with agents
+          </SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
+            {[
+              { n: '01', t: 'Trust Scores', d: 'Every function has a trust score computed from real execution outcomes. Functions that run successfully earn higher scores.', c: 'var(--status-ok)' },
+              { n: '02', t: 'Sandbox Execution', d: 'Every function runs in an isolated WebAssembly sandbox. No filesystem access, no network egress unless explicitly granted.', c: 'var(--status-pending)' },
+              { n: '03', t: 'Verification Levels', d: 'From automated L1 checks to human attestation at L4, each function\'s trust tier is clearly displayed.', c: 'var(--accent)' },
+              { n: '04', t: 'One-Click Install', d: 'Add functions to your MCP server configuration with a single click. Works with Claude Desktop, Cursor, and VS Code.', c: 'var(--foil-b, #d9c4ff)' },
+            ].map((s) => (
+              <Card key={s.n}>
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
+                  letterSpacing: '0.08em', color: 'var(--text-faint)', marginBottom: 'var(--space-3)',
+                }}>{s.n}</div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>
+                  {s.t}
+                </h3>
+                <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.6 }}>{s.d}</p>
+              </Card>
+            ))}
           </div>
-
-          <div className="ff-about-steps">
-            <div className="ff-about-step">
-              <div className="ff-about-step-num">01</div>
-              <div className="ff-about-step-body">
-                <div className="ff-about-step-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 12l2 2 4-4"/><path d="M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
-                </div>
-                <h3>Trust Scores</h3>
-                <p>
-                  Every function has a trust score computed from real execution outcomes. Functions that run successfully earn higher scores.
-                </p>
-              </div>
-            </div>
-
-            <div className="ff-about-step">
-              <div className="ff-about-step-num">02</div>
-              <div className="ff-about-step-body">
-                <div className="ff-about-step-icon ff-about-step-icon--green">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
-                </div>
-                <h3>Sandbox Execution</h3>
-                <p>
-                  Every function runs in an isolated WebAssembly sandbox. No filesystem access, no network egress unless explicitly granted.
-                </p>
-              </div>
-            </div>
-
-            <div className="ff-about-step">
-              <div className="ff-about-step-num">03</div>
-              <div className="ff-about-step-body">
-                <div className="ff-about-step-icon ff-about-step-icon--amber">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                </div>
-                <h3>Verification Levels</h3>
-                <p>
-                  From automated L1 checks to human attestation at L4, each function's trust tier is clearly displayed.
-                </p>
-              </div>
-            </div>
-
-            <div className="ff-about-step">
-              <div className="ff-about-step-num">04</div>
-              <div className="ff-about-step-body">
-                <div className="ff-about-step-icon ff-about-step-icon--purple">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
-                </div>
-                <h3>One-Click Install</h3>
-                <p>
-                  Add functions to your MCP server configuration with a single click. Works with Claude Desktop, Cursor, and VS Code.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
       {trendingTools.length > 0 && (
-        <section className="ff-section ff-section--alt">
-          <div className="ff-container">
-            <div className="ff-about-header">
-              <div className="ff-section-tag">
-                <span className="ff-tag-rule" />
-                <span>Trending</span>
-              </div>
-              <h2 className="ff-section-title">Popular this week</h2>
-            </div>
-
-            <div className="ff-trending-grid">
+        <Section>
+          <Container>
+            <SectionTitle>Popular this week</SectionTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-4)' }}>
               {trendingTools.slice(0, 4).map((fn, i) => {
                 const tier = fn._meta?.functionfly?.trust_tier ?? 'L1'
                 const tierColor = trustTierColors[tier] ?? trustTierColors.L1
@@ -222,119 +202,106 @@ const RegistryPage: React.FC<RegistryPageProps> = ({ stats, trendingTools, categ
                 const author = fn._meta?.functionfly?.author ?? 'unknown'
                 const fnName = fn._meta?.functionfly?.name ?? fn.name
                 const fnTitle = fn.title || fnName
-
                 return (
-                  <a key={fn.name} href={`/@${author}/v1/fx/${fnName}`} className="ff-trending-card">
-                    <div className="ff-trending-rank">#{i + 1}</div>
-                    <div className="ff-trending-content">
-                      <div className="ff-trending-header">
-                        <h3 className="ff-trending-title">{fnTitle}</h3>
-                        <span
-                          className="ff-trending-tier"
-                          style={{
-                            background: tierColor.bg,
-                            borderColor: tierColor.border,
-                            color: tierColor.text,
-                          }}
-                        >
-                          {tier} · {tierColor.label}
-                        </span>
+                  <Card key={fn.name}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
+                      <div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', marginBottom: 4 }}>#{i + 1}</div>
+                        <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{fnTitle}</h3>
                       </div>
-                      <p className="ff-trending-author">@{author}</p>
-                      <div className="ff-trending-stats">
-                        <span className="ff-trending-score">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M9 12l2 2 4-4"/>
-                          </svg>
-                          {(trustScore * 100).toFixed(1)}%
-                        </span>
-                      </div>
+                      <span style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 600,
+                        padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                        background: tierColor.bg, border: `1px solid ${tierColor.border}`, color: tierColor.text,
+                        textTransform: 'uppercase', letterSpacing: '0.06em',
+                      }}>{tier} · {tierColor.label}</span>
                     </div>
-                  </a>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-dim)', marginBottom: 'var(--space-3)' }}>@{author}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <TrustSeal size="small" label={`${(trustScore * 100).toFixed(1)}%`} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--status-ok)' }}>{(trustScore * 100).toFixed(1)}% trust</span>
+                    </div>
+                  </Card>
                 )
               })}
             </div>
-          </div>
-        </section>
+          </Container>
+        </Section>
       )}
 
-      <section className="ff-section">
-        <div className="ff-container">
-          <div className="ff-about-header">
-            <div className="ff-section-tag">
-              <span className="ff-tag-rule" />
-              <span>Trust Tiers</span>
-            </div>
-            <h2 className="ff-section-title">Verification levels explained</h2>
-          </div>
-
-          <div className="ff-tiers-grid">
+      <Section>
+        <Container>
+          <SectionTitle>Verification levels explained</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-4)' }}>
             {Object.entries(trustTierColors).map(([tier, colors]) => (
-              <div key={tier} className="ff-tier-card">
-                <div
-                  className="ff-tier-badge"
-                  style={{ background: colors.bg, borderColor: colors.border, color: colors.text }}
-                >
-                  {tier}
-                </div>
-                <h3>{colors.label}</h3>
-                <p>
+              <Card key={tier}>
+                <div style={{
+                  display: 'inline-block',
+                  fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700,
+                  padding: '4px 10px', borderRadius: 'var(--radius-sm)',
+                  background: colors.bg, border: `1px solid ${colors.border}`, color: colors.text,
+                  marginBottom: 'var(--space-3)',
+                }}>{tier}</div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>{colors.label}</h3>
+                <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.6 }}>
                   {tier === 'L1' && 'Automated format and schema validation. Every function starts here.'}
                   {tier === 'L2' && 'Security scan for risky behaviors and capability constraints.'}
                   {tier === 'L3' && 'Human code review of safety-relevant aspects.'}
                   {tier === 'L4' && 'Platform-verified with signed attestation. Highest trust.'}
                 </p>
-              </div>
+              </Card>
             ))}
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
-      <section className="ff-section ff-section--alt">
-        <div className="ff-container">
-          <div className="ff-about-header">
-            <div className="ff-section-tag">
-              <span className="ff-tag-rule" />
-              <span>Categories</span>
-            </div>
-            <h2 className="ff-section-title">Browse by category</h2>
-          </div>
-
-          <div className="ff-categories-grid">
+      <Section>
+        <Container>
+          <SectionTitle>Browse by category</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-3)' }}>
             {displayCategories.map((cat) => (
-              <a key={cat.slug} href={`/registry?category=${cat.slug}`} className="ff-category-card">
-                <span className="ff-category-name">{cat.label}</span>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
+              <a key={cat.slug} href={`/registry?category=${cat.slug}`} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: 'var(--space-4) var(--space-5)',
+                background: 'var(--panel-raised)',
+                border: '1px solid var(--panel-edge)',
+                borderRadius: 'var(--radius)',
+                textDecoration: 'none', color: 'var(--text)',
+                transition: 'border-color var(--duration-fast) var(--ease-out)',
+              }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14 }}>{cat.label}</span>
+                <span style={{ color: 'var(--text-faint)' }}>→</span>
               </a>
             ))}
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
-      <section className="ff-section">
-        <div className="ff-container">
-          <div className="ff-about-header">
-            <div className="ff-section-tag">
-              <span className="ff-tag-rule" />
-              <span>Quick Start</span>
-            </div>
-            <h2 className="ff-section-title">Get started in minutes</h2>
-          </div>
-
-          <div className="ff-install-steps">
-            <div className="ff-install-step">
-              <div className="ff-install-step-num">1</div>
-              <div className="ff-install-step-content">
-                <h3>Install the MCP server</h3>
-                <p>Add FunctionFly to your MCP server configuration:</p>
-                <div className="ff-code-block">
-                  <div className="ff-code-header">
-                    <span className="ff-code-lang">JSON</span>
-                    <button className="ff-code-copy">Copy</button>
+      <Section>
+        <Container>
+          <SectionTitle>Get started in minutes</SectionTitle>
+          <Chamber>
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-6)', alignItems: 'start' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+                  <div style={{
+                    flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid var(--accent)', borderRadius: '50%',
+                    fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--accent)',
+                  }}>1</div>
+                  <div>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>
+                      Install the MCP server
+                    </h3>
+                    <p style={{ color: 'var(--text-dim)', fontSize: 14, marginBottom: 'var(--space-3)' }}>
+                      Add FunctionFly to your MCP server configuration:
+                    </p>
                   </div>
-                  <pre className="ff-install-code">{`{
+                </div>
+                <CodeBlock language="json">
+{`{
   "mcpServers": {
     "functionfly": {
       "command": "npx",
@@ -344,52 +311,68 @@ const RegistryPage: React.FC<RegistryPageProps> = ({ stats, trendingTools, categ
       }
     }
   }
-}`}</pre>
+}`}
+                </CodeBlock>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+                  <div style={{
+                    flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid var(--accent)', borderRadius: '50%',
+                    fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--accent)',
+                  }}>2</div>
+                  <div>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Browse the registry</h3>
+                    <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.5 }}>
+                      Explore trust-scored functions and add them to your agent configuration with one click.
+                    </p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+                  <div style={{
+                    flexShrink: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '1px solid var(--accent)', borderRadius: '50%',
+                    fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--accent)',
+                  }}>3</div>
+                  <div>
+                    <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Start building</h3>
+                    <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.5 }}>
+                      Your agent can now call verified functions with full trust scores and execution tracking.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
+          </Chamber>
+        </Container>
+      </Section>
 
-            <div className="ff-install-step">
-              <div className="ff-install-step-num">2</div>
-              <div className="ff-install-step-content">
-                <h3>Browse the registry</h3>
-                <p>Explore trust-scored functions and add them to your agent configuration with one click.</p>
+      <Section>
+        <Container>
+          <Chamber>
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{
+                fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700,
+                letterSpacing: '-0.005em', color: 'var(--text)',
+                marginBottom: 'var(--space-4)',
+              }}>
+                Ready to build with<br />
+                <span style={{ color: 'var(--accent)' }}>trust infrastructure</span>?
+              </h2>
+              <p style={{ fontSize: 17, color: 'var(--text-dim)', margin: '0 auto var(--space-6)', lineHeight: 1.6 }}>
+                Join thousands of developers building reliable AI agent applications.
+              </p>
+              <div style={{ display: 'inline-flex', gap: 'var(--space-3)', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <SealedButton onClick={() => { window.location.href = `${AUTH_ORIGIN}/signup` }}>Create free account</SealedButton>
+                <FrameButton onClick={() => { window.location.href = `${DOCS_ORIGIN}/mcp` }}>Read the docs</FrameButton>
               </div>
             </div>
-
-            <div className="ff-install-step">
-              <div className="ff-install-step-num">3</div>
-              <div className="ff-install-step-content">
-                <h3>Start building</h3>
-                <p>Your agent can now call verified functions with full trust scores and execution tracking.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ff-section ff-section--cta">
-        <div className="ff-container">
-          <div className="ff-cta">
-            <h2 className="ff-cta-title">
-              Ready to build with<br />
-              <span className="ff-cta-accent">trust infrastructure</span>?
-            </h2>
-            <p className="ff-cta-desc">
-              Join thousands of developers building reliable AI agent applications.
-            </p>
-            <div className="ff-cta-actions">
-              <a className="ff-btn ff-btn-primary" href={`${AUTH_ORIGIN}/signup`}>
-                Create free account
-              </a>
-              <a className="ff-btn ff-btn-outline" href={`${DOCS_ORIGIN}/mcp`}>
-                Read the docs
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
+          </Chamber>
+        </Container>
+      </Section>
+    </>
   )
 }
 

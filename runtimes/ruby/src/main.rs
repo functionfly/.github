@@ -44,6 +44,19 @@ impl Default for Args {
 
 impl Args {
     fn from_env() -> Self {
+        let is_production = std::env::var("ENVIRONMENT")
+            .map(|v| v.eq_ignore_ascii_case("production"))
+            .unwrap_or(false);
+
+        // In production, sandbox is always enabled regardless of env var
+        let sandbox_enabled = if is_production {
+            true
+        } else {
+            std::env::var("SANDBOX_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                .to_lowercase() != "false"
+        };
+
         Self {
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "8092".to_string())
@@ -61,9 +74,7 @@ impl Args {
                 .unwrap_or_else(|_| "30".to_string())
                 .parse()
                 .unwrap_or(30),
-            sandbox_enabled: std::env::var("SANDBOX_ENABLED")
-                .unwrap_or_else(|_| "true".to_string())
-                .to_lowercase() != "false",
+            sandbox_enabled,
             nats_url: std::env::var("NATS_URL").ok(),
         }
     }
@@ -87,6 +98,22 @@ async fn main() -> anyhow::Result<()> {
         nats_url = ?args.nats_url,
         "Starting FunctionFly Ruby Runtime - Production Secure"
     );
+
+    let api_token = std::env::var("RUNTIME_API_TOKEN").ok().filter(|t| !t.is_empty());
+    let is_production = std::env::var("ENVIRONMENT")
+        .map(|v| v.eq_ignore_ascii_case("production"))
+        .unwrap_or(false);
+
+    if api_token.is_none() {
+        if is_production {
+            tracing::error!(
+                "RUNTIME_API_TOKEN is not set in production. \
+                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            );
+        } else {
+            warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
+        }
+    }
 
     let config = RuntimeConfig {
         limits: ExecutionLimits {
@@ -190,6 +217,7 @@ async fn main() -> anyhow::Result<()> {
         metrics,
         orchestrator,
         auditor,
+        api_token,
     ).await?;
 
     Ok(())

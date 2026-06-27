@@ -86,8 +86,17 @@ const isRtl = current.dir === 'rtl';
   </div>
 </div>
 
-<script define:vars={{ currentLang }}>
-  import { detectLanguage } from '../lib/i18n/languages';
+<script is:inline define:vars={{ currentLang }}>
+  const SUPPORTED_LANGS = ['en','es','fr','de','zh','ja','ko','pt','ar','ru','hi','nl','pl','tr','vi'];
+  function detectLanguage(acceptLanguage) {
+    if (!acceptLanguage) return 'en';
+    const parts = acceptLanguage.split(',').map((p) => p.trim().split(';')[0].toLowerCase());
+    for (const part of parts) {
+      const code = part.split('-')[0];
+      if (SUPPORTED_LANGS.includes(code)) return code;
+    }
+    return 'en';
+  }
 
   const browserLang = navigator.language ?? '';
   const detectedCode = detectLanguage(browserLang);

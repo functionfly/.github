@@ -61,6 +61,77 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+/* Navbar text - force white/black */
+.glass-navbar,
+.glass-navbar a,
+.glass-navbar span,
+.glass-navbar p,
+.glass-navbar h1,
+.glass-navbar h2,
+.glass-navbar h3,
+.glass-navbar h4,
+.glass-navbar h5,
+.glass-navbar h6 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme='light'] .glass-navbar,
+[data-theme='light'] .glass-navbar a,
+[data-theme='light'] .glass-navbar span,
+[data-theme='light'] .glass-navbar p,
+[data-theme='light'] .glass-navbar h1,
+[data-theme='light'] .glass-navbar h2,
+[data-theme='light'] .glass-navbar h3,
+[data-theme='light'] .glass-navbar h4,
+[data-theme='light'] .glass-navbar h5,
+[data-theme='light'] .glass-navbar h6 {
+  color: #0a0a0a !important;
+}
+
+/* Landing nav (uses bg-glass class) - force white/black text */
+.landing-nav.landing-nav,
+.landing-nav.landing-nav a,
+.landing-nav.landing-nav span,
+.landing-nav.landing-nav p,
+.landing-nav.landing-nav h1,
+.landing-nav.landing-nav h2,
+.landing-nav.landing-nav h3,
+.landing-nav.landing-nav h4,
+.landing-nav.landing-nav h5,
+.landing-nav.landing-nav h6,
+.landing-nav.landing-nav li,
+.landing-nav.landing-nav div,
+.landing-nav.landing-nav svg,
+.landing-nav.landing-nav .text-text-secondary,
+.landing-nav.landing-nav [class*="text-text"] {
+  color: #ffffff !important;
+}
+
+.landing-nav.landing-nav a:hover,
+.landing-nav.landing-nav .hover\:text-text-primary:hover {
+  color: #ffffff !important;
+  opacity: 0.8;
+}
+
+[data-theme='light'] .landing-nav.landing-nav,
+[data-theme='light'] .landing-nav.landing-nav a,
+[data-theme='light'] .landing-nav.landing-nav span,
+[data-theme='light'] .landing-nav.landing-nav p,
+[data-theme='light'] .landing-nav.landing-nav h1,
+[data-theme='light'] .landing-nav.landing-nav h2,
+[data-theme='light'] .landing-nav.landing-nav h3,
+[data-theme='light'] .landing-nav.landing-nav h4,
+[data-theme='light'] .landing-nav.landing-nav h5,
+[data-theme='light'] .landing-nav.landing-nav h6,
+[data-theme='light'] .landing-nav.landing-nav li,
+[data-theme='light'] .landing-nav.landing-nav div,
+[data-theme='light'] .landing-nav.landing-nav svg,
+[data-theme='light'] .landing-nav.landing-nav .text-text-secondary,
+[data-theme='light'] .landing-nav.landing-nav [class*="text-text"] {
+  color: #0a0a0a !important;
 }
 
 /* Glass Modal/Dialog */

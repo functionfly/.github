@@ -10,11 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { PLANS, STATE_FABRIC_PLANS } from '@/lib/constants';
+import { PLANS } from '@/lib/constants';
 import { Footer } from '@/pages/LandingPage/components';
 import { useAuthStore } from '@/stores/authStore';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Bot, CreditCard, Database, Mail, Shield, Zap } from 'lucide-react';
+import { ArrowLeft, Bot, CreditCard, Mail, Shield, Zap } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Confetti from 'react-confetti';
 import toast, { Toaster } from 'react-hot-toast';
@@ -27,10 +27,9 @@ import { CTASection } from './components/CTASection';
 import { FAQSection } from './components/FAQSection';
 import { FunctionPlanCard } from './components/FunctionPlanCard';
 import { FunctionsComparisonTable } from './components/FunctionsComparisonTable';
-import { StateFabricPricingSection } from './components/StateFabricPricingSection';
 import { BundleCTACard } from './components/BundleCTACard';
 
-type PricingTab = 'functions' | 'state-fabric' | 'agents';
+type PricingTab = 'functions' | 'agents';
 type BillingCycle = 'monthly' | 'annual';
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -42,7 +41,6 @@ export function PricingPage() {
   const { width, height } = useWindowSize();
   const TABS: { id: PricingTab; label: string; icon: typeof Zap }[] = [
     { id: 'functions', label: t("pricing:tabs.functions"), icon: Zap },
-    { id: 'state-fabric', label: t("pricing:tabs.stateFabric"), icon: Database },
     { id: 'agents', label: t("pricing:tabs.agents"), icon: Bot },
   ];
   const [showConfetti, setShowConfetti] = useState(false);
@@ -59,7 +57,7 @@ export function PricingPage() {
   const [checkoutInitiating, setCheckoutInitiating] = useState(false);
 
   // Auto-trigger checkout from marketing site URL params
-  // e.g. /pricing?tab=functions&plan=starter or /pricing?tab=state-fabric&plan=pro
+  // e.g. /pricing?tab=functions&plan=starter or /pricing?tab=agents&plan=pro
   const autoCheckoutTriggered = useRef(false);
   useEffect(() => {
     if (autoCheckoutTriggered.current) return;
@@ -69,7 +67,7 @@ export function PricingPage() {
     autoCheckoutTriggered.current = true;
 
     // Set the correct tab
-    if (tabParam === 'functions' || tabParam === 'state-fabric' || tabParam === 'agents') {
+    if (tabParam === 'functions' || tabParam === 'agents') {
       setActiveTab(tabParam);
     }
 
@@ -79,10 +77,6 @@ export function PricingPage() {
         // Functions plans
         starter: { planId: 'starter', priceId: PLANS.STARTER.priceId },
         professional: { planId: 'professional', priceId: PLANS.PROFESSIONAL.priceId },
-        // State Fabric plans
-        sf_starter: { planId: 'sf_starter', priceId: STATE_FABRIC_PLANS.STARTER.priceId },
-        sf_pro: { planId: 'sf_pro', priceId: STATE_FABRIC_PLANS.PRO.priceId },
-        sf_business: { planId: 'sf_business', priceId: STATE_FABRIC_PLANS.BUSINESS.priceId },
       };
       const entry = planMap[planParam];
       if (entry) {
@@ -369,18 +363,6 @@ export function PricingPage() {
                 ))}
               </div>
               <FunctionsComparisonTable />
-            </motion.div>
-          )}
-
-          {/* State Fabric tab */}
-          {activeTab === 'state-fabric' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="mb-16"
-            >
-              <StateFabricPricingSection compact onPlanSelect={handlePlanSelect} />
             </motion.div>
           )}
 

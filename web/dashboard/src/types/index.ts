@@ -67,6 +67,8 @@ export interface PublicUserProfile {
   profileNumber?: number;
   // Platform admin role (super_admin, admin, support) for badge display
   role?: string;
+  // Founder badge number for permanent founder members
+  founderNumber?: number;
 }
 
 export interface PublicRegistryFunction {
@@ -1175,6 +1177,8 @@ export interface UserProfile {
   profileNumber?: number;
   // Platform admin role (super_admin, admin, support, etc.)
   role?: string;
+  // Founder badge number for permanent founder members
+  founderNumber?: number;
 
   // Extended info for About tab
   experience?: {

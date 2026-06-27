@@ -1,9 +1,15 @@
 ---
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
+
 interface Props {
   query?: string;
 }
 
 const { query = '' } = Astro.props;
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <form class="search-box" action="/search" method="GET">
@@ -16,12 +22,12 @@ const { query = '' } = Astro.props;
       type="search"
       name="q"
       value={query}
-      placeholder="Search articles..."
+      placeholder={t('search.placeholder')}
       class="search-box__input"
-      aria-label="Search articles"
+      aria-label={t('search.label')}
     />
     <button type="submit" class="search-box__button">
-      Search
+      {t('search.button')}
     </button>
   </div>
 </form>

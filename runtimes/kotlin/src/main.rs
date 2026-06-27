@@ -116,6 +116,22 @@ async fn main() -> Result<()> {
     );
     tracing::info!("Listening on {}", args.addr);
 
+    let api_token = std::env::var("RUNTIME_API_TOKEN").ok().filter(|t| !t.is_empty());
+    let is_production = std::env::var("ENVIRONMENT")
+        .map(|v| v.eq_ignore_ascii_case("production"))
+        .unwrap_or(false);
+
+    if api_token.is_none() {
+        if is_production {
+            tracing::error!(
+                "RUNTIME_API_TOKEN is not set in production. \
+                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            );
+        } else {
+            tracing::warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
+        }
+    }
+
     // Build configuration
     let config = args.to_config();
 
@@ -182,7 +198,7 @@ async fn main() -> Result<()> {
     let metrics_for_server = MetricsCollector::new("kotlin-runtime");
 
     axum::serve(listener, kotlin_runtime::http_server::create_app(
-        AppState::new(executor, metrics_for_server, config_clone)
+        AppState::new(executor, metrics_for_server, config_clone).with_auth(api_token)
     ))
     .with_graceful_shutdown(shutdown)
     .await?;

@@ -4,6 +4,7 @@ import BlogGrid from '../../components/BlogGrid.astro';
 import CategoryFilter from '../../components/CategoryFilter.astro';
 import Pagination from '../../components/Pagination.astro';
 import { getPosts, getCategories } from '../../lib/api';
+import { getLocaleFromUrl, loadTranslations, createT } from '../../i18n/index';
 
 // Enable server-side rendering for this page
 export const prerender = false;
@@ -33,6 +34,10 @@ if (!currentCategory && posts.length === 0) {
 
 const categoryTitle = currentCategory?.title || slug.replace(/-/g, ' ');
 const categoryDescription = currentCategory?.description || `Posts in the ${categoryTitle} category.`;
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <BlogLayout 
@@ -45,7 +50,7 @@ const categoryDescription = currentCategory?.description || `Posts in the ${cate
         <header class="category-header">
           <a href="/" class="back-link">
             <span class="back-link-icon" aria-hidden="true">&larr;</span>
-            All Posts
+            {t('post.allPosts')}
           </a>
           <h1 class="category-title">
             <span class="gradient-text">{categoryTitle}</span>
@@ -59,21 +64,21 @@ const categoryDescription = currentCategory?.description || `Posts in the ${cate
           <aside class="category-sidebar">
             <CategoryFilter categories={categories} activeCategory={slug} />
           </aside>
-          
+
           <div class="category-main">
             {posts.length > 0 ? (
               <>
                 <BlogGrid posts={posts} />
-                <Pagination 
-                  currentPage={currentPage} 
-                  totalPages={totalPages} 
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
                   baseUrl={`/category/${slug}`}
                 />
               </>
             ) : (
               <div class="category-empty">
-                <p>No posts found in this category.</p>
-                <a href="/" class="btn-primary">Browse all posts</a>
+                <p>{t('category.noPosts')}</p>
+                <a href="/" class="btn-primary">{t('author.browseAll')}</a>
               </div>
             )}
           </div>

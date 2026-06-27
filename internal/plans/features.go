@@ -66,6 +66,15 @@ const (
 	FeatureTimeMachineInsurance  = "time_machine_insurance"  // Agent Enterprise: dedicated incident engineer
 )
 
+// State Fabric Add-on features (premium stackable add-ons)
+const (
+	FeatureSFHotCache           = "sf_hot_cache"           // Hot cache tier for faster replay
+	FeatureSFMultiRegion        = "sf_multi_region"        // Multi-region replication
+	FeatureSFAIRecall           = "sf_ai_recall"           // Vector embeddings + AI memory
+	FeatureSFAdvancedInsights   = "sf_advanced_insights"   // Cost forecasting, anomaly detection
+	FeatureSFAdvancedSecurity   = "sf_advanced_security"   // SOC2 logs, key rotation, audit streams
+)
+
 // Pro-only features
 const (
 	FeatureExtendedProviders = "extended_providers"
@@ -446,6 +455,48 @@ var featureDefinitions = map[string]Feature{
 		Type:        FeatureTypeBoolean,
 		Default:     false,
 	},
+
+	// State Fabric Add-on features
+	FeatureSFHotCache: {
+		Key:         FeatureSFHotCache,
+		Name:        "SF Hot Cache",
+		Description: "Hot cache tier for faster replay and reduced read costs",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureSFMultiRegion: {
+		Key:         FeatureSFMultiRegion,
+		Name:        "SF Multi-Region",
+		Description: "Active-active multi-region replication for HA and global latency",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureSFAIRecall: {
+		Key:         FeatureSFAIRecall,
+		Name:        "SF AI Memory",
+		Description: "Vector embeddings, AI memory storage, and fast recall engine",
+		Category:    CategoryAnalytics,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureSFAdvancedInsights: {
+		Key:         FeatureSFAdvancedInsights,
+		Name:        "SF Advanced Insights",
+		Description: "Cost forecasting, anomaly detection, hot path alerts",
+		Category:    CategoryAnalytics,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureSFAdvancedSecurity: {
+		Key:         FeatureSFAdvancedSecurity,
+		Name:        "SF Advanced Security",
+		Description: "SOC2-friendly logs, key rotation, audit streams",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
 }
 
 // Feature sets per plan - 2026 unified structure
@@ -491,6 +542,12 @@ var (
 		FeatureConsciousnessBasic,
 		FeatureConsciousnessAdvanced,
 		FeatureCollaborativeSessions,
+		// State Fabric add-ons (all available as add-ons)
+		FeatureSFHotCache,
+		FeatureSFMultiRegion,
+		FeatureSFAIRecall,
+		FeatureSFAdvancedInsights,
+		FeatureSFAdvancedSecurity,
 	}
 
 	proFeatures = []string{
@@ -515,6 +572,8 @@ var (
 		FeatureTimeMachineExtended,
 		FeatureTimeMachinePro,
 		FeatureConsciousnessBasic,
+		// State Fabric add-ons (Hot Cache available as add-on)
+		FeatureSFHotCache,
 	}
 
 	starterFeatures = []string{

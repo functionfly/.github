@@ -1,6 +1,7 @@
 ---
 import BlogCard from './BlogCard.astro';
 import type { BlogPost } from '../lib/api';
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
 
 interface Props {
   posts: BlogPost[];
@@ -8,13 +9,17 @@ interface Props {
 
 const { posts } = Astro.props;
 
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
+
 // Don't render if no related posts
 if (posts.length === 0) return null;
 ---
 
 <section class="related-posts">
   <h2 class="related-posts__title">
-    <span class="related-posts__title-accent">Related Posts</span>
+    <span class="related-posts__title-accent">{t('relatedPosts.title')}</span>
   </h2>
   <div class="related-posts__grid">
     {posts.map((post) => (

@@ -96,3 +96,13 @@ func populateUserPublicProfileFields(user *User,
 		user.LinkedInURL = &linkedinURLNull.String
 	}
 }
+
+func populateUserFounderFields(user *User, isFounderNull sql.NullBool, founderNumberNull sql.NullInt64) {
+	if isFounderNull.Valid {
+		user.IsFounder = isFounderNull.Bool
+	}
+	if founderNumberNull.Valid {
+		fn := int(founderNumberNull.Int64)
+		user.FounderNumber = &fn
+	}
+}

@@ -1,11 +1,13 @@
 {
   "nav": {
+    "home": "Home",
     "docs": "Docs",
     "forAgents": "For AI Agents",
     "trust": "Trust",
     "pricing": "Pricing",
     "blog": "Blog",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "signUp": "Sign up"
   },
   "footer": {
     "tagline": "The trust layer for AI agents. Publish once, run everywhere, get paid.",
@@ -22,7 +24,39 @@
     "privacy": "Privacy",
     "terms": "Terms",
     "sla": "SLA",
-    "copyright": "All rights reserved."
+    "copyright": "All rights reserved.",
+    "systemsOperational": "All systems operational",
+    "columnProduct": "Product",
+    "columnDevelopers": "Developers",
+    "columnMCP": "MCP",
+    "columnCompany": "Company",
+    "columnCommunity": "Community",
+    "columnLegal": "Legal & Security",
+    "functionRegistry": "Function Registry",
+    "stateFabric": "State Fabric",
+    "forAgents": "For AI agents",
+    "apiReference": "API Reference",
+    "sdks": "SDKs",
+    "openApiSpec": "OpenAPI Spec",
+    "sandbox": "Sandbox",
+    "status": "Status",
+    "rssFeed": "RSS Feed",
+    "mcpDocs": "MCP Docs",
+    "publishFunction": "Publish a Function",
+    "mcpServer": "MCP Server",
+    "manifestSpec": "Manifest Spec",
+    "aboutLink": "About",
+    "blog": "Blog",
+    "careersLink": "Careers",
+    "contactLink": "Contact",
+    "partnerships": "Partnerships",
+    "privacyLink": "Privacy",
+    "termsLink": "Terms",
+    "dpa": "DPA",
+    "cookiePolicy": "Cookie Policy",
+    "security": "Security",
+    "vulnerabilityDisclosure": "Vulnerability Disclosure",
+    "compliance": "Compliance"
   },
   "language": {
     "title": "Language",
@@ -114,5 +148,8 @@
     "lead": "Start free. Verified tooling and auditable execution history help your agents move faster — with fewer surprises.",
     "ctaPrimary": "Request Access",
     "ctaSecondary": "Contact Sales"
+  },
+  "layout": {
+    "skipToContent": "Skip to main content"
   }
 }

@@ -74,6 +74,10 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
   const totalProviders = Object.keys(PROVIDERS).length;
   const connectedCount = connectedProviders.length;
 
+  const isLanding = variant === 'landing';
+  const landingTextColor = theme === 'light' ? '#0a0a0a' : '#ffffff';
+  const landingNavLinkStyle = isLanding ? { color: landingTextColor } : {};
+
   // Scroll-aware background
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 10);
@@ -145,11 +149,12 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
             variant === 'dashboard'
               ? 'bg-bg-primary/95 backdrop-blur-xl border-b border-border-default'
               : cn(
-                  'bg-glass backdrop-blur-md border-b border-subtle',
+                  'bg-glass backdrop-blur-md border-b border-subtle landing-nav',
                   scrolled && 'bg-bg-primary/80 backdrop-blur-md border-b border-border-subtle'
                 ),
             className
           )}
+          style={variant === 'landing' ? { color: theme === 'light' ? '#0a0a0a' : '#ffffff' } : undefined}
         >
           <div className="max-w-7xl mx-auto px-4 lg:px-6 h-16 flex items-center justify-between gap-4">
             {/* Left: menu button + logo */}
@@ -223,6 +228,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
                       location.pathname === '/dashboard' && 'text-text-primary'
                     )}
+                    style={landingNavLinkStyle}
                   >
                     Dashboard
                     {location.pathname === '/dashboard' && (
@@ -237,6 +243,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
                       (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'text-text-primary'
                     )}
+                    style={landingNavLinkStyle}
                   >
                     Functions
                     {(location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && (
@@ -245,10 +252,10 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   </Link>
 
                   {/* Marketplace - dropdown */}
-                  <MarketplaceDropdown />
+                  <MarketplaceDropdown style={landingNavLinkStyle} />
 
                   {/* Providers - dropdown */}
-                  <ProvidersDropdown />
+                  <ProvidersDropdown style={landingNavLinkStyle} />
                 </>
               ) : (
                 <>
@@ -259,6 +266,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
                       location.pathname === '/' && 'text-text-primary'
                     )}
+                    style={landingNavLinkStyle}
                   >
                     Home
                     {location.pathname === '/' && (
@@ -273,6 +281,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
                       location.pathname === '/functions/discovery' && 'text-text-primary'
                     )}
+                    style={landingNavLinkStyle}
                   >
                     Functions
                     {location.pathname === '/functions/discovery' && (
@@ -281,7 +290,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   </Link>
 
                   {/* Marketplace - dropdown */}
-                  <MarketplaceDropdown />
+                  <MarketplaceDropdown style={landingNavLinkStyle} />
 
                   <Link
                     to="/pricing"
@@ -289,6 +298,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       'relative text-text-secondary hover:text-text-primary transition-colors font-medium py-1',
                       location.pathname === '/pricing' && 'text-text-primary'
                     )}
+                    style={landingNavLinkStyle}
                   >
                     Pricing
                     {location.pathname === '/pricing' && (
@@ -300,6 +310,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-text-secondary hover:text-text-primary transition-colors font-medium"
+                    style={landingNavLinkStyle}
                   >
                     Docs
                   </a>

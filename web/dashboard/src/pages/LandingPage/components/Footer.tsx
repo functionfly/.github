@@ -1,4 +1,5 @@
 import { Logo } from '@/components/common/Logo';
+import '@/styles/sc-footer.css';
 import { useNewsletter } from '@/hooks/useNewsletter';
 import { BLOG_SITE_URL, DOCS_SITE_URL, getMarketingPageUrl, STATUS_SITE_URL } from '@/lib/constants';
 import { isValidEmail } from '@/lib/url-utils';

@@ -14,6 +14,7 @@ import {
 
 interface ProvidersDropdownProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
 interface ProviderItem {
@@ -23,7 +24,7 @@ interface ProviderItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-export function ProvidersDropdown({ className }: ProvidersDropdownProps) {
+export function ProvidersDropdown({ className, style }: ProvidersDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const theme = useThemeStore((state) => state.theme);
   const location = useLocation();
@@ -62,9 +63,12 @@ export function ProvidersDropdown({ className }: ProvidersDropdownProps) {
               : "text-text-secondary hover:text-text-primary",
             className
           )}
-          style={theme === 'light' ? {
-            color: isActive ? '#7c3aed' : '#1a1a2e',
-          } : {}}
+          style={{
+            ...(theme === 'light' ? {
+              color: isActive ? '#7c3aed' : '#1a1a2e',
+            } : {}),
+            ...style,
+          }}
         >
           Providers
           <ChevronDown

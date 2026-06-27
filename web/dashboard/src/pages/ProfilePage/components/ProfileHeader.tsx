@@ -9,6 +9,7 @@ import { FollowUserButton } from '@/components/follow';
 import { AdminBadge } from '@/components/profile/AdminBadge';
 import { ReportProfileDialog } from '@/components/profile/ReportProfileDialog';
 import { EnterpriseBadge } from '@/components/profile/EnterpriseBadge';
+import { FounderBadge } from '@/components/profile/FounderBadge';
 import { SocialLinks } from '@/components/profile/SocialLinks';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -517,6 +518,9 @@ export function ProfileHeader({
               ) : null}
               {profile.username === 'FunctionFly' && (
                 <AdminBadge size="md" showParticles variant="support" />
+              )}
+              {profile.founderNumber && profile.founderNumber > 0 && (
+                <FounderBadge founderNumber={profile.founderNumber} size="md" />
               )}
               {profile.stats.trustScore >= 80 && (
                 <Badge

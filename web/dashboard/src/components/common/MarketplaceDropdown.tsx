@@ -14,6 +14,7 @@ import {
 
 interface MarketplaceDropdownProps {
   className?: string;
+  style?: React.CSSProperties;
 }
 
 interface MarketplaceItem {
@@ -23,7 +24,7 @@ interface MarketplaceItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-export function MarketplaceDropdown({ className }: MarketplaceDropdownProps) {
+export function MarketplaceDropdown({ className, style }: MarketplaceDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const theme = useThemeStore((state) => state.theme);
   const location = useLocation();
@@ -71,9 +72,12 @@ export function MarketplaceDropdown({ className }: MarketplaceDropdownProps) {
               : "text-text-secondary hover:text-text-primary",
             className
           )}
-          style={theme === 'light' ? {
-            color: isActive ? '#7c3aed' : '#1a1a2e',
-          } : {}}
+          style={{
+            ...(theme === 'light' ? {
+              color: isActive ? '#7c3aed' : '#1a1a2e',
+            } : {}),
+            ...style,
+          }}
         >
           Marketplace
           <ChevronDown

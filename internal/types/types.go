@@ -94,7 +94,9 @@ type User struct {
 	CompanyName   *string    `json:"company_name,omitempty" gorm:"size:255"`
 	DateOfBirth   *time.Time `json:"date_of_birth,omitempty" gorm:"column:date_of_birth;type:date"`
 	Bio           *string    `json:"bio,omitempty" gorm:"type:text"`
-	ProfileNumber *int `json:"profile_number,omitempty" gorm:"column:profile_number;uniqueIndex"`
+	ProfileNumber *int       `json:"profile_number,omitempty" gorm:"column:profile_number;uniqueIndex"`
+	IsFounder     bool      `json:"is_founder,omitempty" gorm:"column:is_founder;default:false"`
+	FounderNumber *int      `json:"founder_number,omitempty" gorm:"column:founder_number"`
 	Location      *string    `json:"location,omitempty" gorm:"size:255"`
 	Website       *string    `json:"website,omitempty" gorm:"size:500"`
 	JobTitle      *string    `json:"job_title,omitempty" gorm:"size:255"`

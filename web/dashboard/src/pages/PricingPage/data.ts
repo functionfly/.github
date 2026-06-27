@@ -166,4 +166,47 @@ export const comparisonFeatures = [
     professional: 'No',
     enterprise: 'SOC2 / HIPAA',
   },
+  // ── State Fabric ──────────────────────────────────────────────────────────
+  {
+    feature: '🗄️ State Fabric',
+    free: '1 object',
+    starter: '3 objects',
+    professional: '10 objects',
+    enterprise: 'Unlimited',
+  },
+  {
+    feature: 'State Fabric Hot Cache',
+    free: 'No',
+    starter: 'Add-on',
+    professional: 'Add-on',
+    enterprise: 'Add-on',
+  },
+  {
+    feature: 'Multi-Region Replication',
+    free: 'No',
+    starter: 'Add-on',
+    professional: 'Add-on',
+    enterprise: 'Add-on',
+  },
+  {
+    feature: 'AI Memory Pack',
+    free: 'No',
+    starter: 'Add-on',
+    professional: 'Add-on',
+    enterprise: 'Add-on',
+  },
+  {
+    feature: 'Advanced Insights',
+    free: 'No',
+    starter: 'Add-on',
+    professional: 'Add-on',
+    enterprise: 'Add-on',
+  },
+  {
+    feature: 'Advanced Security Pack',
+    free: 'No',
+    starter: 'Add-on',
+    professional: 'Add-on',
+    enterprise: 'Add-on',
+  },
 ];

@@ -258,11 +258,30 @@ async fn start_runtime(address: String, mesh: bool, _config_path: &str) -> anyho
     let rate_limiters = Arc::new(TenantRateLimiters::new(1000, 5000));
     let global_limiter = Arc::new(RateLimiter::new(10000, 10000));
 
+    let api_token: Option<String> = std::env::var("RUNTIME_API_TOKEN").ok().filter(|t| !t.is_empty());
+    let is_production = std::env::var("ENVIRONMENT")
+        .map(|v| v.eq_ignore_ascii_case("production"))
+        .unwrap_or(false);
+
+    if api_token.is_none() {
+        if is_production {
+            error!(
+                "RUNTIME_API_TOKEN is not set in production. \
+                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            );
+        } else {
+            info!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
+        }
+    }
+
+    let api_token = Arc::new(api_token);
+
     loop {
         let (mut stream, _peer) = listener.accept().await?;
         let rt = runtime_clone.clone();
         let rl = rate_limiters.clone();
         let gl = global_limiter.clone();
+        let token = api_token.clone();
 
         tokio::spawn(async move {
             use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -321,16 +340,40 @@ async fn start_runtime(address: String, mesh: bool, _config_path: &str) -> anyho
                 // Generic cell creation - exclude /snapshots and /execute paths
                 handle_http_create_cell(&rt, &request).await
             } else if request.starts_with("POST /execute") {
-                // Clone Arcs so all captured data is owned for spawn_blocking
-                let rt_exec = rt.clone();
-                let req_owned = request.clone();
-                let result = tokio::task::spawn_blocking(move || {
-                    tokio::runtime::Handle::current()
-                        .block_on(handle_http_execute(&rt_exec, &req_owned))
-                }).await;
-                match result {
-                    Ok(resp) => resp,
-                    Err(e) => json_response(500, &format!("Internal error: {}", e)),
+                // Auth check for execute endpoint
+                if let Some(ref expected_token) = *token {
+                    let auth_ok = request.lines()
+                        .find(|line| line.to_lowercase().starts_with("authorization:"))
+                        .and_then(|line| line.split(':').nth(1))
+                        .map(|val| val.trim() == format!("Bearer {}", expected_token))
+                        .unwrap_or(false);
+                    if !auth_ok {
+                        json_response(401, "unauthorized")
+                    } else {
+                        // Clone Arcs so all captured data is owned for spawn_blocking
+                        let rt_exec = rt.clone();
+                        let req_owned = request.clone();
+                        let result = tokio::task::spawn_blocking(move || {
+                            tokio::runtime::Handle::current()
+                                .block_on(handle_http_execute(&rt_exec, &req_owned))
+                        }).await;
+                        match result {
+                            Ok(resp) => resp,
+                            Err(e) => json_response(500, &format!("Internal error: {}", e)),
+                        }
+                    }
+                } else {
+                    // No token configured — allow in dev mode
+                    let rt_exec = rt.clone();
+                    let req_owned = request.clone();
+                    let result = tokio::task::spawn_blocking(move || {
+                        tokio::runtime::Handle::current()
+                            .block_on(handle_http_execute(&rt_exec, &req_owned))
+                    }).await;
+                    match result {
+                        Ok(resp) => resp,
+                        Err(e) => json_response(500, &format!("Internal error: {}", e)),
+                    }
                 }
             } else if request.starts_with("GET /cells/") && request.contains("/snapshots") {
                 handle_http_list_snapshots(&rt, &request).await

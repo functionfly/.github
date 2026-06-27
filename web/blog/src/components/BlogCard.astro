@@ -2,6 +2,11 @@
 import { formatDate } from '../lib/utils';
 import { calculateReadingTime } from '../lib/slate-to-html';
 import type { BlogPost } from '../lib/api';
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 
 interface Props {
   post: BlogPost;
@@ -57,7 +62,7 @@ const isTrending = post.tags?.includes('trending') || index < 2;
               <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
               <polyline points="17 6 23 6 23 12"/>
             </svg>
-            Trending
+            {t('blogCard.trending')}
           </div>
         )}
         {post.publishedAt && (
@@ -106,12 +111,12 @@ const isTrending = post.tags?.includes('trending') || index < 2;
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          <span>{readingMinutes} min read</span>
+          <span>{readingMinutes} {t('blogCard.minRead')}</span>
         </div>
       </div>
 
       <div class="blog-card__share">
-        <button class="blog-card__share-btn" aria-label="Share article" data-title={post.title} data-slug={post.slug}>
+        <button class="blog-card__share-btn" aria-label={t('blogCard.shareArticle')} data-title={post.title} data-slug={post.slug}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="18" cy="5" r="3"/>
             <circle cx="6" cy="12" r="3"/>

@@ -1,4 +1,4 @@
-import { AGENT_ENTERPRISE, PLANS } from './constants';
+import { AGENT_ENTERPRISE, PLANS, STATE_FABRIC_ADD_ONS } from './constants';
 
 export type PlanTier = 'free' | 'starter' | 'professional' | 'enterprise' | 'agent_enterprise';
 
@@ -248,8 +248,8 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   API_ACCESS: ['starter', 'professional', 'enterprise'],
   WEBHOOKS: ['professional', 'enterprise'],
   CUSTOM_DOMAINS: ['starter', 'professional', 'enterprise'],
-  /** Stateful fabrics: Free has 0 quota; paid tiers per PLANS.limits.stateFabrics */
-  STATE_FABRIC: ['starter', 'professional', 'enterprise'],
+  /** Stateful fabrics: Free has 1 (Sandbox), paid tiers per PLANS.limits.stateFabrics */
+  STATE_FABRIC: ['free', 'starter', 'professional', 'enterprise', 'agent_enterprise'],
   /** AI agents: Free has 0 quota; paid tiers per PLANS.limits.agents */
   AGENTS: ['free', 'starter', 'professional', 'enterprise', 'agent_enterprise'],
   UNLIMITED_FUNCTIONS: ['enterprise'],
@@ -271,6 +271,12 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
   TIME_MACHINE_INSURANCE: ['agent_enterprise'],
   /** Function DNA: AI-powered code evolution based on execution patterns */
   FUNCTION_DNA: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  /** State Fabric Add-ons: available for purchase on paid plans (Starter+) */
+  SF_ADDON_HOT_CACHE: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  SF_ADDON_MULTI_REGION: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  SF_ADDON_AI_RECALL: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  SF_ADDON_ADVANCED_INSIGHTS: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  SF_ADDON_ADVANCED_SECURITY: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;

@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "FunctionFly へようこそ - セットアップ",
+      "description": "数分で FunctionFly アカウントを設定できます。複数のクラウドプロバイダーにまたがる自動フェイルオーバー付きサーバーレス関数をデプロイしましょう。"
+    },
+    "steps": {
+      "welcome": {
+        "title": "FunctionFly へようこそ",
+        "description": "マルチプロバイダーデプロイと自動フェイルオーバーについて学ぶ"
+      },
+      "connectProvider": {
+        "title": "最初のプロバイダーを接続",
+        "description": "クラウドプロバイダーをリンクして関数のデプロイを開始"
+      },
+      "deployFunction": {
+        "title": "最初の関数をデプロイ",
+        "description": "簡単な関数をデプロイして FunctionFly を体験"
+      },
+      "testFailover": {
+        "title": "フェイルオーバーをテスト",
+        "description": "自動フェイルオーバーをテストして設定を検証"
+      },
+      "teamSetup": {
+        "title": "チームをセットアップ",
+        "description": "チームメンバーを招待し、コラボレーション設定を構成"
+      }
+    },
+    "roles": {
+      "admin": "チーム管理者",
+      "member": "チームメンバー",
+      "viewer": "閲覧者"
+    },
+    "accessibility": {
+      "skipToMain": "メインコンテンツへスキップ",
+      "goHome": "FunctionFly ホームへ戻る",
+      "help": "オンボーディングのヘルプを表示",
+      "skip": "オンボーディングをスキップ",
+      "progressBar": "オンボーディング進捗：{{percent}}% 完了",
+      "currentStep": "ステップ {{current}} / {{total}}：{{title}}",
+      "backButton": "前のステップへ",
+      "nextButton": "次のステップへ",
+      "completeButton": "オンボーディングセットアップを完了",
+      "stepNavigation": "オンボーディングステップ",
+      "stepLabel": "ステップ {{number}}：{{title}} - {{status}}",
+      "statusCompleted": "完了",
+      "statusActive": "現在",
+      "statusPending": "未完了",
+      "continueOnboarding": "オンボーディングを続行",
+      "skipOnboarding": "オンボーディングをスキップ"
+    },
+    "stepCounter": "ステップ {{current}} / {{total}}",
+    "helpTooltip": "FunctionFly は高可用性のために、複数のクラウドプロバイダーに関数をデプロイします。各ステップでは新しいプロバイダーを接続し、自動的にフェイルオーバーをテストします。",
+    "skip": "スキップ",
+    "actions": {
+      "back": "戻る",
+      "nextStep": "次のステップ",
+      "completeSetup": "セットアップを完了",
+      "completing": "完了中...",
+      "retry": "再試行"
+    },
+    "errors": {
+      "stepLoadFailed": "このステップの読み込みに失敗しました。もう一度お試しください。"
+    },
+    "tips": {
+      "welcomeTitle": "FunctionFly へようこそ",
+      "readyToConnect": "接続準備完了",
+      "providerConnected": "プロバイダー接続完了！",
+      "functionDeployed": "関数デプロイ成功",
+      "setupComplete": "セットアップ完了！",
+      "welcomeDesc": "FunctionFly のマルチプロバイダーデプロイと自動フェイルオーバー機能について学びましょう。",
+      "roleGreeting": "ようこそ {{role}}！",
+      "adminPrivileges": " プロバイダーの管理、関数のデプロイ、チームメンバーの招待ができます。",
+      "memberAccess": " 関数のデプロイと共有リソースへのアクセスができます。",
+      "viewerAccess": " チーム関数とメトリクスへの読み取り専用アクセスがあります。",
+      "connectProviderDesc": "最初のクラウドプロバイダーを接続しようとしています。これにより、FunctionFly が高可用性のために複数のプロバイダーにまたがって関数をデプロイできるようになります。",
+      "deployFunctionDesc": "素晴らしい！プロバイダーが接続されました。それでは、最初の関数をデプロイして FunctionFly を体験しましょう。",
+      "tokenSecure": "API トークンは安全に保存され暗号化されています",
+      "testFailoverDesc": "関数が公開されました！最後のステップでは、高可用性を確保するためにフェイルオーバー設定をテストします。",
+      "autoFailover": "プロバイダーに障害が発生した場合、FunctionFly は自動的にヘルスチェックの合格したプロバイダーにトラフィックをルーティングします",
+      "teamSetupDesc": "素晴らしい！フェイルオーバー設定が正常に動作しています。それでは、コラボレーションのためにチームをセットアップしましょう。",
+      "inviteTeam": "チームメンバーを招待して関数のコラボレーションやプロバイダーアクセスの共有を行いましょう",
+      "setupCompleteDesc": "素晴らしい！FunctionFly のセットアップが完了し、本番環境の準備が整いました。",
+      "productionReady": "高可用性の関数デプロイを開始する準備が整いました！",
+      "allCompleteDesc": "おめでとうございます！FunctionFly のセットアップが完了し、本番環境対応です。",
+      "multiProviderDeployed": "関数が複数のプロバイダーにデプロイされ、自動フェイルオーバーが有効になりました"
+    },
+    "hints": {
+      "welcome": "FunctionFly のマルチプロバイダーデプロイと自動フェイルオーバー機能について学びましょう。",
+      "connectProvider": "クラウドプロバイダーを接続してデプロイを有効にします。",
+      "deployFunction": "最初の関数をデプロイして設定をテストします。",
+      "testFailover": "自動フェイルオーバーが正常に動作していることを確認します。",
+      "teamSetup": "チームメンバーを招待してコラボレーションを行います。"
+    },
+    "skipDialog": {
+      "title": "オンボーディングをスキップしますか？",
+      "description": "残りの FunctionFly オンボーディングステップをスキップしようとしています。以下がその意味です：",
+      "continue": "オンボーディングを続行",
+      "skipAnyway": "スキップする",
+      "warnings": {
+        "noProvider": "デプロイ用のクラウドプロバイダーを接続できません",
+        "noFunction": "設定をテストするための最初の関数をデプロイできません",
+        "noFailoverTest": "自動フェイルオーバー機能をテストできません"
+      },
+      "hints": {
+        "inviteLater": "ダッシュボードから後でチームメンバーを招待することもできます",
+        "canResume": "ダッシュボードの設定からいつでもオンボーディングを再開できます",
+        "basicDeploy": "基本的な関数はデプロイできますが、マルチプロバイダーのメリットは受けられません"
+      }
+    },
+    "completion": {
+      "title": "FunctionFly へようこそ！",
+      "subtitle": "セットアップが完了し、本番環境の準備が整いました"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hello World",
+          "description": "挨拶を返す簡単な関数"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "リクエスト情報を JSON 形式でエコーバック"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "サンプル関数",
+        "sampleFunctionsTooltip": "事前に構築された関数例から素早く始めましょう。一般的なパターンを示しており、すぐにデプロイできます。",
+        "customCode": "カスタムコード",
+        "customCodeTooltip": "独自の関数コードをゼロから作成します。上級ユーザーはカスタムロジック、API、またはインテグレーションをデプロイできます。"
+      },
+      "functionListLabel": "サンプル関数を選択",
+      "functionEdgeHelp": "エッジ関数は世界中のユーザーの近くで実行され、従来のサーバーベースの関数と比較してレイテンシーを削減し、パフォーマンスを向上させます。",
+      "codePreview": "プレビュー",
+      "codePreviewRegion": "関数コードプレビュー",
+      "actions": {
+        "copyCode": "関数コードをコピー",
+        "chooseSample": "サンプル関数を選択",
+        "copyUrl": "関数 URL をコピー",
+        "refreshMetrics": "メトリクスを更新",
+        "openFunction": "関数を開く",
+        "deploying": "すべての接続済みプロバイダーにデプロイ中...",
+        "deploy": "関数をデプロイ",
+        "tryAgain": "再試行",
+        "tryCustomCode": "カスタムコードを試す"
+      },
+      "customCodeNotice": "独自のカスタム関数コードをデプロイできます。現在は、オンボーディングを続行するためにサンプル関数を選択してください。",
+      "functionNameLabel": "関数名",
+      "functionNameTooltip": "関数の一意の名前を選択してください。これは関数 URL の一部になります（例：my-function.functionfly.app）。",
+      "urlSuggestions": "URL 候補",
+      "urlSuggestionsHint": "候補をクリックして関数名として使用",
+      "functionNameHint": "小文字、数字、ハイフンのみを使用してください。これは関数 URL の生成に使用されます。",
+      "functionNamePreview": "プレビュー：{{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "推奨",
+        "apiPrefix": "API エンドポイント",
+        "versioned": "バージョニングエンドポイント",
+        "available": "利用可能",
+        "taken": "使用中"
+      },
+      "deployed": {
+        "title": "関数デプロイ完了！",
+        "subtitle": "関数が公開され、リクエストの処理準備が整いました。",
+        "functionUrl": "関数 URL",
+        "liveMetrics": "リアルタイムメトリクス"
+      },
+      "metrics": {
+        "requests": "リクエスト数",
+        "latency": "平均レイテンシー",
+        "errors": "エラー数",
+        "uptime": "稼働時間",
+        "loading": "メトリクスを読み込み中..."
+      },
+      "steps": {
+        "validating": "関数設定を検証中...",
+        "connecting": "デプロイプロバイダーに接続中...",
+        "uploading": "関数コードをアップロード中...",
+        "deploying": "プライマリプロバイダーにデプロイ中...",
+        "configuring": "フェイルオーバー設定を構成中...",
+        "complete": "デプロイ完了！"
+      },
+      "deployProgress": "デプロイ進捗：{{percent}}%",
+      "errors": {
+        "deploymentFailed": "デプロイ失敗",
+        "invalidName": "無効な関数名",
+        "nameTooShort": "関数名は2文字以上必要です",
+        "nameTooLong": "関数名は52文字以下にしてください",
+        "nameInvalidChars": "小文字、数字、ハイフンのみを使用してください",
+        "noProvider": "最初にプロバイダーを接続してください",
+        "cancelled": "デプロイがキャンセルされました",
+        "generic": "予期しないエラーによりデプロイが失敗しました。もう一度お試しください。",
+        "alternative": "代替案：",
+        "alternativeDesc": "ダッシュボードから後でこの関数をデプロイすることもできます。現在の名前がすでに使用されている場合は、別の関数名を試してください。"
+      },
+      "toast": {
+        "success": "関数「{{name}}」が正常にデプロイされました！",
+        "failed": "デプロイ失敗",
+        "copied": "クリップボードにコピーしました！"
+      },
+      "advanced": {
+        "title": "詳細設定",
+        "tooltip": "環境変数、スケーリング設定、その他の詳細オプションを構成します。",
+        "envVars": "環境変数",
+        "envVarsTooltip": "環境変数を追加して実行時に関数を構成します。これらは安全に保存され暗号化されます。",
+        "envKeyPlaceholder": "キー",
+        "envValuePlaceholder": "値",
+        "envVarsHint": "一般的な変数：API キー、データベース URL、設定",
+        "add": "追加",
+        "scaling": "スケーリング設定",
+        "scalingTooltip": "トラフィックに応じた関数のスケーリング方法を制限します。高い制限はより多くの同時リクエストを処理できます。",
+        "maxConcurrent": "最大同時リクエスト数",
+        "maxConcurrentLabel": "最大同時リクエスト数",
+        "timeout": "タイムアウト（秒）",
+        "timeoutLabel": "リクエストタイムアウト（秒）",
+        "proTipTitle": "プロのヒント",
+        "proTipDesc": "いつでも関数ダッシュボードからこれらの設定を更新できます。詳細設定は次のデプロイ時に有効になります。"
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "クラウドプロバイダーを選択",
+      "providerConnected": "{{name}} 接続完了！",
+      "providerReady": "プロバイダーが関数のデプロイ準備を完了しました。",
+      "costPreview": "コストプレビュー",
+      "costCalculating": "コストを計算中...",
+      "costMonthlyEstimate": "月間見積もり",
+      "costBreakdown": "内訳：",
+      "costBasedOn": "1日1,000リクエスト、100ミリ秒の計算時間、128MBメモリに基づく",
+      "apiToken": "API トークン",
+      "apiTokenTooltip": "API トークンは、FunctionFly がプロバイダーアカウントに関数をデプロイできるようにするセキュアキーです。プロバイダーのダッシュボードの API 設定で生成できます。",
+      "apiTokenPlaceholder": "{{name}} の API トークンを入力",
+      "apiTokenValidated": "API トークンの検証に成功しました",
+      "apiTokenFind": "{{name}} のダッシュボードの API 設定で API トークンを見つけてください。",
+      "apiTokenSecure": "API トークンは安全に暗号化されて保存されています。認証情報を共有することはありません。",
+      "shareWithTeam": "チームと共有",
+      "shareWithTeamDesc": "チームメンバーがこのプロバイダーをデプロイに使用できるようにする",
+      "connect": "{{name}} を接続",
+      "connecting": "{{name}} に接続中...",
+      "sharing": "チームと共有中...",
+      "validating": "トークンを検証中...",
+      "changeProvider": "変更",
+      "viewDocs": "ドキュメントを表示",
+      "status": {
+        "available": "利用可能",
+        "maintenance": "メンテナンス中",
+        "outage": "障害発生中",
+        "unavailable": "利用不可"
+      },
+      "someUnavailable": "一部のプロバイダーが現在利用できません",
+      "someUnavailableDesc_one": "{{name}} はメンテナンス中です。",
+      "someUnavailableDesc_other": "{{count}} つのプロバイダーが現在利用できません。",
+      "stillAvailable": "利用可能な {{count}} つのプロバイダーで始めることができます",
+      "maintenanceNote": "定期メンテナンスのため一時的に利用できません",
+      "outageNote": "サービスに現在問題が発生しています",
+      "errors": {
+        "connectionFailed": "プロバイダーの接続に失敗しました。API トークンを確認してもう一度お試しください。",
+        "invalidToken": "無効な API トークン",
+        "tokenSuggestion": "{{name}} ダッシュボードで API トークンを確認し、正しい権限があることを確認してください",
+        "networkError": "{{name}} API に接続できません。インターネット接続を確認してもう一度お試しください。",
+        "shareFailed": "プロバイダーは接続されましたが、チームと共有できませんでした",
+        "noTeamFound": "プロバイダーは接続されましたが、共有するチームが見つかりませんでした。"
+      },
+      "toast": {
+        "connected": "{{name}} の接続に成功しました！",
+        "shareSuccess": "プロバイダーがチームと正常に共有されました！",
+        "shareFailed": "プロバイダーは接続されましたが、チームと共有できませんでした"
+      }
+    },
+    "testFailover": {
+      "title": "フェイルオーバーをテスト",
+      "description": "プロバイダーの障害をシミュレートしてフェイルオーバー設定をテストします。トラフィックが自動的にバックアップにルーティングされることを確認します。",
+      "tooltip": "フェイルオーバーは、プロバイダーに問題が発生しても関数をオンラインに保ちます。FunctionFly は自動的にヘルスチェックの合格したバックアッププロバイダーにトラフィックをルーティングします。",
+      "runTest": "フェイルオーバーテストを実行",
+      "testing": "フェイルオーバーをテスト中...",
+      "retryTest": "テストを再試行",
+      "runAgain": "テストを再実行",
+      "primary": "プライマリ",
+      "backup": "バックアップ",
+      "primaryHelp": "プライマリプロバイダーは通常条件下ですべてのトラフィックを処理します。関数のサービス提供の第一選択です。",
+      "backupHelp": "プライマリに障害が発生した場合、バックアッププロバイダーが自動的に引き継ぎます。これにより、関数が24時間365日利用可能になります。",
+      "steps": {
+        "checking": "プライマリエンドポイントを確認中",
+        "checkingDesc": "プライマリプロバイダーへの接続をテスト中",
+        "simulating": "障害をシミュレート中",
+        "simulatingDesc": "プライマリエンドポイントを一時的に無効化中",
+        "detecting": "フェイルオーバーを検出中",
+        "detectingDesc": "自動フェイルオーバーのトリガーを待機中",
+        "verifying": "バックアップを検証中",
+        "verifyingDesc": "バックアッププロバイダーがリクエストを処理したことを確認中",
+        "restoring": "プライマリを復元中",
+        "restoringDesc": "プライマリエンドポイントを復元中"
+      },
+      "results": {
+        "title": "テスト結果",
+        "passed": "フェイルオーバーテスト合格！",
+        "passedDesc": "設定が正常に動作しています。自動フェイルオーバーの準備が整いました。",
+        "failed": "フェイルオーバーテスト失敗",
+        "failedDesc": "フェイルオーバー設定に問題がありました。",
+        "whatHappened": "何が起こったのか？",
+        "whatHappenedDesc": "プライマリプロバイダー（Cloudflare）が一時的に利用できなくなった際、FunctionFly が自動的にトラフィックをバックアッププロバイダー（Vercel）にルーティングし、ゼロダウンタイムを実現しました。"
+      },
+      "errors": {
+        "testFailed": "予期しないエラーによりフェイルオーバーテストが失敗しました。",
+        "suggestion": "プロバイダー接続を確認してもう一度お試しください。"
+      },
+      "toast": {
+        "success": "フェイルオーバーテストが正常に完了しました！",
+        "failed": "フェイルオーバーテスト失敗"
+      },
+      "latency": "レイテンシー",
+      "latencyHelp": "レイテンシーは応答時間を測定します。値が低いほど、ユーザーにとってパフォーマンスが向上します。"
+    },
+    "teamSetup": {
+      "yourRole": "あなたの役割",
+      "roleTooltip": "チームでの役割を選択してください。後でチーム設定で変更できます。",
+      "roles": {
+        "admin": {
+          "label": "管理者",
+          "description": "チーム、プロバイダー、関数の管理に完全なアクセス権"
+        },
+        "member": {
+          "label": "メンバー",
+          "description": "関数のデプロイと管理、チームリソースの閲覧が可能"
+        },
+        "viewer": {
+          "label": "閲覧者",
+          "description": "チーム関数とメトリクスへの読み取り専用アクセス"
+        }
+      },
+      "inviteTitle": "チームメンバーを招待",
+      "inviteTooltip": "チームメンバーを追加して関数のコラボレーションやプロバイダー設定の共有を行います。",
+      "emailLabel": "メールアドレス",
+      "emailPlaceholder": "colleague@company.com",
+      "roleLabel": "役割",
+      "addMember": "チームメンバーを追加",
+      "pendingInvites": "保留中の招待 ({{count}})",
+      "sendInvites": "{{count}} 件の招待を送信",
+      "sendInvites_one": "{{count}} 件の招待を送信",
+      "sendInvites_other": "{{count}} 件の招待を送信",
+      "continueSolo": "個人で続行",
+      "skipForNow": "スキップ",
+      "skipping": "スキップ中...",
+      "teamBenefits": "チームのメリット",
+      "teamBenefitsDesc": "チームメンバーを招待して関数のコラボレーション、プロバイダー設定の共有、デプロイの共同管理を行いましょう。ダッシュボードからいつでもメンバーを追加できます。",
+      "errors": {
+        "invalidEmail": "有効なメールアドレスを入力してください",
+        "emailExists": "このメールアドレスは既に追加されています",
+        "sendFailed": "チーム招待の送信に失敗しました"
+      },
+      "toast": {
+        "added": "チームメンバーを追加しました",
+        "invitesSent": "チーム招待が {{count}} 人のメンバーに送信されました",
+        "invitesSent_one": "チーム招待が {{count}} 人のメンバーに送信されました！",
+        "invitesSent_other": "チーム招待が {{count}} 人のメンバーに送信されました！",
+        "soloSetup": "個人セットアップを続行します"
+      }
+    }
+  }
+}

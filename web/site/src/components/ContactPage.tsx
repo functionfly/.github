@@ -1,14 +1,23 @@
 import React, { useState } from 'react'
 import { AUTH_ORIGIN } from '../config'
-import './homepage.css'
+import '../styles/sc-main.css';
+import { PageGrid } from './containment/PageGrid'
+import { Chamber } from './containment/Chamber'
+import { CornerBrace } from './containment/CornerBrace'
+import { TrustSeal } from './containment/TrustSeal'
+import { SealedButton } from './containment/SealedButton'
+import { FrameButton } from './containment/FrameButton'
+import { Card } from './containment/Card'
+import { StatusPill } from './containment/StatusPill'
+import { Input } from './containment/Input'
 
 const topicOptions = [
-  { value: 'sales', label: 'Sales & Enterprise', email: 'sales@functionfly.com', responseTime: '24h', priority: 'high' },
-  { value: 'support', label: 'Technical Support', email: 'support@functionfly.com', responseTime: '4h', priority: 'high' },
-  { value: 'privacy', label: 'Privacy & Data Rights', email: 'privacy@functionfly.com', responseTime: '48h', priority: 'medium' },
-  { value: 'security', label: 'Security', email: 'security@functionfly.com', responseTime: '24h', priority: 'medium' },
-  { value: 'legal', label: 'Legal & Compliance', email: 'legal@functionfly.com', responseTime: '72h', priority: 'low' },
-  { value: 'general', label: 'General & Partnerships', email: 'hello@functionfly.com', responseTime: '48h', priority: 'low' },
+  { value: 'sales', label: 'Sales & Enterprise', email: 'sales@functionfly.com', responseTime: '24h', priority: 'high' as const },
+  { value: 'support', label: 'Technical Support', email: 'support@functionfly.com', responseTime: '4h', priority: 'high' as const },
+  { value: 'privacy', label: 'Privacy & Data Rights', email: 'privacy@functionfly.com', responseTime: '48h', priority: 'medium' as const },
+  { value: 'security', label: 'Security', email: 'security@functionfly.com', responseTime: '24h', priority: 'medium' as const },
+  { value: 'legal', label: 'Legal & Compliance', email: 'legal@functionfly.com', responseTime: '72h', priority: 'low' as const },
+  { value: 'general', label: 'General & Partnerships', email: 'hello@functionfly.com', responseTime: '48h', priority: 'low' as const },
 ]
 
 const subjectSuggestions: Record<string, string[]> = {
@@ -20,15 +29,32 @@ const subjectSuggestions: Record<string, string[]> = {
   general: ['Partnership inquiry', 'Press inquiry', 'General question'],
 }
 
+const Container: React.FC<{ children: React.ReactNode; narrow?: boolean }> = ({ children, narrow }) => (
+  <div style={{ maxWidth: narrow ? 560 : 1100, margin: '0 auto', padding: '0 var(--space-4)' }}>
+    {children}
+  </div>
+)
+
+const Section: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <section style={{ padding: 'var(--space-8) 0', background: 'var(--bg)' }}>
+    {children}
+  </section>
+)
+
 const ContactPage: React.FC = () => {
   const [selectedTopic, setSelectedTopic] = useState('')
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedTopic || !email || !message) return
+    setError(null)
+    if (!selectedTopic || !email || !message) {
+      setError('Please fill out all fields')
+      return
+    }
     const topic = topicOptions.find(t => t.value === selectedTopic)
     if (topic) {
       const subject = encodeURIComponent(message.split('\n')[0] || 'Contact form submission')
@@ -41,38 +67,69 @@ const ContactPage: React.FC = () => {
   const suggestions = selectedTopic ? subjectSuggestions[selectedTopic] || [] : []
 
   return (
-    <div className="ff-homepage">
-      <section className="ff-hero-section ff-contact-hero">
-        <div className="ff-hero-inner">
-          <div className="ff-hero-eyebrow">
-            <span className="ff-pulse-dot" />
-            <span>Get in touch</span>
-          </div>
-          <h1 className="ff-hero-headline">
-            We'd love to hear from you
-          </h1>
-          <p className="ff-hero-sub">
-            We route each request to the right team. Choose the channel that best matches your topic so we can help you quickly.
-          </p>
-        </div>
-      </section>
+    <>
+      <PageGrid />
 
-      <section className="ff-section">
-        <div className="ff-container">
-          <div className="ff-contact-form-wrapper">
-            <form className="ff-contact-form" onSubmit={handleSubmit}>
-              <div className="ff-form-header">
-                <h3>Send a message</h3>
-                <p>Select your topic and we'll route your message to the right team.</p>
-              </div>
-              <div className="ff-form-group">
-                <label htmlFor="topic">Topic</label>
+      <Section>
+        <Container>
+          <Chamber variant="ribs">
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: 'var(--status-ok)',
+              marginBottom: 'var(--space-5)',
+              display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-ok)', boxShadow: '0 0 12px var(--status-ok)' }} />
+              Get in touch
+            </div>
+            <h1 style={{
+              fontFamily: 'var(--font-display)', fontSize: '58px', fontWeight: 700,
+              letterSpacing: '-0.01em', lineHeight: 1.08, color: 'var(--text)',
+              marginBottom: 'var(--space-5)',
+            }}>
+              We'd love to hear from you
+            </h1>
+            <p style={{ fontSize: 17, lineHeight: 1.6, color: 'var(--text-dim)', maxWidth: 720 }}>
+              We route each request to the right team. Choose the channel that best matches your topic so we can help you quickly.
+            </p>
+          </Chamber>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container narrow>
+          <Chamber>
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>
+              Send a message
+            </h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: 14, marginBottom: 'var(--space-5)' }}>
+              Select your topic and we'll route your message to the right team.
+            </p>
+            <form onSubmit={handleSubmit} noValidate>
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <label htmlFor="topic" style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Topic</label>
                 <select
                   id="topic"
-                  className="ff-select"
                   value={selectedTopic}
                   onChange={(e) => setSelectedTopic(e.target.value)}
                   required
+                  style={{
+                    width: '100%', padding: 'var(--space-3) var(--space-4)',
+                    fontSize: 15, color: 'var(--text)',
+                    background: 'var(--panel-raised)',
+                    border: '1px solid var(--steel)',
+                    borderRadius: 'var(--radius)',
+                    fontFamily: 'inherit',
+                    appearance: 'none',
+                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237c8a8a' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E\")",
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'right var(--space-4) center',
+                    paddingRight: 'var(--space-7)',
+                  }}
                 >
                   <option value="">Select a topic...</option>
                   {topicOptions.map(opt => (
@@ -80,280 +137,182 @@ const ContactPage: React.FC = () => {
                   ))}
                 </select>
               </div>
+
               {selectedTopicData && (
-                <div className="ff-topic-meta">
-                  <span className="ff-topic-email">{selectedTopicData.email}</span>
-                  <span className="ff-topic-response">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="12 6 12 12 16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  flexWrap: 'wrap', gap: 'var(--space-2)',
+                  padding: 'var(--space-3) var(--space-4)',
+                  background: 'rgba(143, 255, 208, 0.05)',
+                  border: '1px solid var(--panel-edge)',
+                  borderRadius: 'var(--radius)',
+                  marginBottom: 'var(--space-4)',
+                  fontSize: 13,
+                }}>
+                  <span style={{ color: 'var(--status-ok)', fontFamily: 'var(--font-mono)' }}>{selectedTopicData.email}</span>
+                  <span style={{ color: 'var(--text-dim)', display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <polyline points="12 6 12 12 16 14" />
                     </svg>
                     Typically responds in {selectedTopicData.responseTime}
                   </span>
                 </div>
               )}
-              <div className="ff-form-group">
-                <label htmlFor="email">Your email</label>
-                <input
-                  type="email"
+
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <label htmlFor="email" style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Your email</label>
+                <Input
                   id="email"
-                  className="ff-input"
+                  type="email"
                   placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
-              <div className="ff-form-group">
-                <label htmlFor="message">Message</label>
+
+              <div style={{ marginBottom: 'var(--space-4)' }}>
+                <label htmlFor="message" style={{ display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Message</label>
                 <textarea
                   id="message"
-                  className="ff-textarea"
                   placeholder="Describe your question or issue..."
                   rows={5}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   required
+                  style={{
+                    width: '100%', padding: 'var(--space-3) var(--space-4)',
+                    fontSize: 15, color: 'var(--text)',
+                    background: 'var(--panel-raised)',
+                    border: '1px solid var(--steel)',
+                    borderRadius: 'var(--radius)',
+                    fontFamily: 'inherit', resize: 'vertical', minHeight: 120,
+                  }}
                 />
               </div>
+
               {suggestions.length > 0 && (
-                <div className="ff-subject-suggestions">
-                  <span className="ff-suggestions-label">Suggested subject lines:</span>
-                  <div className="ff-suggestions-list">
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                  <span style={{ display: 'block', fontSize: 12, color: 'var(--text-faint)', marginBottom: 'var(--space-2)' }}>
+                    Suggested subject lines:
+                  </span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
                     {suggestions.map(s => (
                       <button
                         key={s}
                         type="button"
-                        className="ff-suggestion-chip"
                         onClick={() => setMessage(prev => prev ? `${s}\n\n${prev}` : s)}
-                      >
-                        {s}
-                      </button>
+                        style={{
+                          padding: '4px 12px', fontSize: 12, color: 'var(--text-dim)',
+                          background: 'var(--panel)',
+                          border: '1px solid var(--panel-edge)',
+                          borderRadius: 'var(--radius)',
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >{s}</button>
                     ))}
                   </div>
                 </div>
               )}
-              <button type="submit" className="ff-btn ff-btn-primary ff-btn-lg ff-form-submit">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <line x1="22" y1="2" x2="11" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Open in email client
-              </button>
+
+              {error && (
+                <div style={{ color: 'var(--status-revoked)', fontSize: 13, marginBottom: 'var(--space-3)' }}>
+                  {error}
+                </div>
+              )}
+
+              <SealedButton type="submit" size="lg">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                  Open in email client
+                </span>
+              </SealedButton>
+
+              {submitted && (
+                <div style={{ marginTop: 'var(--space-4)' }}>
+                  <StatusPill status="live" label="Mail client opened" />
+                </div>
+              )}
             </form>
+          </Chamber>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <h2 style={{
+            fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700,
+            letterSpacing: '-0.005em', color: 'var(--text)', textAlign: 'center',
+            marginBottom: 'var(--space-7)',
+          }}>Other channels</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-5)' }}>
+            {topicOptions.map((t) => (
+              <Card key={t.value}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>
+                    {t.label}
+                  </h3>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    fontSize: 12, color: t.priority === 'high' ? 'var(--accent)' : 'var(--text-dim)',
+                    border: `1px solid ${t.priority === 'high' ? 'var(--accent)' : 'var(--panel-edge)'}`,
+                    background: t.priority === 'high' ? 'rgba(255, 122, 61, 0.1)' : 'var(--panel)',
+                    padding: '2px 8px', borderRadius: 'var(--radius-sm)',
+                  }}>
+                    ~{t.responseTime} response
+                  </span>
+                </div>
+                <a href={`mailto:${t.email}`} style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--status-ok)' }}>{t.email}</a>
+              </Card>
+            ))}
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
-      <section className="ff-section ff-section--alt">
-        <div className="ff-container">
-          <div className="ff-contact-grid">
-            <div className="ff-contact-card ff-contact-card--featured">
-              <div className="ff-contact-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div className="ff-contact-content">
-                <div className="ff-contact-header">
-                  <h3>Sales & Enterprise</h3>
-                  <span className="ff-response-badge">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="12 6 12 12 16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    ~24h response
-                  </span>
-                </div>
-                <p>Volume pricing, custom SLAs, security questionnaires, SSO, and tailored trust policies.</p>
-                <a href="mailto:sales@functionfly.com" className="ff-contact-link">sales@functionfly.com</a>
-                <p className="ff-contact-hint">See <a href="/pricing">Pricing</a> and <a href="/sla">SLA</a> for published plans.</p>
-              </div>
+      <Section>
+        <Container>
+          <Chamber>
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-5)' }}>
+              Self-service resources
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 'var(--space-4)' }}>
+              {[
+                { href: '/docs', title: 'Documentation', desc: 'Guides, API reference, and tutorials' },
+                { href: '/trust', title: 'Trust & Security', desc: 'Compliance, certifications, and policies' },
+                { href: '/pricing', title: 'Pricing', desc: 'Plans, features, and comparisons' },
+              ].map((r) => (
+                <a key={r.href} href={r.href} style={{
+                  display: 'flex', alignItems: 'center', gap: 'var(--space-4)',
+                  padding: 'var(--space-4)',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--panel-edge)',
+                  borderRadius: 'var(--radius)',
+                  textDecoration: 'none', color: 'inherit',
+                  transition: 'border-color var(--duration-fast) var(--ease-out)',
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>{r.title}</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>{r.desc}</div>
+                  </div>
+                  <span style={{ color: 'var(--text-faint)' }}>→</span>
+                </a>
+              ))}
             </div>
-
-            <div className="ff-contact-card ff-contact-card--featured">
-              <div className="ff-contact-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <line x1="12" y1="17" x2="12.01" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div className="ff-contact-content">
-                <div className="ff-contact-header">
-                  <h3>Technical Support</h3>
-                  <span className="ff-response-badge ff-response-badge--urgent">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="12 6 12 12 16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    ~4h response
-                  </span>
-                </div>
-                <p>Account access, billing, API issues, and production-impacting problems.</p>
-                <a href="mailto:support@functionfly.com" className="ff-contact-link">support@functionfly.com</a>
-                <div className="ff-contact-actions">
-                  <a className="ff-btn ff-btn-primary" href={`${AUTH_ORIGIN}/login`}>Sign in</a>
-                  <a className="ff-btn ff-btn-secondary" href={`${AUTH_ORIGIN}/signup`}>Create account</a>
-                </div>
-              </div>
+            <div style={{ marginTop: 'var(--space-5)', display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+              <FrameButton onClick={() => { window.location.href = `${AUTH_ORIGIN}/login` }}>Sign in</FrameButton>
+              <SealedButton onClick={() => { window.location.href = `${AUTH_ORIGIN}/signup` }}>Create account</SealedButton>
             </div>
-
-            <div className="ff-contact-card">
-              <div className="ff-contact-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div className="ff-contact-content">
-                <div className="ff-contact-header">
-                  <h3>Privacy & Data Rights</h3>
-                  <span className="ff-response-badge">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="12 6 12 12 16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    ~48h response
-                  </span>
-                </div>
-                <p>Questions about data processing, cookie preferences, or privacy rights requests.</p>
-                <a href="mailto:privacy@functionfly.com" className="ff-contact-link">privacy@functionfly.com</a>
-                <p className="ff-contact-hint">See our <a href="/privacy">Privacy Policy</a> for details.</p>
-              </div>
-            </div>
-
-            <div className="ff-contact-card">
-              <div className="ff-contact-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div className="ff-contact-content">
-                <div className="ff-contact-header">
-                  <h3>Security</h3>
-                  <span className="ff-response-badge">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="12 6 12 12 16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    ~24h response
-                  </span>
-                </div>
-                <p>Responsible disclosure of vulnerabilities. Provide enough detail to reproduce.</p>
-                <a href="mailto:security@functionfly.com" className="ff-contact-link">security@functionfly.com</a>
-              </div>
-            </div>
-
-            <div className="ff-contact-card">
-              <div className="ff-contact-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="2"/>
-                  <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div className="ff-contact-content">
-                <div className="ff-contact-header">
-                  <h3>Legal & Compliance</h3>
-                  <span className="ff-response-badge">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="12 6 12 12 16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    ~72h response
-                  </span>
-                </div>
-                <p>Contract notices, compliance questions, and legal correspondence.</p>
-                <a href="mailto:legal@functionfly.com" className="ff-contact-link">legal@functionfly.com</a>
-                <p className="ff-contact-hint">Copyright notices: <a href="mailto:copyright@functionfly.com">copyright@functionfly.com</a></p>
-              </div>
-            </div>
-
-            <div className="ff-contact-card">
-              <div className="ff-contact-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="currentColor" strokeWidth="2"/>
-                  <polyline points="22,6 12,13 2,6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <div className="ff-contact-content">
-                <div className="ff-contact-header">
-                  <h3>General & Partnerships</h3>
-                  <span className="ff-response-badge">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                      <polyline points="12 6 12 12 16 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    </svg>
-                    ~48h response
-                  </span>
-                </div>
-                <p>Press, partnerships, or just saying hello.</p>
-                <a href="mailto:hello@functionfly.com" className="ff-contact-link">hello@functionfly.com</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ff-section">
-        <div className="ff-container">
-          <div className="ff-info-card">
-            <h3>Self-service resources</h3>
-            <div className="ff-resource-links">
-              <a href="/docs" className="ff-resource-link ff-resource-link--card">
-                <div className="ff-resource-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="currentColor" strokeWidth="2"/>
-                    <line x1="8" y1="7" x2="16" y2="7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                    <line x1="8" y1="11" x2="14" y2="11" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <div className="ff-resource-text">
-                  <span className="ff-resource-title">Documentation</span>
-                  <span className="ff-resource-desc">Guides, API reference, and tutorials</span>
-                </div>
-                <svg className="ff-resource-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <polyline points="9 18 15 12 9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </a>
-              <a href="/trust" className="ff-resource-link ff-resource-link--card">
-                <div className="ff-resource-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                    <polyline points="9 12 11 14 15 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <div className="ff-resource-text">
-                  <span className="ff-resource-title">Trust & Security</span>
-                  <span className="ff-resource-desc">Compliance, certifications, and policies</span>
-                </div>
-                <svg className="ff-resource-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <polyline points="9 18 15 12 9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </a>
-              <a href="/pricing" className="ff-resource-link ff-resource-link--card">
-                <div className="ff-resource-icon">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" strokeWidth="2"/>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                </div>
-                <div className="ff-resource-text">
-                  <span className="ff-resource-title">Pricing</span>
-                  <span className="ff-resource-desc">Plans, features, and comparisons</span>
-                </div>
-                <svg className="ff-resource-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <polyline points="9 18 15 12 9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-    </div>
+          </Chamber>
+        </Container>
+      </Section>
+    </>
   )
 }
 

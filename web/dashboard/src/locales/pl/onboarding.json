@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Witamy w FunctionFly - Konfiguracja",
+      "description": "Skonfiguruj swoje konto FunctionFly w kilka minut. Wdrażaj funkcje bezserwerowe z automatycznym przełączaniem awaryjnym między wieloma dostawcami chmury."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Witamy w FunctionFly",
+        "description": "Poznaj wdrażanie u wielu dostawców i automatyczne przełączanie awaryjne"
+      },
+      "connectProvider": {
+        "title": "Podłącz Pierwszego Dostawcę",
+        "description": "Połącz dostawcę chmury, aby zacząć wdrażać swoje funkcje"
+      },
+      "deployFunction": {
+        "title": "Wdróż Swoją Pierwszą Funkcję",
+        "description": "Wdróż prostą funkcję, aby zobaczyć FunctionFly w akcji"
+      },
+      "testFailover": {
+        "title": "Przełączanie Awaryjne",
+        "description": "Zweryfikuj konfigurację, testując automatyczne przełączanie awaryjne"
+      },
+      "teamSetup": {
+        "title": "Skonfiguruj Zespół",
+        "description": "Zaproś członków zespołu i skonfiguruj ustawienia współpracy"
+      }
+    },
+    "roles": {
+      "admin": "Administrator Zespołu",
+      "member": "Członek Zespołu",
+      "viewer": "Przeglądający"
+    },
+    "accessibility": {
+      "skipToMain": "Przejdź do głównej treści",
+      "goHome": "Przejdź do strony głównej FunctionFly",
+      "help": "Uzyskaj pomoc dotyczącą wdrożenia",
+      "skip": "Pomiń wdrożenie na razie",
+      "progressBar": "Postęp wdrożenia: {{percent}}% ukończone",
+      "currentStep": "Krok {{current}} z {{total}}: {{title}}",
+      "backButton": "Przejdź do poprzedniego kroku",
+      "nextButton": "Przejdź do następnego kroku",
+      "completeButton": "Zakończ konfigurację wdrożenia",
+      "stepNavigation": "Kroki wdrożenia",
+      "stepLabel": "Krok {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "ukończony",
+      "statusActive": "bieżący",
+      "statusPending": "oczekujący",
+      "continueOnboarding": "Kontynuuj wdrożenie",
+      "skipOnboarding": "Pomiń wdrożenie"
+    },
+    "stepCounter": "Krok {{current}} z {{total}}",
+    "helpTooltip": "FunctionFly wdraża Twoje funkcje u wielu dostawców chmury w celu zapewnienia wysokiej dostępności. Każdy krok łączy nowego dostawcę i automatycznie testuje przełączanie awaryjne.",
+    "skip": "Pomiń na razie",
+    "actions": {
+      "back": "Wstecz",
+      "nextStep": "Następny Krok",
+      "completeSetup": "Zakończ Konfigurację",
+      "completing": "Kończenie...",
+      "retry": "Spróbuj Ponownie"
+    },
+    "errors": {
+      "stepLoadFailed": "Nie udało się załadować tego kroku. Spróbuj ponownie."
+    },
+    "tips": {
+      "welcomeTitle": "Witamy w FunctionFly",
+      "readyToConnect": "Gotowy do Połączenia",
+      "providerConnected": "Świetnie! Dostawca Podłączony",
+      "functionDeployed": "Funkcja Pomyślnie Wdrożona",
+      "setupComplete": "Konfiguracja Zakończona!",
+      "welcomeDesc": "Poświęć chwilę, aby poznać możliwości wdrażania u wielu dostawców i automatycznego przełączania awaryjnego w FunctionFly.",
+      "roleGreeting": "Witaj {{role}}!",
+      "adminPrivileges": " Możesz zarządzać dostawcami, wdrażać funkcje i zapraszać członków zespołu.",
+      "memberAccess": " Możesz wdrażać funkcje i uzyskiwać dostęp do współdzielonych zasobów.",
+      "viewerAccess": " Masz dostęp tylko do odczytu funkcji zespołu i statystyk.",
+      "connectProviderDesc": "Zaraz podłączysz swojego pierwszego dostawcę chmury. Pozwoli to FunctionFly wdrażać funkcje u wielu dostawców w celu zapewnienia wysokiej dostępności.",
+      "deployFunctionDesc": "Świetnie! Twój dostawca jest podłączony. Teraz wdróżmy Twoją pierwszą funkcję, aby zobaczyć FunctionFly w akcji.",
+      "tokenSecure": "Token API bezpiecznie przechowywany i zaszyfrowany",
+      "testFailoverDesc": "Twoja funkcja jest online! Ostatni krok testuje konfigurację przełączania awaryjnego, aby zapewnić wysoką dostępność.",
+      "autoFailover": "FunctionFly automatycznie przekierowuje ruch do zdrowych dostawców, jeśli jeden ulegnie awarii",
+      "teamSetupDesc": "Świetnie! Twoje przełączanie awaryjne działa. Teraz skonfigurujmy zespół do współpracy.",
+      "inviteTeam": "Zaproś członków zespołu do współpracy przy funkcjach i udostępniania dostawców",
+      "setupCompleteDesc": "Świetnie! Konfiguracja FunctionFly jest zakończona i gotowa na produkcję.",
+      "productionReady": "Jesteś gotowy, aby zacząć wdrażać funkcje z wysoką dostępnością!",
+      "allCompleteDesc": "Gratulacje! Konfiguracja FunctionFly jest zakończona i gotowa na produkcję.",
+      "multiProviderDeployed": "Twoje funkcje są teraz wdrożone u wielu dostawców z automatycznym przełączaniem awaryjnym"
+    },
+    "hints": {
+      "welcome": "Poznaj możliwości wdrażania u wielu dostawców i automatycznego przełączania awaryjnego w FunctionFly.",
+      "connectProvider": "Podłącz dostawcę chmury, aby umożliwić wdrażanie.",
+      "deployFunction": "Wdróż swoją pierwszą funkcję, aby przetestować konfigurację.",
+      "testFailover": "Zweryfikuj, czy automatyczne przełączanie awaryjne działa poprawnie.",
+      "teamSetup": "Zaproś członków zespołu do współpracy."
+    },
+    "skipDialog": {
+      "title": "Pomiń Wdrożenie?",
+      "description": "Zaraz pominiesz pozostałe kroki wdrożenia FunctionFly. Oto co to oznacza:",
+      "continue": "Kontynuuj Wdrożenie",
+      "skipAnyway": "Pomimo To Pomiń",
+      "warnings": {
+        "noProvider": "Nie podłączysz żadnych dostawców chmury do wdrażania",
+        "noFunction": "Nie wdrożysz swojej pierwszej funkcji, aby przetestować konfigurację",
+        "noFailoverTest": "Nie przetestujesz automatycznego przełączania awaryjnego"
+      },
+      "hints": {
+        "inviteLater": "Nadal możesz zaprosić członków zespołu później z panelu",
+        "canResume": "Możesz wznowić wdrożenie w dowolnym momencie z ustawień panelu",
+        "basicDeploy": "Podstawowe funkcje nadal mogą być wdrażane, ale bez korzyści wielu dostawców"
+      }
+    },
+    "completion": {
+      "title": "Witamy w FunctionFly!",
+      "subtitle": "Twoja konfiguracja jest zakończona i gotowa na produkcję"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hello World",
+          "description": "Prosta funkcja zwracająca powitanie"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "Zwraca informacje o żądaniu jako JSON"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Funkcje Przykładowe",
+        "sampleFunctionsTooltip": "Wybierz spośród gotowych przykładów funkcji, aby szybko zacząć. Prezentują one typowe wzorce i są gotowe do wdrożenia.",
+        "customCode": "Niestandardowy Kod",
+        "customCodeTooltip": "Napisz własny kod funkcji od zera. Zaawansowani użytkownicy mogą wdrażać niestandardową logikę, API lub integracje."
+      },
+      "functionListLabel": "Wybierz funkcję przykładową",
+      "functionEdgeHelp": "Funkcje krawędziowe działają blisko użytkowników na całym świecie, zmniejszając opóźnienia i poprawiając wydajność w porównaniu z tradycyjnymi funkcjami serwerowymi.",
+      "codePreview": "Podgląd",
+      "codePreviewRegion": "Podgląd kodu funkcji",
+      "actions": {
+        "copyCode": "Kopiuj kod funkcji",
+        "chooseSample": "Wybierz Funkcję Przykładową",
+        "copyUrl": "Kopiuj URL funkcji",
+        "refreshMetrics": "Odśwież statystyki",
+        "openFunction": "Otwórz Funkcję",
+        "deploying": "Wdrażanie u wszystkich podłączonych dostawców...",
+        "deploy": "Wdróż Funkcję",
+        "tryAgain": "Spróbuj Ponownie",
+        "tryCustomCode": "Wypróbuj Niestandardowy Kod"
+      },
+      "customCodeNotice": "Możesz wdrożyć własny niestandardowy kod funkcji. Na razie wybierz jedną z naszych przykładowych funkcji, aby kontynuować wdrożenie.",
+      "functionNameLabel": "Nazwa Funkcji",
+      "functionNameTooltip": "Wybierz unikalną nazwę dla swojej funkcji. Stanie się ona częścią URL funkcji (np. moja-funkcja.functionfly.app).",
+      "urlSuggestions": "Sugestie URL",
+      "urlSuggestionsHint": "Kliknij sugestię, aby użyć jej jako nazwy funkcji",
+      "functionNameHint": "Użyj tylko małych liter, cyfr i myślników. Zostanie to użyte do wygenerowania URL funkcji.",
+      "functionNamePreview": "Podgląd: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "zalecane",
+        "apiPrefix": "punkt końcowy API",
+        "versioned": "wersjonowany punkt końcowy",
+        "available": "Dostępne",
+        "taken": "Zajęte"
+      },
+      "deployed": {
+        "title": "Funkcja Wdrożona!",
+        "subtitle": "Twoja funkcja jest teraz online i gotowa do obsługi żądań.",
+        "functionUrl": "URL Funkcji",
+        "liveMetrics": "Statystyki Na Żywo"
+      },
+      "metrics": {
+        "requests": "Żądania",
+        "latency": "Śr. Opóźnienie",
+        "errors": "Błędy",
+        "uptime": "Dostępność",
+        "loading": "Ładowanie statystyk..."
+      },
+      "steps": {
+        "validating": "Walidacja konfiguracji funkcji...",
+        "connecting": "Łączenie z dostawcami wdrażania...",
+        "uploading": "Przesyłanie kodu funkcji...",
+        "deploying": "Wdrażanie u głównego dostawcy...",
+        "configuring": "Konfigurowanie przełączania awaryjnego...",
+        "complete": "Wdrażanie zakończone!"
+      },
+      "deployProgress": "Postęp wdrażania: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Wdrażanie Nie Powiodło Się",
+        "invalidName": "Nieprawidłowa nazwa funkcji",
+        "nameTooShort": "Nazwa funkcji musi mieć co najmniej 2 znaki",
+        "nameTooLong": "Nazwa funkcji może mieć maksymalnie 52 znaki",
+        "nameInvalidChars": "Użyj tylko małych liter, cyfr i myślników",
+        "noProvider": "Najpierw podłącz dostawcę",
+        "cancelled": "Wdrażanie zostało anulowane",
+        "generic": "Wdrażanie nie powiodło się z powodu nieoczekiwanego błędu. Spróbuj ponownie.",
+        "alternative": "Alternatywa:",
+        "alternativeDesc": "Możesz również wdrożyć tę funkcję później z panelu lub spróbować innej nazwy funkcji, jeśli obecna jest już zajęta."
+      },
+      "toast": {
+        "success": "Funkcja \"{{name}}\" pomyślnie wdrożona!",
+        "failed": "Wdrażanie nie powiodło się",
+        "copied": "Skopiowano do schowka!"
+      },
+      "advanced": {
+        "title": "Zaawansowana Konfiguracja",
+        "tooltip": "Skonfiguruj zmienne środowiskowe, ustawienia skalowania i inne zaawansowane opcje dla swojej funkcji.",
+        "envVars": "Zmienne Środowiskowe",
+        "envVarsTooltip": "Dodaj zmienne środowiskowe, aby skonfigurować funkcję w czasie działania. Są one bezpiecznie przechowywane i szyfrowane.",
+        "envKeyPlaceholder": "KLUCZ",
+        "envValuePlaceholder": "WARTOŚĆ",
+        "envVarsHint": "Typowe zmienne: klucze API, adresy URL baz danych, ustawienia konfiguracji",
+        "add": "Dodaj",
+        "scaling": "Ustawienia Skalowania",
+        "scalingTooltip": "Kontroluj, jak funkcja skaluje się wraz z ruchem. Wyższe limity obsługują więcej jednoczesnych żądań.",
+        "maxConcurrent": "Maks. Jednoczesnych Żądań",
+        "maxConcurrentLabel": "Maksymalna liczba jednoczesnych żądań",
+        "timeout": "Limit Czasu (sekundy)",
+        "timeoutLabel": "Limit czasu żądania w sekundach",
+        "proTipTitle": "Wskazówka",
+        "proTipDesc": "Możesz zaktualizować te ustawienia w dowolnym momencie z panelu funkcji. Zaawansowane konfiguracje zaczną obowiązywać przy następnym wdrożeniu."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Wybierz dostawcę chmury",
+      "providerConnected": "{{name}} Podłączony!",
+      "providerReady": "Twój dostawca jest teraz gotowy do wdrażania funkcji.",
+      "costPreview": "Podgląd Kosztów",
+      "costCalculating": "Obliczanie kosztów...",
+      "costMonthlyEstimate": "Szacunek Miesięczny",
+      "costBreakdown": "Podział:",
+      "costBasedOn": "Na podstawie 1 000 żądań/dzień, 100ms czasu obliczeń, 128MB pamięci",
+      "apiToken": "Token API",
+      "apiTokenTooltip": "Token API to bezpieczny klucz, który pozwala FunctionFly wdrażać funkcje na Twoim koncie dostawcy. Wygenerujesz go w panelu dostawcy w ustawieniach API.",
+      "apiTokenPlaceholder": "Wprowadź swój token API {{name}}",
+      "apiTokenValidated": "Token API pomyślnie zweryfikowany",
+      "apiTokenFind": "Znajdź swój token API w panelu {{name}} w ustawieniach API.",
+      "apiTokenSecure": "Twój token API jest bezpiecznie zaszyfrowany i przechowywany. Nigdy nie udostępniamy Twoich danych uwierzytelniających.",
+      "shareWithTeam": "Udostępnij Zespołowi",
+      "shareWithTeamDesc": "Zezwól członkom zespołu na korzystanie z tego dostawcy do wdrażania",
+      "connect": "Połącz {{name}}",
+      "connecting": "Łączenie z {{name}}...",
+      "sharing": "Udostępnianie zespołowi...",
+      "validating": "Weryfikacja tokenu...",
+      "changeProvider": "Zmień",
+      "viewDocs": "Zobacz Dokumentację",
+      "status": {
+        "available": "Dostępny",
+        "maintenance": "Konserwacja",
+        "outage": "Awaria",
+        "unavailable": "Niedostępny"
+      },
+      "someUnavailable": "Niektórzy dostawcy są obecnie niedostępni",
+      "someUnavailableDesc_one": "{{name}} przechodzi konserwację.",
+      "someUnavailableDesc_other": "{{count}} dostawców jest obecnie niedostępnych.",
+      "stillAvailable": "Nadal możesz zacząć od dostępnego dostawcy ({{count}})",
+      "maintenanceNote": "Tymczasowo niedostępny z powodu planowanej konserwacji",
+      "outageNote": "Usługa aktualnie doświadcza problemów",
+      "errors": {
+        "connectionFailed": "Nie udało się połączyć dostawcy. Sprawdź token API i spróbuj ponownie.",
+        "invalidToken": "Nieprawidłowy token API",
+        "tokenSuggestion": "Sprawdź token API w panelu {{name}} i upewnij się, że ma odpowiednie uprawnienia",
+        "networkError": "Nie można połączyć z API {{name}}. Sprawdź połączenie internetowe i spróbuj ponownie.",
+        "shareFailed": "Dostawca podłączony, ale nie można go udostępnić zespołowi",
+        "noTeamFound": "Dostawca podłączony, ale nie znaleziono jeszcze zespołu do udostępnienia."
+      },
+      "toast": {
+        "connected": "{{name}} pomyślnie podłączony!",
+        "shareSuccess": "Dostawca pomyślnie udostępniony zespołowi!",
+        "shareFailed": "Dostawca podłączony, ale nie można go udostępnić zespołowi"
+      }
+    },
+    "testFailover": {
+      "title": "Przełączanie Awaryjne",
+      "description": "Przetestuj konfigurację przełączania awaryjnego, symulując awarię dostawcy. Zweryfikujemy, czy ruch jest automatycznie przekierowywany do zapasowego dostawcy.",
+      "tooltip": "Przełączanie awaryjne zapewnia, że Twoje funkcje pozostają online, nawet jeśli dostawca doświadcza problemów. FunctionFly automatycznie przekierowuje ruch do zdrowych zapasowych dostawców.",
+      "runTest": "Uruchom Test Przełączania",
+      "testing": "Testowanie Przełączania...",
+      "retryTest": "Ponów Test",
+      "runAgain": "Uruchom Test Ponownie",
+      "primary": "Główny",
+      "backup": "Zapasowy",
+      "primaryHelp": "Twój główny dostawca obsługuje cały ruch w normalnych warunkach. Jest pierwszym wyborem do obsługi funkcji.",
+      "backupHelp": "Twój zapasowy dostawca automatycznie przejmuje kontrolę, jeśli główny ulegnie awarii. Zapewnia to, że Twoje funkcje są dostępne 24/7.",
+      "steps": {
+        "checking": "Sprawdzanie głównego punktu końcowego",
+        "checkingDesc": "Testowanie połączenia z głównym dostawcą",
+        "simulating": "Symulacja awarii",
+        "simulatingDesc": "Tymczasowe wyłączenie głównego punktu końcowego",
+        "detecting": "Wykrywanie przełączania",
+        "detectingDesc": "Oczekiwanie na automatyczne uruchomienie przełączania awaryjnego",
+        "verifying": "Weryfikacja zapasowego",
+        "verifyingDesc": "Potwierdzenie, że żądanie zostało obsłużone przez zapasowego dostawcę",
+        "restoring": "Przywracanie głównego",
+        "restoringDesc": "Przywracanie głównego punktu końcowego online"
+      },
+      "results": {
+        "title": "Wyniki Testu",
+        "passed": "Test Przełączania Zdany!",
+        "passedDesc": "Twoja konfiguracja działa poprawnie. Automatyczne przełączanie awaryjne jest gotowe.",
+        "failed": "Test Przełączania Nie Powiódł Się",
+        "failedDesc": "Wystąpił problem z konfiguracją przełączania awaryjnego.",
+        "whatHappened": "Co się stało?",
+        "whatHappenedDesc": "Gdy główny dostawca (Cloudflare) był tymczasowo niedostępny, FunctionFly automatycznie przekierował ruch do zapasowego dostawcy (Vercel) bez przestojów."
+      },
+      "errors": {
+        "testFailed": "Test przełączania awaryjnego nie powiódł się z powodu nieoczekiwanego błędu.",
+        "suggestion": "Sprawdź połączenia z dostawcami i spróbuj ponownie."
+      },
+      "toast": {
+        "success": "Test przełączania awaryjnego pomyślnie zakończony!",
+        "failed": "Test przełączania awaryjnego nie powiódł się"
+      },
+      "latency": "Opóźnienie",
+      "latencyHelp": "Opóźnienie mierzy czas odpowiedzi. Niższe wartości oznaczają lepszą wydajność dla użytkowników."
+    },
+    "teamSetup": {
+      "yourRole": "Twoja Rola",
+      "roleTooltip": "Wybierz swoją rolę w zespole. Możesz to zmienić później w ustawieniach zespołu.",
+      "roles": {
+        "admin": {
+          "label": "Administrator",
+          "description": "Pełny dostęp do zarządzania zespołem, dostawcami i funkcjami"
+        },
+        "member": {
+          "label": "Członek",
+          "description": "Może wdrażać i zarządzać funkcjami, przeglądać zasoby zespołu"
+        },
+        "viewer": {
+          "label": "Przeglądający",
+          "description": "Dostęp tylko do odczytu funkcji zespołu i statystyk"
+        }
+      },
+      "inviteTitle": "Zaproś Członków Zespołu",
+      "inviteTooltip": "Dodaj członków zespołu do współpracy przy funkcjach i udostępniania konfiguracji dostawców.",
+      "emailLabel": "Adres E-mail",
+      "emailPlaceholder": "kolega@firma.com",
+      "roleLabel": "Rola",
+      "addMember": "Dodaj Członka Zespołu",
+      "pendingInvites": "Oczekujące Zaproszenia ({{count}})",
+      "sendInvites": "Wyślij {{count}} Zaproszenie",
+      "sendInvites_one": "Wyślij {{count}} Zaproszenie",
+      "sendInvites_other": "Wyślij {{count}} Zaproszeń",
+      "continueSolo": "Kontynuuj Samodzielnie",
+      "skipForNow": "Pomiń Na Razie",
+      "skipping": "Pomijanie...",
+      "teamBenefits": "Korzyści Zespołowe",
+      "teamBenefitsDesc": "Zaproś członków zespołu do współpracy przy funkcjach, udostępniania konfiguracji dostawców i wspólnego zarządzania wdrożeniami. Zawsze możesz dodać członków później z panelu.",
+      "errors": {
+        "invalidEmail": "Wprowadź prawidłowy adres e-mail",
+        "emailExists": "Ten adres e-mail został już dodany",
+        "sendFailed": "Nie udało się wysłać zaproszeń do zespołu"
+      },
+      "toast": {
+        "added": "Członek zespołu dodany",
+        "invitesSent": "Zaproszenia wysłane do {{count}} członka",
+        "invitesSent_one": "Zaproszenia wysłane do {{count}} członka!",
+        "invitesSent_other": "Zaproszenia wysłane do {{count}} członków!",
+        "soloSetup": "Kontynuowanie samodzielnej konfiguracji"
+      }
+    }
+  }
+}

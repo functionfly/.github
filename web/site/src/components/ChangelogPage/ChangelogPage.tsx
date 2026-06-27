@@ -1,14 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
-import { changelogData as fallbackData, changeTypeLabels, changeTypeColors, type ChangeType, type Release } from './data/changelog';
-import { API_ORIGIN } from '../../config';
+import { useEffect, useRef, useState } from "react";
+import { API_ORIGIN } from "../../config";
+import { Chamber, CornerBrace, PageGrid } from "../sc";
+import {
+  changeTypeColors,
+  changeTypeLabels,
+  changelogData as fallbackData,
+  type ChangeType,
+  type Release,
+} from "./data/changelog";
 
-const ALL_FILTERS: ChangeType[] = ['new', 'improved', 'fixed', 'security', 'breaking'];
+const ALL_FILTERS: ChangeType[] = [
+  "new",
+  "improved",
+  "fixed",
+  "security",
+  "breaking",
+];
 
 interface BackendChangelogEntry {
   id: string;
   version: string;
   date: string;
-  type: 'major' | 'minor' | 'patch';
+  type: "major" | "minor" | "patch";
   title: string;
   description: string;
   changes: BackendChangelogChange[];
@@ -42,7 +55,7 @@ function mapBackendToFrontend(entries: BackendChangelogEntry[]): Release[] {
         type: change.category as ChangeType,
         description: item,
         details: undefined,
-      }))
+      })),
     ),
   }));
 }
@@ -59,12 +72,14 @@ function FilterButton({ type, active, count, onClick }: FilterButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`ff-changelog-filter-btn ${active ? 'active' : ''}`}
-      style={{
-        '--filter-bg': colors.bg,
-        '--filter-border': colors.border,
-        '--filter-text': colors.text,
-      } as React.CSSProperties}
+      className={`ff-changelog-filter-btn ${active ? "active" : ""}`}
+      style={
+        {
+          "--filter-bg": colors.bg,
+          "--filter-border": colors.border,
+          "--filter-text": colors.text,
+        } as React.CSSProperties
+      }
     >
       <span
         className="ff-changelog-filter-dot"
@@ -77,7 +92,7 @@ function FilterButton({ type, active, count, onClick }: FilterButtonProps) {
 }
 
 interface ChangeItemProps {
-  change: Release['changes'][0];
+  change: Release["changes"][0];
   index: number;
 }
 
@@ -86,19 +101,23 @@ function ChangeItem({ change, index }: ChangeItemProps) {
   return (
     <div
       className="ff-changelog-change"
-      style={{
-        '--change-bg': colors.bg,
-        '--change-border': colors.border,
-        '--change-text': colors.text,
-        animationDelay: `${index * 80}ms`,
-      } as React.CSSProperties}
+      style={
+        {
+          "--change-bg": colors.bg,
+          "--change-border": colors.border,
+          "--change-text": colors.text,
+          "--animation-delay": `${index * 80}ms`,
+        } as React.CSSProperties
+      }
     >
       <div className="ff-changelog-change-type">
         <span
           className="ff-changelog-change-dot"
           style={{ background: colors.dot }}
         />
-        <span style={{ color: colors.text }}>{changeTypeLabels[change.type]}</span>
+        <span style={{ color: colors.text }}>
+          {changeTypeLabels[change.type]}
+        </span>
       </div>
       <div className="ff-changelog-change-content">
         <p className="ff-changelog-change-desc">{change.description}</p>
@@ -128,7 +147,7 @@ function ReleaseCard({ release, isFirst, index }: ReleaseCardProps) {
           observer.disconnect();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (cardRef.current) {
@@ -138,17 +157,17 @@ function ReleaseCard({ release, isFirst, index }: ReleaseCardProps) {
     return () => observer.disconnect();
   }, []);
 
-  const formattedDate = new Date(release.date).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
+  const formattedDate = new Date(release.date).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 
   return (
     <div
       ref={cardRef}
-      className={`ff-changelog-release ${isVisible ? 'visible' : ''} ${isFirst ? 'latest' : ''}`}
-      style={{ '--delay': `${index * 100}ms` } as React.CSSProperties}
+      className={`ff-changelog-release ${isVisible ? "visible" : ""} ${isFirst ? "latest" : ""}`}
+      style={{ "--delay": `${index * 100}ms` } as React.CSSProperties}
     >
       <div className="ff-changelog-release-marker">
         <div className="ff-changelog-release-dot" />
@@ -160,7 +179,9 @@ function ReleaseCard({ release, isFirst, index }: ReleaseCardProps) {
           <div className="ff-changelog-release-info">
             <h3 className="ff-changelog-release-version">
               {release.version}
-              {release.isLatest && <span className="ff-changelog-latest-badge">Latest</span>}
+              {release.isLatest && (
+                <span className="ff-changelog-latest-badge">Latest</span>
+              )}
             </h3>
             <time className="ff-changelog-release-date" dateTime={release.date}>
               {formattedDate}
@@ -204,7 +225,9 @@ export default function ChangelogPage() {
   const [releases, setReleases] = useState<Release[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeFilters, setActiveFilters] = useState<Set<ChangeType>>(new Set(ALL_FILTERS));
+  const [activeFilters, setActiveFilters] = useState<Set<ChangeType>>(
+    new Set(ALL_FILTERS),
+  );
   const [isFilterVisible, setIsFilterVisible] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -218,7 +241,9 @@ export default function ChangelogPage() {
       }
 
       try {
-        const response = await fetch(`${API_ORIGIN}/v1/content/changelog?limit=20`);
+        const response = await fetch(
+          `${API_ORIGIN}/v1/content/changelog?limit=20`,
+        );
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
@@ -226,15 +251,18 @@ export default function ChangelogPage() {
         const entries = json.entries as BackendChangelogEntry[];
         const mapped = mapBackendToFrontend(entries);
         if (mapped.length === 0) {
-          throw new Error('No changelog entries returned');
+          throw new Error("No changelog entries returned");
         }
         cache = { data: mapped, timestamp: now };
         setReleases(mapped);
         setError(null);
       } catch (err) {
-        console.warn('Failed to fetch changelog from API, using fallback:', err);
+        console.warn(
+          "Failed to fetch changelog from API, using fallback:",
+          err,
+        );
         setReleases(fallbackData);
-        setError('Using cached data');
+        setError("Using cached data");
       } finally {
         setLoading(false);
       }
@@ -251,7 +279,7 @@ export default function ChangelogPage() {
           observer.disconnect();
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (filterRef.current) {
@@ -280,7 +308,7 @@ export default function ChangelogPage() {
   };
 
   const filteredReleases = releases.filter((release) =>
-    release.changes.some((change) => activeFilters.has(change.type))
+    release.changes.some((change) => activeFilters.has(change.type)),
   );
 
   const allCounts = ALL_FILTERS.reduce(
@@ -288,48 +316,152 @@ export default function ChangelogPage() {
       acc[type] = getFilterCount(type);
       return acc;
     },
-    {} as Record<ChangeType, number>
+    {} as Record<ChangeType, number>,
   );
 
   if (loading) {
     return (
-      <div className="ff-homepage">
-        <section className="ff-hero-section">
-          <div className="ff-hero-inner">
-            <div className="ff-hero-eyebrow">
-              <span className="ff-pulse-dot" />
-              <span>Product Updates</span>
-            </div>
-            <h1 className="ff-hero-headline">Changelog</h1>
-            <p className="ff-hero-sub">
-              High-level product and API changes. Detailed per-service changelogs are in the docs.
-            </p>
+      <>
+        <PageGrid />
+        <section
+          style={{ padding: "var(--space-8) 0", background: "var(--bg)" }}
+        >
+          <div
+            style={{
+              maxWidth: 1100,
+              margin: "0 auto",
+              padding: "0 var(--space-4)",
+            }}
+          >
+            <Chamber variant="ribs">
+              <CornerBrace position="tl" />
+              <CornerBrace position="br" />
+              <div
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 11,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--status-ok)",
+                  marginBottom: "var(--space-5)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: "var(--status-ok)",
+                    boxShadow: "0 0 12px var(--status-ok)",
+                  }}
+                />
+                Product Updates
+              </div>
+              <h1
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "58px",
+                  fontWeight: 700,
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1.08,
+                  color: "var(--text)",
+                  marginBottom: "var(--space-5)",
+                }}
+              >
+                Changelog
+              </h1>
+              <p
+                style={{
+                  fontSize: 17,
+                  lineHeight: 1.6,
+                  color: "var(--text-dim)",
+                  maxWidth: 720,
+                }}
+              >
+                High-level product and API changes. Detailed per-service
+                changelogs are in the docs.
+              </p>
+            </Chamber>
           </div>
         </section>
         <LoadingSkeleton />
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="ff-homepage">
-      <section className="ff-hero-section">
-        <div className="ff-hero-inner">
-          <div className="ff-hero-eyebrow">
-            <span className="ff-pulse-dot" />
-            <span>Product Updates</span>
-          </div>
-          <h1 className="ff-hero-headline">Changelog</h1>
-          <p className="ff-hero-sub">
-            High-level product and API changes. Detailed per-service changelogs are in the docs.
-          </p>
+    <>
+      <PageGrid />
+      <section style={{ padding: "var(--space-8) 0", background: "var(--bg)" }}>
+        <div
+          style={{
+            maxWidth: 1100,
+            margin: "0 auto",
+            padding: "0 var(--space-4)",
+          }}
+        >
+          <Chamber variant="ribs">
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--status-ok)",
+                marginBottom: "var(--space-5)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "var(--space-2)",
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "var(--status-ok)",
+                  boxShadow: "0 0 12px var(--status-ok)",
+                }}
+              />
+              Product Updates
+            </div>
+            <h1
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "58px",
+                fontWeight: 700,
+                letterSpacing: "-0.01em",
+                lineHeight: 1.08,
+                color: "var(--text)",
+                marginBottom: "var(--space-5)",
+              }}
+            >
+              Changelog
+            </h1>
+            <p
+              style={{
+                fontSize: 17,
+                lineHeight: 1.6,
+                color: "var(--text-dim)",
+                maxWidth: 720,
+              }}
+            >
+              High-level product and API changes. Detailed per-service
+              changelogs are in the docs.
+            </p>
+          </Chamber>
         </div>
       </section>
 
       <div className="ff-changelog-content">
         <div
           ref={filterRef}
-          className={`ff-changelog-filters ${isFilterVisible ? 'visible' : ''}`}
+          className={`ff-changelog-filters ${isFilterVisible ? "visible" : ""}`}
         >
           <div className="ff-changelog-filters-inner">
             <span className="ff-changelog-filters-label">Filter by type:</span>
@@ -364,6 +496,6 @@ export default function ChangelogPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }

@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Bienvenue sur FunctionFly - Configuration",
+      "description": "Configurez votre compte FunctionFly en quelques minutes. Déployez des fonctions serverless avec basculement automatique sur plusieurs fournisseurs cloud."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Bienvenue sur FunctionFly",
+        "description": "Découvrez le déploiement multi-fournisseur et le basculement automatique"
+      },
+      "connectProvider": {
+        "title": "Connectez Votre Premier Fournisseur",
+        "description": "Lieez un fournisseur cloud pour commencer à déployer vos fonctions"
+      },
+      "deployFunction": {
+        "title": "Déployez Votre Première Fonction",
+        "description": "Déployez une fonction simple pour voir FunctionFly en action"
+      },
+      "testFailover": {
+        "title": "Tester le Basculement",
+        "description": "Vérifiez votre configuration en testant le basculement automatique"
+      },
+      "teamSetup": {
+        "title": "Configurez Votre Équipe",
+        "description": "Invitez des membres de l'équipe et configurez les paramètres de collaboration"
+      }
+    },
+    "roles": {
+      "admin": "Administrateur de l'Équipe",
+      "member": "Membre de l'Équipe",
+      "viewer": "Observateur"
+    },
+    "accessibility": {
+      "skipToMain": "Aller au contenu principal",
+      "goHome": "Aller à l'accueil de FunctionFly",
+      "help": "Obtenir de l'aide pour la configuration",
+      "skip": "Ignorer la configuration pour le moment",
+      "progressBar": "Progression de la configuration : {{percent}}% terminé",
+      "currentStep": "Étape {{current}} sur {{total}} : {{title}}",
+      "backButton": "Aller à l'étape précédente",
+      "nextButton": "Aller à l'étape suivante",
+      "completeButton": "Terminer la configuration",
+      "stepNavigation": "Étapes de la configuration",
+      "stepLabel": "Étape {{number}} : {{title}} - {{status}}",
+      "statusCompleted": "terminé",
+      "statusActive": "en cours",
+      "statusPending": "en attente",
+      "continueOnboarding": "Continuer la configuration",
+      "skipOnboarding": "Ignorer la configuration"
+    },
+    "stepCounter": "Étape {{current}} sur {{total}}",
+    "helpTooltip": "FunctionFly déploie vos fonctions sur plusieurs fournisseurs cloud pour une haute disponibilité. Chaque étape connecte un nouveau fournisseur et teste le basculement automatiquement.",
+    "skip": "Ignorer pour le moment",
+    "actions": {
+      "back": "Retour",
+      "nextStep": "Étape Suivante",
+      "completeSetup": "Terminer la Configuration",
+      "completing": "Finalisation...",
+      "retry": "Réessayer"
+    },
+    "errors": {
+      "stepLoadFailed": "Échec du chargement de cette étape. Veuillez réessayer."
+    },
+    "tips": {
+      "welcomeTitle": "Bienvenue sur FunctionFly",
+      "readyToConnect": "Prêt à Connecter",
+      "providerConnected": "Super ! Fournisseur Connecté",
+      "functionDeployed": "Fonction Déployée avec Succès",
+      "setupComplete": "Configuration Terminée !",
+      "welcomeDesc": "Prenez un moment pour découvrir le déploiement multi-fournisseur et les fonctions de basculement automatique de FunctionFly.",
+      "roleGreeting": "Bienvenue {{role}} !",
+      "adminPrivileges": " Vous pouvez gérer les fournisseurs, déployer des fonctions et inviter des membres de l'équipe.",
+      "memberAccess": " Vous pouvez déployer des fonctions et accéder aux ressources partagées.",
+      "viewerAccess": " Vous avez un accès en lecture seule aux fonctions et métriques de l'équipe.",
+      "connectProviderDesc": "Vous êtes sur le point de connecter votre premier fournisseur cloud. Cela permet à FunctionFly de déployer des fonctions sur plusieurs fournisseurs pour une haute disponibilité.",
+      "deployFunctionDesc": "Excellent ! Votre fournisseur est connecté. Déployons maintenant votre première fonction pour voir FunctionFly en action.",
+      "tokenSecure": "Token API stocké de manière sécurisée et chiffré",
+      "testFailoverDesc": "Votre fonction est en ligne ! L'étape finale teste votre configuration de basculement pour garantir la haute disponibilité.",
+      "autoFailover": "FunctionFly route automatiquement le trafic vers les fournisseurs sains si l'un d'eux tombe en panne",
+      "teamSetupDesc": "Super ! Votre configuration de basculement fonctionne. Configurons maintenant votre équipe pour la collaboration.",
+      "inviteTeam": "Invitez des membres de l'équipe à collaborer sur les fonctions et partager l'accès aux fournisseurs",
+      "setupCompleteDesc": "Excellent ! Votre configuration FunctionFly est terminée et prête pour la production.",
+      "productionReady": "Vous êtes prêt à commencer à déployer des fonctions avec haute disponibilité !",
+      "allCompleteDesc": "Félicitations ! Votre configuration FunctionFly est terminée et prête pour la production.",
+      "multiProviderDeployed": "Vos fonctions sont maintenant déployées sur plusieurs fournisseurs avec basculement automatique"
+    },
+    "hints": {
+      "welcome": "Découvrez le déploiement multi-fournisseur et les fonctions de basculement automatique de FunctionFly.",
+      "connectProvider": "Connectez un fournisseur cloud pour activer les déploiements.",
+      "deployFunction": "Déployez votre première fonction pour tester la configuration.",
+      "testFailover": "Vérifiez que le basculement automatique fonctionne correctement.",
+      "teamSetup": "Invitez des membres de l'équipe à collaborer."
+    },
+    "skipDialog": {
+      "title": "Ignorer la Configuration ?",
+      "description": "Vous êtes sur le point d'ignorer les étapes restantes de la configuration FunctionFly. Voici ce que cela signifie :",
+      "continue": "Continuer la Configuration",
+      "skipAnyway": "Ignorer Quand Même",
+      "warnings": {
+        "noProvider": "Vous ne connecterez aucun fournisseur cloud pour les déploiements",
+        "noFunction": "Vous ne déployerez pas votre première fonction pour tester la configuration",
+        "noFailoverTest": "Vous ne testerez pas les capacités de basculement automatique"
+      },
+      "hints": {
+        "inviteLater": "Vous pouvez toujours inviter des membres de l'équipe plus tard depuis votre tableau de bord",
+        "canResume": "Vous pouvez reprendre la configuration à tout moment depuis les paramètres de votre tableau de bord",
+        "basicDeploy": "Les fonctions de base peuvent toujours être déployées, mais sans les avantages multi-fournisseur"
+      }
+    },
+    "completion": {
+      "title": "Bienvenue sur FunctionFly !",
+      "subtitle": "Votre configuration est terminée et prête pour la production"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Bonjour le Monde",
+          "description": "Une fonction simple qui retourne un message de bienvenue"
+        },
+        "apiEcho": {
+          "name": "Écho API",
+          "description": "Renvoie les informations de la requête en JSON"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Fonctions d'Exemple",
+        "sampleFunctionsTooltip": "Choisissez parmi des exemples de fonctions prédéfinies pour commencer rapidement. Elles démontrent des modèles courants et sont prêtes à déployer.",
+        "customCode": "Code Personnalisé",
+        "customCodeTooltip": "Écrivez votre propre code de fonction depuis zéro. Les utilisateurs avancés peuvent déployer une logique personnalisée, des APIs ou des intégrations."
+      },
+      "functionListLabel": "Sélectionnez une fonction d'exemple",
+      "functionEdgeHelp": "Les fonctions edge s'exécutent à proximité de vos utilisateurs dans le monde entier, réduisant la latence et améliorant les performances par rapport aux fonctions traditionnelles basées sur serveur.",
+      "codePreview": "Aperçu",
+      "codePreviewRegion": "Aperçu du code de la fonction",
+      "actions": {
+        "copyCode": "Copier le code de la fonction",
+        "chooseSample": "Choisir une Fonction d'Exemple",
+        "copyUrl": "Copier l'URL de la fonction",
+        "refreshMetrics": "Actualiser les métriques",
+        "openFunction": "Ouvrir la Fonction",
+        "deploying": "Déploiement sur tous les fournisseurs connectés...",
+        "deploy": "Déployer la Fonction",
+        "tryAgain": "Réessayer",
+        "tryCustomCode": "Essayer le Code Personnalisé"
+      },
+      "customCodeNotice": "Vous pouvez déployer votre propre code de fonction personnalisé. Pour l'instant, sélectionnez l'une de nos fonctions d'exemple pour continuer la configuration.",
+      "functionNameLabel": "Nom de la Fonction",
+      "functionNameTooltip": "Choisissez un nom unique pour votre fonction. Il fera partie de l'URL de votre fonction (par exemple, ma-fonction.functionfly.app).",
+      "urlSuggestions": "Suggestions d'URL",
+      "urlSuggestionsHint": "Cliquez sur une suggestion pour l'utiliser comme nom de votre fonction",
+      "functionNameHint": "Utilisez uniquement des lettres minuscules, des chiffres et des tirets. Ce nom sera utilisé pour générer l'URL de votre fonction.",
+      "functionNamePreview": "Aperçu : {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "recommandé",
+        "apiPrefix": "point de terminaison API",
+        "versioned": "point de terminaison versionné",
+        "available": "Disponible",
+        "taken": "Pris"
+      },
+      "deployed": {
+        "title": "Fonction Déployée !",
+        "subtitle": "Votre fonction est maintenant en ligne et prête à traiter les requêtes.",
+        "functionUrl": "URL de la Fonction",
+        "liveMetrics": "Métriques en Direct"
+      },
+      "metrics": {
+        "requests": "Requêtes",
+        "latency": "Latence Moyenne",
+        "errors": "Erreurs",
+        "uptime": "Temps de Fonctionnement",
+        "loading": "Chargement des métriques..."
+      },
+      "steps": {
+        "validating": "Validation de la configuration de la fonction...",
+        "connecting": "Connexion aux fournisseurs de déploiement...",
+        "uploading": "Téléchargement du code de la fonction...",
+        "deploying": "Déploiement sur le fournisseur principal...",
+        "configuring": "Configuration du basculement...",
+        "complete": "Déploiement terminé !"
+      },
+      "deployProgress": "Progression du déploiement : {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Échec du Déploiement",
+        "invalidName": "Nom de fonction invalide",
+        "nameTooShort": "Le nom de la fonction doit comporter au moins 2 caractères",
+        "nameTooLong": "Le nom de la fonction doit comporter 52 caractères ou moins",
+        "nameInvalidChars": "Utilisez uniquement des lettres minuscules, des chiffres et des tirets",
+        "noProvider": "Veuillez d'abord connecter un fournisseur",
+        "cancelled": "Le déploiement a été annulé",
+        "generic": "Le déploiement a échoué en raison d'une erreur inattendue. Veuillez réessayer.",
+        "alternative": "Alternative :",
+        "alternativeDesc": "Vous pouvez également déployer cette fonction plus tard depuis votre tableau de bord, ou essayer un nom de fonction différent si l'actuel est déjà pris."
+      },
+      "toast": {
+        "success": "Fonction \"{{name}}\" déployée avec succès !",
+        "failed": "Échec du déploiement",
+        "copied": "Copié dans le presse-papiers !"
+      },
+      "advanced": {
+        "title": "Configuration Avancée",
+        "tooltip": "Configurez les variables d'environnement, les paramètres de mise à l'échelle et autres options avancées pour votre fonction.",
+        "envVars": "Variables d'Environnement",
+        "envVarsTooltip": "Ajoutez des variables d'environnement pour configurer votre fonction à l'exécution. Elles sont stockées de manière sécurisée et chiffrées.",
+        "envKeyPlaceholder": "CLÉ",
+        "envValuePlaceholder": "VALEUR",
+        "envVarsHint": "Variables courantes : clés API, URLs de bases de données, paramètres de configuration",
+        "add": "Ajouter",
+        "scaling": "Paramètres de Mise à l'Échelle",
+        "scalingTooltip": "Contrôlez comment votre fonction s'adapte au trafic. Des limites plus élevées gèrent plus de requêtes simultanées.",
+        "maxConcurrent": "Requêtes Simultanées Maximales",
+        "maxConcurrentLabel": "Requêtes simultanées maximales",
+        "timeout": "Délai d'Expiration (secondes)",
+        "timeoutLabel": "Délai d'expiration de la requête en secondes",
+        "proTipTitle": "Conseil de Pro",
+        "proTipDesc": "Vous pouvez mettre à jour ces paramètres à tout moment depuis le tableau de bord de votre fonction. Les configurations avancées prendront effet au prochain déploiement."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Sélectionnez un fournisseur cloud",
+      "providerConnected": "{{name}} Connecté !",
+      "providerReady": "Votre fournisseur est maintenant prêt à déployer des fonctions.",
+      "costPreview": "Aperçu des Coûts",
+      "costCalculating": "Calcul des coûts...",
+      "costMonthlyEstimate": "Estimation Mensuelle",
+      "costBreakdown": "Détail :",
+      "costBasedOn": "Basé sur 1 000 requêtes/jour, 100ms de temps de calcul, 128Mo de mémoire",
+      "apiToken": "Token API",
+      "apiTokenTooltip": "Un token API est une clé sécurisée qui permet à FunctionFly de déployer des fonctions sur le compte de votre fournisseur. Vous pouvez le générer dans le tableau de bord de votre fournisseur sous les paramètres API.",
+      "apiTokenPlaceholder": "Entrez votre token API {{name}}",
+      "apiTokenValidated": "Token API validé avec succès",
+      "apiTokenFind": "Trouvez votre token API dans le tableau de bord de {{name}} sous les paramètres API.",
+      "apiTokenSecure": "Votre token API est chiffré et stocké de manière sécurisée. Nous ne partageons jamais vos identifiants.",
+      "shareWithTeam": "Partager avec l'Équipe",
+      "shareWithTeamDesc": "Permettre aux membres de l'équipe d'utiliser ce fournisseur pour les déploiements",
+      "connect": "Connecter {{name}}",
+      "connecting": "Connexion à {{name}}...",
+      "sharing": "Partage avec l'équipe...",
+      "validating": "Validation du token...",
+      "changeProvider": "Changer",
+      "viewDocs": "Voir la Documentation",
+      "status": {
+        "available": "Disponible",
+        "maintenance": "Maintenance",
+        "outage": "Panne",
+        "unavailable": "Indisponible"
+      },
+      "someUnavailable": "Certains fournisseurs sont actuellement indisponibles",
+      "someUnavailableDesc_one": "{{name}} est en maintenance.",
+      "someUnavailableDesc_other": "{{count}} fournisseurs sont actuellement indisponibles.",
+      "stillAvailable": "Vous pouvez toujours commencer avec le {{count}} fournisseur disponible",
+      "maintenanceNote": "Temporairement indisponible pour maintenance planifiée",
+      "outageNote": "Le service rencontre actuellement des problèmes",
+      "errors": {
+        "connectionFailed": "Échec de la connexion du fournisseur. Veuillez vérifier votre token API et réessayer.",
+        "invalidToken": "Token API invalide",
+        "tokenSuggestion": "Veuillez vérifier votre token API dans le tableau de bord de {{name}} et assurez-vous qu'il dispose des permissions correctes",
+        "networkError": "Impossible de se connecter à l'API de {{name}}. Vérifiez votre connexion internet et réessayez.",
+        "shareFailed": "Fournisseur connecté mais n'a pas pu être partagé avec l'équipe",
+        "noTeamFound": "Fournisseur connecté mais aucune équipe trouvée pour partager pour le moment."
+      },
+      "toast": {
+        "connected": "{{name}} connecté avec succès !",
+        "shareSuccess": "Fournisseur partagé avec l'équipe avec succès !",
+        "shareFailed": "Fournisseur connecté mais n'a pas pu être partagé avec l'équipe"
+      }
+    },
+    "testFailover": {
+      "title": "Tester le Basculement",
+      "description": "Testez votre configuration de basculement en simulant une panne de fournisseur. Nous vérifierons que le trafic est automatiquement routé vers votre sauvegarde.",
+      "tooltip": "Le basculement garantit que vos fonctions restent en ligne même si un fournisseur rencontre des problèmes. FunctionFly route automatiquement le trafic vers les fournisseurs de sauvegarde sains.",
+      "runTest": "Lancer le Test de Basculement",
+      "testing": "Test du Basculement en Cours...",
+      "retryTest": "Réessayer le Test",
+      "runAgain": "Relancer le Test",
+      "primary": "Principal",
+      "backup": "Sauvegarde",
+      "primaryHelp": "Votre fournisseur principal gère tout le trafic dans des conditions normales. C'est le premier choix pour servir vos fonctions.",
+      "backupHelp": "Votre fournisseur de sauvegarde prend automatiquement le relais si le principal tombe en panne. Cela garantit que vos fonctions restent disponibles 24h/24, 7j/7.",
+      "steps": {
+        "checking": "Vérification du point de terminaison principal",
+        "checkingDesc": "Test de la connexion au fournisseur principal",
+        "simulating": "Simulation de panne",
+        "simulatingDesc": "Désactivation temporaire du point de terminaison principal",
+        "detecting": "Détection du basculement",
+        "detectingDesc": "Attente du déclenchement du basculement automatique",
+        "verifying": "Vérification de la sauvegarde",
+        "verifyingDesc": "Confirmation que la requête est traitée par le fournisseur de sauvegarde",
+        "restoring": "Restauration du principal",
+        "restoringDesc": "Remise en ligne du point de terminaison principal"
+      },
+      "results": {
+        "title": "Résultats du Test",
+        "passed": "Test de Basculement Réussi !",
+        "passedDesc": "Votre configuration fonctionne correctement. Le basculement automatique est prêt.",
+        "failed": "Échec du Test de Basculement",
+        "failedDesc": "Il y a eu un problème avec votre configuration de basculement.",
+        "whatHappened": "Que s'est-il passé ?",
+        "whatHappenedDesc": "Lorsque le fournisseur principal (Cloudflare) a été temporairement indisponible, FunctionFly a automatiquement routé le trafic vers votre fournisseur de sauvegarde (Vercel) sans temps d'arrêt."
+      },
+      "errors": {
+        "testFailed": "Le test de basculement a échoué en raison d'une erreur inattendue.",
+        "suggestion": "Veuillez vérifier les connexions de vos fournisseurs et réessayer."
+      },
+      "toast": {
+        "success": "Test de basculement terminé avec succès !",
+        "failed": "Échec du test de basculement"
+      },
+      "latency": "Latence",
+      "latencyHelp": "La latence mesure le temps de réponse. Des valeurs plus basses signifient des performances plus rapides pour vos utilisateurs."
+    },
+    "teamSetup": {
+      "yourRole": "Votre Rôle",
+      "roleTooltip": "Choisissez votre rôle dans l'équipe. Vous pourrez le modifier plus tard dans les paramètres de l'équipe.",
+      "roles": {
+        "admin": {
+          "label": "Administrateur",
+          "description": "Accès complet pour gérer l'équipe, les fournisseurs et les fonctions"
+        },
+        "member": {
+          "label": "Membre",
+          "description": "Peut déployer et gérer des fonctions, voir les ressources de l'équipe"
+        },
+        "viewer": {
+          "label": "Observateur",
+          "description": "Accès en lecture seule aux fonctions et métriques de l'équipe"
+        }
+      },
+      "inviteTitle": "Inviter des Membres de l'Équipe",
+      "inviteTooltip": "Ajoutez des membres de l'équipe pour collaborer sur les fonctions et partager les configurations de fournisseurs.",
+      "emailLabel": "Adresse E-mail",
+      "emailPlaceholder": "collegue@entreprise.com",
+      "roleLabel": "Rôle",
+      "addMember": "Ajouter un Membre de l'Équipe",
+      "pendingInvites": "Invitations en Attente ({{count}})",
+      "sendInvites": "Envoyer {{count}} Invitation",
+      "sendInvites_one": "Envoyer {{count}} Invitation",
+      "sendInvites_other": "Envoyer {{count}} Invitations",
+      "continueSolo": "Continuer Seul",
+      "skipForNow": "Ignorer pour le Moment",
+      "skipping": "Ignoration...",
+      "teamBenefits": "Avantages de l'Équipe",
+      "teamBenefitsDesc": "Invitez des membres de l'équipe à collaborer sur les fonctions, partager les configurations de fournisseurs et gérer les déploiements ensemble. Vous pouvez toujours ajouter des membres plus tard depuis votre tableau de bord.",
+      "errors": {
+        "invalidEmail": "Veuillez entrer une adresse e-mail valide",
+        "emailExists": "Cet e-mail a déjà été ajouté",
+        "sendFailed": "Échec de l'envoi des invitations de l'équipe"
+      },
+      "toast": {
+        "added": "Membre de l'équipe ajouté",
+        "invitesSent": "Invitations de l'équipe envoyées à {{count}} membre",
+        "invitesSent_one": "Invitations de l'équipe envoyées à {{count}} membre !",
+        "invitesSent_other": "Invitations de l'équipe envoyées à {{count}} membres !",
+        "soloSetup": "Continuer en configuration individuelle"
+      }
+    }
+  }
+}

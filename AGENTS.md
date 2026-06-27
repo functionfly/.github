@@ -304,6 +304,8 @@ psql -h localhost -p 5432 -U postgres -d functionfly -f your_changes.sql
 | `AGENT_WALLET_LOW_BALANCE_USD` | Low balance alert threshold | `5.00` |
 | `REDIS_ADDR` | Redis connection | `localhost:6379` |
 | `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` / `DB_SSLMODE` | Postgres connection | varies |
+| `RUNTIME_API_TOKEN` | Bearer token for runtime `/execute` endpoints (bun, deno, kotlin, ruby, nodejs, wasmedge, prism, microvm) | (unset — unauthenticated in dev) |
+| `ENVIRONMENT` | Set to `production` to enforce sandbox and warn on missing auth | (unset) |
 
 ---
 

@@ -124,7 +124,7 @@ const (
 
 // StateFabric limits
 const (
-	FreeMaxStateFabrics       = 0
+	FreeMaxStateFabrics       = 1  // Sandbox tier: 1 state object for experimentation
 	StarterMaxStateFabrics    = 3
 	ProMaxStateFabrics         = 10
 	EnterpriseMaxStateFabrics  = -1 // Unlimited
@@ -1227,4 +1227,116 @@ func GetVaultLimits(plan string) VaultLimits {
 		AuditExport:        SupportsVaultAuditExport(plan),
 		HAStatus:           SupportsVaultHAStatus(plan),
 	}
+}
+
+// ============================================================================
+// State Fabric Add-ons (Premium Stackable Add-ons)
+// ============================================================================
+// SF is now a bundled feature in platform plans. Add-ons provide premium capabilities.
+// Add-ons are available on any paid plan and stack on top of base SF limits.
+
+// SF Add-on IDs
+const (
+	SFAddOnHotCache            = "sf_hot_cache"
+	SFAddOnMultiRegion         = "sf_multi_region"
+	SFAddOnAIRecall            = "sf_ai_recall"
+	SFAddOnAdvancedInsights    = "sf_advanced_insights"
+	SFAddOnAdvancedSecurity    = "sf_advanced_security"
+)
+
+// SF Add-on pricing (cents/month)
+const (
+	SFAddOnHotCachePriceCents          = 4900  // $49/mo per 5GB
+	SFAddOnMultiRegionPriceCents       = 9900  // $99/mo
+	SFAddOnAIRecallPriceCents          = 14900 // $149/mo
+	SFAddOnAdvancedInsightsPriceCents  = 7900  // $79/mo
+	SFAddOnAdvancedSecurityPriceCents  = 9900  // $99/mo
+)
+
+// SFAddOnInfo represents a State Fabric add-on's metadata
+type SFAddOnInfo struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	PriceCents  int    `json:"price_cents"`
+	StripePriceID string `json:"stripe_price_id,omitempty"`
+}
+
+// GetAllSFAddOns returns all available SF add-ons
+func GetAllSFAddOns() []SFAddOnInfo {
+	return []SFAddOnInfo{
+		{
+			ID:          SFAddOnHotCache,
+			Name:        "Hot Cache Booster",
+			Description: "Reduces replay and read costs. 5GB hot cache tier.",
+			PriceCents:  SFAddOnHotCachePriceCents,
+		},
+		{
+			ID:          SFAddOnMultiRegion,
+			Name:        "Multi-Region Replication",
+			Description: "Active-active replication across regions for HA and global latency.",
+			PriceCents:  SFAddOnMultiRegionPriceCents,
+		},
+		{
+			ID:          SFAddOnAIRecall,
+			Name:        "AI Memory Pack",
+			Description: "Vector index, embeddings storage, fast read engine for AI recall.",
+			PriceCents:  SFAddOnAIRecallPriceCents,
+		},
+		{
+			ID:          SFAddOnAdvancedInsights,
+			Name:        "Advanced Insights",
+			Description: "Cost forecasting, anomaly detection, hot path alerts.",
+			PriceCents:  SFAddOnAdvancedInsightsPriceCents,
+		},
+		{
+			ID:          SFAddOnAdvancedSecurity,
+			Name:        "Advanced Security Pack",
+			Description: "SOC2-friendly logs, key rotation, audit streams.",
+			PriceCents:  SFAddOnAdvancedSecurityPriceCents,
+		},
+	}
+}
+
+// GetSFAddOnPrice returns the price in cents for an add-on
+func GetSFAddOnPrice(addOnID string) int {
+	switch addOnID {
+	case SFAddOnHotCache:
+		return SFAddOnHotCachePriceCents
+	case SFAddOnMultiRegion:
+		return SFAddOnMultiRegionPriceCents
+	case SFAddOnAIRecall:
+		return SFAddOnAIRecallPriceCents
+	case SFAddOnAdvancedInsights:
+		return SFAddOnAdvancedInsightsPriceCents
+	case SFAddOnAdvancedSecurity:
+		return SFAddOnAdvancedSecurityPriceCents
+	default:
+		return 0
+	}
+}
+
+// IsValidSFAddOn returns true if the add-on ID is valid
+func IsValidSFAddOn(addOnID string) bool {
+	switch addOnID {
+	case SFAddOnHotCache, SFAddOnMultiRegion, SFAddOnAIRecall,
+		SFAddOnAdvancedInsights, SFAddOnAdvancedSecurity:
+		return true
+	}
+	return false
+}
+
+// SupportsSFAddOn returns true if the plan can use SF add-ons
+// All paid plans (Starter+) can purchase add-ons
+func SupportsSFAddOn(plan string) bool {
+	return plan != PlanFree
+}
+
+// SupportsSFAddOnPurchase returns true if the plan can purchase a specific SF add-on
+// All paid plans can purchase any SF add-on
+func SupportsSFAddOnPurchase(plan string, addOnID string) bool {
+	if !IsValidSFAddOn(addOnID) {
+		return false
+	}
+	return plan != PlanFree
 }

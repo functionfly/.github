@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "欢迎使用 FunctionFly - 初始设置",
+      "description": "几分钟内完成 FunctionFly 账户设置。跨多个云提供商部署无服务器函数，实现自动故障转移。"
+    },
+    "steps": {
+      "welcome": {
+        "title": "欢迎使用 FunctionFly",
+        "description": "了解多提供商部署和自动故障转移"
+      },
+      "connectProvider": {
+        "title": "连接您的第一个提供商",
+        "description": "关联云提供商以开始部署您的函数"
+      },
+      "deployFunction": {
+        "title": "部署您的第一个函数",
+        "description": "部署一个简单函数，体验 FunctionFly 的强大功能"
+      },
+      "testFailover": {
+        "title": "测试故障转移",
+        "description": "通过测试自动故障转移来验证您的设置"
+      },
+      "teamSetup": {
+        "title": "设置您的团队",
+        "description": "邀请团队成员并配置协作设置"
+      }
+    },
+    "roles": {
+      "admin": "团队管理员",
+      "member": "团队成员",
+      "viewer": "查看者"
+    },
+    "accessibility": {
+      "skipToMain": "跳转到主要内容",
+      "goHome": "返回 FunctionFly 首页",
+      "help": "获取入门帮助",
+      "skip": "暂时跳过入门引导",
+      "progressBar": "入门进度：已完成 {{percent}}%",
+      "currentStep": "第 {{current}} 步，共 {{total}} 步：{{title}}",
+      "backButton": "返回上一步",
+      "nextButton": "前往下一步",
+      "completeButton": "完成入门设置",
+      "stepNavigation": "入门步骤",
+      "stepLabel": "第 {{number}} 步：{{title}} - {{status}}",
+      "statusCompleted": "已完成",
+      "statusActive": "当前",
+      "statusPending": "待完成",
+      "continueOnboarding": "继续入门引导",
+      "skipOnboarding": "跳过入门引导"
+    },
+    "stepCounter": "第 {{current}} 步，共 {{total}} 步",
+    "helpTooltip": "FunctionFly 将您的函数部署到多个云提供商，以实现高可用性。每一步都会连接一个新的提供商并自动测试故障转移。",
+    "skip": "暂时跳过",
+    "actions": {
+      "back": "返回",
+      "nextStep": "下一步",
+      "completeSetup": "完成设置",
+      "completing": "正在完成...",
+      "retry": "重试"
+    },
+    "errors": {
+      "stepLoadFailed": "加载此步骤失败。请重试。"
+    },
+    "tips": {
+      "welcomeTitle": "欢迎使用 FunctionFly",
+      "readyToConnect": "准备连接",
+      "providerConnected": "提供商已连接！",
+      "functionDeployed": "函数部署成功",
+      "setupComplete": "设置完成！",
+      "welcomeDesc": "花点时间了解 FunctionFly 的多提供商部署和自动故障转移功能。",
+      "roleGreeting": "欢迎 {{role}}！",
+      "adminPrivileges": " 您可以管理提供商、部署函数和邀请团队成员。",
+      "memberAccess": " 您可以部署函数和访问共享资源。",
+      "viewerAccess": " 您拥有团队函数和指标的只读访问权限。",
+      "connectProviderDesc": "您即将连接第一个云提供商。这将允许 FunctionFly 跨多个提供商部署函数，以实现高可用性。",
+      "deployFunctionDesc": "太好了！您的提供商已连接。现在让我们部署您的第一个函数，体验 FunctionFly 的强大功能。",
+      "tokenSecure": "API 令牌已安全存储并加密",
+      "testFailoverDesc": "您的函数已上线！最后一步是测试您的故障转移设置，以确保高可用性。",
+      "autoFailover": "当某个提供商出现故障时，FunctionFly 会自动将流量路由到健康的提供商",
+      "teamSetupDesc": "太好了！您的故障转移设置正常运行。现在让我们设置您的团队以实现协作。",
+      "inviteTeam": "邀请团队成员协作处理函数并共享提供商访问权限",
+      "setupCompleteDesc": "太好了！您的 FunctionFly 设置已完成，已准备好投入生产。",
+      "productionReady": "一切就绪，您可以开始部署具有高可用性的函数了！",
+      "allCompleteDesc": "恭喜！您的 FunctionFly 设置已完成，已准备好投入生产。",
+      "multiProviderDeployed": "您的函数现已部署到多个提供商，并启用了自动故障转移"
+    },
+    "hints": {
+      "welcome": "了解 FunctionFly 的多提供商部署和自动故障转移功能。",
+      "connectProvider": "连接云提供商以启用部署。",
+      "deployFunction": "部署您的第一个函数以测试设置。",
+      "testFailover": "验证自动故障转移是否正常工作。",
+      "teamSetup": "邀请团队成员进行协作。"
+    },
+    "skipDialog": {
+      "title": "跳过入门引导？",
+      "description": "您即将跳过剩余的 FunctionFly 入门步骤。这意味着：",
+      "continue": "继续入门引导",
+      "skipAnyway": "仍然跳过",
+      "warnings": {
+        "noProvider": "您将不会连接任何云提供商用于部署",
+        "noFunction": "您将不会部署第一个函数来测试设置",
+        "noFailoverTest": "您将不会测试自动故障转移功能"
+      },
+      "hints": {
+        "inviteLater": "您仍然可以从控制面板稍后邀请团队成员",
+        "canResume": "您可以随时从控制面板设置中恢复入门引导",
+        "basicDeploy": "基本函数仍然可以部署，但无法享受多提供商的优势"
+      }
+    },
+    "completion": {
+      "title": "欢迎使用 FunctionFly！",
+      "subtitle": "您的设置已完成，已准备好投入生产"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hello World",
+          "description": "一个返回问候语的简单函数"
+        },
+        "apiEcho": {
+          "name": "API Echo",
+          "description": "以 JSON 格式回显请求信息"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "示例函数",
+        "sampleFunctionsTooltip": "从预构建的函数示例中快速开始。这些示例展示了常见模式，可直接部署。",
+        "customCode": "自定义代码",
+        "customCodeTooltip": "从零开始编写您自己的函数代码。高级用户可以部署自定义逻辑、API 或集成。"
+      },
+      "functionListLabel": "选择一个示例函数",
+      "functionEdgeHelp": "边缘函数在靠近全球用户的位置运行，与传统的基于服务器的函数相比，可减少延迟并提高性能。",
+      "codePreview": "预览",
+      "codePreviewRegion": "函数代码预览",
+      "actions": {
+        "copyCode": "复制函数代码",
+        "chooseSample": "选择一个示例函数",
+        "copyUrl": "复制函数 URL",
+        "refreshMetrics": "刷新指标",
+        "openFunction": "打开函数",
+        "deploying": "正在部署到所有已连接的提供商...",
+        "deploy": "部署函数",
+        "tryAgain": "重试",
+        "tryCustomCode": "尝试自定义代码"
+      },
+      "customCodeNotice": "您可以部署自己的自定义函数代码。现在，请选择一个示例函数以继续入门引导。",
+      "functionNameLabel": "函数名称",
+      "functionNameTooltip": "为您的函数选择一个唯一名称。这将成为函数 URL 的一部分（例如 my-function.functionfly.app）。",
+      "urlSuggestions": "URL 建议",
+      "urlSuggestionsHint": "点击建议即可将其用作函数名称",
+      "functionNameHint": "仅使用小写字母、数字和连字符。这将用于生成您的函数 URL。",
+      "functionNamePreview": "预览：{{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "推荐",
+        "apiPrefix": "API 端点",
+        "versioned": "版本化端点",
+        "available": "可用",
+        "taken": "已占用"
+      },
+      "deployed": {
+        "title": "函数已部署！",
+        "subtitle": "您的函数现已上线，可以处理请求。",
+        "functionUrl": "函数 URL",
+        "liveMetrics": "实时指标"
+      },
+      "metrics": {
+        "requests": "请求数",
+        "latency": "平均延迟",
+        "errors": "错误数",
+        "uptime": "正常运行时间",
+        "loading": "正在加载指标..."
+      },
+      "steps": {
+        "validating": "正在验证函数配置...",
+        "connecting": "正在连接部署提供商...",
+        "uploading": "正在上传函数代码...",
+        "deploying": "正在部署到主提供商...",
+        "configuring": "正在设置故障转移配置...",
+        "complete": "部署完成！"
+      },
+      "deployProgress": "部署进度：{{percent}}%",
+      "errors": {
+        "deploymentFailed": "部署失败",
+        "invalidName": "函数名称无效",
+        "nameTooShort": "函数名称至少需要 2 个字符",
+        "nameTooLong": "函数名称不能超过 52 个字符",
+        "nameInvalidChars": "仅使用小写字母、数字和连字符",
+        "noProvider": "请先连接一个提供商",
+        "cancelled": "部署已取消",
+        "generic": "部署因意外错误而失败。请重试。",
+        "alternative": "替代方案：",
+        "alternativeDesc": "您也可以稍后从控制面板部署此函数，或者如果当前名称已被占用，请尝试其他函数名称。"
+      },
+      "toast": {
+        "success": "函数 \"{{name}}\" 部署成功！",
+        "failed": "部署失败",
+        "copied": "已复制到剪贴板！"
+      },
+      "advanced": {
+        "title": "高级配置",
+        "tooltip": "为您的函数配置环境变量、扩展设置和其他高级选项。",
+        "envVars": "环境变量",
+        "envVarsTooltip": "添加环境变量以在运行时配置您的函数。这些变量是安全存储和加密的。",
+        "envKeyPlaceholder": "键",
+        "envValuePlaceholder": "值",
+        "envVarsHint": "常用变量：API 密钥、数据库 URL、配置设置",
+        "add": "添加",
+        "scaling": "扩展设置",
+        "scalingTooltip": "控制函数随流量的扩展方式。更高的限制可以处理更多并发请求。",
+        "maxConcurrent": "最大并发请求数",
+        "maxConcurrentLabel": "最大并发请求数",
+        "timeout": "超时时间（秒）",
+        "timeoutLabel": "请求超时时间（秒）",
+        "proTipTitle": "专业提示",
+        "proTipDesc": "您可以随时从函数控制面板更新这些设置。高级配置将在下次部署时生效。"
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "选择云提供商",
+      "providerConnected": "{{name}} 已连接！",
+      "providerReady": "您的提供商已准备好部署函数。",
+      "costPreview": "费用预览",
+      "costCalculating": "正在计算费用...",
+      "costMonthlyEstimate": "月度估算",
+      "costBreakdown": "明细：",
+      "costBasedOn": "基于每天 1,000 次请求、100 毫秒计算时间、128MB 内存",
+      "apiToken": "API 令牌",
+      "apiTokenTooltip": "API 令牌是一种安全密钥，允许 FunctionFly 将函数部署到您的提供商账户。您可以在提供商的控制面板中的 API 设置下生成此令牌。",
+      "apiTokenPlaceholder": "输入您的 {{name}} API 令牌",
+      "apiTokenValidated": "API 令牌验证成功",
+      "apiTokenFind": "在 {{name}} 的控制面板中的 API 设置下找到您的 API 令牌。",
+      "apiTokenSecure": "您的 API 令牌已安全加密存储。我们绝不会共享您的凭据。",
+      "shareWithTeam": "与团队共享",
+      "shareWithTeamDesc": "允许团队成员使用此提供商进行部署",
+      "connect": "连接 {{name}}",
+      "connecting": "正在连接 {{name}}...",
+      "sharing": "正在与团队共享...",
+      "validating": "正在验证令牌...",
+      "changeProvider": "更改",
+      "viewDocs": "查看文档",
+      "status": {
+        "available": "可用",
+        "maintenance": "维护中",
+        "outage": "服务中断",
+        "unavailable": "不可用"
+      },
+      "someUnavailable": "部分提供商当前不可用",
+      "someUnavailableDesc_one": "{{name}} 正在维护中。",
+      "someUnavailableDesc_other": "{{count}} 个提供商当前不可用。",
+      "stillAvailable": "您仍然可以使用可用的 {{count}} 个提供商开始",
+      "maintenanceNote": "因计划维护而暂时不可用",
+      "outageNote": "服务当前遇到问题",
+      "errors": {
+        "connectionFailed": "连接提供商失败。请检查您的 API 令牌并重试。",
+        "invalidToken": "API 令牌无效",
+        "tokenSuggestion": "请在 {{name}} 控制面板中检查您的 API 令牌，并确保其具有正确的权限",
+        "networkError": "无法连接到 {{name}} API。请检查您的网络连接并重试。",
+        "shareFailed": "提供商已连接，但无法与团队共享",
+        "noTeamFound": "提供商已连接，但尚未找到要共享的团队。"
+      },
+      "toast": {
+        "connected": "{{name}} 连接成功！",
+        "shareSuccess": "提供商已成功与团队共享！",
+        "shareFailed": "提供商已连接，但无法与团队共享"
+      }
+    },
+    "testFailover": {
+      "title": "测试故障转移",
+      "description": "通过模拟提供商故障来测试您的故障转移设置。我们将验证流量是否自动路由到您的备用提供商。",
+      "tooltip": "故障转移确保即使某个提供商出现问题，您的函数也能保持在线。FunctionFly 会自动将流量路由到健康的备用提供商。",
+      "runTest": "运行故障转移测试",
+      "testing": "正在测试故障转移...",
+      "retryTest": "重试测试",
+      "runAgain": "再次运行测试",
+      "primary": "主提供商",
+      "backup": "备用提供商",
+      "primaryHelp": "您的主提供商在正常条件下处理所有流量。它是提供函数服务的首选。",
+      "backupHelp": "当主提供商出现故障时，您的备用提供商将自动接管。这确保您的函数全天候可用。",
+      "steps": {
+        "checking": "正在检查主端点",
+        "checkingDesc": "正在测试与主提供商的连接",
+        "simulating": "正在模拟故障",
+        "simulatingDesc": "正在临时禁用主端点",
+        "detecting": "正在检测故障转移",
+        "detectingDesc": "等待自动故障转移触发",
+        "verifying": "正在验证备用端点",
+        "verifyingDesc": "确认请求已由备用提供商处理",
+        "restoring": "正在恢复主端点",
+        "restoringDesc": "正在将主端点恢复上线"
+      },
+      "results": {
+        "title": "测试结果",
+        "passed": "故障转移测试通过！",
+        "passedDesc": "您的设置运行正常。自动故障转移已就绪。",
+        "failed": "故障转移测试失败",
+        "failedDesc": "您的故障转移配置存在问题。",
+        "whatHappened": "发生了什么？",
+        "whatHappenedDesc": "当主提供商（Cloudflare）暂时不可用时，FunctionFly 自动将流量路由到您的备用提供商（Vercel），实现了零停机时间。"
+      },
+      "errors": {
+        "testFailed": "故障转移测试因意外错误而失败。",
+        "suggestion": "请检查您的提供商连接并重试。"
+      },
+      "toast": {
+        "success": "故障转移测试完成！",
+        "failed": "故障转移测试失败"
+      },
+      "latency": "延迟",
+      "latencyHelp": "延迟衡量响应时间。较低的值意味着为您的用户提供更快的性能。"
+    },
+    "teamSetup": {
+      "yourRole": "您的角色",
+      "roleTooltip": "选择您在团队中的角色。您可以稍后在团队设置中更改。",
+      "roles": {
+        "admin": {
+          "label": "管理员",
+          "description": "拥有管理团队、提供商和函数的完全访问权限"
+        },
+        "member": {
+          "label": "成员",
+          "description": "可以部署和管理函数，查看团队资源"
+        },
+        "viewer": {
+          "label": "查看者",
+          "description": "拥有团队函数和指标的只读访问权限"
+        }
+      },
+      "inviteTitle": "邀请团队成员",
+      "inviteTooltip": "添加团队成员以协作处理函数并共享提供商配置。",
+      "emailLabel": "电子邮件地址",
+      "emailPlaceholder": "colleague@company.com",
+      "roleLabel": "角色",
+      "addMember": "添加团队成员",
+      "pendingInvites": "待处理邀请 ({{count}})",
+      "sendInvites": "发送 {{count}} 个邀请",
+      "sendInvites_one": "发送 {{count}} 个邀请",
+      "sendInvites_other": "发送 {{count}} 个邀请",
+      "continueSolo": "独自继续",
+      "skipForNow": "暂时跳过",
+      "skipping": "正在跳过...",
+      "teamBenefits": "团队优势",
+      "teamBenefitsDesc": "邀请团队成员协作处理函数、共享提供商配置并共同管理部署。您可以随时从控制面板添加成员。",
+      "errors": {
+        "invalidEmail": "请输入有效的电子邮件地址",
+        "emailExists": "此电子邮件已被添加",
+        "sendFailed": "发送团队邀请失败"
+      },
+      "toast": {
+        "added": "团队成员已添加",
+        "invitesSent": "团队邀请已发送给 {{count}} 位成员",
+        "invitesSent_one": "团队邀请已发送给 {{count}} 位成员！",
+        "invitesSent_other": "团队邀请已发送给 {{count}} 位成员！",
+        "soloSetup": "继续独自设置"
+      }
+    }
+  }
+}

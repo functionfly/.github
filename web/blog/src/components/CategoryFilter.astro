@@ -1,5 +1,10 @@
 ---
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
 import type { Category } from '../lib/api';
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 
 interface Props {
   categories: Category[];
@@ -39,10 +44,10 @@ function getIconColor(color?: string): string {
 
 <aside class="category-filter">
   <div class="category-filter__header">
-    <h3 class="category-filter__title">Categories</h3>
+    <h3 class="category-filter__title">{t('category.categories')}</h3>
     <span class="category-filter__count">{categories.length}</span>
   </div>
-  
+
   <nav class="category-filter__nav">
     <a
       href="/"
@@ -56,7 +61,7 @@ function getIconColor(color?: string): string {
           <rect x="3" y="14" width="7" height="7"></rect>
         </svg>
       </span>
-      <span class="category-filter__text">All Posts</span>
+      <span class="category-filter__text">{t('category.allPosts')}</span>
       {showCounts && <span class="category-filter__post-count">{totalPosts}</span>}
       <span class="category-filter__arrow">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -152,6 +152,7 @@ func (h *Handler) HandleGetPublicProfile(w http.ResponseWriter, r *http.Request)
 		"lastActive":          lastActive,
 		"profileNumber":       getInt(user.ProfileNumber),
 		"isAdmin":             isAdmin, // Boolean only — does not expose full role string
+		"founderNumber":       getInt(user.FounderNumber),
 	}
 	h.attachProfileStats(r.Context(), profile, user.ID)
 	h.applyProfileVisibility(r.Context(), profile, user.ID)
@@ -256,6 +257,7 @@ func (h *Handler) HandleGetPublicProfileByAt(w http.ResponseWriter, r *http.Requ
 		"lastActive":          lastActive,
 		"profileNumber":       getInt(user.ProfileNumber),
 		"isAdmin":             isAdmin, // Boolean only — does not expose full role string
+		"founderNumber":       getInt(user.FounderNumber),
 		// SEO enhancement fields
 		"profileUrl":     "/@" + usernameStr,
 		"totalFunctions": len(publishedFunctions),

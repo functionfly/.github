@@ -6,6 +6,7 @@ import Pagination from '../components/Pagination.astro';
 import SearchBox from '../components/SearchBox.astro';
 import { getPosts, getCategories } from '../lib/api';
 import { SITE_NAME, SITE_DESCRIPTION } from '../lib/constants';
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
 
 // Get pagination parameters from URL
 const url = Astro.url;
@@ -23,6 +24,10 @@ const posts = postsResponse.data || [];
 const { totalPages } = postsResponse.meta;
 const totalPosts = postsResponse.meta.total;
 const recentPosts = recentPostsResponse.data || [];
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <BlogLayout
@@ -38,7 +43,7 @@ const recentPosts = recentPostsResponse.data || [];
           <div class="hero-badge-wrapper">
             <span class="hero-badge">
               <span class="hero-badge-dot"></span>
-              Insights & Updates
+              {t('hero.badge')}
             </span>
           </div>
 
@@ -47,7 +52,7 @@ const recentPosts = recentPostsResponse.data || [];
           </h1>
 
           <p class="blog-subtitle">
-            Tutorials, product updates, and edge computing insights from the team building the future of serverless.
+            {t('hero.subtitle')}
           </p>
 
           <div class="blog-search">
@@ -59,22 +64,22 @@ const recentPosts = recentPostsResponse.data || [];
         <div class="stats-bar">
           <div class="stat-item">
             <span class="stat-number">{totalPosts > 0 ? totalPosts : '50'}+</span>
-            <span class="stat-label">Articles</span>
+            <span class="stat-label">{t('stats.articles')}</span>
           </div>
           <div class="stat-divider" aria-hidden="true"></div>
           <div class="stat-item">
             <span class="stat-number">12k+</span>
-            <span class="stat-label">Readers</span>
+            <span class="stat-label">{t('stats.readers')}</span>
           </div>
           <div class="stat-divider" aria-hidden="true"></div>
           <div class="stat-item">
             <span class="stat-number">Weekly</span>
-            <span class="stat-label">Updates</span>
+            <span class="stat-label">{t('stats.updates')}</span>
           </div>
           <div class="stat-divider" aria-hidden="true"></div>
           <div class="stat-item">
             <span class="stat-number">8</span>
-            <span class="stat-label">Authors</span>
+            <span class="stat-label">{t('stats.authors')}</span>
           </div>
         </div>
       </div>
@@ -94,7 +99,7 @@ const recentPosts = recentPostsResponse.data || [];
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
                 </svg>
-                Recent Posts
+                {t('category.recentPosts')}
               </h3>
               <ul class="trending-list">
                 {recentPosts.length > 0 ? (
@@ -112,7 +117,7 @@ const recentPosts = recentPostsResponse.data || [];
                   ))
                 ) : (
                   <li class="trending-item">
-                    <span class="trending-link">No recent posts</span>
+                    <span class="trending-link">{t('category.noRecentPosts')}</span>
                   </li>
                 )}
               </ul>
@@ -144,8 +149,8 @@ const recentPosts = recentPostsResponse.data || [];
               </svg>
             </div>
             <div class="newsletter-card__text">
-              <h2 class="newsletter-card__title">Get articles in your inbox</h2>
-              <p class="newsletter-card__description">Join 12,000+ developers getting edge computing insights, tutorials, and updates.</p>
+              <h2 class="newsletter-card__title">{t('newsletter.title')}</h2>
+              <p class="newsletter-card__description">{t('newsletter.description')}</p>
             </div>
           </div>
           <form class="newsletter-form" action="/api/subscribe" method="POST">
@@ -153,20 +158,20 @@ const recentPosts = recentPostsResponse.data || [];
               <input
                 type="email"
                 name="email"
-                placeholder="you@company.com"
+                placeholder={t('newsletter.placeholder')}
                 class="newsletter-input"
                 aria-label="Email address"
                 required
               />
               <button type="submit" class="newsletter-button">
-                Subscribe
+                {t('newsletter.button')}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="5" y1="12" x2="19" y2="12"/>
                   <polyline points="12 5 19 12 12 19"/>
                 </svg>
               </button>
             </div>
-            <p class="newsletter-privacy">No spam. Unsubscribe anytime.</p>
+            <p class="newsletter-privacy">{t('newsletter.privacy')}</p>
           </form>
         </div>
       </div>

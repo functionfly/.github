@@ -34,6 +34,7 @@ pub struct AppState {
     pub security_auditor: Arc<SecurityAuditor>,
     pub started_at: Instant,
     pub circuit_breaker: Arc<CircuitBreaker>,
+    pub api_token: Option<String>,
 }
 
 /// Circuit breaker state
@@ -279,8 +280,26 @@ async fn metrics_handler(State(state): State<AppState>) -> impl IntoResponse {
 /// Async execution handler
 async fn execute_handler(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Json(req): Json<ExecuteRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    // Auth check
+    if let Some(ref token) = state.api_token {
+        let auth = headers.get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if auth != format!("Bearer {}", token) {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse {
+                    error: "unauthorized".to_string(),
+                    code: "UNAUTHORIZED".to_string(),
+                    retry_after_ms: None,
+                }),
+            ));
+        }
+    }
+
     // Check circuit breaker
     if !state.circuit_breaker.is_allowed() {
         state.metrics.record_rate_limited();
@@ -357,9 +376,27 @@ async fn execute_handler(
 /// Versioned execution handler
 async fn execute_versioned_handler(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Path((_function_id, _version)): Path<(String, String)>,
     Json(req): Json<ExecuteRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    // Auth check
+    if let Some(ref token) = state.api_token {
+        let auth = headers.get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if auth != format!("Bearer {}", token) {
+            return Err((
+                StatusCode::UNAUTHORIZED,
+                Json(ErrorResponse {
+                    error: "unauthorized".to_string(),
+                    code: "UNAUTHORIZED".to_string(),
+                    retry_after_ms: None,
+                }),
+            ));
+        }
+    }
+
     // Validate request
     if let Err(e) = RequestValidator::validate(&req) {
         return Err((
@@ -431,6 +468,7 @@ pub async fn run_server(
     metrics: Arc<MetricsCollector>,
     orchestrator: Arc<RwLock<OrchestratorClient>>,
     security_auditor: Arc<SecurityAuditor>,
+    api_token: Option<String>,
 ) -> anyhow::Result<()> {
     let state = AppState {
         executor,
@@ -440,6 +478,7 @@ pub async fn run_server(
         security_auditor,
         started_at: Instant::now(),
         circuit_breaker: CircuitBreaker::new(10, 30),
+        api_token,
     };
 
     let app = create_app(state);

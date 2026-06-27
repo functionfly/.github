@@ -1,233 +1,360 @@
 import React from 'react'
-import './homepage.css'
+import '../styles/sc-main.css';
+import { PageGrid } from './containment/PageGrid'
+import { Chamber } from './containment/Chamber'
+import { CornerBrace } from './containment/CornerBrace'
+import { SealedButton } from './containment/SealedButton'
+import { FrameButton } from './containment/FrameButton'
+import { Card } from './containment/Card'
+import { StatusPill } from './containment/StatusPill'
+
+const Container: React.FC<{ children: React.ReactNode; narrow?: boolean }> = ({ children, narrow }) => (
+  <div style={{ maxWidth: narrow ? 720 : 1100, margin: '0 auto', padding: '0 var(--space-4)' }}>
+    {children}
+  </div>
+)
+const Section: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <section style={{ padding: 'var(--space-8) 0', background: 'var(--bg)' }}>{children}</section>
+)
+const SectionTitle: React.FC<{ children: React.ReactNode; id?: string; lead?: React.ReactNode }> = ({ children, id, lead }) => (
+  <div id={id} style={{ textAlign: 'center', marginBottom: 'var(--space-7)' }}>
+    <h2 style={{
+      fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700,
+      letterSpacing: '-0.005em', color: 'var(--text)',
+      marginBottom: lead ? 'var(--space-4)' : 0,
+    }}>{children}</h2>
+    {lead && <p style={{ color: 'var(--text-dim)', maxWidth: 640, margin: '0 auto', lineHeight: 1.6 }}>{lead}</p>}
+  </div>
+)
+
+const TrustIcon: React.FC<{ size?: number }> = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+  </svg>
+)
+
+const ShieldCheckIcon: React.FC<{ size?: number }> = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 3 4 7v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V7l-8-4Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+    <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+)
+
+const LockIcon: React.FC<{ size?: number }> = ({ size = 28 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+)
 
 const CompliancePage: React.FC = () => {
   return (
-    <div className="ff-homepage">
-      <section className="ff-hero-section ff-compliance-hero">
-        <div className="ff-hero-inner">
-          <div className="ff-hero-eyebrow">
-            <span className="ff-pulse-dot" />
-            <span>Security & Compliance</span>
-          </div>
-          <h1 className="ff-hero-headline">
-            Enterprise-grade security<br />and compliance
-          </h1>
-          <p className="ff-hero-sub">
-            FunctionFly is built with security-first principles. Our platform meets the most demanding compliance requirements for enterprise deployments.
-          </p>
-          <div className="ff-hero-actions">
-            <a className="ff-btn ff-btn-primary" href="/contact">Contact sales</a>
-            <a className="ff-btn ff-btn-secondary" href="/trust">Trust center</a>
-          </div>
-        </div>
-      </section>
+    <>
+      <PageGrid />
 
-      <section className="ff-section">
-        <div className="ff-container">
-          <div className="ff-pillars">
-            <div className="ff-pillar-card">
-              <div className="ff-pillar-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                </svg>
+      <Section>
+        <Container>
+          <Chamber variant="ribs">
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <div style={{
+              fontFamily: 'var(--font-mono)', fontSize: 11, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: 'var(--status-ok)',
+              marginBottom: 'var(--space-5)',
+              display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)',
+            }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--status-ok)', boxShadow: '0 0 12px var(--status-ok)' }} />
+              Security & Compliance
+            </div>
+            <h1 style={{
+              fontFamily: 'var(--font-display)', fontSize: '58px', fontWeight: 700,
+              letterSpacing: '-0.01em', lineHeight: 1.08, color: 'var(--text)',
+              marginBottom: 'var(--space-5)',
+            }}>
+              Enterprise-grade security<br />and compliance
+            </h1>
+            <p style={{ fontSize: 17, lineHeight: 1.6, color: 'var(--text-dim)', maxWidth: 720, marginBottom: 'var(--space-6)' }}>
+              FunctionFly is built with security-first principles. Our platform meets the most demanding compliance requirements for enterprise deployments.
+            </p>
+            <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+              <SealedButton onClick={() => window.location.href = '/contact'}>
+                Contact sales
+              </SealedButton>
+              <FrameButton onClick={() => window.location.href = '/trust'}>
+                Trust center
+              </FrameButton>
+            </div>
+          </Chamber>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-5)' }}>
+            <Card>
+              <div style={{ color: 'var(--accent)', marginBottom: 'var(--space-4)' }}>
+                <TrustIcon size={32} />
               </div>
-              <h2>SOC 2 Type II</h2>
-              <p>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-3)' }}>
+                SOC 2 Type II
+              </h3>
+              <p style={{ color: 'var(--text-dim)', lineHeight: 1.6 }}>
                 Our security controls and practices are audited annually by independent third-party auditors to maintain SOC 2 Type II certification.
               </p>
-            </div>
+            </Card>
 
-            <div className="ff-pillar-card ff-pillar-card--accent">
-              <div className="ff-pillar-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 3 4 7v6c0 5 3.5 8.5 8 9 4.5-.5 8-4 8-9V7l-8-4Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                  <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+            <Card>
+              <div style={{ color: 'var(--accent)', marginBottom: 'var(--space-4)' }}>
+                <ShieldCheckIcon size={32} />
               </div>
-              <h2>GDPR Compliant</h2>
-              <p>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-3)' }}>
+                GDPR Compliant
+              </h3>
+              <p style={{ color: 'var(--text-dim)', lineHeight: 1.6 }}>
                 We comply with the General Data Protection Regulation for EU users, including data subject rights, legal bases for processing, and international data transfers.
               </p>
-            </div>
+            </Card>
 
-            <div className="ff-pillar-card">
-              <div className="ff-pillar-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
+            <Card>
+              <div style={{ color: 'var(--accent)', marginBottom: 'var(--space-4)' }}>
+                <LockIcon size={32} />
               </div>
-              <h2>CCPA Compliant</h2>
-              <p>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-3)' }}>
+                CCPA Compliant
+              </h3>
+              <p style={{ color: 'var(--text-dim)', lineHeight: 1.6 }}>
                 California residents have rights to know what personal information is collected, opt-out of sale, and request deletion under the California Consumer Privacy Act.
               </p>
-            </div>
+            </Card>
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
-      <section className="ff-section ff-section--alt">
-        <div className="ff-container">
-          <h2 className="ff-section-title">Security architecture</h2>
-          <p className="ff-section-lead">
-            Built from the ground up with security in mind.
-          </p>
-          <div className="ff-trust-grid-2">
-            <div className="ff-trust-card">
-              <h3>Encryption</h3>
-              <ul>
-                <li><strong>Data in transit:</strong> TLS 1.3 for all connections</li>
-                <li><strong>Data at rest:</strong> AES-256 encryption</li>
-                <li><strong>Database encryption:</strong> Transparent data encryption for sensitive information</li>
-                <li><strong>Zero-knowledge vault:</strong> Client-side encryption, we never see plaintext</li>
+      <Section>
+        <Container>
+          <SectionTitle id="architecture" lead="Built from the ground up with security in mind.">
+            Security architecture
+          </SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-5)' }}>
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Encryption
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  { label: 'Data in transit', value: 'TLS 1.3 for all connections' },
+                  { label: 'Data at rest', value: 'AES-256 encryption' },
+                  { label: 'Database encryption', value: 'Transparent data encryption' },
+                  { label: 'Zero-knowledge vault', value: 'Client-side encryption' },
+                ].map((item) => (
+                  <li key={item.label} style={{ marginBottom: 'var(--space-3)', fontSize: 14 }}>
+                    <strong style={{ color: 'var(--text)' }}>{item.label}:</strong>{' '}
+                    <span style={{ color: 'var(--text-dim)' }}>{item.value}</span>
+                  </li>
+                ))}
               </ul>
-            </div>
-            <div className="ff-trust-card">
-              <h3>Access controls</h3>
-              <ul>
-                <li><strong>Role-based access control (RBAC)</strong> limiting data access to authorized personnel</li>
-                <li><strong>Multi-factor authentication (MFA)</strong> for all administrative access</li>
-                <li><strong>Regular access reviews</strong> and automated deprovisioning</li>
-                <li><strong>Principle of least privilege</strong> applied to all systems</li>
+            </Card>
+
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Access controls
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  'Role-based access control (RBAC)',
+                  'Multi-factor authentication (MFA)',
+                  'Regular access reviews',
+                  'Principle of least privilege',
+                ].map((item) => (
+                  <li key={item} style={{ marginBottom: 'var(--space-3)', fontSize: 14, color: 'var(--text-dim)' }}>
+                    {item}
+                  </li>
+                ))}
               </ul>
-            </div>
-            <div className="ff-trust-card">
-              <h3>Security monitoring</h3>
-              <ul>
-                <li><strong>24/7 security monitoring</strong> and intrusion detection systems</li>
-                <li><strong>Regular security audits</strong> and vulnerability assessments</li>
-                <li><strong>Automated threat detection</strong> and response systems</li>
-                <li><strong>SIEM integration</strong> for enterprise deployments</li>
+            </Card>
+
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Security monitoring
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  '24/7 security monitoring',
+                  'Regular security audits',
+                  'Automated threat detection',
+                  'SIEM integration',
+                ].map((item) => (
+                  <li key={item} style={{ marginBottom: 'var(--space-3)', fontSize: 14, color: 'var(--text-dim)' }}>
+                    {item}
+                  </li>
+                ))}
               </ul>
-            </div>
-            <div className="ff-trust-card">
-              <h3>Breach response</h3>
-              <ul>
-                <li><strong>Incident response procedures</strong> with immediate containment</li>
-                <li><strong>72-hour notification</strong> when legally required</li>
-                <li><strong>Comprehensive breach logs</strong> maintained</li>
-                <li><strong>Post-incident reviews</strong> to prevent future occurrences</li>
+            </Card>
+
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Breach response
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  'Incident response procedures',
+                  '72-hour notification',
+                  'Comprehensive breach logs',
+                  'Post-incident reviews',
+                ].map((item) => (
+                  <li key={item} style={{ marginBottom: 'var(--space-3)', fontSize: 14, color: 'var(--text-dim)' }}>
+                    {item}
+                  </li>
+                ))}
               </ul>
-            </div>
+            </Card>
           </div>
-        </div>
-      </section>
+        </Container>
+      </Section>
 
-      <section className="ff-section">
-        <div className="ff-container">
-          <h2 className="ff-section-title">Compliance certifications</h2>
-          <div className="ff-compliance-grid">
-            <div className="ff-compliance-card">
-              <div className="ff-compliance-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2"/>
-                  <path d="m9 12 2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+      <Section>
+        <Container>
+          <SectionTitle>Compliance certifications</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-5)' }}>
+            {[
+              { name: 'SOC 2 Type II', desc: 'Annual audit by independent third-party auditors covering security, availability, and confidentiality.', icon: <TrustIcon size={32} /> },
+              { name: 'GDPR', desc: 'Full compliance with EU General Data Protection Regulation including data subject rights and DPA agreements.', icon: <ShieldCheckIcon size={32} /> },
+              { name: 'CCPA', desc: 'California Consumer Privacy Act compliance with right to know, delete, and opt-out.', icon: <LockIcon size={32} /> },
+              { name: 'COPPA', desc: "Children's Online Privacy Protection Act compliant with age verification and parental consent procedures.", icon: <LockIcon size={32} /> },
+            ].map((cert) => (
+              <Card key={cert.name}>
+                <div style={{ color: 'var(--accent)', marginBottom: 'var(--space-4)' }}>
+                  {cert.icon}
+                </div>
+                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-3)' }}>
+                  {cert.name}
+                </h3>
+                <p style={{ color: 'var(--text-dim)', fontSize: 14, lineHeight: 1.6 }}>
+                  {cert.desc}
+                </p>
+              </Card>
+            ))}
+          </div>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <SectionTitle id="data-residency" lead="Your data is stored and processed with appropriate safeguards.">
+            Data residency & transfers
+          </SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-5)' }}>
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Data transfer mechanisms
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  'Standard Contractual Clauses (SCCs)',
+                  'Adequacy decisions',
+                  'Binding Corporate Rules',
+                  'Explicit consent',
+                ].map((item) => (
+                  <li key={item} style={{ marginBottom: 'var(--space-3)', fontSize: 14, color: 'var(--text-dim)' }}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Data hosting locations
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  'United States — Primary',
+                  'European Union — GDPR-compliant',
+                  'Global edge — Cloudflare CDN',
+                  'Enterprise — Dedicated deployments',
+                ].map((item) => (
+                  <li key={item} style={{ marginBottom: 'var(--space-3)', fontSize: 14, color: 'var(--text-dim)' }}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container>
+          <SectionTitle>Enterprise features</SectionTitle>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-5)' }}>
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Custom security requirements
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  'Private deployments in your cloud',
+                  'Customer-managed encryption keys (BYOK)',
+                  'Custom SLA with guaranteed uptime',
+                  'Dedicated infrastructure options',
+                ].map((item) => (
+                  <li key={item} style={{ marginBottom: 'var(--space-3)', fontSize: 14, color: 'var(--text-dim)' }}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            <Card>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>
+                Enterprise support
+              </h3>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {[
+                  'Dedicated customer success manager',
+                  'Priority support with response times',
+                  'Custom onboarding and training',
+                  'Security questionnaires support',
+                ].map((item) => (
+                  <li key={item} style={{ marginBottom: 'var(--space-3)', fontSize: 14, color: 'var(--text-dim)' }}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
+        </Container>
+      </Section>
+
+      <Section>
+        <Container narrow>
+          <Chamber>
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <div style={{ textAlign: 'center' }}>
+              <h2 style={{
+                fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700,
+                letterSpacing: '-0.005em', color: 'var(--text)',
+                marginBottom: 'var(--space-4)',
+              }}>
+                Need a custom compliance solution?
+              </h2>
+              <p style={{ color: 'var(--text-dim)', lineHeight: 1.6, marginBottom: 'var(--space-6)' }}>
+                Our team can work with you to meet specific security and compliance requirements.
+              </p>
+              <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <SealedButton onClick={() => window.location.href = '/contact'}>
+                  Contact sales
+                </SealedButton>
+                <FrameButton onClick={() => window.location.href = '/trust'}>
+                  Trust center
+                </FrameButton>
               </div>
-              <h3>SOC 2 Type II</h3>
-              <p>Annual audit by independent third-party auditors covering security, availability, and confidentiality.</p>
             </div>
-            <div className="ff-compliance-card">
-              <div className="ff-compliance-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <h3>GDPR</h3>
-              <p>Full compliance with EU General Data Protection Regulation including data subject rights and DPA agreements.</p>
-            </div>
-            <div className="ff-compliance-card">
-              <div className="ff-compliance-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
-                </svg>
-              </div>
-              <h3>CCPA</h3>
-              <p>California Consumer Privacy Act compliance with right to know, delete, and opt-out.</p>
-            </div>
-            <div className="ff-compliance-card">
-              <div className="ff-compliance-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" stroke="currentColor" strokeWidth="2"/>
-                </svg>
-              </div>
-              <h3>COPPA</h3>
-              <p>Children's Online Privacy Protection Act compliant with age verification and parental consent procedures.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ff-section ff-section--alt">
-        <div className="ff-container">
-          <h2 className="ff-section-title">Data residency & transfers</h2>
-          <p className="ff-section-lead">
-            Your data is stored and processed with appropriate safeguards.
-          </p>
-          <div className="ff-trust-grid-2">
-            <div className="ff-trust-card">
-              <h3>Data transfer mechanisms</h3>
-              <ul>
-                <li><strong>Standard Contractual Clauses (SCCs)</strong> approved by the European Commission</li>
-                <li><strong>Adequacy decisions</strong> for transfers to countries with equivalent privacy protections</li>
-                <li><strong>Binding Corporate Rules</strong> for intra-group transfers</li>
-                <li><strong>Explicit consent</strong> when required by applicable law</li>
-              </ul>
-            </div>
-            <div className="ff-trust-card">
-              <h3>Data hosting locations</h3>
-              <ul>
-                <li><strong>United States</strong> — Primary deployment region</li>
-                <li><strong>European Union</strong> — GDPR-compliant data centers</li>
-                <li><strong>Global edge</strong> — Cloudflare CDN for low-latency delivery</li>
-                <li><strong>Enterprise options</strong> — Dedicated deployments available</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ff-section">
-        <div className="ff-container">
-          <h2 className="ff-section-title">Enterprise features</h2>
-          <div className="ff-trust-grid-2">
-            <div className="ff-trust-card">
-              <h3>Custom security requirements</h3>
-              <ul>
-                <li>Private deployments in your cloud environment</li>
-                <li>Customer-managed encryption keys (BYOK)</li>
-                <li>Custom SLA with guaranteed uptime</li>
-                <li>Dedicated infrastructure options</li>
-              </ul>
-            </div>
-            <div className="ff-trust-card">
-              <h3>Enterprise support</h3>
-              <ul>
-                <li>Dedicated customer success manager</li>
-                <li>Priority support with guaranteed response times</li>
-                <li>Custom onboarding and training</li>
-                <li>Security questionnaires and audit support</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="ff-cta-section">
-        <div className="ff-container">
-          <h2>Need a custom compliance solution?</h2>
-          <p>Our team can work with you to meet specific security and compliance requirements.</p>
-          <div className="ff-actions">
-            <a className="ff-btn ff-btn-primary" href="/contact">Contact sales</a>
-            <a className="ff-btn ff-btn-secondary" href="/trust">Trust center</a>
-          </div>
-        </div>
-      </section>
-    </div>
+          </Chamber>
+        </Container>
+      </Section>
+    </>
   )
 }
 

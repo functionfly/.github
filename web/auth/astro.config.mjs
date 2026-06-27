@@ -6,6 +6,12 @@ import { defineConfig } from "astro/config";
 
 const site = process.env.PUBLIC_AUTH_URL || "https://auth.functionfly.com";
 
+// All supported locales (matches web/site and web/dashboard)
+const SUPPORTED_LOCALES = [
+  "en", "es", "fr", "de", "zh", "ja", "ko",
+  "pt", "ar", "ru", "hi", "nl", "pl", "tr", "vi",
+];
+
 // Production CSP headers (from _headers) - also used in dev to prevent extension interference
 const CSP_VALUE = [
   "default-src 'none'",
@@ -25,12 +31,27 @@ export default defineConfig({
   site,
   integrations: [
     react(),
-    sitemap(),
+    sitemap({
+      i18n: {
+        defaultLocale: "en",
+        locales: Object.fromEntries(
+          SUPPORTED_LOCALES.map((code) => [code, code])
+        ),
+      },
+    }),
     sentry({
       dsn: process.env.SENTRY_DSN,
       tracesSampleRate: 0.1,
     }),
   ],
+  i18n: {
+    defaultLocale: "en",
+    locales: SUPPORTED_LOCALES,
+    routing: {
+      prefixDefaultLocale: false,
+      redirectToDefaultLocale: false,
+    },
+  },
   adapter: vercel(),
   output: "server",
   vite: {

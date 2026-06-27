@@ -79,16 +79,19 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 	var githubURLNull sql.NullString
 	var linkedinURLNull sql.NullString
 
+	var isFounderNull sql.NullBool
+	var founderNumberNull sql.NullInt64
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name,
 		       provider, provider_id, provider_data, created_at, updated_at, name, bio,
-		       location, website, job_title, twitter_url, github_url, linkedin_url, last_active_at, profile_number
+		       location, website, job_title, twitter_url, github_url, linkedin_url, last_active_at, profile_number,
+		       is_founder, founder_number
 		FROM users WHERE LOWER(username) = LOWER($1)`, username).Scan(
 		&user.ID, &user.TenantID, &usernameNull, &user.Email, &user.PasswordHash, &role,
 		&user.EmailVerified, &companyName, &provider, &providerID, &providerData,
 		&user.CreatedAt, &user.UpdatedAt, &nameNull, &bioNull,
 		&locationNull, &websiteNull, &jobTitleNull, &twitterURLNull, &githubURLNull, &linkedinURLNull,
-		&lastActiveNull, &profileNumberNull)
+		&lastActiveNull, &profileNumberNull, &isFounderNull, &founderNumberNull)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -103,6 +106,7 @@ func (r *UserRepository) GetUserByUsername(ctx context.Context, username string)
 	}
 	populateUserNameBioLastActiveProfile(user, nameNull, bioNull, lastActiveNull, profileNumberNull)
 	populateUserPublicProfileFields(user, locationNull, websiteNull, jobTitleNull, twitterURLNull, githubURLNull, linkedinURLNull)
+	populateUserFounderFields(user, isFounderNull, founderNumberNull)
 	return user, nil
 }
 

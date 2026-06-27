@@ -7,5 +7,8 @@ export default new Map([
 ["src/content/docs/agents/sdk.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fagents%2Fsdk.mdx&astroContentModuleFlag=true")],
 ["src/content/docs/agents/security.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fagents%2Fsecurity.mdx&astroContentModuleFlag=true")],
 ["src/content/docs/pricing/features-by-tier.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fpricing%2Ffeatures-by-tier.mdx&astroContentModuleFlag=true")],
-["src/content/docs/roadmap/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Froadmap%2Findex.mdx&astroContentModuleFlag=true")]]);
+["src/content/docs/registry/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fregistry%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/roadmap/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Froadmap%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/secrets-vault/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fsecrets-vault%2Findex.mdx&astroContentModuleFlag=true")],
+["src/content/docs/statefabric/index.mdx", () => import("astro:content-layer-deferred-module?astro%3Acontent-layer-deferred-module=&fileName=src%2Fcontent%2Fdocs%2Fstatefabric%2Findex.mdx&astroContentModuleFlag=true")]]);
 		

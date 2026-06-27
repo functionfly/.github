@@ -446,6 +446,7 @@ export const PLANS = {
       '25K requests/month',
       'Community support',
       '24h Time Machine replay',
+      '1 State Fabric object',
     ],
     overageRate: null, // Hard stop at limit
     annualDiscount: 0,
@@ -455,7 +456,7 @@ export const PLANS = {
       providers: 2,
       requests: 25000,
       customDomains: 0,
-      stateFabrics: 0,
+      stateFabrics: 1, // Sandbox tier: 1 state object for experimentation
       agents: 3,
       apps: 0,
       secrets: 25,
@@ -488,6 +489,7 @@ export const PLANS = {
       '10 agents included',
       '100 state writes/hour',
       '72h Time Machine replay',
+      '3 State Fabric objects',
     ],
     overageRate: 15, // $0.15 per 1000 calls
     annualDiscount: 0.17, // 17% off (2 months free)
@@ -538,6 +540,7 @@ export const PLANS = {
       '100 agents included',
       '10K state writes/hour',
       '30-day Time Machine replay + reconciliation',
+      '10 State Fabric objects + Hot Cache',
     ],
     overageRate: 8, // $0.08 per 1000 calls
     annualDiscount: 0.17, // 17% off
@@ -588,6 +591,7 @@ export const PLANS = {
       '500 agents included',
       '50K state writes/hour',
       '90-day Time Machine + live reconciliation + audit certificates',
+      'Unlimited State Fabric + all add-ons',
     ],
     overageRate: 5, // $0.05 per 1000 calls
     annualDiscount: 0.17, // 17% off
@@ -655,6 +659,7 @@ export const AGENT_ENTERPRISE = {
     'Volume discounts',
     'On-premise deployment',
     'Unlimited Time Machine + incident insurance',
+    'Unlimited State Fabric + all add-ons',
   ],
   overageRate: 0, // No overage (unlimited)
   annualDiscount: 0.17, // 17% off
@@ -822,9 +827,16 @@ export const AGENT_PLANS = {
 } as const;
 
 // ============================================================================
-// State Fabric Plans - pricing for stateful serverless capabilities
+// State Fabric Plans - DEPRECATED, consolidated into platform plans
+// State Fabric is now a bundled feature in platform plans.
+// State Fabric limits per platform plan:
+//   Free: 1 state object (Sandbox tier)
+//   Starter: 3 state objects
+//   Professional: 10 state objects
+//   Enterprise: Unlimited
 // ============================================================================
 
+/** @deprecated Use platform PLANS limits - SF is now bundled */
 export const STATE_FABRIC_PLANS = {
   SANDBOX: {
     id: 'sf_sandbox',
@@ -865,6 +877,59 @@ export const STATE_FABRIC_PLANS = {
     priceCents: 0,
     priceId: '',
     description: 'Large enterprises & regulated industries.',
+  },
+} as const;
+
+// ============================================================================
+// State Fabric Add-ons - Premium stackable add-ons for enhanced SF capabilities
+// Available on any paid platform plan (Starter+)
+// ============================================================================
+
+export const STATE_FABRIC_ADD_ONS = {
+  HOT_CACHE: {
+    id: 'sf_hot_cache',
+    name: 'Hot Cache Booster',
+    description: 'Reduces replay and read costs. 5GB hot cache tier.',
+    price: 49,
+    priceCents: 4900,
+    period: '/mo per 5GB',
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_HOT_CACHE || 'price_sf_hot_cache_placeholder',
+  },
+  MULTI_REGION: {
+    id: 'sf_multi_region',
+    name: 'Multi-Region Replication',
+    description: 'Active-active replication across regions for HA and global latency.',
+    price: 99,
+    priceCents: 9900,
+    period: '/mo',
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_MULTI_REGION || 'price_sf_multi_region_placeholder',
+  },
+  AI_RECALL: {
+    id: 'sf_ai_recall',
+    name: 'AI Memory Pack',
+    description: 'Vector index, embeddings storage, fast read engine for AI recall.',
+    price: 149,
+    priceCents: 14900,
+    period: '/mo',
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_AI_RECALL || 'price_sf_ai_recall_placeholder',
+  },
+  ADVANCED_INSIGHTS: {
+    id: 'sf_advanced_insights',
+    name: 'Advanced Insights',
+    description: 'Cost forecasting, anomaly detection, hot path alerts.',
+    price: 79,
+    priceCents: 7900,
+    period: '/mo',
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_INSIGHTS || 'price_sf_advanced_insights_placeholder',
+  },
+  ADVANCED_SECURITY: {
+    id: 'sf_advanced_security',
+    name: 'Advanced Security Pack',
+    description: 'SOC2-friendly logs, key rotation, audit streams.',
+    price: 99,
+    priceCents: 9900,
+    period: '/mo',
+    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_SECURITY || 'price_sf_advanced_security_placeholder',
   },
 } as const;
 
@@ -967,6 +1032,11 @@ function validateStripePriceIds() {
     VITE_STRIPE_PRICE_SF_STARTER: import.meta.env.VITE_STRIPE_PRICE_SF_STARTER,
     VITE_STRIPE_PRICE_SF_PRO: import.meta.env.VITE_STRIPE_PRICE_SF_PRO,
     VITE_STRIPE_PRICE_SF_BUSINESS: import.meta.env.VITE_STRIPE_PRICE_SF_BUSINESS,
+    VITE_STRIPE_PRICE_SF_HOT_CACHE: import.meta.env.VITE_STRIPE_PRICE_SF_HOT_CACHE,
+    VITE_STRIPE_PRICE_SF_MULTI_REGION: import.meta.env.VITE_STRIPE_PRICE_SF_MULTI_REGION,
+    VITE_STRIPE_PRICE_SF_AI_RECALL: import.meta.env.VITE_STRIPE_PRICE_SF_AI_RECALL,
+    VITE_STRIPE_PRICE_SF_ADVANCED_INSIGHTS: import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_INSIGHTS,
+    VITE_STRIPE_PRICE_SF_ADVANCED_SECURITY: import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_SECURITY,
   };
 
   const missing: string[] = [];

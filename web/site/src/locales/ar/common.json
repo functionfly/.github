@@ -1,118 +1,155 @@
 {
   "nav": {
-    "docs": "Docs",
-    "forAgents": "For AI Agents",
-    "trust": "Trust",
-    "pricing": "Pricing",
-    "blog": "Blog",
-    "dashboard": "Dashboard"
+    "home": "الرئيسية",
+    "docs": "المستندات",
+    "forAgents": "لوكيلاء الذكاء الاصطناعي",
+    "trust": "الثقة",
+    "pricing": "التسعير",
+    "blog": "المدونة",
+    "dashboard": "لوحة التحكم",
+    "signUp": "اشترك"
   },
   "footer": {
-    "tagline": "The trust layer for AI agents. Publish once, run everywhere, get paid.",
-    "product": "Product",
-    "documentation": "Documentation",
-    "trustLayer": "Trust layer",
-    "forAIAgents": "For AI agents",
-    "changelog": "Changelog",
-    "company": "Company",
-    "about": "About",
-    "careers": "Careers",
-    "contact": "Contact",
-    "legal": "Legal",
-    "privacy": "Privacy",
-    "terms": "Terms",
-    "sla": "SLA",
-    "copyright": "All rights reserved."
+    "tagline": "طبقة الثقة لوكلاء الذكاء الاصطناعي. انشر مرة واحدة، شغّل في كل مكان، واحصل على مدفوعاتك.",
+    "product": "المنتج",
+    "documentation": "الوثائق",
+    "trustLayer": "طبقة الثقة",
+    "forAIAgents": "لوكلاء الذكاء الاصطناعي",
+    "changelog": "سجل التغييرات",
+    "company": "الشركة",
+    "about": "حولنا",
+    "careers": "الوظائف",
+    "contact": "اتصل بنا",
+    "legal": "القانونية",
+    "privacy": "الخصوصية",
+    "terms": "الشروط",
+    "sla": "اتفاقية مستوى الخدمة",
+    "copyright": "جميع الحقوق محفوظة.",
+    "systemsOperational": "جميع الأنظمة تعمل بشكل طبيعي",
+    "columnProduct": "المنتج",
+    "columnDevelopers": "المطورون",
+    "columnMCP": "MCP",
+    "columnCompany": "الشركة",
+    "columnCommunity": "المجتمع",
+    "columnLegal": "القانونية والأمن",
+    "functionRegistry": "سجل الوظائف",
+    "stateFabric": "State Fabric",
+    "forAgents": "لوكلاء الذكاء الاصطناعي",
+    "apiReference": "مرجع API",
+    "sdks": "حزم SDK",
+    "openApiSpec": "مواصفات OpenAPI",
+    "sandbox": "البيئة المعزولة",
+    "status": "الحالة",
+    "rssFeed": "تغذية RSS",
+    "mcpDocs": "وثائق MCP",
+    "publishFunction": "نشر وظيفة",
+    "mcpServer": "خادم MCP",
+    "manifestSpec": "مواصفات البيان",
+    "aboutLink": "حولنا",
+    "blog": "المدونة",
+    "careersLink": "الوظائف",
+    "contactLink": "اتصل بنا",
+    "partnerships": "الشراكات",
+    "privacyLink": "الخصوصية",
+    "termsLink": "الشروط",
+    "dpa": "اتفاقية معالجة البيانات",
+    "cookiePolicy": "سياسة ملفات تعريف الارتباط",
+    "security": "الأمان",
+    "vulnerabilityDisclosure": "الإفصاح عن الثغرات",
+    "compliance": "الامتثال"
   },
   "language": {
-    "title": "Language",
-    "description": "Choose your preferred language",
-    "detected": "Detected",
-    "autoDetected": "Auto-detected from your browser"
+    "title": "اللغة",
+    "description": "اختر لغتك المفضلة",
+    "detected": "تم الكشف",
+    "autoDetected": "تم الكشف التلقائي من متصفحك"
   },
   "hero": {
-    "badge": "Now in Invite-Only Beta",
-    "titleLine": "The Platform for",
-    "titleGradient": "AI Agent Tooling",
-    "lead": "Publish once, run everywhere, get paid. Verified functions, trust scores, encrypted secrets vault, durable state, and continuous learning — everything agent tooling needs in one platform.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "View Documentation",
-    "stat1Value": "Publish",
-    "stat1Label": "once, run everywhere",
-    "stat2Value": "Trust",
-    "stat2Label": "scores + verification",
-    "stat3Value": "Vault",
-    "stat3Label": "zero-knowledge encrypted",
-    "stat4Value": "Flywheel",
-    "stat4Label": "continuous agent learning"
+    "badge": "الآن في النسخة التجريبية بالدعوة فقط",
+    "titleLine": "المنصة لـ",
+    "titleGradient": "أدوات وكيل الذكاء الاصطناعي",
+    "lead": "انشر مرة واحدة، شغّل في كل مكان، واحصل على مدفوعاتك. دوال موثقة، درجات الثقة، خزنة مشفرة بمعرفة صفر، حالة دائمة، وتعلم مستمر — كل ما تحتاجه أدوات الوكلاء في منصة واحدة.",
+    "ctaPrimary": "طلب الوصول",
+    "ctaSecondary": "عرض الوثائق",
+    "stat1Value": "انشر",
+    "stat1Label": "مرة واحدة، شغّل في كل مكان",
+    "stat2Value": "ثقة",
+    "stat2Label": "درجات + التحقق",
+    "stat3Value": "خزنة",
+    "stat3Label": "مشفرة بمعرفة صفر",
+    "stat4Value": "عجلة طيران",
+    "stat4Label": "تعلم مستمر للوكيل"
   },
   "audience": {
-    "title": "Who benefits most from FunctionFly",
-    "intro": "From solo founders to enterprise teams, FunctionFly provides the reliability and flexibility you need to focus on building great products.",
+    "title": "من يستفيد أكثر من FunctionFly",
+    "intro": "من المؤسسين المستقلين إلى فرق المؤسسات، توفر FunctionFly الموثوقية والمرونة التي تحتاجها للتركيز على بناء منتجات رائعة.",
     "founder": {
-      "title": "Indie SaaS Founder",
-      "sub": "Deploying your first app",
-      "desc": "You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly gives you verified functions, clear trust signals, and a path to scale safely.",
-      "b1": "Publish once, run everywhere",
-      "b2": "Trust scores and verification tiers",
-      "b3": "Zero-knowledge vault for secrets",
-      "b4": "Pay as you grow"
+      "title": "مؤسس SaaS مستقل",
+      "sub": "نشر تطبيقك الأول",
+      "desc": "لقد بنيت منتجًا رائعًا وتحتاج الآن إلى أدوات وكيل موثوقة بدون تعقيدات المؤسسات. يمنحك FunctionFly دوال موثقة وإشارات ثقة واضحة وطريقاً للتوسع بأمان.",
+      "b1": "انشر مرة واحدة، شغّل في كل مكان",
+      "b2": "درجات الثقة ومستويات التحقق",
+      "b3": "خزنة معرفة صفر للسرايا",
+      "b4": "ادفع随着 نموك"
     },
     "startup": {
-      "title": "Growing Startup",
-      "sub": "Scaling agent + API workloads",
-      "desc": "Your team is shipping fast and agents are calling more tools every week. You need policy-friendly trust metadata, attestations, and execution-backed signals—not a pile of unvetted endpoints.",
-      "b1": "Multi-level verification workflows",
-      "b2": "Signed artifacts and revocation",
-      "b3": "Execution history for trust scoring",
-      "b4": "Marketplace discovery with trust filters"
+      "title": "شركة ناشئة متنامية",
+      "sub": "توسيع أحمال الوكيل + API",
+      "desc": "فريقك يشحن بسرعة والوكلاء يستدعون المزيد من الأدوات كل أسبوع. تحتاج إلى بيانات ثقة متوافقة مع السياسات وتصديقات وإشارات مدعومة بالتنفيذ — وليس كومة من نقاط النهاية غير المفحوصة.",
+      "b1": "سير عمل التحقق متعدد المستويات",
+      "b2": "قطع أثرية موقعة والإلغاء",
+      "b3": "سجل التنفيذ لدرجة الثقة",
+      "b4": "اكتشاف السوق مع فلاتر الثقة"
     },
     "enterprise": {
-      "title": "Enterprise",
-      "sub": "Governance and compliance",
-      "desc": "Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and teams. FunctionFly aligns verification, signing, and vault semantics with how you already think about risk.",
-      "b1": "Enterprise-grade security posture",
-      "b2": "Attestations and policy-ready metadata",
-      "b3": "Multi-team and multi-app patterns",
-      "b4": "Room for custom SLAs and support"
+      "title": "المؤسسة",
+      "sub": "الحوكمة والامتثال",
+      "desc": "تحتاج مؤسستك إلى القابلية للتدقيق والوصول بامتياز أدنى للأدوات وسياسات ثقة متسقة عبر الوكلاء والفرق. ي محاذاة FunctionFly التحقق والتوقيع ودلالات الخزنة مع الطريقة التي تفكر بها بالفعل في المخاطر.",
+      "b1": "موقف أمني بمستوى المؤسسة",
+      "b2": "تصديقات وبيانات وصفية جاهزة للسياسات",
+      "b3": "أنماط متعددة الفرق والتطبيق",
+      "b4": "مساحة لاتفاقيات مستوى الخدمة والدعم المخصصة"
     }
   },
   "features": {
-    "title": "Everything your agent tooling platform needs",
-    "subtitle": "From publishing to production — five integrated capabilities in one platform. Verification + trust scoring so agents can act safely.",
+    "title": "كل ما تحتاجه منصة أدوات الوكلاء",
+    "subtitle": "من النشر إلى الإنتاج — خمس قدرات متكاملة في منصة واحدة. التحقق + درجة الثقة حتى يتمكن الوكلاء من التصرف بأمان.",
     "publishing": {
-      "title": "Verified Tool Publishing",
-      "desc": "Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents."
+      "title": "نشر الأدوات الموثقة",
+      "desc": "حولل الكود إلى دوال موثوقة مع فحوصات التحقق والقطع الأثرية الموقعة قبل أن يتمكن الوكلاء من استخدامها."
     },
     "revocation": {
-      "title": "Verification Levels & Revocation",
-      "desc": "Trust is earned. Verify at multiple levels, sign with platform keys, and revoke when issues are found."
+      "title": "مستويات التحقق والإلغاء",
+      "desc": "الثقة تُكتسب. تحقق على مستويات متعددة ووقّع بمفاتيح المنصة وألغِ عند العثور على مشاكل."
     },
     "trace": {
-      "title": "Execution Trace & Trust Scores",
-      "desc": "Agents get history-backed trust signals so \"works\" and \"safe\" are distinguishable and policy-driven."
+      "title": "تتبع التنفيذ ودرجات الثقة",
+      "desc": "يحصل الوكلاء على إشارات ثقة مدعومة بالسجل بحيث يمكن التمييز بين \"يعمل\" و\"آمن\" وتكون مدفوعة بالسياسات."
     },
     "tooling": {
-      "title": "Agent-ready Tooling",
-      "desc": "Expose capabilities with clear manifests and schemas — so agents can select tools that match their trust policy."
+      "title": "أدوات جاهزة للوكلاء",
+      "desc": "اكشف القدرات ببيانات وصفية ومخططات واضحة — حتى يتمكن الوكلاء من اختيار الأدوات التي تطابق سياسة الثقة الخاصة بهم."
     },
     "marketplace": {
-      "title": "Marketplace for Verified Tools",
-      "desc": "Creators publish once. Agents discover trusted functions with built-in trust filters and ranked placement."
+      "title": "سوق الأدوات الموثقة",
+      "desc": "ينشر المبدعون مرة واحدة. يكتشف الوكلاء دوال موثوقة مع فلاتر ثقة مدمجة وترتيب محسّن."
     },
     "routing": {
-      "title": "Trust-powered Routing",
-      "desc": "Enforce budgets and trust constraints at runtime — so agent execution is predictable, not reckless."
+      "title": "التوجيه المدعوم بالثقة",
+      "desc": "فرض القيود والقيود المفروضة على الثقة في وقت التشغيل — بحيث يكون تنفيذ الوكيل يمكن التنبؤ به وليس متهوراً."
     }
   },
   "code": {
-    "title": "Verify & publish in seconds",
-    "subtitle": "Turn your code into an agent-ready trusted tool"
+    "title": "تحقق وانشر في ثوان",
+    "subtitle": "حولل الكود الخاص بك إلى أداة موثقة جاهزة للوكلاء"
   },
   "cta": {
-    "title": "Where trusted tools meet agent execution",
-    "lead": "Start free. Verified tooling and auditable execution history help your agents move faster — with fewer surprises.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "Contact Sales"
+    "title": "حيث تلتقي الأدوات الموثقة بتنفيذ الوكلاء",
+    "lead": "ابدأ مجانًا. تساعد أدوات موثقة وتاريخ تنفيذ قابل للتدقيق وكلاءك على التحرك بشكل أسرع — مع Fewer المفاجآت.",
+    "ctaPrimary": "طلب الوصول",
+    "ctaSecondary": "اتصل بالمبيعات"
+  },
+  "layout": {
+    "skipToContent": "تخطي إلى المحتوى الرئيسي"
   }
 }

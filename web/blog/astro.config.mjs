@@ -8,18 +8,34 @@ import { defineConfig } from "astro/config";
 
 const site = process.env.PUBLIC_BLOG_SITE_URL || "https://blog.functionfly.com";
 
+const LOCALES = ['en', 'es', 'fr', 'de', 'zh', 'ja', 'ko', 'pt', 'ar', 'ru', 'hi', 'nl', 'pl', 'tr', 'vi'];
+const DEFAULT_LOCALE = 'en';
+
 // https://astro.build/config
 export default defineConfig({
   site,
   integrations: [
     react(),
-    sitemap(),
+    sitemap({
+      i18n: {
+        defaultLocale: DEFAULT_LOCALE,
+        locales: Object.fromEntries(LOCALES.map(l => [l, l])),
+        prefix: 'always',
+      },
+    }),
     astroMermaid(),
     sentry({
       dsn: process.env.SENTRY_DSN,
       tracesSampleRate: 0.1,
     }),
   ],
+  i18n: {
+    defaultLocale: DEFAULT_LOCALE,
+    locales: LOCALES,
+    routing: {
+      prefixDefaultLocale: true,
+    },
+  },
   output: "server",
   adapter: node({ mode: "standalone" }),
   image: {

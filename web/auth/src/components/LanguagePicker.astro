@@ -1,0 +1,172 @@
+---
+import { t, getLocale } from "../../i18n";
+import { SUPPORTED_LANGUAGES } from "../../lib/i18n/languages";
+
+const lang = getLocale(Astro);
+const currentLang = SUPPORTED_LANGUAGES.find((l) => l.code === lang) || SUPPORTED_LANGUAGES[0];
+
+function getLocaleUrl(targetLocale: string) {
+  const path = Astro.url.pathname;
+  if (targetLocale === "en") {
+    return path.replace(/^\/(es|fr|de|zh|ja|ko|pt|ar|ru|hi|nl|pl|tr|vi)(\/|$)/, "/");
+  }
+  const stripped = path.replace(/^\/(es|fr|de|zh|ja|ko|pt|ar|ru|hi|nl|pl|tr|vi)(\/|$)/, "/");
+  return `/${targetLocale}${stripped === "/" ? "/" : stripped}`;
+}
+---
+
+<div class="lang-picker" id="lang-picker">
+  <button
+    type="button"
+    class="lang-picker__trigger"
+    id="lang-trigger"
+    aria-expanded="false"
+    aria-haspopup="listbox"
+    aria-label={t(lang, "language.title")}
+  >
+    <span class="lang-picker__flag">{currentLang.flag}</span>
+    <span class="lang-picker__code">{currentLang.code.toUpperCase()}</span>
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M6 9l6 6 6-6"/>
+    </svg>
+  </button>
+  <div class="lang-picker__dropdown" id="lang-dropdown" role="listbox" hidden>
+    {SUPPORTED_LANGUAGES.map((l) => (
+      <a
+        href={getLocaleUrl(l.code)}
+        class={`lang-picker__option ${l.code === lang ? "lang-picker__option--active" : ""}`}
+        role="option"
+        aria-selected={l.code === lang}
+        hreflang={l.code}
+        lang={l.code}
+      >
+        <span class="lang-picker__flag">{l.flag}</span>
+        <span class="lang-picker__name">{l.name}</span>
+        <span class="lang-picker__name-en">{l.nameEn}</span>
+      </a>
+    ))}
+  </div>
+</div>
+
+<style>
+  .lang-picker {
+    position: relative;
+  }
+
+  .lang-picker__trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    background: transparent;
+    border: 1px solid var(--ff-border-subtle, rgba(255, 255, 255, 0.12));
+    border-radius: 6px;
+    color: var(--ff-secondary-text, #8B949E);
+    font-size: 0.8125rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .lang-picker__trigger:hover {
+    border-color: var(--ff-border-strong, rgba(255, 255, 255, 0.2));
+    color: var(--ff-primary-text, #F0F6FC);
+  }
+
+  .lang-picker__flag {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .lang-picker__code {
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+
+  .lang-picker__dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 200px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--ff-cockpit, #161B22);
+    border: 1px solid var(--ff-border-default, rgba(255, 255, 255, 0.12));
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    padding: 0.25rem;
+    animation: dropdownIn 0.15s ease-out;
+  }
+
+  .lang-picker__dropdown[hidden] {
+    display: none;
+  }
+
+  @keyframes dropdownIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .lang-picker__option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 6px;
+    color: var(--ff-secondary-text, #8B949E);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    transition: all 0.1s ease;
+    cursor: pointer;
+  }
+
+  .lang-picker__option:hover {
+    background: var(--ff-flightdeck, rgba(255, 255, 255, 0.04));
+    color: var(--ff-primary-text, #F0F6FC);
+  }
+
+  .lang-picker__option--active {
+    background: rgba(255, 107, 53, 0.1);
+    color: var(--ff-flame, #FF6B35);
+  }
+
+  .lang-picker__name {
+    font-weight: 500;
+    color: var(--ff-primary-text, #F0F6FC);
+  }
+
+  .lang-picker__name-en {
+    color: var(--ff-muted-text, #6E7681);
+    font-size: 0.75rem;
+    margin-left: auto;
+  }
+
+  .lang-picker__option--active .lang-picker__name-en {
+    color: rgba(255, 107, 53, 0.6);
+  }
+</style>
+
+<script>
+  const trigger = document.getElementById("lang-trigger");
+  const dropdown = document.getElementById("lang-dropdown");
+
+  trigger?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = !dropdown?.hidden;
+    dropdown!.hidden = isOpen;
+    trigger.setAttribute("aria-expanded", String(!isOpen));
+  });
+
+  document.addEventListener("click", () => {
+    if (dropdown) dropdown.hidden = true;
+    trigger?.setAttribute("aria-expanded", "false");
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (dropdown) dropdown.hidden = true;
+      trigger?.setAttribute("aria-expanded", "false");
+    }
+  });
+</script>

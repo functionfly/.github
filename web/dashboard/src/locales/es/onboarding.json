@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Bienvenido a FunctionFly - Configuración",
+      "description": "Configura tu cuenta de FunctionFly en minutos. Despliega funciones serverless con conmutación por error automática en múltiples proveedores de nube."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Bienvenido a FunctionFly",
+        "description": "Aprende sobre el despliegue multiproveedor y la conmutación por error automática"
+      },
+      "connectProvider": {
+        "title": "Conecta Tu Primer Proveedor",
+        "description": "Vincula un proveedor de nube para comenzar a desplegar tus funciones"
+      },
+      "deployFunction": {
+        "title": "Despliega Tu Primera Función",
+        "description": "Despliega una función simple para ver FunctionFly en acción"
+      },
+      "testFailover": {
+        "title": "Probar Conmutación por Error",
+        "description": "Verifica tu configuración probando la conmutación por error automática"
+      },
+      "teamSetup": {
+        "title": "Configura Tu Equipo",
+        "description": "Invita a miembros del equipo y configura los ajustes de colaboración"
+      }
+    },
+    "roles": {
+      "admin": "Administrador del Equipo",
+      "member": "Miembro del Equipo",
+      "viewer": "Observador"
+    },
+    "accessibility": {
+      "skipToMain": "Saltar al contenido principal",
+      "goHome": "Ir al inicio de FunctionFly",
+      "help": "Obtener ayuda con la configuración inicial",
+      "skip": "Omitir la configuración inicial por ahora",
+      "progressBar": "Progreso de la configuración inicial: {{percent}}% completado",
+      "currentStep": "Paso {{current}} de {{total}}: {{title}}",
+      "backButton": "Ir al paso anterior",
+      "nextButton": "Ir al siguiente paso",
+      "completeButton": "Completar la configuración inicial",
+      "stepNavigation": "Pasos de la configuración inicial",
+      "stepLabel": "Paso {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "completado",
+      "statusActive": "actual",
+      "statusPending": "pendiente",
+      "continueOnboarding": "Continuar con la configuración inicial",
+      "skipOnboarding": "Omitir la configuración inicial"
+    },
+    "stepCounter": "Paso {{current}} de {{total}}",
+    "helpTooltip": "FunctionFly despliega tus funciones en múltiples proveedores de nube para alta disponibilidad. Cada paso conecta un nuevo proveedor y prueba la conmutación por error automáticamente.",
+    "skip": "Omitir por ahora",
+    "actions": {
+      "back": "Atrás",
+      "nextStep": "Siguiente Paso",
+      "completeSetup": "Completar Configuración",
+      "completing": "Completando...",
+      "retry": "Intentar de Nuevo"
+    },
+    "errors": {
+      "stepLoadFailed": "Error al cargar este paso. Por favor, inténtalo de nuevo."
+    },
+    "tips": {
+      "welcomeTitle": "Bienvenido a FunctionFly",
+      "readyToConnect": "Listo para Conectar",
+      "providerConnected": "¡Genial! Proveedor Conectado",
+      "functionDeployed": "Función Desplegada Exitosamente",
+      "setupComplete": "¡Configuración Completa!",
+      "welcomeDesc": "Tómate un momento para aprender sobre el despliegue multiproveedor y las funciones de conmutación por error automática de FunctionFly.",
+      "roleGreeting": "¡Bienvenido {{role}}!",
+      "adminPrivileges": " Puedes administrar proveedores, desplegar funciones e invitar a miembros del equipo.",
+      "memberAccess": " Puedes desplegar funciones y acceder a recursos compartidos.",
+      "viewerAccess": " Tienes acceso de solo lectura a las funciones y métricas del equipo.",
+      "connectProviderDesc": "Estás a punto de conectar tu primer proveedor de nube. Esto permite a FunctionFly desplegar funciones en múltiples proveedores para alta disponibilidad.",
+      "deployFunctionDesc": "¡Excelente! Tu proveedor está conectado. Ahora despleguemos tu primera función para ver FunctionFly en acción.",
+      "tokenSecure": "Token de API almacenado de forma segura y encriptado",
+      "testFailoverDesc": "¡Tu función está en línea! El paso final prueba tu configuración de conmutación por error para garantizar la alta disponibilidad.",
+      "autoFailover": "FunctionFly enruta automáticamente el tráfico a proveedores saludables si uno falla",
+      "teamSetupDesc": "¡Genial! Tu configuración de conmutación por error está funcionando. Ahora configuremos tu equipo para la colaboración.",
+      "inviteTeam": "Invita a miembros del equipo para colaborar en funciones y compartir el acceso a proveedores",
+      "setupCompleteDesc": "¡Excelente! Tu configuración de FunctionFly está completa y lista para producción.",
+      "productionReady": "¡Estás listo para comenzar a desplegar funciones con alta disponibilidad!",
+      "allCompleteDesc": "¡Felicidades! Tu configuración de FunctionFly está completa y lista para producción.",
+      "multiProviderDeployed": "Tus funciones ahora están desplegadas en múltiples proveedores con conmutación por error automática"
+    },
+    "hints": {
+      "welcome": "Aprende sobre el despliegue multiproveedor y las funciones de conmutación por error automática de FunctionFly.",
+      "connectProvider": "Conecta un proveedor de nube para habilitar los despliegues.",
+      "deployFunction": "Despliega tu primera función para probar la configuración.",
+      "testFailover": "Verifica que la conmutación por error automática funcione correctamente.",
+      "teamSetup": "Invita a miembros del equipo para colaborar."
+    },
+    "skipDialog": {
+      "title": "¿Omitir la Configuración Inicial?",
+      "description": "Estás a punto de omitir los pasos restantes de la configuración inicial de FunctionFly. Esto es lo que eso significa:",
+      "continue": "Continuar Configuración Inicial",
+      "skipAnyway": "Omitir de Todos Modos",
+      "warnings": {
+        "noProvider": "No conectarás ningún proveedor de nube para despliegues",
+        "noFunction": "No desplegarás tu primera función para probar la configuración",
+        "noFailoverTest": "No probarás las capacidades de conmutación por error automática"
+      },
+      "hints": {
+        "inviteLater": "Aún puedes invitar a miembros del equipo más tarde desde tu panel de control",
+        "canResume": "Puedes reanudar la configuración inicial en cualquier momento desde la configuración de tu panel",
+        "basicDeploy": "Las funciones básicas aún pueden desplegarse, pero sin los beneficios multiproveedor"
+      }
+    },
+    "completion": {
+      "title": "¡Bienvenido a FunctionFly!",
+      "subtitle": "Tu configuración está completa y lista para producción"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Hola Mundo",
+          "description": "Una función simple que devuelve un saludo"
+        },
+        "apiEcho": {
+          "name": "Eco de API",
+          "description": "Devuelve la información de la solicitud como JSON"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Funciones de Ejemplo",
+        "sampleFunctionsTooltip": "Elige entre ejemplos de funciones predefinidas para comenzar rápidamente. Estas demuestran patrones comunes y están listas para desplegar.",
+        "customCode": "Código Personalizado",
+        "customCodeTooltip": "Escribe tu propio código de función desde cero. Los usuarios avanzados pueden desplegar lógica personalizada, APIs o integraciones."
+      },
+      "functionListLabel": "Selecciona una función de ejemplo",
+      "functionEdgeHelp": "Las funciones edge se ejecutan cerca de tus usuarios en todo el mundo, reduciendo la latencia y mejorando el rendimiento en comparación con las funciones tradicionales basadas en servidor.",
+      "codePreview": "Vista Previa",
+      "codePreviewRegion": "Vista previa del código de la función",
+      "actions": {
+        "copyCode": "Copiar código de la función",
+        "chooseSample": "Elegir una Función de Ejemplo",
+        "copyUrl": "Copiar URL de la función",
+        "refreshMetrics": "Actualizar métricas",
+        "openFunction": "Abrir Función",
+        "deploying": "Desplegando en todos los proveedores conectados...",
+        "deploy": "Desplegar Función",
+        "tryAgain": "Intentar de Nuevo",
+        "tryCustomCode": "Probar Código Personalizado"
+      },
+      "customCodeNotice": "Puedes desplegar tu propio código de función personalizado. Por ahora, selecciona una de nuestras funciones de ejemplo para continuar con la configuración inicial.",
+      "functionNameLabel": "Nombre de la Función",
+      "functionNameTooltip": "Elige un nombre único para tu función. Este formará parte de la URL de tu función (por ejemplo, mi-function.functionfly.app).",
+      "urlSuggestions": "Sugerencias de URL",
+      "urlSuggestionsHint": "Haz clic en una sugerencia para usarla como nombre de tu función",
+      "functionNameHint": "Usa solo letras minúsculas, números y guiones. Esto se usará para generar la URL de tu función.",
+      "functionNamePreview": "Vista previa: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "recomendado",
+        "apiPrefix": "endpoint de API",
+        "versioned": "endpoint versionado",
+        "available": "Disponible",
+        "taken": "Ocupado"
+      },
+      "deployed": {
+        "title": "¡Función Desplegada!",
+        "subtitle": "Tu función está ahora en línea y lista para manejar solicitudes.",
+        "functionUrl": "URL de la Función",
+        "liveMetrics": "Métricas en Vivo"
+      },
+      "metrics": {
+        "requests": "Solicitudes",
+        "latency": "Latencia Promedio",
+        "errors": "Errores",
+        "uptime": "Tiempo de Actividad",
+        "loading": "Cargando métricas..."
+      },
+      "steps": {
+        "validating": "Validando configuración de la función...",
+        "connecting": "Conectando con proveedores de despliegue...",
+        "uploading": "Subiendo código de la función...",
+        "deploying": "Desplegando en el proveedor principal...",
+        "configuring": "Configurando la conmutación por error...",
+        "complete": "¡Despliegue completo!"
+      },
+      "deployProgress": "Progreso del despliegue: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Despliegue Fallido",
+        "invalidName": "Nombre de función inválido",
+        "nameTooShort": "El nombre de la función debe tener al menos 2 caracteres",
+        "nameTooLong": "El nombre de la función debe tener 52 caracteres o menos",
+        "nameInvalidChars": "Usa solo letras minúsculas, números y guiones",
+        "noProvider": "Por favor, conecta un proveedor primero",
+        "cancelled": "El despliegue fue cancelado",
+        "generic": "El despliegue falló debido a un error inesperado. Por favor, inténtalo de nuevo.",
+        "alternative": "Alternativa:",
+        "alternativeDesc": "También puedes desplegar esta función más tarde desde tu panel de control, o probar un nombre de función diferente si el actual ya está en uso."
+      },
+      "toast": {
+        "success": "¡Función \"{{name}}\" desplegada exitosamente!",
+        "failed": "El despliegue falló",
+        "copied": "¡Copiado al portapapeles!"
+      },
+      "advanced": {
+        "title": "Configuración Avanzada",
+        "tooltip": "Configura variables de entorno, ajustes de escalado y otras opciones avanzadas para tu función.",
+        "envVars": "Variables de Entorno",
+        "envVarsTooltip": "Agrega variables de entorno para configurar tu función en tiempo de ejecución. Estas se almacenan de forma segura y están encriptadas.",
+        "envKeyPlaceholder": "CLAVE",
+        "envValuePlaceholder": "VALOR",
+        "envVarsHint": "Variables comunes: claves de API, URLs de bases de datos, ajustes de configuración",
+        "add": "Agregar",
+        "scaling": "Ajustes de Escalado",
+        "scalingTooltip": "Controla cómo tu función escala con el tráfico. Los límites más altos manejan más solicitudes concurrentes.",
+        "maxConcurrent": "Solicitudes Concurrentes Máximas",
+        "maxConcurrentLabel": "Solicitudes concurrentes máximas",
+        "timeout": "Tiempo de Espera (segundos)",
+        "timeoutLabel": "Tiempo de espera de la solicitud en segundos",
+        "proTipTitle": "Consejo Profesional",
+        "proTipDesc": "Puedes actualizar estos ajustes en cualquier momento desde el panel de tu función. Las configuraciones avanzadas tendrán efecto en el próximo despliegue."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Selecciona un proveedor de nube",
+      "providerConnected": "¡{{name}} Conectado!",
+      "providerReady": "Tu proveedor está ahora listo para desplegar funciones.",
+      "costPreview": "Vista Previa de Costos",
+      "costCalculating": "Calculando costos...",
+      "costMonthlyEstimate": "Estimación Mensual",
+      "costBreakdown": "Desglose:",
+      "costBasedOn": "Basado en 1,000 solicitudes/día, 100ms de tiempo de cómputo, 128MB de memoria",
+      "apiToken": "Token de API",
+      "apiTokenTooltip": "Un token de API es una clave segura que permite a FunctionFly desplegar funciones en la cuenta de tu proveedor. Puedes generar esto en el panel de tu proveedor bajo la configuración de API.",
+      "apiTokenPlaceholder": "Ingresa tu token de API de {{name}}",
+      "apiTokenValidated": "Token de API validado exitosamente",
+      "apiTokenFind": "Encuentra tu token de API en el panel de {{name}} bajo la configuración de API.",
+      "apiTokenSecure": "Tu token de API está encriptado y almacenado de forma segura. Nunca compartimos tus credenciales.",
+      "shareWithTeam": "Compartir con el Equipo",
+      "shareWithTeamDesc": "Permitir que los miembros del equipo usen este proveedor para despliegues",
+      "connect": "Conectar {{name}}",
+      "connecting": "Conectando a {{name}}...",
+      "sharing": "Compartiendo con el equipo...",
+      "validating": "Validando token...",
+      "changeProvider": "Cambiar",
+      "viewDocs": "Ver Documentación",
+      "status": {
+        "available": "Disponible",
+        "maintenance": "Mantenimiento",
+        "outage": "Interrupción",
+        "unavailable": "No Disponible"
+      },
+      "someUnavailable": "Algunos proveedores no están disponibles actualmente",
+      "someUnavailableDesc_one": "{{name}} está en mantenimiento.",
+      "someUnavailableDesc_other": "{{count}} proveedores no están disponibles actualmente.",
+      "stillAvailable": "Aún puedes comenzar con el {{count}} proveedor disponible",
+      "maintenanceNote": "Temporalmente no disponible por mantenimiento programado",
+      "outageNote": "El servicio está experimentando problemas actualmente",
+      "errors": {
+        "connectionFailed": "Error al conectar el proveedor. Por favor, verifica tu token de API e inténtalo de nuevo.",
+        "invalidToken": "Token de API inválido",
+        "tokenSuggestion": "Por favor, verifica tu token de API en el panel de {{name}} y asegúrate de que tenga los permisos correctos",
+        "networkError": "No se puede conectar a la API de {{name}}. Verifica tu conexión a internet e inténtalo de nuevo.",
+        "shareFailed": "Proveedor conectado pero no se pudo compartir con el equipo",
+        "noTeamFound": "Proveedor conectado pero no se encontró un equipo para compartir aún."
+      },
+      "toast": {
+        "connected": "¡{{name}} conectado exitosamente!",
+        "shareSuccess": "¡Proveedor compartido con el equipo exitosamente!",
+        "shareFailed": "Proveedor conectado pero no se pudo compartir con el equipo"
+      }
+    },
+    "testFailover": {
+      "title": "Probar Conmutación por Error",
+      "description": "Prueba tu configuración de conmutación por error simulando una falla del proveedor. Verificaremos que el tráfico se enrute automáticamente a tu respaldo.",
+      "tooltip": "La conmutación por error garantiza que tus funciones permanezcan en línea incluso si un proveedor experimenta problemas. FunctionFly enruta automáticamente el tráfico a proveedores de respaldo saludables.",
+      "runTest": "Ejecutar Prueba de Conmutación",
+      "testing": "Probando Conmutación por Error...",
+      "retryTest": "Reintentar Prueba",
+      "runAgain": "Ejecutar Prueba de Nuevo",
+      "primary": "Principal",
+      "backup": "Respaldo",
+      "primaryHelp": "Tu proveedor principal maneja todo el tráfico en condiciones normales. Es la primera opción para servir tus funciones.",
+      "backupHelp": "Tu proveedor de respaldo toma el control automáticamente si el principal falla. Esto garantiza que tus funciones estén disponibles 24/7.",
+      "steps": {
+        "checking": "Verificando endpoint principal",
+        "checkingDesc": "Probando conexión con el proveedor principal",
+        "simulating": "Simulando falla",
+        "simulatingDesc": "Deshabilitando temporalmente el endpoint principal",
+        "detecting": "Detectando conmutación",
+        "detectingDesc": "Esperando a que se active la conmutación por error automática",
+        "verifying": "Verificando respaldo",
+        "verifyingDesc": "Confirmando que la solicitud fue manejada por el proveedor de respaldo",
+        "restoring": "Restaurando principal",
+        "restoringDesc": "Devolviendo el endpoint principal en línea"
+      },
+      "results": {
+        "title": "Resultados de la Prueba",
+        "passed": "¡Prueba de Conmutación Exitosa!",
+        "passedDesc": "Tu configuración está funcionando correctamente. La conmutación por error automática está lista.",
+        "failed": "Prueba de Conmutación Fallida",
+        "failedDesc": "Hubo un problema con tu configuración de conmutación por error.",
+        "whatHappened": "¿Qué sucedió?",
+        "whatHappenedDesc": "Cuando el proveedor principal (Cloudflare) estuvo temporalmente no disponible, FunctionFly enrutó automáticamente el tráfico a tu proveedor de respaldo (Vercel) sin tiempo de inactividad."
+      },
+      "errors": {
+        "testFailed": "La prueba de conmutación falló debido a un error inesperado.",
+        "suggestion": "Por favor, verifica las conexiones de tus proveedores e inténtalo de nuevo."
+      },
+      "toast": {
+        "success": "¡Prueba de conmutación completada exitosamente!",
+        "failed": "La prueba de conmutación falló"
+      },
+      "latency": "Latencia",
+      "latencyHelp": "La latencia mide el tiempo de respuesta. Valores más bajos significan un rendimiento más rápido para tus usuarios."
+    },
+    "teamSetup": {
+      "yourRole": "Tu Rol",
+      "roleTooltip": "Elige tu rol en el equipo. Puedes cambiarlo más tarde en la configuración del equipo.",
+      "roles": {
+        "admin": {
+          "label": "Administrador",
+          "description": "Acceso completo para administrar el equipo, proveedores y funciones"
+        },
+        "member": {
+          "label": "Miembro",
+          "description": "Puede desplegar y administrar funciones, ver recursos del equipo"
+        },
+        "viewer": {
+          "label": "Observador",
+          "description": "Acceso de solo lectura a las funciones y métricas del equipo"
+        }
+      },
+      "inviteTitle": "Invitar Miembros del Equipo",
+      "inviteTooltip": "Agrega miembros del equipo para colaborar en funciones y compartir configuraciones de proveedores.",
+      "emailLabel": "Dirección de Correo",
+      "emailPlaceholder": "colega@empresa.com",
+      "roleLabel": "Rol",
+      "addMember": "Agregar Miembro del Equipo",
+      "pendingInvites": "Invitaciones Pendientes ({{count}})",
+      "sendInvites": "Enviar {{count}} Invitación",
+      "sendInvites_one": "Enviar {{count}} Invitación",
+      "sendInvites_other": "Enviar {{count}} Invitaciones",
+      "continueSolo": "Continuar Solo",
+      "skipForNow": "Omitir por Ahora",
+      "skipping": "Omitiendo...",
+      "teamBenefits": "Beneficios del Equipo",
+      "teamBenefitsDesc": "Invita a miembros del equipo para colaborar en funciones, compartir configuraciones de proveedores y administrar despliegues juntos. Siempre puedes agregar miembros más tarde desde tu panel de control.",
+      "errors": {
+        "invalidEmail": "Por favor, ingresa una dirección de correo válida",
+        "emailExists": "Este correo ya ha sido agregado",
+        "sendFailed": "Error al enviar las invitaciones del equipo"
+      },
+      "toast": {
+        "added": "Miembro del equipo agregado",
+        "invitesSent": "Invitaciones del equipo enviadas a {{count}} miembro",
+        "invitesSent_one": "¡Invitaciones del equipo enviadas a {{count}} miembro!",
+        "invitesSent_other": "¡Invitaciones del equipo enviadas a {{count}} miembros!",
+        "soloSetup": "Continuando con configuración individual"
+      }
+    }
+  }
+}

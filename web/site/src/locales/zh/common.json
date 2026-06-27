@@ -1,118 +1,155 @@
 {
   "nav": {
-    "docs": "Docs",
-    "forAgents": "For AI Agents",
-    "trust": "Trust",
-    "pricing": "Pricing",
-    "blog": "Blog",
-    "dashboard": "Dashboard"
+    "home": "首页",
+    "docs": "文档",
+    "forAgents": "面向 AI 代理",
+    "trust": "信任",
+    "pricing": "定价",
+    "blog": "博客",
+    "dashboard": "仪表板",
+    "signUp": "注册"
   },
   "footer": {
-    "tagline": "The trust layer for AI agents. Publish once, run everywhere, get paid.",
-    "product": "Product",
-    "documentation": "Documentation",
-    "trustLayer": "Trust layer",
-    "forAIAgents": "For AI agents",
-    "changelog": "Changelog",
-    "company": "Company",
-    "about": "About",
-    "careers": "Careers",
-    "contact": "Contact",
-    "legal": "Legal",
-    "privacy": "Privacy",
-    "terms": "Terms",
+    "tagline": "AI 代理的信任层。一次发布，随处运行，获取报酬。",
+    "product": "产品",
+    "documentation": "文档",
+    "trustLayer": "信任层",
+    "forAIAgents": "面向 AI 代理",
+    "changelog": "更新日志",
+    "company": "公司",
+    "about": "关于我们",
+    "careers": "招聘",
+    "contact": "联系我们",
+    "legal": "法律",
+    "privacy": "隐私",
+    "terms": "条款",
     "sla": "SLA",
-    "copyright": "All rights reserved."
+    "copyright": "版权所有。",
+    "systemsOperational": "所有系统运行正常",
+    "columnProduct": "产品",
+    "columnDevelopers": "开发者",
+    "columnMCP": "MCP",
+    "columnCompany": "公司",
+    "columnCommunity": "社区",
+    "columnLegal": "法律与安全",
+    "functionRegistry": "函数注册表",
+    "stateFabric": "State Fabric",
+    "forAgents": "面向 AI 代理",
+    "apiReference": "API 参考",
+    "sdks": "SDK",
+    "openApiSpec": "OpenAPI 规范",
+    "sandbox": "沙盒",
+    "status": "状态",
+    "rssFeed": "RSS 订阅",
+    "mcpDocs": "MCP 文档",
+    "publishFunction": "发布函数",
+    "mcpServer": "MCP 服务器",
+    "manifestSpec": "清单规范",
+    "aboutLink": "关于我们",
+    "blog": "博客",
+    "careersLink": "招聘",
+    "contactLink": "联系我们",
+    "partnerships": "合作伙伴",
+    "privacyLink": "隐私",
+    "termsLink": "条款",
+    "dpa": "DPA",
+    "cookiePolicy": "Cookie 政策",
+    "security": "安全",
+    "vulnerabilityDisclosure": "漏洞披露",
+    "compliance": "合规"
   },
   "language": {
-    "title": "Language",
-    "description": "Choose your preferred language",
-    "detected": "Detected",
-    "autoDetected": "Auto-detected from your browser"
+    "title": "语言",
+    "description": "选择您的首选语言",
+    "detected": "已检测",
+    "autoDetected": "已从浏览器自动检测"
   },
   "hero": {
-    "badge": "Now in Invite-Only Beta",
-    "titleLine": "The Platform for",
-    "titleGradient": "AI Agent Tooling",
-    "lead": "Publish once, run everywhere, get paid. Verified functions, trust scores, encrypted secrets vault, durable state, and continuous learning — everything agent tooling needs in one platform.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "View Documentation",
-    "stat1Value": "Publish",
-    "stat1Label": "once, run everywhere",
-    "stat2Value": "Trust",
-    "stat2Label": "scores + verification",
-    "stat3Value": "Vault",
-    "stat3Label": "zero-knowledge encrypted",
-    "stat4Value": "Flywheel",
-    "stat4Label": "continuous agent learning"
+    "badge": "现已开放邀请制内测",
+    "titleLine": "面向",
+    "titleGradient": "AI 代理工具的平台",
+    "lead": "一次发布，随处运行，获取报酬。经验证的函数、信任评分、加密密钥库、持久状态和持续学习 — 代理工具需要的一切，尽在一个平台。",
+    "ctaPrimary": "申请访问",
+    "ctaSecondary": "查看文档",
+    "stat1Value": "发布",
+    "stat1Label": "一次，随处运行",
+    "stat2Value": "信任",
+    "stat2Label": "评分 + 验证",
+    "stat3Value": "密钥库",
+    "stat3Label": "零知识加密",
+    "stat4Value": "飞轮",
+    "stat4Label": "代理持续学习"
   },
   "audience": {
-    "title": "Who benefits most from FunctionFly",
-    "intro": "From solo founders to enterprise teams, FunctionFly provides the reliability and flexibility you need to focus on building great products.",
+    "title": "谁从 FunctionFly 中获益最多",
+    "intro": "从独立创始人到企业团队，FunctionFly 提供您所需的可靠性和灵活性，让您专注于打造卓越产品。",
     "founder": {
-      "title": "Indie SaaS Founder",
-      "sub": "Deploying your first app",
-      "desc": "You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly gives you verified functions, clear trust signals, and a path to scale safely.",
-      "b1": "Publish once, run everywhere",
-      "b2": "Trust scores and verification tiers",
-      "b3": "Zero-knowledge vault for secrets",
-      "b4": "Pay as you grow"
+      "title": "独立 SaaS 创始人",
+      "sub": "部署您的第一个应用",
+      "desc": "您构建了一个出色的产品，现在需要可信赖的代理工具，而无需企业级复杂性。FunctionFly 为您提供经验证的函数、清晰的信任信号和安全扩展的路径。",
+      "b1": "一次发布，随处运行",
+      "b2": "信任评分和验证层级",
+      "b3": "零知识密钥库保护密钥",
+      "b4": "随增长付费"
     },
     "startup": {
-      "title": "Growing Startup",
-      "sub": "Scaling agent + API workloads",
-      "desc": "Your team is shipping fast and agents are calling more tools every week. You need policy-friendly trust metadata, attestations, and execution-backed signals—not a pile of unvetted endpoints.",
-      "b1": "Multi-level verification workflows",
-      "b2": "Signed artifacts and revocation",
-      "b3": "Execution history for trust scoring",
-      "b4": "Marketplace discovery with trust filters"
+      "title": "成长中的初创公司",
+      "sub": "扩展代理 + API 工作负载",
+      "desc": "您的团队快速交付，代理每周调用更多工具。您需要与策略兼容的信任元数据、认证和基于执行的信号 — 而非一堆未经审查的端点。",
+      "b1": "多级验证工作流",
+      "b2": "签名工件和撤销",
+      "b3": "用于信任评分的执行历史",
+      "b4": "带信任过滤器的市场发现"
     },
     "enterprise": {
-      "title": "Enterprise",
-      "sub": "Governance and compliance",
-      "desc": "Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and teams. FunctionFly aligns verification, signing, and vault semantics with how you already think about risk.",
-      "b1": "Enterprise-grade security posture",
-      "b2": "Attestations and policy-ready metadata",
-      "b3": "Multi-team and multi-app patterns",
-      "b4": "Room for custom SLAs and support"
+      "title": "企业",
+      "sub": "治理与合规",
+      "desc": "您的组织需要审计能力、对工具的最小权限访问，以及跨代理和团队的统一信任策略。FunctionFly 将验证、签名和密钥库语义与您现有的风险管理方式对齐。",
+      "b1": "企业级安全态势",
+      "b2": "认证和策略就绪的元数据",
+      "b3": "多团队和多应用模式",
+      "b4": "支持定制 SLA 和服务"
     }
   },
   "features": {
-    "title": "Everything your agent tooling platform needs",
-    "subtitle": "From publishing to production — five integrated capabilities in one platform. Verification + trust scoring so agents can act safely.",
+    "title": "您的代理工具平台所需的一切",
+    "subtitle": "从发布到生产 — 一个平台，五大集成能力。验证 + 信任评分，让代理安全行动。",
     "publishing": {
-      "title": "Verified Tool Publishing",
-      "desc": "Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents."
+      "title": "经验证的工具发布",
+      "desc": "在代码成为代理可用的可信函数之前，通过验证检查和签名工件将其转化。"
     },
     "revocation": {
-      "title": "Verification Levels & Revocation",
-      "desc": "Trust is earned. Verify at multiple levels, sign with platform keys, and revoke when issues are found."
+      "title": "验证层级与撤销",
+      "desc": "信任是赢得的。在多个层级验证，使用平台密钥签名，并在发现问题时分撤销。"
     },
     "trace": {
-      "title": "Execution Trace & Trust Scores",
-      "desc": "Agents get history-backed trust signals so \"works\" and \"safe\" are distinguishable and policy-driven."
+      "title": "执行追踪与信任评分",
+      "desc": "代理获取基于历史的信任信号，使\"可用\"和\"安全\"可区分且受策略驱动。"
     },
     "tooling": {
-      "title": "Agent-ready Tooling",
-      "desc": "Expose capabilities with clear manifests and schemas — so agents can select tools that match their trust policy."
+      "title": "代理就绪工具",
+      "desc": "通过清晰的清单和模式暴露能力 — 使代理能够选择与其信任策略匹配的工具。"
     },
     "marketplace": {
-      "title": "Marketplace for Verified Tools",
-      "desc": "Creators publish once. Agents discover trusted functions with built-in trust filters and ranked placement."
+      "title": "经验证工具的市场",
+      "desc": "创建者一次发布。代理通过内置信任过滤器和排名发现可信函数。"
     },
     "routing": {
-      "title": "Trust-powered Routing",
-      "desc": "Enforce budgets and trust constraints at runtime — so agent execution is predictable, not reckless."
+      "title": "信任驱动的路由",
+      "desc": "在运行时强制执行预算和信任约束 — 使代理执行可预测，而非鲁莽。"
     }
   },
   "code": {
-    "title": "Verify & publish in seconds",
-    "subtitle": "Turn your code into an agent-ready trusted tool"
+    "title": "几秒钟内验证并发布",
+    "subtitle": "将您的代码转化为代理可用的可信工具"
   },
   "cta": {
-    "title": "Where trusted tools meet agent execution",
-    "lead": "Start free. Verified tooling and auditable execution history help your agents move faster — with fewer surprises.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "Contact Sales"
+    "title": "可信工具与代理执行的交汇处",
+    "lead": "免费开始。经验证的工具和可审计的执行历史帮助您的代理更快移动 — 更少意外。",
+    "ctaPrimary": "申请访问",
+    "ctaSecondary": "联系销售"
+  },
+  "layout": {
+    "skipToContent": "跳转到主要内容"
   }
 }

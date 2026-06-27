@@ -7,7 +7,7 @@ import {
   AnnotationTag,
 } from './containment'
 import { SealedButton, FrameButton } from './sc'
-import './TrustPage.css'
+import '../styles/sc-main.css';
 
 const ShieldIcon = () => (
   <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

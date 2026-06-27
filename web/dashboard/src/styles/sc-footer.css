@@ -19,6 +19,35 @@
 .footer-enhanced {
   background: var(--chamber-bg);
   border-top: 1px solid var(--chamber-edge);
+  color: #ffffff !important;
+}
+
+[data-theme='light'] .footer-enhanced {
+  background: #ffffff;
+  border-top-color: #e2e8f0;
+  color: #0a0a0a !important;
+}
+
+.footer-enhanced a,
+.footer-enhanced p,
+.footer-enhanced span,
+.footer-enhanced h1,
+.footer-enhanced h2,
+.footer-enhanced h3,
+.footer-enhanced h4,
+.footer-enhanced h5,
+.footer-enhanced h6 {
+  color: inherit !important;
+}
+
+.footer-enhanced ul a,
+.footer-enhanced li a {
+  color: #ffffff !important;
+}
+
+[data-theme='light'] .footer-enhanced ul a,
+[data-theme='light'] .footer-enhanced li a {
+  color: #0a0a0a !important;
 }
 
 /* ═══════════════════════════════════════════════
@@ -167,11 +196,6 @@
    ═══════════════════════════════════════════════ */
 
 [data-theme='light'] .sc-footer {
-  background: #ffffff;
-  border-top-color: #e2e8f0;
-}
-
-[data-theme='light'] .footer-enhanced {
   background: #ffffff;
   border-top-color: #e2e8f0;
 }

@@ -3,6 +3,7 @@ import BlogLayout from '../../layouts/BlogLayout.astro';
 import BlogGrid from '../../components/BlogGrid.astro';
 import Pagination from '../../components/Pagination.astro';
 import { getPosts, getCategories } from '../../lib/api';
+import { getLocaleFromUrl, loadTranslations, createT } from '../../i18n/index';
 
 // Enable server-side rendering for this page
 export const prerender = false;
@@ -29,6 +30,10 @@ const [categories, postsResponse] = await Promise.all([
 
 const posts = postsResponse.data || [];
 const { totalPages } = postsResponse.meta;
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <BlogLayout 
@@ -41,14 +46,14 @@ const { totalPages } = postsResponse.meta;
         <header class="tag-header">
           <a href="/" class="back-link">
             <span class="back-link-icon" aria-hidden="true">&larr;</span>
-            All Posts
+            {t('post.allPosts')}
           </a>
           <div class="tag-pill">
             <span class="tag-pill-icon">#</span>
             <span>{tagDisplay}</span>
           </div>
           <h1 class="tag-title">
-            <span class="gradient-text">Tagged Posts</span>
+            <span class="gradient-text">{t('tag.taggedPosts')}</span>
           </h1>
         </header>
 
@@ -56,9 +61,9 @@ const { totalPages } = postsResponse.meta;
           {posts.length > 0 ? (
             <>
               <BlogGrid posts={posts} />
-              <Pagination 
-                currentPage={currentPage} 
-                totalPages={totalPages} 
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
                 baseUrl={`/tag/${slug}`}
               />
             </>
@@ -71,9 +76,9 @@ const { totalPages } = postsResponse.meta;
                   <path d="M2 12l10 5 10-5"/>
                 </svg>
               </div>
-              <h2>No posts found</h2>
-              <p>No posts are tagged with "{tagDisplay}" yet.</p>
-              <a href="/" class="btn-primary">Browse all posts</a>
+              <h2>{t('tag.noPosts')}</h2>
+              <p>{t('tag.noPostsFor', { tag: tagDisplay })}</p>
+              <a href="/" class="btn-primary">{t('tag.browseAll')}</a>
             </div>
           )}
         </div>

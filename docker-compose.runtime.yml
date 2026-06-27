@@ -21,6 +21,8 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - MAX_WORKERS=${MAX_WORKERS:-10}
       - PORT=8081
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - RUNTIME_API_TOKEN=${RUNTIME_API_TOKEN}
     networks:
       - functionfly-runtime
     restart: unless-stopped
@@ -52,6 +54,8 @@ services:
       - NODE_ENV=production
       - MAX_CONCURRENT=${MAX_CONCURRENT:-50}
       - PORT=8082
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - RUNTIME_API_TOKEN=${RUNTIME_API_TOKEN}
     networks:
       - functionfly-runtime
     restart: unless-stopped
@@ -169,6 +173,8 @@ services:
       - RUNTIME=bun
       - LOG_LEVEL=info
       - PORT=8080
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - RUNTIME_API_TOKEN=${RUNTIME_API_TOKEN}
     volumes:
       - bun-cache:/root/.bun
     networks:

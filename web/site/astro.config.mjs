@@ -82,7 +82,7 @@ export default defineConfig({
       minify: "esbuild",
     },
     optimizeDeps: {
-      include: ["react", "react-dom", "three", "@react-three/fiber", "@react-three/drei"],
+      include: ["react", "react-dom", "framer-motion", "typewriter-effect"],
     },
   },
 });

@@ -27,6 +27,7 @@ pub struct AppState {
     pub executor: Arc<Executor>,
     pub metrics: Arc<MetricsCollector>,
     pub config: RuntimeConfig,
+    pub api_token: Option<String>,
 }
 
 impl AppState {
@@ -35,7 +36,13 @@ impl AppState {
             executor: Arc::new(executor),
             metrics: Arc::new(metrics),
             config,
+            api_token: None,
         }
+    }
+
+    pub fn with_auth(mut self, token: Option<String>) -> Self {
+        self.api_token = token;
+        self
     }
 }
 
@@ -138,8 +145,19 @@ async fn metrics_prometheus_handler(State(state): State<AppState>) -> impl IntoR
 /// Execute code endpoint
 async fn execute_handler(
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Json(request): Json<ExecutionRequest>,
 ) -> Result<Json<ExecutionResponse>, ErrorResponse> {
+    // Auth check
+    if let Some(ref token) = state.api_token {
+        let auth = headers.get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if auth != format!("Bearer {}", token) {
+            return Err(ErrorResponse::new("unauthorized", 401));
+        }
+    }
+
     // Record start
     state.metrics.start_execution().await;
 

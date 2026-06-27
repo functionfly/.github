@@ -1,7 +1,6 @@
 import React from 'react'
 import { APP_DASHBOARD_ORIGIN, AUTH_ORIGIN } from '../config'
-import './homepage.css'
-import './pricing.css'
+import '../styles/sc-main.css';
 
 const AgentExecutionPage: React.FC = () => {
   return (

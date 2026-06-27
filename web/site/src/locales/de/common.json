@@ -1,118 +1,155 @@
 {
-  "nav": {
+"nav": {
+    "home": "Startseite",
     "docs": "Docs",
-    "forAgents": "For AI Agents",
-    "trust": "Trust",
-    "pricing": "Pricing",
+    "forAgents": "Für KI-Agenten",
+    "trust": "Vertrauen",
+    "pricing": "Preise",
     "blog": "Blog",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "signUp": "Anmelden"
   },
   "footer": {
-    "tagline": "The trust layer for AI agents. Publish once, run everywhere, get paid.",
-    "product": "Product",
-    "documentation": "Documentation",
-    "trustLayer": "Trust layer",
-    "forAIAgents": "For AI agents",
-    "changelog": "Changelog",
-    "company": "Company",
-    "about": "About",
-    "careers": "Careers",
-    "contact": "Contact",
-    "legal": "Legal",
-    "privacy": "Privacy",
-    "terms": "Terms",
+    "tagline": "Die Vertrauensschicht für KI-Agenten. Einmal veröffentlichen, überall ausführen, bezahlt werden.",
+    "product": "Produkt",
+    "documentation": "Dokumentation",
+    "trustLayer": "Vertrauensschicht",
+    "forAIAgents": "Für KI-Agenten",
+    "changelog": "Änderungsprotokoll",
+    "company": "Unternehmen",
+    "about": "Über uns",
+    "careers": "Karriere",
+    "contact": "Kontakt",
+    "legal": "Rechtliches",
+    "privacy": "Datenschutz",
+    "terms": "AGB",
     "sla": "SLA",
-    "copyright": "All rights reserved."
+    "copyright": "Alle Rechte vorbehalten.",
+    "systemsOperational": "Alle Systeme operativ",
+    "columnProduct": "Produkt",
+    "columnDevelopers": "Entwickler",
+    "columnMCP": "MCP",
+    "columnCompany": "Unternehmen",
+    "columnCommunity": "Community",
+    "columnLegal": "Rechtliches und Sicherheit",
+    "functionRegistry": "Funktionsregister",
+    "stateFabric": "State Fabric",
+    "forAgents": "Für KI-Agenten",
+    "apiReference": "API-Referenz",
+    "sdks": "SDKs",
+    "openApiSpec": "OpenAPI-Spezifikation",
+    "sandbox": "Sandbox",
+    "status": "Status",
+    "rssFeed": "RSS-Feed",
+    "mcpDocs": "MCP-Docs",
+    "publishFunction": "Funktion veröffentlichen",
+    "mcpServer": "MCP-Server",
+    "manifestSpec": "Manifest-Spezifikation",
+    "aboutLink": "Über uns",
+    "blog": "Blog",
+    "careersLink": "Karriere",
+    "contactLink": "Kontakt",
+    "partnerships": "Partnerschaften",
+    "privacyLink": "Datenschutz",
+    "termsLink": "AGB",
+    "dpa": "DPA",
+    "cookiePolicy": "Cookie-Richtlinie",
+    "security": "Sicherheit",
+    "vulnerabilityDisclosure": "Sicherheitslücken-Meldung",
+    "compliance": "Compliance"
   },
   "language": {
-    "title": "Language",
-    "description": "Choose your preferred language",
-    "detected": "Detected",
-    "autoDetected": "Auto-detected from your browser"
+    "title": "Sprache",
+    "description": "Wählen Sie Ihre bevorzugte Sprache",
+    "detected": "Erkannt",
+    "autoDetected": "Automatisch aus Ihrem Browser erkannt"
   },
   "hero": {
-    "badge": "Now in Invite-Only Beta",
-    "titleLine": "The Platform for",
-    "titleGradient": "AI Agent Tooling",
-    "lead": "Publish once, run everywhere, get paid. Verified functions, trust scores, encrypted secrets vault, durable state, and continuous learning — everything agent tooling needs in one platform.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "View Documentation",
-    "stat1Value": "Publish",
-    "stat1Label": "once, run everywhere",
-    "stat2Value": "Trust",
-    "stat2Label": "scores + verification",
-    "stat3Value": "Vault",
-    "stat3Label": "zero-knowledge encrypted",
-    "stat4Value": "Flywheel",
-    "stat4Label": "continuous agent learning"
+    "badge": "Jetzt in der Beta-Phase nur auf Einladung",
+    "titleLine": "Die Plattform für",
+    "titleGradient": "KI-Agenten-Tools",
+    "lead": "Einmal veröffentlichen, überall ausführen, bezahlt werden. Verifizierte Funktionen, Vertrauenswerte, verschlüsselter Secrets-Tresor, dauerhafter Zustand und kontinuierliches Lernen — alles was Agenten-Tools brauchen, auf einer Plattform.",
+    "ctaPrimary": "Zugang Anfordern",
+    "ctaSecondary": "Dokumentation Ansehen",
+    "stat1Value": "Veröffentlichen",
+    "stat1Label": "einmal, überall ausführen",
+    "stat2Value": "Vertrauen",
+    "stat2Label": "Werte + Verifizierung",
+    "stat3Value": "Tresor",
+    "stat3Label": "Ende-zu-Ende-verschlüsselt",
+    "stat4Value": "Schwungrad",
+    "stat4Label": "kontinuierliches Agentenlernen"
   },
   "audience": {
-    "title": "Who benefits most from FunctionFly",
-    "intro": "From solo founders to enterprise teams, FunctionFly provides the reliability and flexibility you need to focus on building great products.",
+    "title": "Wer profitiert am meisten von FunctionFly",
+    "intro": "Von Solo-Gründern bis zu Enterprise-Teams bietet FunctionFly die Zuverlässigkeit und Flexibilität, die Sie brauchen, um großartige Produkte zu entwickeln.",
     "founder": {
-      "title": "Indie SaaS Founder",
-      "sub": "Deploying your first app",
-      "desc": "You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly gives you verified functions, clear trust signals, and a path to scale safely.",
-      "b1": "Publish once, run everywhere",
-      "b2": "Trust scores and verification tiers",
-      "b3": "Zero-knowledge vault for secrets",
-      "b4": "Pay as you grow"
+      "title": "Unabhängiger SaaS-Gründer",
+      "sub": "Erste App bereitstellen",
+      "desc": "Sie haben ein erstaunliches Produkt gebaut und brauchen jetzt vertrauenswürdige Agenten-Tools ohne Enterprise-Overhead. FunctionFly gibt Ihnen verifizierte Funktionen, klare Vertrauenssignale und einen Weg, sicher zu skalieren.",
+      "b1": "Einmal veröffentlichen, überall ausführen",
+      "b2": "Vertrauenswerte und Verifizierungsstufen",
+      "b3": "Zero-Knowledge-Tresor für Secrets",
+      "b4": "Zahlen Sie, während Sie wachsen"
     },
     "startup": {
-      "title": "Growing Startup",
-      "sub": "Scaling agent + API workloads",
-      "desc": "Your team is shipping fast and agents are calling more tools every week. You need policy-friendly trust metadata, attestations, and execution-backed signals—not a pile of unvetted endpoints.",
-      "b1": "Multi-level verification workflows",
-      "b2": "Signed artifacts and revocation",
-      "b3": "Execution history for trust scoring",
-      "b4": "Marketplace discovery with trust filters"
+      "title": "Wachsende Startup",
+      "sub": "Agenten- + API-Workloads skalieren",
+      "desc": "Ihr Team liefert schnell aus und Agenten rufen jede Woche mehr Tools auf. Sie brauchen policy-freundliche Vertrauensmetadaten, Attestate und ausführungsbasierte Signale — keine Menge ungeprüfter Endpoints.",
+      "b1": "Multi-Level-Verifizierungsworkflows",
+      "b2": "Signierte Artefakte und Rückrufung",
+      "b3": "Ausführungsverlauf für Vertrauens-Scoring",
+      "b4": "Marketplace-Entdeckung mit Vertrauensfiltern"
     },
     "enterprise": {
       "title": "Enterprise",
-      "sub": "Governance and compliance",
-      "desc": "Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and teams. FunctionFly aligns verification, signing, and vault semantics with how you already think about risk.",
-      "b1": "Enterprise-grade security posture",
-      "b2": "Attestations and policy-ready metadata",
-      "b3": "Multi-team and multi-app patterns",
-      "b4": "Room for custom SLAs and support"
+      "sub": "Governance und Compliance",
+      "desc": "Ihre Organisation braucht Prüfbarkeit, Least-Privilege-Zugriff auf Tools und konsistente Vertrauensrichtlinien über Agenten und Teams hinweg. FunctionFly bringt Verifizierung, Signierung und Tresor-Semantik mit Ihrer Risikodenke in Einklang.",
+      "b1": "Enterprise-Sicherheitshaltung",
+      "b2": "Attestate und policy-bereite Metadaten",
+      "b3": "Multi-Team- und Multi-App-Muster",
+      "b4": "Raum für benutzerdefinierte SLAs und Support"
     }
   },
   "features": {
-    "title": "Everything your agent tooling platform needs",
-    "subtitle": "From publishing to production — five integrated capabilities in one platform. Verification + trust scoring so agents can act safely.",
+    "title": "Alles was Ihre Agenten-Tooling-Plattform braucht",
+    "subtitle": "Von der Veröffentlichung zur Produktion — fünf integrierte Fähigkeiten auf einer Plattform. Verifizierung + Vertrauens-Scoring, damit Agenten sicher handeln können.",
     "publishing": {
-      "title": "Verified Tool Publishing",
-      "desc": "Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents."
+      "title": "Verifizierte Tool-Veröffentlichung",
+      "desc": "Wandeln Sie Code in vertrauenswürdige Funktionen um mit Verifizierungsprüfungen und signierten Artefakten, bevor Agenten sie nutzen können."
     },
     "revocation": {
-      "title": "Verification Levels & Revocation",
-      "desc": "Trust is earned. Verify at multiple levels, sign with platform keys, and revoke when issues are found."
+      "title": "Verifizierungsstufen & Rückrufung",
+      "desc": "Vertrauen wird verdient. Verifizieren Sie auf mehreren Stufen, signieren Sie mit Plattformschlüsseln und widerrufen Sie, wenn Probleme gefunden werden."
     },
     "trace": {
-      "title": "Execution Trace & Trust Scores",
-      "desc": "Agents get history-backed trust signals so \"works\" and \"safe\" are distinguishable and policy-driven."
+      "title": "Ausführungsverfolgung & Vertrauenswerte",
+      "desc": "Agenten erhalten historiesbasierte Vertrauenssignale, damit \"funktioniert\" und \"sicher\" unterscheidbar und policy-gesteuert sind."
     },
     "tooling": {
-      "title": "Agent-ready Tooling",
-      "desc": "Expose capabilities with clear manifests and schemas — so agents can select tools that match their trust policy."
+      "title": "Agenten-bereite Tooling",
+      "desc": "Exponieren Sie Fähigkeiten mit klaren Manifesten und Schemas — damit Agenten Tools auswählen können, die ihrer Vertrauensrichtlinie entsprechen."
     },
     "marketplace": {
-      "title": "Marketplace for Verified Tools",
-      "desc": "Creators publish once. Agents discover trusted functions with built-in trust filters and ranked placement."
+      "title": "Marketplace für Verifizierte Tools",
+      "desc": "Ersteller veröffentlichen einmal. Agenten entdecken vertrauenswürdige Funktionen mit integrierten Vertrauensfiltern und optimiertem Ranking."
     },
     "routing": {
-      "title": "Trust-powered Routing",
-      "desc": "Enforce budgets and trust constraints at runtime — so agent execution is predictable, not reckless."
+      "title": "Vertrauens-gesteuertes Routing",
+      "desc": "Erzwingen Sie Budgets und Vertrauensbeschränkungen zur Laufzeit — damit Agentenausführung vorhersehbar ist, nicht rücksichtslos."
     }
   },
   "code": {
-    "title": "Verify & publish in seconds",
-    "subtitle": "Turn your code into an agent-ready trusted tool"
+    "title": "Verifizieren & veröffentlichen in Sekunden",
+    "subtitle": "Wandeln Sie Ihren Code in ein agenten-bereites, vertrauenswürdiges Tool um"
   },
   "cta": {
-    "title": "Where trusted tools meet agent execution",
-    "lead": "Start free. Verified tooling and auditable execution history help your agents move faster — with fewer surprises.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "Contact Sales"
+    "title": "Wo vertrauenswürdige Tools auf Agentenausführung treffen",
+    "lead": "Starten Sie kostenlos. Verifiziertes Tooling und prüfbare Ausführungshistorie helfen Ihren Agenten, sich schneller zu bewegen — mit weniger Überraschungen.",
+    "ctaPrimary": "Zugang Anfordern",
+    "ctaSecondary": "Vertrieb Kontaktieren"
+  },
+  "layout": {
+    "skipToContent": "Zum Hauptinhalt springen"
   }
 }

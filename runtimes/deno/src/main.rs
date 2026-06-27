@@ -23,6 +23,8 @@ struct Args {
     sandbox_enabled: bool,
     nats_url: Option<String>,
     orchestrator_url: Option<String>,
+    api_token: Option<String>,
+    is_production: bool,
 }
 
 impl Default for Args {
@@ -35,12 +37,26 @@ impl Default for Args {
             sandbox_enabled: true,
             nats_url: std::env::var("NATS_URL").ok(),
             orchestrator_url: std::env::var("ORCHESTRATOR_URL").ok(),
+            api_token: None,
+            is_production: false,
         }
     }
 }
 
 impl Args {
     fn from_env() -> Self {
+        let is_production = std::env::var("ENVIRONMENT")
+            .map(|v| v.eq_ignore_ascii_case("production"))
+            .unwrap_or(false);
+
+        let sandbox_enabled = if is_production {
+            true
+        } else {
+            std::env::var("SANDBOX_ENABLED")
+                .unwrap_or_else(|_| "true".to_string())
+                .to_lowercase() != "false"
+        };
+
         Self {
             port: std::env::var("PORT")
                 .unwrap_or_else(|_| "8090".to_string())
@@ -58,11 +74,11 @@ impl Args {
                 .unwrap_or_else(|_| "30".to_string())
                 .parse()
                 .unwrap_or(30),
-            sandbox_enabled: std::env::var("SANDBOX_ENABLED")
-                .unwrap_or_else(|_| "true".to_string())
-                .to_lowercase() != "false",
+            sandbox_enabled,
             nats_url: std::env::var("NATS_URL").ok(),
             orchestrator_url: std::env::var("ORCHESTRATOR_URL").ok(),
+            api_token: std::env::var("RUNTIME_API_TOKEN").ok().filter(|t| !t.is_empty()),
+            is_production,
         }
     }
 }
@@ -73,6 +89,7 @@ struct RuntimeState {
     orchestrator: Arc<RwLock<OrchestratorClient>>,
     metrics: Arc<MetricsCollector>,
     total_executions: Arc<std::sync::atomic::AtomicU64>,
+    api_token: Option<String>,
 }
 
 impl RuntimeState {
@@ -116,10 +133,22 @@ async fn main() -> anyhow::Result<()> {
         version = env!("CARGO_PKG_VERSION"),
         port = args.port,
         max_concurrent = args.max_concurrent,
+        sandbox_enabled = args.sandbox_enabled,
         nats_url = ?args.nats_url,
         orchestrator_url = ?args.orchestrator_url,
         "Starting FunctionFly Deno Runtime"
     );
+
+    if args.api_token.is_none() {
+        if args.is_production {
+            tracing::error!(
+                "RUNTIME_API_TOKEN is not set in production. \
+                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            );
+        } else {
+            warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
+        }
+    }
 
     let config = RuntimeConfig {
         limits: ExecutionLimits {
@@ -171,6 +200,7 @@ async fn main() -> anyhow::Result<()> {
         orchestrator,
         metrics,
         total_executions,
+        api_token: args.api_token.clone(),
     };
 
     // Start background tasks
@@ -238,8 +268,18 @@ async fn run_server_with_state(
 
     async fn execute_handler(
         State(state): State<AppState>,
+        headers: axum::http::HeaderMap,
         Json(req): Json<serde_json::Value>,
     ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+        // Auth check
+        if let Some(ref token) = state.inner.api_token {
+            let auth = headers.get("authorization")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("");
+            if auth != format!("Bearer {}", token) {
+                return Err((axum::http::StatusCode::UNAUTHORIZED, Json(serde_json::json!({"error": "unauthorized"}))));
+            }
+        }
         let execution_id = req.get("execution_id")
             .and_then(|v| v.as_str())
             .unwrap_or("unknown");

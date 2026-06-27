@@ -1,118 +1,155 @@
 {
   "nav": {
+    "home": "Trang chủ",
     "docs": "Docs",
-    "forAgents": "For AI Agents",
-    "trust": "Trust",
-    "pricing": "Pricing",
+    "forAgents": "Cho Đặc vụ AI",
+    "trust": "Tin cậy",
+    "pricing": "Bảng giá",
     "blog": "Blog",
-    "dashboard": "Dashboard"
+    "dashboard": "Bảng điều khiển",
+    "signUp": "Đăng ký"
   },
   "footer": {
-    "tagline": "The trust layer for AI agents. Publish once, run everywhere, get paid.",
-    "product": "Product",
-    "documentation": "Documentation",
-    "trustLayer": "Trust layer",
-    "forAIAgents": "For AI agents",
-    "changelog": "Changelog",
-    "company": "Company",
-    "about": "About",
-    "careers": "Careers",
-    "contact": "Contact",
-    "legal": "Legal",
-    "privacy": "Privacy",
-    "terms": "Terms",
+    "tagline": "Lớp tin cậy cho đặc vụ AI. Xuất bản một lần, chạy khắp nơi, được trả tiền.",
+    "product": "Sản phẩm",
+    "documentation": "Tài liệu",
+    "trustLayer": "Lớp tin cậy",
+    "forAIAgents": "Cho đặc vụ AI",
+    "changelog": "Nhật ký thay đổi",
+    "company": "Công ty",
+    "about": "Giới thiệu",
+    "careers": "Tuyển dụng",
+    "contact": "Liên hệ",
+    "legal": "Pháp lý",
+    "privacy": "Quyền riêng tư",
+    "terms": "Điều khoản",
     "sla": "SLA",
-    "copyright": "All rights reserved."
+    "copyright": "Mọi quyền được bảo lưu.",
+    "systemsOperational": "Tất cả hệ thống hoạt động",
+    "columnProduct": "Sản phẩm",
+    "columnDevelopers": "Nhà phát triển",
+    "columnMCP": "MCP",
+    "columnCompany": "Công ty",
+    "columnCommunity": "Cộng đồng",
+    "columnLegal": "Pháp lý và Bảo mật",
+    "functionRegistry": "Sổ đăng ký Hàm",
+    "stateFabric": "State Fabric",
+    "forAgents": "Cho đặc vụ AI",
+    "apiReference": "Tham chiếu API",
+    "sdks": "SDK",
+    "openApiSpec": "Đặc tả OpenAPI",
+    "sandbox": "Hộp cát",
+    "status": "Trạng thái",
+    "rssFeed": "Nguồn cấp RSS",
+    "mcpDocs": "Tài liệu MCP",
+    "publishFunction": "Xuất bản một Hàm",
+    "mcpServer": "Máy chủ MCP",
+    "manifestSpec": "Đặc tả Tệp kê khai",
+    "aboutLink": "Giới thiệu",
+    "blog": "Blog",
+    "careersLink": "Tuyển dụng",
+    "contactLink": "Liên hệ",
+    "partnerships": "Hợp tác",
+    "privacyLink": "Quyền riêng tư",
+    "termsLink": "Điều khoản",
+    "dpa": "DPA",
+    "cookiePolicy": "Chính sách Cookie",
+    "security": "Bảo mật",
+    "vulnerabilityDisclosure": "Tiết lộ Lỗ hổng",
+    "compliance": "Tuân thủ"
   },
   "language": {
-    "title": "Language",
-    "description": "Choose your preferred language",
-    "detected": "Detected",
-    "autoDetected": "Auto-detected from your browser"
+    "title": "Ngôn ngữ",
+    "description": "Chọn ngôn ngữ ưa thích của bạn",
+    "detected": "Đã phát hiện",
+    "autoDetected": "Tự động phát hiện từ trình duyệt của bạn"
   },
   "hero": {
-    "badge": "Now in Invite-Only Beta",
-    "titleLine": "The Platform for",
-    "titleGradient": "AI Agent Tooling",
-    "lead": "Publish once, run everywhere, get paid. Verified functions, trust scores, encrypted secrets vault, durable state, and continuous learning — everything agent tooling needs in one platform.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "View Documentation",
-    "stat1Value": "Publish",
-    "stat1Label": "once, run everywhere",
-    "stat2Value": "Trust",
-    "stat2Label": "scores + verification",
-    "stat3Value": "Vault",
-    "stat3Label": "zero-knowledge encrypted",
-    "stat4Value": "Flywheel",
-    "stat4Label": "continuous agent learning"
+    "badge": "Hiện đang trong Beta Chỉ theo Lời mời",
+    "titleLine": "Nền tảng cho",
+    "titleGradient": "Công cụ Đặc vụ AI",
+    "lead": "Xuất bản một lần, chạy khắp nơi, được trả tiền. Hàm đã xác minh, điểm tin cậy, kho bí mật được mã hóa, trạng thái bền vững và học tập liên tục — mọi thứ công cụ đặc vụ cần trong một nền tảng.",
+    "ctaPrimary": "Yêu cầu Quyền truy cập",
+    "ctaSecondary": "Xem Tài liệu",
+    "stat1Value": "Xuất bản",
+    "stat1Label": "một lần, chạy khắp nơi",
+    "stat2Value": "Tin cậy",
+    "stat2Label": "điểm + xác minh",
+    "stat3Value": "Kho",
+    "stat3Label": "mã hóa zero-knowledge",
+    "stat4Value": "Bánh đà",
+    "stat4Label": "học tập đặc vụ liên tục"
   },
   "audience": {
-    "title": "Who benefits most from FunctionFly",
-    "intro": "From solo founders to enterprise teams, FunctionFly provides the reliability and flexibility you need to focus on building great products.",
+    "title": "Ai được hưởng lợi nhiều nhất từ FunctionFly",
+    "intro": "Từ những người sáng lập độc lập đến các đội doanh nghiệp, FunctionFly cung cấp độ tin cậy và linh hoạt bạn cần để tập trung xây dựng sản phẩm tuyệt vời.",
     "founder": {
-      "title": "Indie SaaS Founder",
-      "sub": "Deploying your first app",
-      "desc": "You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly gives you verified functions, clear trust signals, and a path to scale safely.",
-      "b1": "Publish once, run everywhere",
-      "b2": "Trust scores and verification tiers",
-      "b3": "Zero-knowledge vault for secrets",
-      "b4": "Pay as you grow"
+      "title": "Người sáng lập SaaS Độc lập",
+      "sub": "Triển khai ứng dụng đầu tiên",
+      "desc": "Bạn đã xây dựng một sản phẩm tuyệt vời và bây giờ cần công cụ đặc vụ đáng tin cậy mà không có sự phức tạp của doanh nghiệp. FunctionFly cung cấp cho bạn các hàm đã xác minh, tín hiệu tin cậy rõ ràng và lộ trình để mở rộng an toàn.",
+      "b1": "Xuất bản một lần, chạy khắp nơi",
+      "b2": "Điểm tin cậy và cấp độ xác minh",
+      "b3": "Kho zero-knowledge cho bí mật",
+      "b4": "Trả tiền khi phát triển"
     },
     "startup": {
-      "title": "Growing Startup",
-      "sub": "Scaling agent + API workloads",
-      "desc": "Your team is shipping fast and agents are calling more tools every week. You need policy-friendly trust metadata, attestations, and execution-backed signals—not a pile of unvetted endpoints.",
-      "b1": "Multi-level verification workflows",
-      "b2": "Signed artifacts and revocation",
-      "b3": "Execution history for trust scoring",
-      "b4": "Marketplace discovery with trust filters"
+      "title": "Startup đang phát triển",
+      "sub": "Mở rộng khối lượng đặc vụ + API",
+      "desc": "Đội của bạn đang ship nhanh và các đặc vụ gọi nhiều công cụ hơn mỗi tuần. Bạn cần siêu dữ liệu tin cậy thân thiện với chính sách, chứng nhận và tín hiệu dựa trên thực thi — không phải đống endpoint chưa xác minh.",
+      "b1": "Quy trình xác minh đa cấp",
+      "b2": "Tạo phẩm đã ký và thu hồi",
+      "b3": "Lịch sử thực thi để chấm điểm tin cậy",
+      "b4": "Khám phá marketplace với bộ lọc tin cậy"
     },
     "enterprise": {
-      "title": "Enterprise",
-      "sub": "Governance and compliance",
-      "desc": "Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and teams. FunctionFly aligns verification, signing, and vault semantics with how you already think about risk.",
-      "b1": "Enterprise-grade security posture",
-      "b2": "Attestations and policy-ready metadata",
-      "b3": "Multi-team and multi-app patterns",
-      "b4": "Room for custom SLAs and support"
+      "title": "Doanh nghiệp",
+      "sub": "Quản trị và tuân thủ",
+      "desc": "Tổ chức của bạn cần khả năng kiểm toán, quyền truy cập đặc quyền tối thiểu vào công cụ và chính sách tin cậy nhất quán trên các đặc vụ và đội. FunctionFly liên kết xác minh, ký và ngữ nghĩa kho với cách bạn nghĩ về rủi ro.",
+      "b1": "Tư thế bảo mật cấp doanh nghiệp",
+      "b2": "Chứng nhận và siêu dữ liệu sẵn sàng cho chính sách",
+      "b3": "Mẫu đa đội và đa ứng dụng",
+      "b4": "Không gian cho SLA và hỗ trợ tùy chỉnh"
     }
   },
   "features": {
-    "title": "Everything your agent tooling platform needs",
-    "subtitle": "From publishing to production — five integrated capabilities in one platform. Verification + trust scoring so agents can act safely.",
+    "title": "Mọi thứ nền tảng công cụ đặc vụ của bạn cần",
+    "subtitle": "Từ xuất bản đến sản xuất — năm khả năng tích hợp trong một nền tảng. Xác minh + chấm điểm tin cậy để đặc vụ có thể hành động an toàn.",
     "publishing": {
-      "title": "Verified Tool Publishing",
-      "desc": "Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents."
+      "title": "Xuất bản Công cụ Đã xác minh",
+      "desc": "Biến mã thành các hàm đáng tin cậy với kiểm tra xác minh và tạo phẩm đã ký trước khi đặc vụ có thể sử dụng chúng."
     },
     "revocation": {
-      "title": "Verification Levels & Revocation",
-      "desc": "Trust is earned. Verify at multiple levels, sign with platform keys, and revoke when issues are found."
+      "title": "Cấp độ Xác minh và Thu hồi",
+      "desc": "Tin cậy được kiếm. Xác minh ở nhiều cấp, ký bằng khóa nền tảng và thu hồi khi tìm thấy vấn đề."
     },
     "trace": {
-      "title": "Execution Trace & Trust Scores",
-      "desc": "Agents get history-backed trust signals so \"works\" and \"safe\" are distinguishable and policy-driven."
+      "title": "Dấu vết Thực thi và Điểm Tin cậy",
+      "desc": "Đặc vụ nhận tín hiệu tin cậy dựa trên lịch sử để \"hoạt động\" và \"an toàn\" có thể phân biệt được và được điều khiển bằng chính sách."
     },
     "tooling": {
-      "title": "Agent-ready Tooling",
-      "desc": "Expose capabilities with clear manifests and schemas — so agents can select tools that match their trust policy."
+      "title": "Công cụ Sẵn sàng cho Đặc vụ",
+      "desc": "Tiết lộ khả năng với manifest và lược đồ rõ ràng — để đặc vụ có thể chọn công cụ phù hợp với chính sách tin cậy của họ."
     },
     "marketplace": {
-      "title": "Marketplace for Verified Tools",
-      "desc": "Creators publish once. Agents discover trusted functions with built-in trust filters and ranked placement."
+      "title": "Marketplace cho Công cụ Đã xác minh",
+      "desc": "Nhà sáng tạo xuất bản một lần. Đặc vụ khám phá các hàm đáng tin cậy với bộ lọc tin cậy tích hợp và vị trí được xếp hạng."
     },
     "routing": {
-      "title": "Trust-powered Routing",
-      "desc": "Enforce budgets and trust constraints at runtime — so agent execution is predictable, not reckless."
+      "title": "Định tuyến Dựa trên Tin cậy",
+      "desc": "Thực thi ngân sách và ràng buộc tin cậy tại thời gian chạy — để thực thi đặc vụ có thể dự đoán được, không bất cẩn."
     }
   },
   "code": {
-    "title": "Verify & publish in seconds",
-    "subtitle": "Turn your code into an agent-ready trusted tool"
+    "title": "Xác minh và xuất bản trong vài giây",
+    "subtitle": "Biến mã của bạn thành công cụ đáng tin cậy sẵn sàng cho đặc vụ"
   },
   "cta": {
-    "title": "Where trusted tools meet agent execution",
-    "lead": "Start free. Verified tooling and auditable execution history help your agents move faster — with fewer surprises.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "Contact Sales"
+    "title": "Nơi công cụ đáng tin cậy gặp thực thi đặc vụ",
+    "lead": "Bắt đầu miễn phí. Công cụ đã xác minh và lịch sử thực thi có thể kiểm toán giúp đặc vụ của bạn di chuyển nhanh hơn — với ít bất ngờ hơn.",
+    "ctaPrimary": "Yêu cầu Quyền truy cập",
+    "ctaSecondary": "Liên hệ Bán hàng"
+  },
+  "layout": {
+    "skipToContent": "Chuyển đến nội dung chính"
   }
 }

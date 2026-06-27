@@ -1,5 +1,6 @@
 ---
 import { getPaginationRange } from '../lib/utils';
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
 
 interface Props {
   currentPage: number;
@@ -8,6 +9,10 @@ interface Props {
 }
 
 const { currentPage, totalPages, baseUrl } = Astro.props;
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 
 // Build pagination URL helper
 function buildPageUrl(page: number): string {
@@ -26,12 +31,12 @@ const hasNext = currentPage < totalPages;
       {hasPrevious ? (
         <a href={buildPageUrl(currentPage - 1)} class="pagination__arrow pagination__arrow--prev">
           <span aria-hidden="true">&larr;</span>
-          Previous
+          {t('pagination.previous')}
         </a>
       ) : (
         <span class="pagination__arrow pagination__arrow--disabled">
           <span aria-hidden="true">&larr;</span>
-          Previous
+          {t('pagination.previous')}
         </span>
       )}
 
@@ -53,12 +58,12 @@ const hasNext = currentPage < totalPages;
 
       {hasNext ? (
         <a href={buildPageUrl(currentPage + 1)} class="pagination__arrow pagination__arrow--next">
-          Next
+          {t('pagination.next')}
           <span aria-hidden="true">&rarr;</span>
         </a>
       ) : (
         <span class="pagination__arrow pagination__arrow--disabled">
-          Next
+          {t('pagination.next')}
           <span aria-hidden="true">&rarr;</span>
         </span>
       )}

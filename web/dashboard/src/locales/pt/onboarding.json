@@ -1,0 +1,358 @@
+{
+  "onboarding": {
+    "seo": {
+      "title": "Bem-vindo ao FunctionFly - Configuração",
+      "description": "Configure sua conta FunctionFly em minutos. Implante funções serverless com failover automático em múltiplos provedores de nuvem."
+    },
+    "steps": {
+      "welcome": {
+        "title": "Bem-vindo ao FunctionFly",
+        "description": "Aprenda sobre implantação multiprovedor e failover automático"
+      },
+      "connectProvider": {
+        "title": "Conecte Seu Primeiro Provedor",
+        "description": "Vincule um provedor de nuvem para começar a implantar suas funções"
+      },
+      "deployFunction": {
+        "title": "Implante Sua Primeira Função",
+        "description": "Implante uma função simples para ver o FunctionFly em ação"
+      },
+      "testFailover": {
+        "title": "Testar Failover",
+        "description": "Verifique sua configuração testando o failover automático"
+      },
+      "teamSetup": {
+        "title": "Configure Sua Equipe",
+        "description": "Convide membros da equipe e configure as definições de colaboração"
+      }
+    },
+    "roles": {
+      "admin": "Administrador da Equipe",
+      "member": "Membro da Equipe",
+      "viewer": "Visualizador"
+    },
+    "accessibility": {
+      "skipToMain": "Pular para o conteúdo principal",
+      "goHome": "Ir para a página inicial do FunctionFly",
+      "help": "Obter ajuda com a configuração",
+      "skip": "Pular a configuração por enquanto",
+      "progressBar": "Progresso da configuração: {{percent}}% concluído",
+      "currentStep": "Etapa {{current}} de {{total}}: {{title}}",
+      "backButton": "Ir para a etapa anterior",
+      "nextButton": "Ir para a próxima etapa",
+      "completeButton": "Concluir a configuração",
+      "stepNavigation": "Etapas da configuração",
+      "stepLabel": "Etapa {{number}}: {{title}} - {{status}}",
+      "statusCompleted": "concluído",
+      "statusActive": "atual",
+      "statusPending": "pendente",
+      "continueOnboarding": "Continuar a configuração",
+      "skipOnboarding": "Pular a configuração"
+    },
+    "stepCounter": "Etapa {{current}} de {{total}}",
+    "helpTooltip": "O FunctionFly implanta suas funções em múltiplos provedores de nuvem para alta disponibilidade. Cada etapa conecta um novo provedor e testa o failover automaticamente.",
+    "skip": "Pular por enquanto",
+    "actions": {
+      "back": "Voltar",
+      "nextStep": "Próxima Etapa",
+      "completeSetup": "Concluir Configuração",
+      "completing": "Concluindo...",
+      "retry": "Tentar Novamente"
+    },
+    "errors": {
+      "stepLoadFailed": "Falha ao carregar esta etapa. Por favor, tente novamente."
+    },
+    "tips": {
+      "welcomeTitle": "Bem-vindo ao FunctionFly",
+      "readyToConnect": "Pronto para Conectar",
+      "providerConnected": "Ótimo! Provedor Conectado",
+      "functionDeployed": "Função Implantada com Sucesso",
+      "setupComplete": "Configuração Concluída!",
+      "welcomeDesc": "Reserve um momento para aprender sobre a implantação multiprovedor e as funcionalidades de failover automático do FunctionFly.",
+      "roleGreeting": "Bem-vindo {{role}}!",
+      "adminPrivileges": " Você pode gerenciar provedores, implantar funções e convidar membros da equipe.",
+      "memberAccess": " Você pode implantar funções e acessar recursos compartilhados.",
+      "viewerAccess": " Você tem acesso somente leitura às funções e métricas da equipe.",
+      "connectProviderDesc": "Você está prestes a conectar seu primeiro provedor de nuvem. Isso permite ao FunctionFly implantar funções em múltiplos provedores para alta disponibilidade.",
+      "deployFunctionDesc": "Excelente! Seu provedor está conectado. Agora vamos implantar sua primeira função para ver o FunctionFly em ação.",
+      "tokenSecure": "Token de API armazenado de forma segura e criptografado",
+      "testFailoverDesc": "Sua função está ao vivo! A etapa final testa sua configuração de failover para garantir alta disponibilidade.",
+      "autoFailover": "O FunctionFly roteia automaticamente o tráfego para provedores saudáveis se um falhar",
+      "teamSetupDesc": "Ótimo! Sua configuração de failover está funcionando. Agora vamos configurar sua equipe para colaboração.",
+      "inviteTeam": "Convide membros da equipe para colaborar em funções e compartilhar acesso aos provedores",
+      "setupCompleteDesc": "Excelente! Sua configuração do FunctionFly está completa e pronta para produção.",
+      "productionReady": "Você está pronto para começar a implantar funções com alta disponibilidade!",
+      "allCompleteDesc": "Parabéns! Sua configuração do FunctionFly está completa e pronta para produção.",
+      "multiProviderDeployed": "Suas funções agora estão implantadas em múltiplos provedores com failover automático"
+    },
+    "hints": {
+      "welcome": "Aprenda sobre a implantação multiprovedor e as funcionalidades de failover automático do FunctionFly.",
+      "connectProvider": "Conecte um provedor de nuvem para ativar implantações.",
+      "deployFunction": "Implante sua primeira função para testar a configuração.",
+      "testFailover": "Verifique se o failover automático está funcionando corretamente.",
+      "teamSetup": "Convide membros da equipe para colaborar."
+    },
+    "skipDialog": {
+      "title": "Pular a Configuração?",
+      "description": "Você está prestes a pular as etapas restantes da configuração do FunctionFly. Isso é o que isso significa:",
+      "continue": "Continuar Configuração",
+      "skipAnyway": "Pular Mesmo Assim",
+      "warnings": {
+        "noProvider": "Você não conectará nenhum provedor de nuvem para implantações",
+        "noFunction": "Você não implantará sua primeira função para testar a configuração",
+        "noFailoverTest": "Você não testará as capacidades de failover automático"
+      },
+      "hints": {
+        "inviteLater": "Você ainda pode convidar membros da equipe mais tarde pelo seu painel de controle",
+        "canResume": "Você pode retomar a configuração a qualquer momento nas configurações do seu painel",
+        "basicDeploy": "Funções básicas ainda podem ser implantadas, mas sem os benefícios multiprovedor"
+      }
+    },
+    "completion": {
+      "title": "Bem-vindo ao FunctionFly!",
+      "subtitle": "Sua configuração está completa e pronta para produção"
+    },
+    "deploy": {
+      "sampleFunctions": {
+        "helloWorld": {
+          "name": "Olá Mundo",
+          "description": "Uma função simples que retorna uma saudação"
+        },
+        "apiEcho": {
+          "name": "Eco de API",
+          "description": "Retorna as informações da requisição como JSON"
+        }
+      },
+      "tabs": {
+        "sampleFunctions": "Funções de Exemplo",
+        "sampleFunctionsTooltip": "Escolha entre exemplos de funções pré-construídas para começar rapidamente. Elas demonstram padrões comuns e estão prontas para implantar.",
+        "customCode": "Código Personalizado",
+        "customCodeTooltip": "Escreva seu próprio código de função do zero. Usuários avançados podem implantar lógica personalizada, APIs ou integrações."
+      },
+      "functionListLabel": "Selecione uma função de exemplo",
+      "functionEdgeHelp": "Funções edge são executadas próximas aos seus usuários em todo o mundo, reduzindo a latência e melhorando o desempenho em comparação com funções tradicionais baseadas em servidor.",
+      "codePreview": "Pré-visualização",
+      "codePreviewRegion": "Pré-visualização do código da função",
+      "actions": {
+        "copyCode": "Copiar código da função",
+        "chooseSample": "Escolher uma Função de Exemplo",
+        "copyUrl": "Copiar URL da função",
+        "refreshMetrics": "Atualizar métricas",
+        "openFunction": "Abrir Função",
+        "deploying": "Implantando em todos os provedores conectados...",
+        "deploy": "Implantar Função",
+        "tryAgain": "Tentar Novamente",
+        "tryCustomCode": "Tentar Código Personalizado"
+      },
+      "customCodeNotice": "Você pode implantar seu próprio código de função personalizado. Por enquanto, selecione uma de nossas funções de exemplo para continuar com a configuração.",
+      "functionNameLabel": "Nome da Função",
+      "functionNameTooltip": "Escolha um nome único para sua função. Ele fará parte da URL da sua função (por exemplo, minha-funcao.functionfly.app).",
+      "urlSuggestions": "Sugestões de URL",
+      "urlSuggestionsHint": "Clique em uma sugestão para usá-la como nome da sua função",
+      "functionNameHint": "Use apenas letras minúsculas, números e hífens. Isso será usado para gerar a URL da sua função.",
+      "functionNamePreview": "Pré-visualização: {{name}}.functionfly.app",
+      "suggestions": {
+        "recommended": "recomendado",
+        "apiPrefix": "endpoint de API",
+        "versioned": "endpoint versionado",
+        "available": "Disponível",
+        "taken": "Ocupado"
+      },
+      "deployed": {
+        "title": "Função Implantada!",
+        "subtitle": "Sua função está agora ao vivo e pronta para receber requisições.",
+        "functionUrl": "URL da Função",
+        "liveMetrics": "Métricas ao Vivo"
+      },
+      "metrics": {
+        "requests": "Requisições",
+        "latency": "Latência Média",
+        "errors": "Erros",
+        "uptime": "Tempo de Atividade",
+        "loading": "Carregando métricas..."
+      },
+      "steps": {
+        "validating": "Validando configuração da função...",
+        "connecting": "Conectando aos provedores de implantação...",
+        "uploading": "Enviando código da função...",
+        "deploying": "Implantando no provedor primário...",
+        "configuring": "Configurando failover...",
+        "complete": "Implantação concluída!"
+      },
+      "deployProgress": "Progresso da implantação: {{percent}}%",
+      "errors": {
+        "deploymentFailed": "Implantação Falhou",
+        "invalidName": "Nome de função inválido",
+        "nameTooShort": "O nome da função deve ter pelo menos 2 caracteres",
+        "nameTooLong": "O nome da função deve ter 52 caracteres ou menos",
+        "nameInvalidChars": "Use apenas letras minúsculas, números e hífens",
+        "noProvider": "Por favor, conecte um provedor primeiro",
+        "cancelled": "A implantação foi cancelada",
+        "generic": "A implantação falhou devido a um erro inesperado. Por favor, tente novamente.",
+        "alternative": "Alternativa:",
+        "alternativeDesc": "Você também pode implantar esta função mais tarde pelo seu painel de controle, ou tentar um nome de função diferente se o atual já estiver em uso."
+      },
+      "toast": {
+        "success": "Função \"{{name}}\" implantada com sucesso!",
+        "failed": "A implantação falhou",
+        "copied": "Copiado para a área de transferência!"
+      },
+      "advanced": {
+        "title": "Configuração Avançada",
+        "tooltip": "Configure variáveis de ambiente, configurações de escalonamento e outras opções avançadas para sua função.",
+        "envVars": "Variáveis de Ambiente",
+        "envVarsTooltip": "Adicione variáveis de ambiente para configurar sua função em tempo de execução. Elas são armazenadas de forma segura e criptografadas.",
+        "envKeyPlaceholder": "CHAVE",
+        "envValuePlaceholder": "VALOR",
+        "envVarsHint": "Variáveis comuns: chaves de API, URLs de banco de dados, configurações",
+        "add": "Adicionar",
+        "scaling": "Configurações de Escalonamento",
+        "scalingTooltip": "Controle como sua função escala com o tráfego. Limites mais altos lidam com mais requisições simultâneas.",
+        "maxConcurrent": "Requisições Simultâneas Máximas",
+        "maxConcurrentLabel": "Requisições simultâneas máximas",
+        "timeout": "Tempo Limite (segundos)",
+        "timeoutLabel": "Tempo limite da requisição em segundos",
+        "proTipTitle": "Dica de Pro",
+        "proTipDesc": "Você pode atualizar essas configurações a qualquer momento pelo painel da sua função. Configurações avançadas terão efeito na próxima implantação."
+      }
+    },
+    "connectProvider": {
+      "selectProvider": "Selecione um provedor de nuvem",
+      "providerConnected": "{{name}} Conectado!",
+      "providerReady": "Seu provedor está agora pronto para implantar funções.",
+      "costPreview": "Pré-visualização de Custos",
+      "costCalculating": "Calculando custos...",
+      "costMonthlyEstimate": "Estimativa Mensal",
+      "costBreakdown": "Detalhamento:",
+      "costBasedOn": "Baseado em 1.000 requisições/dia, 100ms de tempo de computação, 128MB de memória",
+      "apiToken": "Token de API",
+      "apiTokenTooltip": "Um token de API é uma chave segura que permite ao FunctionFly implantar funções na conta do seu provedor. Você pode gerar isso no painel do seu provedor em configurações de API.",
+      "apiTokenPlaceholder": "Insira seu token de API do {{name}}",
+      "apiTokenValidated": "Token de API validado com sucesso",
+      "apiTokenFind": "Encontre seu token de API no painel do {{name}} em configurações de API.",
+      "apiTokenSecure": "Seu token de API é criptografado e armazenado de forma segura. Nunca compartilhamos suas credenciais.",
+      "shareWithTeam": "Compartilhar com a Equipe",
+      "shareWithTeamDesc": "Permitir que membros da equipe usem este provedor para implantações",
+      "connect": "Conectar {{name}}",
+      "connecting": "Conectando a {{name}}...",
+      "sharing": "Compartilhando com a equipe...",
+      "validating": "Validando token...",
+      "changeProvider": "Alterar",
+      "viewDocs": "Ver Documentação",
+      "status": {
+        "available": "Disponível",
+        "maintenance": "Manutenção",
+        "outage": "Interrupção",
+        "unavailable": "Indisponível"
+      },
+      "someUnavailable": "Alguns provedores estão indisponíveis no momento",
+      "someUnavailableDesc_one": "{{name}} está em manutenção.",
+      "someUnavailableDesc_other": "{{count}} provedores estão indisponíveis no momento.",
+      "stillAvailable": "Você ainda pode começar com o {{count}} provedor disponível",
+      "maintenanceNote": "Temporariamente indisponível para manutenção programada",
+      "outageNote": "O serviço está enfrentando problemas no momento",
+      "errors": {
+        "connectionFailed": "Falha ao conectar o provedor. Por favor, verifique seu token de API e tente novamente.",
+        "invalidToken": "Token de API inválido",
+        "tokenSuggestion": "Por favor, verifique seu token de API no painel do {{name}} e certifique-se de que tenha as permissões corretas",
+        "networkError": "Não foi possível conectar à API do {{name}}. Verifique sua conexão com a internet e tente novamente.",
+        "shareFailed": "Provedor conectado mas não pôde ser compartilhado com a equipe",
+        "noTeamFound": "Provedor conectado mas nenhuma equipe encontrada para compartilhar ainda."
+      },
+      "toast": {
+        "connected": "{{name}} conectado com sucesso!",
+        "shareSuccess": "Provedor compartilhado com a equipe com sucesso!",
+        "shareFailed": "Provedor conectado mas não pôde ser compartilhado com a equipe"
+      }
+    },
+    "testFailover": {
+      "title": "Testar Failover",
+      "description": "Teste sua configuração de failover simulando uma falha do provedor. Verificaremos se o tráfego é automaticamente roteado para seu backup.",
+      "tooltip": "Failover garante que suas funções permaneçam online mesmo se um provedor tiver problemas. O FunctionFly roteia automaticamente o tráfego para provedores de backup saudáveis.",
+      "runTest": "Executar Teste de Failover",
+      "testing": "Testando Failover...",
+      "retryTest": "Repetir Teste",
+      "runAgain": "Executar Teste Novamente",
+      "primary": "Primário",
+      "backup": "Backup",
+      "primaryHelp": "Seu provedor primário lida com todo o tráfego em condições normais. É a primeira opção para servir suas funções.",
+      "backupHelp": "Seu provedor de backup assume automaticamente se o primário falhar. Isso garante que suas funções permaneçam disponíveis 24/7.",
+      "steps": {
+        "checking": "Verificando endpoint primário",
+        "checkingDesc": "Testando conexão com o provedor primário",
+        "simulating": "Simulando falha",
+        "simulatingDesc": "Desabilitando temporariamente o endpoint primário",
+        "detecting": "Detectando failover",
+        "detectingDesc": "Aguardando o failover automático ser acionado",
+        "verifying": "Verificando backup",
+        "verifyingDesc": "Confirmando que a requisição foi tratada pelo provedor de backup",
+        "restoring": "Restaurando primário",
+        "restoringDesc": "Colocando o endpoint primário de volta online"
+      },
+      "results": {
+        "title": "Resultados do Teste",
+        "passed": "Teste de Failover Aprovado!",
+        "passedDesc": "Sua configuração está funcionando corretamente. O failover automático está pronto.",
+        "failed": "Teste de Failover Reprovado",
+        "failedDesc": "Houve um problema com sua configuração de failover.",
+        "whatHappened": "O que aconteceu?",
+        "whatHappenedDesc": "Quando o provedor primário (Cloudflare) ficou temporariamente indisponível, o FunctionFly roteou automaticamente o tráfego para seu provedor de backup (Vercel) sem tempo de inatividade."
+      },
+      "errors": {
+        "testFailed": "O teste de failover falhou devido a um erro inesperado.",
+        "suggestion": "Por favor, verifique as conexões dos seus provedores e tente novamente."
+      },
+      "toast": {
+        "success": "Teste de failover concluído com sucesso!",
+        "failed": "O teste de failover falhou"
+      },
+      "latency": "Latência",
+      "latencyHelp": "A latência mede o tempo de resposta. Valores mais baixos significam desempenho mais rápido para seus usuários."
+    },
+    "teamSetup": {
+      "yourRole": "Sua Função",
+      "roleTooltip": "Escolha sua função na equipe. Você pode alterá-la mais tarde nas configurações da equipe.",
+      "roles": {
+        "admin": {
+          "label": "Administrador",
+          "description": "Acesso completo para gerenciar equipe, provedores e funções"
+        },
+        "member": {
+          "label": "Membro",
+          "description": "Pode implantar e gerenciar funções, ver recursos da equipe"
+        },
+        "viewer": {
+          "label": "Visualizador",
+          "description": "Acesso somente leitura às funções e métricas da equipe"
+        }
+      },
+      "inviteTitle": "Convidar Membros da Equipe",
+      "inviteTooltip": "Adicione membros da equipe para colaborar em funções e compartilhar configurações de provedores.",
+      "emailLabel": "Endereço de E-mail",
+      "emailPlaceholder": "colega@empresa.com",
+      "roleLabel": "Função",
+      "addMember": "Adicionar Membro da Equipe",
+      "pendingInvites": "Convites Pendentes ({{count}})",
+      "sendInvites": "Enviar {{count}} Convite",
+      "sendInvites_one": "Enviar {{count}} Convite",
+      "sendInvites_other": "Enviar {{count}} Convites",
+      "continueSolo": "Continuar Solo",
+      "skipForNow": "Pular por Enquanto",
+      "skipping": "Pulando...",
+      "teamBenefits": "Benefícios da Equipe",
+      "teamBenefitsDesc": "Convide membros da equipe para colaborar em funções, compartilhar configurações de provedores e gerenciar implantações juntos. Você sempre pode adicionar membros mais tarde pelo seu painel de controle.",
+      "errors": {
+        "invalidEmail": "Por favor, insira um endereço de e-mail válido",
+        "emailExists": "Este e-mail já foi adicionado",
+        "sendFailed": "Falha ao enviar convites da equipe"
+      },
+      "toast": {
+        "added": "Membro da equipe adicionado",
+        "invitesSent": "Convites da equipe enviados para {{count}} membro",
+        "invitesSent_one": "Convites da equipe enviados para {{count}} membro!",
+        "invitesSent_other": "Convites da equipe enviados para {{count}} membros!",
+        "soloSetup": "Continuando com configuração individual"
+      }
+    }
+  }
+}

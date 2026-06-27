@@ -4,6 +4,7 @@ import { slateBodyToHtml, calculateReadingTime } from '../lib/slate-to-html';
 import { formatDate, formatDateISO } from '../lib/utils';
 import AuthorBio from '../components/AuthorBio.astro';
 import type { BlogPost } from '../lib/api';
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
 
 interface Props {
   post: BlogPost;
@@ -17,6 +18,10 @@ const metaTitle = post.seoTitle || post.title;
 const metaDesc = post.seoDescription || post.description;
 const canonicalUrl = post.canonicalUrl || new URL(`/blog/${post.slug}`, Astro.site).toString();
 const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <BlogLayout 
@@ -59,12 +64,12 @@ const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
         <aside class="post-sidebar">
           <div class="sidebar-sticky">
             <div class="reading-indicator">
-              <span class="reading-indicator__time">{readingMinutes} min</span>
-              <span class="reading-indicator__label">read</span>
+              <span class="reading-indicator__time">{readingMinutes} {t('blogCard.minRead')}</span>
+              <span class="reading-indicator__label">{t('post.read')}</span>
             </div>
             {post.tags && post.tags.length > 0 && (
               <div class="sidebar-tags">
-                <h4 class="sidebar-title">Tags</h4>
+                <h4 class="sidebar-title">{t('post.tags')}</h4>
                 <div class="sidebar-tag-list">
                   {post.tags.map((tag) => (
                     <a href={`/tag/${tag.toLowerCase().replace(/\s+/g, '-')}`} class="sidebar-tag">
@@ -85,7 +90,7 @@ const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
                 <line x1="19" y1="12" x2="5" y2="12"></line>
                 <polyline points="12 19 5 12 12 5"></polyline>
               </svg>
-              <span>All Posts</span>
+              <span>{t('post.allPosts')}</span>
             </a>
           </nav>
 
@@ -168,7 +173,7 @@ const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
           <!-- Tags Footer -->
           {post.tags && post.tags.length > 0 && (
             <footer class="post-footer">
-              <h3 class="footer-title">Related Topics</h3>
+              <h3 class="footer-title">{t('post.relatedTopics')}</h3>
               <ul class="tag-list">
                 {post.tags.map((tag) => (
                   <li>

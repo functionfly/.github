@@ -21,7 +21,7 @@ use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::time::MissedTickBehavior;
 use tracing::{error, info};
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{Any, AllowOrigin, CorsLayer};
 
 /// MicroVM Orchestrator CLI
 #[derive(Parser, Debug)]
@@ -130,10 +130,24 @@ async fn main() -> Result<()> {
         api_token,
     };
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+    let allowed_origins: Vec<axum::http::HeaderValue> = std::env::var("CORS_ALLOWED_ORIGINS")
+        .unwrap_or_default()
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+
+    let cors = if allowed_origins.is_empty() {
+        // No CORS origins configured — disable CORS entirely (API-to-API only)
+        CorsLayer::new()
+            .allow_methods(Any)
+            .allow_headers(Any)
+    } else {
+        CorsLayer::new()
+            .allow_origin(AllowOrigin::list(allowed_origins))
+            .allow_methods(Any)
+            .allow_headers(Any)
+    };
 
     let app = http_server::router(state).layer(cors);
 

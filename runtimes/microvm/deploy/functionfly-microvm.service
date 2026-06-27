@@ -5,8 +5,9 @@ Requires=docker.service
 
 [Service]
 Type=simple
-User=root
-WorkingDirectory=/home/micro/projects/functionfly/runtimes/microvm
+User=functionfly
+Group=functionfly
+WorkingDirectory=/var/lib/functionfly
 
 # Environment
 EnvironmentFile=-/etc/functionfly/microvm.env

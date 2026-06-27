@@ -166,6 +166,7 @@ use std::net::SocketAddr;
 #[derive(Clone)]
 struct DaemonState {
     network_enabled: bool,
+    api_token: Option<String>,
 }
 
 /// POST /health — liveness check
@@ -182,9 +183,19 @@ async fn health_handler() -> impl IntoResponse {
 /// Response: { result, exec_time_ms, cache_hit }
 async fn execute_handler(
     State(state): State<DaemonState>,
+    headers: axum::http::HeaderMap,
     Path((function_id, version)): Path<(String, String)>,
     Json(body): Json<serde_json::Value>,
 ) -> impl IntoResponse {
+    // Auth check
+    if let Some(ref token) = state.api_token {
+        let auth = headers.get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if auth != format!("Bearer {}", token) {
+            return error_response(StatusCode::UNAUTHORIZED, "unauthorized");
+        }
+    }
     let wasm_binary = match body.get("wasm_binary").and_then(|v| v.as_str()) {
         Some(b64) => {
             // Decode base64-encoded WASM or source
@@ -321,7 +332,23 @@ async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std:
         })?;
     tracing::info!("Daemon JS runtime initialized successfully");
 
-    let state = DaemonState { network_enabled };
+    let api_token = std::env::var("RUNTIME_API_TOKEN").ok().filter(|t| !t.is_empty());
+    let is_production = std::env::var("ENVIRONMENT")
+        .map(|v| v.eq_ignore_ascii_case("production"))
+        .unwrap_or(false);
+
+    if api_token.is_none() {
+        if is_production {
+            tracing::error!(
+                "RUNTIME_API_TOKEN is not set in production. \
+                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            );
+        } else {
+            tracing::warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
+        }
+    }
+
+    let state = DaemonState { network_enabled, api_token };
 
 
     let app = Router::new()

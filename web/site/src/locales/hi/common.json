@@ -1,118 +1,155 @@
 {
   "nav": {
+    "home": "होम",
     "docs": "Docs",
-    "forAgents": "For AI Agents",
-    "trust": "Trust",
-    "pricing": "Pricing",
-    "blog": "Blog",
-    "dashboard": "Dashboard"
+    "forAgents": "AI Agents के लिए",
+    "trust": "विश्वास",
+    "pricing": "मूल्य निर्धारण",
+    "blog": "ब्लॉग",
+    "dashboard": "डैशबोर्ड",
+    "signUp": "साइन अप करें"
   },
   "footer": {
-    "tagline": "The trust layer for AI agents. Publish once, run everywhere, get paid.",
-    "product": "Product",
-    "documentation": "Documentation",
-    "trustLayer": "Trust layer",
-    "forAIAgents": "For AI agents",
-    "changelog": "Changelog",
-    "company": "Company",
-    "about": "About",
-    "careers": "Careers",
-    "contact": "Contact",
-    "legal": "Legal",
-    "privacy": "Privacy",
-    "terms": "Terms",
+    "tagline": "AI Agents के लिए विश्वास परत। एक बार प्रकाशित करें, हर जगह चलाएं, भुगतान पाएं।",
+    "product": "उत्पाद",
+    "documentation": "दस्तावेज़ीकरण",
+    "trustLayer": "विश्वास परत",
+    "forAIAgents": "AI Agents के लिए",
+    "changelog": "परिवर्तन लॉग",
+    "company": "कंपनी",
+    "about": "हमारे बारे में",
+    "careers": "करियर",
+    "contact": "संपर्क करें",
+    "legal": "कानूनी",
+    "privacy": "गोपनीयता",
+    "terms": "नियम",
     "sla": "SLA",
-    "copyright": "All rights reserved."
+    "copyright": "सर्वाधिकार सुरक्षित।",
+    "systemsOperational": "सभी सिस्टम संचालित",
+    "columnProduct": "उत्पाद",
+    "columnDevelopers": "डेवलपर्स",
+    "columnMCP": "MCP",
+    "columnCompany": "कंपनी",
+    "columnCommunity": "समुदाय",
+    "columnLegal": "कानूनी और सुरक्षा",
+    "functionRegistry": "फंक्शन रजिस्ट्री",
+    "stateFabric": "State Fabric",
+    "forAgents": "AI Agents के लिए",
+    "apiReference": "API संदर्भ",
+    "sdks": "SDK",
+    "openApiSpec": "OpenAPI स्पेसिफिकेशन",
+    "sandbox": "सैंडबॉक्स",
+    "status": "स्थिति",
+    "rssFeed": "RSS फीड",
+    "mcpDocs": "MCP डॉक्स",
+    "publishFunction": "एक फंक्शन प्रकाशित करें",
+    "mcpServer": "MCP सर्वर",
+    "manifestSpec": "मैनिफेस्ट स्पेसिफिकेशन",
+    "aboutLink": "हमारे बारे में",
+    "blog": "ब्लॉग",
+    "careersLink": "करियर",
+    "contactLink": "संपर्क करें",
+    "partnerships": "साझेदारी",
+    "privacyLink": "गोपनीयता",
+    "termsLink": "नियम",
+    "dpa": "DPA",
+    "cookiePolicy": "कुकी नीति",
+    "security": "सुरक्षा",
+    "vulnerabilityDisclosure": "भेद्यता प्रकटीकरण",
+    "compliance": "अनुपालन"
   },
   "language": {
-    "title": "Language",
-    "description": "Choose your preferred language",
-    "detected": "Detected",
-    "autoDetected": "Auto-detected from your browser"
+    "title": "भाषा",
+    "description": "अपनी पसंदीदा भाषा चुनें",
+    "detected": "पता चला",
+    "autoDetected": "आपके ब्राउज़र से स्वचालित रूप से पता चला"
   },
   "hero": {
-    "badge": "Now in Invite-Only Beta",
-    "titleLine": "The Platform for",
-    "titleGradient": "AI Agent Tooling",
-    "lead": "Publish once, run everywhere, get paid. Verified functions, trust scores, encrypted secrets vault, durable state, and continuous learning — everything agent tooling needs in one platform.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "View Documentation",
-    "stat1Value": "Publish",
-    "stat1Label": "once, run everywhere",
-    "stat2Value": "Trust",
-    "stat2Label": "scores + verification",
-    "stat3Value": "Vault",
-    "stat3Label": "zero-knowledge encrypted",
-    "stat4Value": "Flywheel",
-    "stat4Label": "continuous agent learning"
+    "badge": "अब केवल आमंत्रण पर Beta में",
+    "titleLine": "AI Agent टूलिंग के लिए",
+    "titleGradient": "प्लेटफॉर्म",
+    "lead": "एक बार प्रकाशित करें, हर जगह चलाएं, भुगतान पाएं। सत्यापित फ़ंक्शन, विश्वास स्कोर, एन्क्रिप्टेड सीक्रेट वॉल्ट, डurable state, और निरंतर सीखना — एजेंट टूलिंग के लिए आवश्यक सब कुछ एक प्लेटफॉर्म पर।",
+    "ctaPrimary": "पहुंच का अनुरोध करें",
+    "ctaSecondary": "दस्तावेज़ देखें",
+    "stat1Value": "प्रकाशित करें",
+    "stat1Label": "एक बार, हर जगह चलाएं",
+    "stat2Value": "विश्वास",
+    "stat2Label": "स्कोर + सत्यापन",
+    "stat3Value": "वॉल्ट",
+    "stat3Label": "शून्य-ज्ञान एन्क्रिप्शन",
+    "stat4Value": "फ्लाईव्हील",
+    "stat4Label": "निरंतर एजेंट सीखना"
   },
   "audience": {
-    "title": "Who benefits most from FunctionFly",
-    "intro": "From solo founders to enterprise teams, FunctionFly provides the reliability and flexibility you need to focus on building great products.",
+    "title": "FunctionFly से सबसे अधिक कौन लाभान्वित होता है",
+    "intro": "सोलो फाउंडर्स से लेकर एंटरप्राइज़ टीमों तक, FunctionFly आपको बेहतरीन उत्पाद बनाने पर ध्यान केंद्रित करने के लिए आवश्यक विश्वसनीयता और लचीलापन प्रदान करता है।",
     "founder": {
-      "title": "Indie SaaS Founder",
-      "sub": "Deploying your first app",
-      "desc": "You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly gives you verified functions, clear trust signals, and a path to scale safely.",
-      "b1": "Publish once, run everywhere",
-      "b2": "Trust scores and verification tiers",
-      "b3": "Zero-knowledge vault for secrets",
-      "b4": "Pay as you grow"
+      "title": "स्वतंत्र SaaS फाउंडर",
+      "sub": "अपना पहला ऐप तैनात करना",
+      "desc": "आपने एक अद्भुत उत्पाद बनाया है और अब आपको एंटरप्राइज़ जटिलता के बिना विश्वसनीय एजेंट टूलिंग की आवश्यकता है। FunctionFly आपको सत्यापित फ़ंक्शन, स्पष्ट विश्वास संकेत और सुरक्षित रूप से स्केल करने का रास्ता देता है।",
+      "b1": "एक बार प्रकाशित करें, हर जगह चलाएं",
+      "b2": "विश्वास स्कोर और सत्यापन स्तर",
+      "b3": "सीक्रेट के लिए शून्य-ज्ञान वॉल्ट",
+      "b4": "बढ़ने के साथ भुगतान करें"
     },
     "startup": {
-      "title": "Growing Startup",
-      "sub": "Scaling agent + API workloads",
-      "desc": "Your team is shipping fast and agents are calling more tools every week. You need policy-friendly trust metadata, attestations, and execution-backed signals—not a pile of unvetted endpoints.",
-      "b1": "Multi-level verification workflows",
-      "b2": "Signed artifacts and revocation",
-      "b3": "Execution history for trust scoring",
-      "b4": "Marketplace discovery with trust filters"
+      "title": "बढ़ता हुआ स्टार्टअप",
+      "sub": "एजेंट + API वर्कलोड स्केल करना",
+      "desc": "आपकी टीम तेज़ी से शिप कर रही है और एजेंट हर हफ्ते अधिक टूल्स कॉल कर रहे हैं। आपको पॉलिसी-अनुकूल विश्वास मेटाडेटा, प्रमाण-पत्र और निष्पादन-समर्थित संकेतों की आवश्यकता है — बिना जांचे गए एंडपॉइंट्स के ढेर के बजाय।",
+      "b1": "मल्टी-लेवल सत्यापन वर्कफ़्लो",
+      "b2": "हस्ताक्षरित कलाकृतियां और रद्दीकरण",
+      "b3": "विश्वास स्कोरिंग के लिए निष्पादन इतिहास",
+      "b4": "विश्वास फ़िल्टर के साथ मार्केटप्लेस खोज"
     },
     "enterprise": {
-      "title": "Enterprise",
-      "sub": "Governance and compliance",
-      "desc": "Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and teams. FunctionFly aligns verification, signing, and vault semantics with how you already think about risk.",
-      "b1": "Enterprise-grade security posture",
-      "b2": "Attestations and policy-ready metadata",
-      "b3": "Multi-team and multi-app patterns",
-      "b4": "Room for custom SLAs and support"
+      "title": "एंटरप्राइज़",
+      "sub": "शासन और अनुपालन",
+      "desc": "आपके संगठन को ऑडिटबिलिटी, टूल्स तक न्यूनतम विशेषाधिकार पहुंच, और एजेंटों और टीमों में सुसंगत विश्वास नीतियों की आवश्यकता है। FunctionFly सत्यापन, हस्ताक्षर और वॉल्ट सेमांटिक्स को आपके जोखिम सोच के साथ संरेखित करता है।",
+      "b1": "एंटरप्राइज़-ग्रेड सुरक्षा",
+      "b2": "प्रमाण-पत्र और पॉलिसी-तैयार मेटाडेटा",
+      "b3": "मल्टी-टीम और मल्टी-ऐप पैटर्न",
+      "b4": "कस्टम SLA और समर्थन के लिए जगह"
     }
   },
   "features": {
-    "title": "Everything your agent tooling platform needs",
-    "subtitle": "From publishing to production — five integrated capabilities in one platform. Verification + trust scoring so agents can act safely.",
+    "title": "आपके एजेंट टूलिंग प्लेटफॉर्म के लिए आवश्यक सब कुछ",
+    "subtitle": "प्रकाशन से प्रोडक्शन तक — एक प्लेटफॉर्म पर पांच एकीकृत क्षमताएं। सत्यापन + विश्वास स्कोरिंग ताकि एजेंट सुरक्षित रूप से कार्य कर सकें।",
     "publishing": {
-      "title": "Verified Tool Publishing",
-      "desc": "Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents."
+      "title": "सत्यापित टूल प्रकाशन",
+      "desc": "एजेंटों द्वारा उपयोग से पहले सत्यापन जांच और हस्ताक्षरित कलाकृतियों के साथ कोड को विश्वसनीय फ़ंक्शन में बदलें।"
     },
     "revocation": {
-      "title": "Verification Levels & Revocation",
-      "desc": "Trust is earned. Verify at multiple levels, sign with platform keys, and revoke when issues are found."
+      "title": "सत्यापन स्तर और रद्दीकरण",
+      "desc": "विश्वास अर्जित किया जाता है। कई स्तरों पर सत्यापित करें, प्लेटफॉर्म कुंजियों के साथ हस्ताक्षर करें, और समस्याएं मिलने पर रद्द करें।"
     },
     "trace": {
-      "title": "Execution Trace & Trust Scores",
-      "desc": "Agents get history-backed trust signals so \"works\" and \"safe\" are distinguishable and policy-driven."
+      "title": "निष्पादन ट्रेस और विश्वास स्कोर",
+      "desc": "एजेंटों को इतिहास-आधारित विश्वास संकेत मिलते हैं ताकि \"काम करता है\" और \"सुरक्षित\" भिन्न और पॉलिसी-संचालित हो।"
     },
     "tooling": {
-      "title": "Agent-ready Tooling",
-      "desc": "Expose capabilities with clear manifests and schemas — so agents can select tools that match their trust policy."
+      "title": "एजेंट-तैयार टूलिंग",
+      "desc": "स्पष्ट मैनिफेस्ट और स्कीमा के साथ क्षमताओं को उजागर करें — ताकि एजेंट अपनी विश्वास नीति से मेल खाते टूल चुन सकें।"
     },
     "marketplace": {
-      "title": "Marketplace for Verified Tools",
-      "desc": "Creators publish once. Agents discover trusted functions with built-in trust filters and ranked placement."
+      "title": "सत्यापित टूल्स का मार्केटप्लेस",
+      "desc": "क्रिएटर्स एक बार प्रकाशित करते हैं। एजेंट बिल्ट-इन विश्वास फ़िल्टर और रैंक्ड प्लेसमेंट के साथ विश्वसनीय फ़ंक्शन खोजते हैं।"
     },
     "routing": {
-      "title": "Trust-powered Routing",
-      "desc": "Enforce budgets and trust constraints at runtime — so agent execution is predictable, not reckless."
+      "title": "विश्वास-संचालित रूटिंग",
+      "desc": "रनटाइम पर बजट और विश्वास बाधाओं को लागू करें — ताकि एजेंट निष्पादन अनुमानित हो, लापरवाह नहीं।"
     }
   },
   "code": {
-    "title": "Verify & publish in seconds",
-    "subtitle": "Turn your code into an agent-ready trusted tool"
+    "title": "सेकंडों में सत्यापित करें और प्रकाशित करें",
+    "subtitle": "अपने कोड को एजेंट-तैयार विश्वसनीय टूल में बदलें"
   },
   "cta": {
-    "title": "Where trusted tools meet agent execution",
-    "lead": "Start free. Verified tooling and auditable execution history help your agents move faster — with fewer surprises.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "Contact Sales"
+    "title": "जहां विश्वसनीय टूल एजेंट निष्पादन से मिलते हैं",
+    "lead": "मुफ्त में शुरू करें। सत्यापित टूलिंग और ऑडिटबल निष्पादन इतिहास आपके एजेंटों को तेज़ी से आगे बढ़ने में मदद करते हैं — कम आश्चर्य के साथ।",
+    "ctaPrimary": "पहुंच का अनुरोध करें",
+    "ctaSecondary": "बिक्री से संपर्क करें"
+  },
+  "layout": {
+    "skipToContent": "मुख्य सामग्री पर जाएं"
   }
 }

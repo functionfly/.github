@@ -1,0 +1,11 @@
+---
+import Layout from '../layouts/Layout.astro';
+import CookiePolicyPage from '../components/CookiePolicyPage';
+
+const title = 'Cookie Policy — FunctionFly';
+const description = 'Cookie Policy for FunctionFly™. Learn how we use cookies and similar tracking technologies to improve your experience on our platform.';
+---
+
+<Layout title={title} description={description} ogImage="/og-home.svg">
+  <CookiePolicyPage client:load />
+</Layout>

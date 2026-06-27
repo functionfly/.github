@@ -4,6 +4,7 @@ import BlogGrid from '../components/BlogGrid.astro';
 import Pagination from '../components/Pagination.astro';
 import SearchBox from '../components/SearchBox.astro';
 import { getPosts, getCategories } from '../lib/api';
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
 
 // Enable server-side rendering for search
 export const prerender = false;
@@ -21,10 +22,14 @@ const posts = postsResponse.data || [];
 const { totalPages } = postsResponse.meta;
 
 // Find matching category name for display
-const matchingCategory = categories.find(c => 
+const matchingCategory = categories.find(c =>
   c.title.toLowerCase().includes(query.toLowerCase()) ||
   c.slug.toLowerCase() === query.toLowerCase()
 );
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <BlogLayout 
@@ -36,7 +41,7 @@ const matchingCategory = categories.find(c =>
       <div class="search-inner">
         <header class="search-header">
           <h1 class="search-title">
-            <span class="gradient-text">Search Results</span>
+            <span class="gradient-text">{t('search.title')}</span>
           </h1>
           <SearchBox query={query} />
         </header>
@@ -45,18 +50,18 @@ const matchingCategory = categories.find(c =>
           <div class="search-results">
             <p class="search-meta">
               {posts.length > 0 ? (
-                <span>Found {posts.length} result{posts.length !== 1 ? 's' : ''} for "<strong>{query}</strong>"</span>
+                <span>{t('search.resultsFor', { count: posts.length, query })}</span>
               ) : (
-                <span>No results found for "<strong>{query}</strong>"</span>
+                <span>{t('search.noResultsFor', { query })}</span>
               )}
             </p>
 
             {posts.length > 0 && (
               <>
                 <BlogGrid posts={posts} />
-                <Pagination 
-                  currentPage={currentPage} 
-                  totalPages={totalPages} 
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
                   baseUrl={`/search?q=${encodeURIComponent(query)}`}
                 />
               </>
@@ -64,7 +69,7 @@ const matchingCategory = categories.find(c =>
 
             {posts.length === 0 && (
               <div class="search-empty">
-                <p>Try searching with different keywords or browse by category:</p>
+                <p>{t('search.tryDifferent')}</p>
                 <div class="search-categories">
                   {categories.map(cat => (
                     <a href={`/category/${cat.slug}`} class="search-category-link">
@@ -77,8 +82,8 @@ const matchingCategory = categories.find(c =>
           </div>
         ) : (
           <div class="search-intro">
-            <p>Enter a search term above to find articles, tutorials, and updates.</p>
-            <h2 class="search-categories-title">Or browse by category:</h2>
+            <p>{t('search.enterTerm')}</p>
+            <h2 class="search-categories-title">{t('search.orBrowse')}</h2>
             <div class="search-categories">
               {categories.map(cat => (
                 <a href={`/category/${cat.slug}`} class="search-category-link">

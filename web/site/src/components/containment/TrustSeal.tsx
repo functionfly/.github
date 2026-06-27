@@ -1,5 +1,6 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { useScroll, useTransform, useMotionValue, useAnimationFrame, useReducedMotion } from 'framer-motion';
+import { useScroll, useTransform, useReducedMotion } from 'framer-motion';
+import { useSharedAnimationFrame } from '@/lib/sharedRaf';
 
 interface TrustSealProps {
   size?: 'small' | 'default' | 'large';
@@ -14,15 +15,16 @@ const sizes = {
 
 const POINTER_TRACKING_RADIUS = 80;
 const POINTER_SENSITIVITY = 0.4;
-const IDLE_DRIFT_SPEED = 1;
+const IDLE_DRIFT_DEG_PER_SEC = 1;
 const SCROLL_ROTATION_RANGE = 720;
+const DEFAULT_ANGLE = 140;
 
 export function TrustSeal({ size = 'default', label = 'Verified' }: TrustSealProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sealRef = useRef<HTMLDivElement>(null);
   const pointerAngleRef = useRef<number>(0);
   const isPointerNearRef = useRef(false);
-  const idleAngleRef = useRef(140);
+  const idleAngleRef = useRef<number>(DEFAULT_ANGLE);
   const prefersReducedMotion = useReducedMotion();
 
   const sizeValues = sizes[size] ?? sizes['default'];
@@ -33,17 +35,6 @@ export function TrustSeal({ size = 'default', label = 'Verified' }: TrustSealPro
   });
 
   const scrollAngle = useTransform(scrollYProgress, [0, 1], [0, SCROLL_ROTATION_RANGE]);
-  const idleAngle = useMotionValue(140);
-
-  useAnimationFrame(() => {
-    if (prefersReducedMotion || !sealRef.current) return;
-
-    idleAngleRef.current += (1 / 60) * IDLE_DRIFT_SPEED;
-    if (idleAngleRef.current >= 360) {
-      idleAngleRef.current -= 360;
-    }
-    idleAngle.set(idleAngleRef.current);
-  });
 
   const calculatePointerAngle = useCallback((e: PointerEvent, rect: DOMRect): number => {
     const cx = rect.left + rect.width / 2;
@@ -63,11 +54,13 @@ export function TrustSeal({ size = 'default', label = 'Verified' }: TrustSealPro
   useEffect(() => {
     if (!containerRef.current || prefersReducedMotion) return;
 
-    const handlePointerMove = (e: PointerEvent) => {
-      const rect = containerRef.current!.getBoundingClientRect();
-      isPointerNearRef.current = isPointerInRange(e, rect);
+    const element = containerRef.current;
 
-      if (isPointerNearRef.current) {
+    const handlePointerMove = (e: PointerEvent) => {
+      const rect = element.getBoundingClientRect();
+      const inRange = isPointerInRange(e, rect);
+      isPointerNearRef.current = inRange;
+      if (inRange) {
         pointerAngleRef.current = calculatePointerAngle(e, rect);
       }
     };
@@ -76,7 +69,6 @@ export function TrustSeal({ size = 'default', label = 'Verified' }: TrustSealPro
       isPointerNearRef.current = false;
     };
 
-    const element = containerRef.current;
     element.addEventListener('pointermove', handlePointerMove);
     element.addEventListener('pointerleave', handlePointerLeave);
 
@@ -86,37 +78,25 @@ export function TrustSeal({ size = 'default', label = 'Verified' }: TrustSealPro
     };
   }, [prefersReducedMotion, calculatePointerAngle, isPointerInRange]);
 
-  useEffect(() => {
-    if (!sealRef.current) return;
+  useSharedAnimationFrame((deltaSeconds) => {
+    if (prefersReducedMotion || !sealRef.current) return;
 
-    let currentScrollAngle = 0;
-    let currentIdleAngle = 140;
-    let combinedAngle = 140;
+    if (!isPointerNearRef.current) {
+      idleAngleRef.current = (idleAngleRef.current + IDLE_DRIFT_DEG_PER_SEC * deltaSeconds) % 360;
+    }
 
-    const unsubscribeScroll = scrollAngle.on('change', (value) => {
-      currentScrollAngle = value;
-      updateAngle();
-    });
+    const scrollVal = scrollAngle.get();
+    const idleVal = idleAngleRef.current;
 
-    const unsubscribeIdle = idleAngle.on('change', (value) => {
-      currentIdleAngle = value;
-      updateAngle();
-    });
+    let combinedAngle: number;
+    if (isPointerNearRef.current) {
+      combinedAngle = scrollVal + (pointerAngleRef.current - idleVal) * POINTER_SENSITIVITY;
+    } else {
+      combinedAngle = scrollVal + idleVal;
+    }
 
-    const updateAngle = () => {
-      if (isPointerNearRef.current) {
-        combinedAngle = currentScrollAngle + (pointerAngleRef.current - currentIdleAngle) * POINTER_SENSITIVITY;
-      } else {
-        combinedAngle = currentScrollAngle + currentIdleAngle;
-      }
-      sealRef.current!.style.setProperty('--seal-angle', `${combinedAngle}deg`);
-    };
-
-    return () => {
-      unsubscribeScroll();
-      unsubscribeIdle();
-    };
-  }, [scrollAngle, idleAngle]);
+    sealRef.current.style.setProperty('--seal-angle', `${combinedAngle}deg`);
+  });
 
   return (
     <div
@@ -142,7 +122,10 @@ export function TrustSeal({ size = 'default', label = 'Verified' }: TrustSealPro
           }}
         />
       </div>
-      <span className="font-mono text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--status-ok)' }}>
+      <span
+        className="font-mono text-xs font-medium uppercase tracking-wider"
+        style={{ color: 'var(--status-ok)' }}
+      >
         {label}
       </span>
     </div>

@@ -3,6 +3,7 @@ import { BLOG_SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '../lib/constants';
 import ReadingProgress from '../components/ReadingProgress.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
 import '../styles/main.css';
 
 interface Props {
@@ -29,10 +30,14 @@ function navClass(href: string): string {
   if (href === '/') return pathname === '/' ? 'nav-active' : '';
   return pathname.startsWith(href) ? 'nav-active' : '';
 }
+
+const locale = getLocaleFromUrl(Astro.url);
+const translations = await loadTranslations(locale);
+const t = createT(translations);
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -121,7 +126,7 @@ function navClass(href: string): string {
 
     <Footer />
 
-    <button class="back-to-top" id="backToTop" aria-label="Back to top">
+    <button class="back-to-top" id="backToTop" aria-label={t('backToTop')}>
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="18 15 12 9 6 15"></polyline>
       </svg>

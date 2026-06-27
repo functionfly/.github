@@ -1,118 +1,155 @@
 {
   "nav": {
+    "home": "Ana Sayfa",
     "docs": "Docs",
-    "forAgents": "For AI Agents",
-    "trust": "Trust",
-    "pricing": "Pricing",
+    "forAgents": "AI Aracıları için",
+    "trust": "Güven",
+    "pricing": "Fiyatlandırma",
     "blog": "Blog",
-    "dashboard": "Dashboard"
+    "dashboard": "Panel",
+    "signUp": "Kaydol"
   },
   "footer": {
-    "tagline": "The trust layer for AI agents. Publish once, run everywhere, get paid.",
-    "product": "Product",
-    "documentation": "Documentation",
-    "trustLayer": "Trust layer",
-    "forAIAgents": "For AI agents",
-    "changelog": "Changelog",
-    "company": "Company",
-    "about": "About",
-    "careers": "Careers",
-    "contact": "Contact",
-    "legal": "Legal",
-    "privacy": "Privacy",
-    "terms": "Terms",
+    "tagline": "AI aracıları için güven katmanı. Bir kez yayınla, her yerde çalıştır, ödeme al.",
+    "product": "Ürün",
+    "documentation": "Dokümantasyon",
+    "trustLayer": "Güven katmanı",
+    "forAIAgents": "AI aracıları için",
+    "changelog": "Değişiklik günlüğü",
+    "company": "Şirket",
+    "about": "Hakkımızda",
+    "careers": "Kariyer",
+    "contact": "İletişim",
+    "legal": "Yasal",
+    "privacy": "Gizlilik",
+    "terms": "Şartlar",
     "sla": "SLA",
-    "copyright": "All rights reserved."
+    "copyright": "Tüm hakları saklıdır.",
+    "systemsOperational": "Tüm sistemler çalışıyor",
+    "columnProduct": "Ürün",
+    "columnDevelopers": "Geliştiriciler",
+    "columnMCP": "MCP",
+    "columnCompany": "Şirket",
+    "columnCommunity": "Topluluk",
+    "columnLegal": "Yasal ve Güvenlik",
+    "functionRegistry": "Fonksiyon Kayıt Defteri",
+    "stateFabric": "State Fabric",
+    "forAgents": "AI aracıları için",
+    "apiReference": "API Referansı",
+    "sdks": "SDK",
+    "openApiSpec": "OpenAPI Spesifikasyonu",
+    "sandbox": "Korumalı Alan",
+    "status": "Durum",
+    "rssFeed": "RSS Beslemesi",
+    "mcpDocs": "MCP Dokümanları",
+    "publishFunction": "Fonksiyon Yayınla",
+    "mcpServer": "MCP Sunucusu",
+    "manifestSpec": "Manifest Spesifikasyonu",
+    "aboutLink": "Hakkımızda",
+    "blog": "Blog",
+    "careersLink": "Kariyer",
+    "contactLink": "İletişim",
+    "partnerships": "Ortaklıklar",
+    "privacyLink": "Gizlilik",
+    "termsLink": "Şartlar",
+    "dpa": "DPA",
+    "cookiePolicy": "Çerez Politikası",
+    "security": "Güvenlik",
+    "vulnerabilityDisclosure": "Güvenlik Açığı İfşası",
+    "compliance": "Uyum"
   },
   "language": {
-    "title": "Language",
-    "description": "Choose your preferred language",
-    "detected": "Detected",
-    "autoDetected": "Auto-detected from your browser"
+    "title": "Dil",
+    "description": "Tercih ettiğiniz dili seçin",
+    "detected": "Algılandı",
+    "autoDetected": "Tarayıcınızdan otomatik olarak algılandı"
   },
   "hero": {
-    "badge": "Now in Invite-Only Beta",
-    "titleLine": "The Platform for",
-    "titleGradient": "AI Agent Tooling",
-    "lead": "Publish once, run everywhere, get paid. Verified functions, trust scores, encrypted secrets vault, durable state, and continuous learning — everything agent tooling needs in one platform.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "View Documentation",
-    "stat1Value": "Publish",
-    "stat1Label": "once, run everywhere",
-    "stat2Value": "Trust",
-    "stat2Label": "scores + verification",
-    "stat3Value": "Vault",
-    "stat3Label": "zero-knowledge encrypted",
-    "stat4Value": "Flywheel",
-    "stat4Label": "continuous agent learning"
+    "badge": "Şimdi Yalnızca Davet ile Beta'da",
+    "titleLine": "AI Aracı Tooling için",
+    "titleGradient": "Platform",
+    "lead": "Bir kez yayınla, her yerde çalıştır, ödeme al. Doğrulanmış fonksiyonlar, güven skorları, şifreli sırlar kasası, kalıcı durum ve sürekli öğrenme — aracı tooling'in ihtiyaç duyduğu her şey tek platformda.",
+    "ctaPrimary": "Erişim İste",
+    "ctaSecondary": "Dokümantasyonu Görüntüle",
+    "stat1Value": "Yayınla",
+    "stat1Label": "bir kez, her yerde çalıştır",
+    "stat2Value": "Güven",
+    "stat2Label": "skorlar + doğrulama",
+    "stat3Value": "Kasa",
+    "stat3Label": "sıfır-bilgi şifreleme",
+    "stat4Value": "Volan",
+    "stat4Label": "sürekli aracı öğrenimi"
   },
   "audience": {
-    "title": "Who benefits most from FunctionFly",
-    "intro": "From solo founders to enterprise teams, FunctionFly provides the reliability and flexibility you need to focus on building great products.",
+    "title": "FunctionFly'dan En Çok Kim Yararlanır",
+    "intro": "Solo kuruculardan kurumsal ekiplere, FunctionFly harika ürünler oluşturmaya odaklanmanız için ihtiyacınız olan güvenilirliği ve esnekliği sağlar.",
     "founder": {
-      "title": "Indie SaaS Founder",
-      "sub": "Deploying your first app",
-      "desc": "You built an amazing product and now need trustworthy agent tooling without enterprise overhead. FunctionFly gives you verified functions, clear trust signals, and a path to scale safely.",
-      "b1": "Publish once, run everywhere",
-      "b2": "Trust scores and verification tiers",
-      "b3": "Zero-knowledge vault for secrets",
-      "b4": "Pay as you grow"
+      "title": "Bağımsız SaaS Kurucu",
+      "sub": "İlk uygulamanızı dağıtma",
+      "desc": "Harika bir ürün oluşturdunuz ve şimdi kurumsal overhead olmadan güvenilir aracı tooling'e ihtiyacınız var. FunctionFly size doğrulanmış fonksiyonlar, net güven sinyalleri ve güvenli bir şekilde ölçeklenme yolu sunar.",
+      "b1": "Bir kez yayınla, her yerde çalıştır",
+      "b2": "Güven skorları ve doğrulama seviyeleri",
+      "b3": "Sırlar için sıfır-bilgi kasası",
+      "b4": "Büyüdükçe öde"
     },
     "startup": {
-      "title": "Growing Startup",
-      "sub": "Scaling agent + API workloads",
-      "desc": "Your team is shipping fast and agents are calling more tools every week. You need policy-friendly trust metadata, attestations, and execution-backed signals—not a pile of unvetted endpoints.",
-      "b1": "Multi-level verification workflows",
-      "b2": "Signed artifacts and revocation",
-      "b3": "Execution history for trust scoring",
-      "b4": "Marketplace discovery with trust filters"
+      "title": "Büyüyen Girişim",
+      "sub": "Aracı + API iş yüklerini ölçekleme",
+      "desc": "Ekipliniz hızlı teslim yapıyor ve aracılar her hafta daha fazla araç çağırıyor. Politikaya uygun güven meta verileri, attestasyonlar ve yürütme destekli sinyallere ihtiyacınız var — doğrulanmamış endpoint'ler yığını değil.",
+      "b1": "Çok seviyeli doğrulama iş akışları",
+      "b2": "İmzalı yapıtlar ve iptal",
+      "b3": "Güven skorlaması için yürütme geçmişi",
+      "b4": "Güven filtreli pazar yeri keşfi"
     },
     "enterprise": {
-      "title": "Enterprise",
-      "sub": "Governance and compliance",
-      "desc": "Your organization needs auditability, least-privilege access to tools, and consistent trust policies across agents and teams. FunctionFly aligns verification, signing, and vault semantics with how you already think about risk.",
-      "b1": "Enterprise-grade security posture",
-      "b2": "Attestations and policy-ready metadata",
-      "b3": "Multi-team and multi-app patterns",
-      "b4": "Room for custom SLAs and support"
+      "title": "Kurumsal",
+      "sub": "Yönetişim ve uyumluluk",
+      "desc": "Kuruluşunuzun denetlenebilirlik, araçlara en az ayrıcalıklı erişim ve aracılar ile ekipler genelinde tutarlı güven politikalarına ihtiyacı var. FunctionFly, doğrulama, imzalama ve kasa semantiğini risk düşünme şeklinizle uyumlu hale getirir.",
+      "b1": "Kurumsal düzeyde güvenlik duruşu",
+      "b2": "Attestasyonlar ve politika hazır meta veriler",
+      "b3": "Çoklu ekip ve çoklu uygulama kalıpları",
+      "b4": "Özel SLA'lar ve destek için alan"
     }
   },
   "features": {
-    "title": "Everything your agent tooling platform needs",
-    "subtitle": "From publishing to production — five integrated capabilities in one platform. Verification + trust scoring so agents can act safely.",
+    "title": "Aracı tooling platformunuzun ihtiyaç duyduğu her şey",
+    "subtitle": "Yayından üretime — bir platformda beş entegre yetenek. Aracıların güvenli hareket edebilmesi için doğrulama + güven skorlaması.",
     "publishing": {
-      "title": "Verified Tool Publishing",
-      "desc": "Turn code into trusted functions with verification checks and signed artifacts before they can be used by agents."
+      "title": "Doğrulanmış Araç Yayınlama",
+      "desc": "Aracıların kullanabilmesinden önce doğrulama kontrolleri ve imzalı yapıtlarla kodu güvenilir fonksiyonlara dönüştürün."
     },
     "revocation": {
-      "title": "Verification Levels & Revocation",
-      "desc": "Trust is earned. Verify at multiple levels, sign with platform keys, and revoke when issues are found."
+      "title": "Doğrulama Seviyeleri ve İptal",
+      "desc": "Güven kazanılır. Birden fazla seviyede doğrulayın, platform anahtarlarıyla imzalayın ve sorunlar bulunduğunda iptal edin."
     },
     "trace": {
-      "title": "Execution Trace & Trust Scores",
-      "desc": "Agents get history-backed trust signals so \"works\" and \"safe\" are distinguishable and policy-driven."
+      "title": "Yürütme İzi ve Güven Skorları",
+      "desc": "Aracılar, \"çalışıyor\" ve \"güvenli\"nin ayırt edilebilir ve politika yönetimli olması için geçmişe dayalı güven sinyalleri alır."
     },
     "tooling": {
-      "title": "Agent-ready Tooling",
-      "desc": "Expose capabilities with clear manifests and schemas — so agents can select tools that match their trust policy."
+      "title": "Aracı-Hazır Tooling",
+      "desc": "Net manifestolar ve şemalarla yetenekleri ortaya çıkarın — böylece aracılar güven politikalarıyla eşleşen araçları seçebilsinler."
     },
     "marketplace": {
-      "title": "Marketplace for Verified Tools",
-      "desc": "Creators publish once. Agents discover trusted functions with built-in trust filters and ranked placement."
+      "title": "Doğrulanmış Araçlar Pazarı",
+      "desc": "Oluşturucular bir kez yayınlar. Aracılar, yerleşik güven filtreleri ve sıralı yerleştirme ile güvenilir fonksiyonları keşfeder."
     },
     "routing": {
-      "title": "Trust-powered Routing",
-      "desc": "Enforce budgets and trust constraints at runtime — so agent execution is predictable, not reckless."
+      "title": "Güven-Destekli Yönlendirme",
+      "desc": "Çalışma zamanında bütçeler ve güven kısıtlamaları uygulayın — böylece aracı yürütmesi öngörülebilir, dikkatsiz olmasın."
     }
   },
   "code": {
-    "title": "Verify & publish in seconds",
-    "subtitle": "Turn your code into an agent-ready trusted tool"
+    "title": "Saniyeler içinde doğrula ve yayınla",
+    "subtitle": "Kodunuzu aracı-hazır güvenilir bir araca dönüştürün"
   },
   "cta": {
-    "title": "Where trusted tools meet agent execution",
-    "lead": "Start free. Verified tooling and auditable execution history help your agents move faster — with fewer surprises.",
-    "ctaPrimary": "Request Access",
-    "ctaSecondary": "Contact Sales"
+    "title": "Güvenilir araçların aracı yürütmeyle buluştuğu yer",
+    "lead": "Ücretsiz başlayın. Doğrulanmış tooling ve denetlenebilir yürütme geçmişi, aracılarınızın daha hızlı hareket etmesine — daha az sürprizle yardımcı olur.",
+    "ctaPrimary": "Erişim İste",
+    "ctaSecondary": "Satış ile İletişime Geç"
+  },
+  "layout": {
+    "skipToContent": "Ana içeriğe atla"
   }
 }
