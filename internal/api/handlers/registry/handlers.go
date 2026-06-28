@@ -11,6 +11,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/atlas"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/dre"
@@ -65,6 +66,8 @@ type Handler struct {
 	// ReceiptMilestoneHook is called after a successful public execution receipt is created.
 	// Set by the receipt milestone wiring in routes.go.
 	ReceiptMilestoneHook func(ctx context.Context, functionID uuid.UUID, tenantID *uuid.UUID, publicID string)
+	// atlasTracer records execution traces to Atlas Memory Engine (optional)
+	atlasTracer *atlas.Tracer
 }
 
 // SetWalletService sets the wallet service for unified wallet operations
@@ -150,6 +153,11 @@ func (h *Handler) SetBundleService(svc *bundler.BundleService) {
 // SetMicroVMRepo wires the MicroVM repository for execution tracking and billing.
 func (h *Handler) SetMicroVMRepo(repo *storage.MicroVMRepository) {
 	h.MicroVMRepo = repo
+}
+
+// SetAtlasTracer wires the Atlas Memory Engine tracer for execution tracing.
+func (h *Handler) SetAtlasTracer(tracer *atlas.Tracer) {
+	h.atlasTracer = tracer
 }
 
 // SetAutoReadmeService sets the auto-README generator service.

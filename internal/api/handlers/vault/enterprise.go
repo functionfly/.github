@@ -8,6 +8,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/gorilla/mux"
 )
@@ -22,6 +23,11 @@ func (h *Handler) HandleCreateNamespace(w http.ResponseWriter, r *http.Request) 
 		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
+	plan := middleware.GetTenantPlan(r)
+	if !plans.SupportsVaultNamespaces(plan) {
+		apierror.WriteError(w, apierror.NewForbidden("Namespaces require Professional plan or higher"))
+		return
+	}
 	var req CreateNamespaceRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
@@ -32,6 +38,16 @@ func (h *Handler) HandleCreateNamespace(w http.ResponseWriter, r *http.Request) 
 		apierror.WriteError(w, apierror.NewBadRequest("path must match [a-z0-9/_-]+ with no empty segments"))
 		return
 	}
+	segments := vault.SplitNamespacePath(req.Path)
+	if len(segments) > 5 {
+		apierror.WriteError(w, apierror.NewBadRequest("namespace path exceeds maximum depth of 5 segments"))
+		return
+	}
+	switch req.Path {
+	case "default", "shared", "system":
+		apierror.WriteError(w, apierror.NewBadRequest("path is reserved and cannot be used"))
+		return
+	}
 	n := &vault.VaultNamespace{
 		TenantID:    claims.TenantID,
 		Path:        req.Path,
@@ -39,6 +55,16 @@ func (h *Handler) HandleCreateNamespace(w http.ResponseWriter, r *http.Request) 
 		CreatedBy:   claims.UserID,
 	}
 	if pid := parseUUID(req.ParentID); pid != nil {
+		parent, err := h.repo.GetNamespace(r.Context(), *pid, claims.TenantID)
+		if err != nil || parent == nil {
+			apierror.WriteError(w, apierror.NewBadRequest("parent namespace not found"))
+			return
+		}
+		expectedPrefix := parent.Path + "/"
+		if !strings.HasPrefix(req.Path, expectedPrefix) {
+			apierror.WriteError(w, apierror.NewBadRequest("path must be a child of the specified parent namespace"))
+			return
+		}
 		n.ParentID = pid
 	}
 	if err := h.repo.CreateNamespace(r.Context(), n); err != nil {
@@ -59,6 +85,11 @@ func (h *Handler) HandleListNamespaces(w http.ResponseWriter, r *http.Request) {
 		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
 		return
 	}
+	plan := middleware.GetTenantPlan(r)
+	if !plans.SupportsVaultNamespaces(plan) {
+		apierror.WriteError(w, apierror.NewForbidden("Namespaces require Professional plan or higher"))
+		return
+	}
 	limit := parseLimit(r, 100)
 	offset := parseOffset(r)
 	ns, err := h.repo.ListNamespaces(r.Context(), claims.TenantID, limit, offset)
@@ -77,6 +108,11 @@ func (h *Handler) HandleDeleteNamespace(w http.ResponseWriter, r *http.Request) 
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {
 		apierror.WriteError(w, apierror.NewUnauthorized("Authentication required"))
+		return
+	}
+	plan := middleware.GetTenantPlan(r)
+	if !plans.SupportsVaultNamespaces(plan) {
+		apierror.WriteError(w, apierror.NewForbidden("Namespaces require Professional plan or higher"))
 		return
 	}
 	vars := mux.Vars(r)

@@ -161,9 +161,11 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Legacy platform fee repository (still used by registry handlers during migration)
 	platformFeeRepo := registry.NewPlatformFeeRepository(s.postgresDB.GORM)
 	sfAddonRepo := statefabricaddons.NewRepository(s.postgresDB.GORM)
+	billingRepo := storage.NewBillingRepository(s.postgresDB)
 	billingHandler := billinghandler.NewHandler(s.repo, platformFeeRepo, sfAddonRepo, s.redisClient)
 	billingHandler.SetWalletService(s.walletService)
 	billingHandler.SetPCIAuditHelper(helpers.NewPCIAuditHelper(s.postgresDB.PCIAuditRepository()))
+	billingHandler.SetBillingRepository(billingRepo)
 	tenantWebhookHandler := billinghandler.NewTenantWebhookHandler(s.repo)
 	appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
@@ -291,7 +293,6 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	exportHandler := billinghandler.NewExportHandler(exportRepo, exportService, s.repo)
 
 	// Initialize billing sync job for external billing integrations
-	billingRepo := storage.NewBillingRepository(s.postgresDB)
 	s.billingSyncJob = billing.NewBillingSyncJob(exportRepo, billingRepo)
 	s.billingSyncJob.Start(s.Context())
 	s.logger.Info("Billing sync job initialized")
@@ -585,6 +586,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath)
 	registryHandler.SetRuntimeRouter(runtimeRouter)
+
+	// Atlas Memory Engine tracer (optional, enabled via ATLAS_URL env var)
+	atlasTracer := atlaspkg.NewTracer(nil)
+	if atlasTracer.Enabled() {
+		registryHandler.SetAtlasTracer(atlasTracer)
+		logrus.WithField("atlas_url", os.Getenv("ATLAS_URL")).Info("Atlas Memory Engine tracing enabled")
+	}
+
+	// Always register Atlas trace routes (returns "disabled" when ATLAS_URL not set)
+	atlasHandler := registryhandler.NewAtlasHandler(atlasTracer)
 
 	vaultRepo := vaultstorage.NewRepository(s.postgresDB.GORM)
 	s.vaultRepo = vaultRepo
@@ -1241,6 +1252,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 
 	registerAgentObservabilityRoutes(api, protected, authMiddleware, agentObsHandler)
+
+	// ── Atlas Memory Engine Trace Routes ────────────────────────────────────
+	registerAtlasRoutes(api, authMiddleware, atlasHandler)
 
 	registerMarketplaceRoutes(api, protected, authMiddleware, marketplaceHandler)
 

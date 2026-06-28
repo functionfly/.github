@@ -267,6 +267,15 @@ func registerAuthRoutes(
 	// Tenant plan endpoint for dashboard
 	api.HandleFunc("/tenants/plan", authMiddleware.RequireAuth(billingHandler.HandleGetTenantPlan)).Methods("GET", "OPTIONS")
 
+	// ── Live Reconciliation (Enterprise plan feature) ─────────────────────
+	// GET status - available to all authenticated users, shows plan capabilities
+	api.HandleFunc("/billing/live-reconciliation/status", authMiddleware.RequireAuth(billingHandler.HandleGetLiveReconciliationStatus)).Methods("GET", "OPTIONS")
+	// GET/POST settings - Enterprise plan only, manages reconciliation preferences
+	api.HandleFunc("/billing/live-reconciliation/settings", authMiddleware.RequireAuth(billingHandler.HandleGetLiveReconciliationSettings)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/live-reconciliation/settings", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleUpdateLiveReconciliationSettings))).Methods("POST", "OPTIONS")
+	// GET usage - Enterprise plan only, shows reconciliation usage stats
+	api.HandleFunc("/billing/live-reconciliation/usage", authMiddleware.RequireAuth(billingHandler.HandleGetLiveReconciliationUsage)).Methods("GET", "OPTIONS")
+
 	// ── Backend-in-a-Box Pricing Bundles (viral pricing) ───────────────────
 	// Bundle catalog and details
 	api.HandleFunc("/billing/bundles", billingHandler.HandleGetBundles).Methods("GET", "OPTIONS")

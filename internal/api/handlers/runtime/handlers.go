@@ -207,7 +207,7 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 			ID:          "python-microvm",
 			Name:        "Python (MicroVM)",
 			Version:     "Enterprise",
-			Status:      "beta",
+			Status:      "stable",
 			Features:    []string{"CPython 3.11+", "NumPy/Pandas", "C extensions", "Firecracker isolation"},
 			MemoryLimit: 8192,
 			Timeout:     600000,
@@ -334,8 +334,53 @@ func (h *Handler) GetRuntimeInfo(w http.ResponseWriter, r *http.Request) {
 			ID:          "python-microvm",
 			Name:        "Python (MicroVM)",
 			Version:     "Enterprise",
-			Status:      "beta",
+			Status:      "stable",
 			Features:    []string{"CPython 3.11+", "NumPy/Pandas", "C extensions", "Firecracker isolation"},
+			MemoryLimit: 8192,
+			Timeout:     600000,
+		},
+		"rust": {
+			ID:          "rust",
+			Name:        "Rust",
+			Version:     "1.75+",
+			Status:      "stable",
+			Features:    []string{"wasm32-wasip1", "WASI", "Near-native performance", "Zero-cost abstractions"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		"go": {
+			ID:          "go",
+			Name:        "Go",
+			Version:     "1.21+",
+			Status:      "stable",
+			Features:    []string{"GOOS=wasip1", "WASI", "Goroutines", "Standard library"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		"c": {
+			ID:          "c",
+			Name:        "C",
+			Version:     "C11",
+			Status:      "beta",
+			Features:    []string{"Emscripten/WASI-SDK", "WASI", "Low-level control", "libc"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		"cpp": {
+			ID:          "cpp",
+			Name:        "C++",
+			Version:     "C++17",
+			Status:      "beta",
+			Features:    []string{"Emscripten/WASI-SDK", "WASI", "STL", "Templates"},
+			MemoryLimit: 2048,
+			Timeout:     300000,
+		},
+		"swift": {
+			ID:          "swift",
+			Name:        "Swift",
+			Version:     "5.9+",
+			Status:      "experimental",
+			Features:    []string{"SwiftWasm", "Protocols", "Value types", "Structured concurrency"},
 			MemoryLimit: 2048,
 			Timeout:     300000,
 		},
@@ -353,10 +398,14 @@ func (h *Handler) GetRuntimeInfo(w http.ResponseWriter, r *http.Request) {
 
 // GetDiagnostics returns diagnostics for a function's runtime
 func (h *Handler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
+	if h.registry == nil {
+		apierror.WriteError(w, apierror.NewInternal("Registry not available"))
+		return
+	}
+
 	vars := mux.Vars(r)
 	functionID := vars["function_id"]
 
-	// Get function from registry
 	fn, err := h.registry.GetFunction(functionID)
 	if err != nil {
 		apierror.WriteError(w, apierror.NewNotFound(fmt.Sprintf("Function '%s' not found", functionID)))
@@ -404,6 +453,11 @@ func (h *Handler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 
 // UpdateRuntimeConfig updates runtime configuration for a function
 func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
+	if h.registry == nil {
+		apierror.WriteError(w, apierror.NewInternal("Registry not available"))
+		return
+	}
+
 	vars := mux.Vars(r)
 	functionID := vars["function_id"]
 

@@ -7,17 +7,18 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
-	"github.com/functionfly/functionfly/internal/apierror"
 )
 
 const (
-	defaultSLATargetPercent = 99.99
-	defaultPeriodDays       = 30
-	maxPeriodDays           = 90
-	maxIncidentsLimit       = 50
+	defaultSLATargetPercent     = 99.99
+	defaultPeriodDays          = 30
+	maxPeriodDays              = 90
+	maxIncidentsLimit          = 50
+	rateLimitRequestsPerMinute = 60 // Rate limit for SLA API endpoints
 )
 
 // SLAHandler handles Enterprise SLA dashboard API (overview, uptime history, incidents).
@@ -28,7 +29,9 @@ type SLAHandler struct {
 
 // NewSLAHandler creates a new Enterprise SLA handler.
 func NewSLAHandler(repo storage.Repository) *SLAHandler {
-	return &SLAHandler{repo: repo}
+	return &SLAHandler{
+		repo: repo,
+	}
 }
 
 // requireEnterprisePlan returns a 403 if the current user's tenant is not on enterprise plan.
@@ -45,6 +48,18 @@ func (h *SLAHandler) requireEnterprisePlan(w http.ResponseWriter, r *http.Reques
 		return false
 	}
 	if tenant == nil || !plans.IsEnterpriseTier(tenant.Plan) {
+		// Log unauthorized access attempt
+		planStr := "nil"
+		if tenant != nil {
+			planStr = tenant.Plan
+		}
+		logrus.WithFields(logrus.Fields{
+			"user_id":   user.ID,
+			"tenant_id": user.TenantID,
+			"plan":      planStr,
+			"ip":        r.RemoteAddr,
+			"path":      r.URL.Path,
+		}).Warn("Unauthorized SLA dashboard access attempt")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -63,11 +78,23 @@ func (h *SLAHandler) HandleGetSLAOverview(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+
+	// Validate and sanitize input parameters
 	days := defaultPeriodDays
 	if d := r.URL.Query().Get("days"); d != "" {
 		if n, err := strconv.Atoi(d); err == nil && n > 0 && n <= maxPeriodDays {
 			days = n
+		} else {
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid days parameter. Must be between 1 and 90."))
+			return
 		}
+	}
+
+	// Get tenant's SLA target based on plan
+	slaTarget := plans.GetSLATargetPercent(r.URL.Query().Get("plan"))
+	if slaTarget == 0 {
+		slaTarget = defaultSLATargetPercent
 	}
 
 	since := time.Now().AddDate(0, 0, -days)
@@ -84,8 +111,9 @@ func (h *SLAHandler) HandleGetSLAOverview(w http.ResponseWriter, r *http.Request
 	if currentUptime > 100.0 {
 		currentUptime = 100.0
 	}
-	if currentUptime < 99.0 {
-		currentUptime = 99.0
+	// Don't floor the value - show actual uptime
+	if currentUptime < 0 {
+		currentUptime = 0
 	}
 
 	count, err := h.repo.CountIncidentsSince(r.Context(), since)
@@ -95,12 +123,24 @@ func (h *SLAHandler) HandleGetSLAOverview(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	// Log successful SLA overview access
+	logrus.WithFields(logrus.Fields{
+		"user_id":          user.ID,
+		"tenant_id":        user.TenantID,
+		"days":             days,
+		"current_uptime":   currentUptime,
+		"sla_target":       slaTarget,
+		"incident_count":   count,
+		"downtime_minutes": downtimeMinutes,
+	}).Info("SLA overview accessed")
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"current_uptime_percent": currentUptime,
-		"sla_target_percent":     defaultSLATargetPercent,
+		"sla_target_percent":     slaTarget,
 		"incident_count":         count,
 		"period_days":            days,
+		"is_compliant":           currentUptime >= slaTarget,
 	})
 }
 
@@ -111,10 +151,16 @@ func (h *SLAHandler) HandleGetUptimeHistory(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+
+	// Validate and sanitize input parameters
 	days := defaultPeriodDays
 	if d := r.URL.Query().Get("days"); d != "" {
 		if n, err := strconv.Atoi(d); err == nil && n > 0 && n <= maxPeriodDays {
 			days = n
+		} else {
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid days parameter. Must be between 1 and 90."))
+			return
 		}
 	}
 
@@ -138,11 +184,13 @@ func (h *SLAHandler) HandleGetUptimeHistory(w http.ResponseWriter, r *http.Reque
 		date := now.AddDate(0, 0, -i)
 		dateStr := date.Format("2006-01-02")
 		count := countByDate[dateStr]
-		uptime := 99.99
+		// Calculate uptime based on actual downtime (each incident = ~1 minute downtime for estimation)
+		uptime := 100.0
 		if count > 0 {
-			uptime = 99.99 - float64(count)*0.01
-			if uptime < 99.0 {
-				uptime = 99.0
+			// Each incident contributes approximately 0.01% downtime
+			uptime = 100.0 - float64(count)*0.01
+			if uptime < 0 {
+				uptime = 0
 			}
 		}
 		points = append(points, map[string]interface{}{
@@ -151,6 +199,14 @@ func (h *SLAHandler) HandleGetUptimeHistory(w http.ResponseWriter, r *http.Reque
 			"incident_count": count,
 		})
 	}
+
+	// Log successful uptime history access
+	logrus.WithFields(logrus.Fields{
+		"user_id": user.ID,
+		"tenant_id": user.TenantID,
+		"days":   days,
+		"points": len(points),
+	}).Info("SLA uptime history accessed")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -166,10 +222,16 @@ func (h *SLAHandler) HandleGetIncidents(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	user := middleware.GetUserFromContext(r)
+
+	// Validate and sanitize input parameters
 	limit := 20
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if n, err := strconv.Atoi(l); err == nil && n > 0 && n <= maxIncidentsLimit {
 			limit = n
+		} else {
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid limit parameter. Must be between 1 and 50."))
+			return
 		}
 	}
 
@@ -177,6 +239,9 @@ func (h *SLAHandler) HandleGetIncidents(w http.ResponseWriter, r *http.Request) 
 	if d := r.URL.Query().Get("days"); d != "" {
 		if n, err := strconv.Atoi(d); err == nil && n > 0 && n <= maxPeriodDays {
 			days = n
+		} else {
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid days parameter. Must be between 1 and 90."))
+			return
 		}
 	}
 
@@ -206,6 +271,15 @@ func (h *SLAHandler) HandleGetIncidents(w http.ResponseWriter, r *http.Request) 
 			"updated_at":  inc.UpdatedAt.Format(time.RFC3339),
 		})
 	}
+
+	// Log successful incidents access
+	logrus.WithFields(logrus.Fields{
+		"user_id":    user.ID,
+		"tenant_id":  user.TenantID,
+		"days":       days,
+		"limit":      limit,
+		"incidents":  len(incidents),
+	}).Info("SLA incidents accessed")
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{

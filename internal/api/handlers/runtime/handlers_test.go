@@ -41,8 +41,8 @@ func TestListRuntimes_IncludesSwift(t *testing.T) {
 	if swift == nil {
 		t.Fatal("Swift runtime not found in ListRuntimes response")
 	}
-	if swift.Status != "stable" {
-		t.Errorf("expected Swift status 'stable', got %q", swift.Status)
+	if swift.Status != "experimental" {
+		t.Errorf("expected Swift status 'experimental', got %q", swift.Status)
 	}
 	if swift.Name != "Swift" {
 		t.Errorf("expected name 'Swift', got %q", swift.Name)
@@ -73,7 +73,7 @@ func TestListRuntimes_SwiftFeatures(t *testing.T) {
 
 	for _, rt := range resp.Runtimes {
 		if rt.ID == "swift" {
-			requiredFeatures := []string{"SwiftWasm", "WASM sandbox"}
+			requiredFeatures := []string{"SwiftWasm", "Protocols"}
 			for _, f := range requiredFeatures {
 				found := false
 				for _, feat := range rt.Features {
@@ -117,8 +117,8 @@ func TestGetRuntimeInfo_Swift(t *testing.T) {
 	if info.ID != "swift" {
 		t.Errorf("expected ID 'swift', got %q", info.ID)
 	}
-	if info.Status != "stable" {
-		t.Errorf("expected status 'stable', got %q", info.Status)
+	if info.Status != "experimental" {
+		t.Errorf("expected status 'experimental', got %q", info.Status)
 	}
 	if info.Name != "Swift" {
 		t.Errorf("expected name 'Swift', got %q", info.Name)

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/billing"
+	"github.com/functionfly/functionfly/internal/atlas"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/dre/capsule"
@@ -63,6 +64,8 @@ type Handler struct {
 	BundleService *bundler.BundleService
 	// ReceiptMilestoneHook is called after a successful public execution receipt is created.
 	ReceiptMilestoneHook func(ctx context.Context, functionID uuid.UUID, tenantID *uuid.UUID, publicID string)
+	// AtlasTracer records execution traces to Atlas Memory Engine (optional).
+	AtlasTracer *atlas.Tracer
 }
 
 // PrivacyService interface for privacy and compliance features

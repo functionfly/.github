@@ -1298,7 +1298,7 @@ func (h *Handler) HandleDeployProduction(w http.ResponseWriter, r *http.Request)
 	}
 
 	deployID := "deploy_" + uuid.New().String()[:8]
-	url := "https://" + deployID + ".functionfly.app"
+	url := "https://" + deployID + ".functionfly.com"
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":        true,

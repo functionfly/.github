@@ -29,22 +29,25 @@ type Feature struct {
 
 // Enterprise-only features
 const (
-	FeatureMicroVMs          = "micro_vms"
-	FeatureDedicatedPool     = "dedicated_pool"
-	FeatureCustomLimits      = "custom_limits"
-	FeatureAdvancedSecurity  = "advanced_security"
-	FeatureSLA               = "sla"
-	FeaturePrioritySupport   = "priority_support"
-	FeatureCustomDomains     = "custom_domains"
-	FeatureSSOSAML           = "sso_saml"
-	FeatureSCIM              = "scim"
-	FeatureAuditLogs         = "audit_logs"
-	FeatureDataResidency     = "data_residency"
-	FeatureAPIRateLimits     = "api_rate_limits"
-	FeatureWebhookSigning    = "webhook_signing"
-	FeatureAdvancedAnalytics = "advanced_analytics"
-	FeatureTeamRBAC          = "team_rbac"
-	FeatureSecretRotation    = "secret_rotation"
+	FeatureMicroVMs           = "micro_vms"
+	FeatureMicroVMsEnterprise = "micro_vms_enterprise" // Enhanced MicroVM capabilities
+	FeatureDedicatedPool      = "dedicated_pool"
+	FeatureCustomLimits       = "custom_limits"
+	FeatureAdvancedSecurity   = "advanced_security"
+	FeatureSLA                = "sla"
+	FeatureSLAPremium         = "sla_premium"        // Enterprise SLA: enhanced SLA with 99.999% uptime
+	FeatureSLACredits         = "sla_credits"        // SLA credits for downtime violations
+	FeaturePrioritySupport    = "priority_support"
+	FeatureCustomDomains      = "custom_domains"
+	FeatureSSOSAML            = "sso_saml"
+	FeatureSCIM               = "scim"
+	FeatureAuditLogs          = "audit_logs"
+	FeatureDataResidency      = "data_residency"
+	FeatureAPIRateLimits      = "api_rate_limits"
+	FeatureWebhookSigning     = "webhook_signing"
+	FeatureAdvancedAnalytics  = "advanced_analytics"
+	FeatureTeamRBAC           = "team_rbac"
+	FeatureSecretRotation     = "secret_rotation"
 	// Playground features
 	FeatureCollaborativeSessions = "collaborative_sessions"
 )
@@ -139,6 +142,22 @@ var featureDefinitions = map[string]Feature{
 		Key:         FeatureSLA,
 		Name:        "SLA",
 		Description: "Service Level Agreement",
+		Category:    CategorySupport,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureSLAPremium: {
+		Key:         FeatureSLAPremium,
+		Name:        "Premium SLA",
+		Description: "Enhanced SLA with 99.999% uptime guarantee, 15-min response time, and priority incident handling",
+		Category:    CategorySupport,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureSLACredits: {
+		Key:         FeatureSLACredits,
+		Name:        "SLA Credits",
+		Description: "Automatic credits for SLA violations (up to 50% of monthly fee)",
 		Category:    CategorySupport,
 		Type:        FeatureTypeBoolean,
 		Default:     false,
@@ -550,6 +569,57 @@ var (
 		FeatureSFAdvancedSecurity,
 	}
 
+	// Enterprise SLA features - enhanced SLA with 99.999% uptime guarantee
+	enterpriseSLAFeatures = []string{
+		FeatureMicroVMs,
+		FeatureDedicatedPool,
+		FeatureCustomLimits,
+		FeatureAdvancedSecurity,
+		FeatureSLA,
+		FeatureSLAPremium,     // Enhanced SLA with 99.999% uptime
+		FeatureSLACredits,     // SLA credits for violations
+		FeaturePrioritySupport,
+		FeaturePremiumSupport,
+		FeatureCustomDomains,
+		FeatureSSOSAML,
+		FeatureAuditLogs,
+		FeatureDataResidency,
+		FeatureAPIRateLimits,
+		FeatureWebhookSigning,
+		FeatureAdvancedAnalytics,
+		FeatureTeamRBAC,
+		FeatureSecretRotation,
+		FeatureExtendedProviders,
+		FeatureHigherRequests,
+		FeatureAgentScaleTier,
+		FeatureBasicAnalytics,
+		FeatureWebhookRetries,
+		FeatureCustomHeaders,
+		FeatureLongTimeout,
+		FeatureBulkOperations,
+		FeatureBasicProviders,
+		FeatureBaseRequests,
+		FeatureAgentStarter,
+		FeatureCommunitySupport,
+		FeatureBasicLogging,
+		FeatureStandardSLA,
+		FeaturePublishFunctions,
+		FeatureAgents,
+		FeatureTimeMachineBasic,
+		FeatureTimeMachineExtended,
+		FeatureTimeMachinePro,
+		FeatureTimeMachineEnterprise,
+		FeatureConsciousnessBasic,
+		FeatureConsciousnessAdvanced,
+		FeatureCollaborativeSessions,
+		// All State Fabric add-ons included
+		FeatureSFHotCache,
+		FeatureSFMultiRegion,
+		FeatureSFAIRecall,
+		FeatureSFAdvancedInsights,
+		FeatureSFAdvancedSecurity,
+	}
+
 	proFeatures = []string{
 		FeatureExtendedProviders,
 		FeatureHigherRequests,
@@ -637,6 +707,57 @@ var (
 		FeatureBasicProviders,
 		FeatureBaseRequests,
 	}
+
+	// MicroVM Enterprise features - enhanced MicroVM capabilities
+	microVMEnterpriseFeatures = []string{
+		FeatureMicroVMs,
+		FeatureMicroVMsEnterprise, // Enhanced MicroVM capabilities (500 VMs, 8GB memory, 16 vCPU)
+		FeatureDedicatedPool,
+		FeatureCustomLimits,
+		FeatureAdvancedSecurity,
+		FeatureSLA,
+		FeaturePrioritySupport,
+		FeaturePremiumSupport,
+		FeatureCustomDomains,
+		FeatureSSOSAML,
+		FeatureSCIM,
+		FeatureAuditLogs,
+		FeatureDataResidency,
+		FeatureAPIRateLimits,
+		FeatureWebhookSigning,
+		FeatureAdvancedAnalytics,
+		FeatureTeamRBAC,
+		FeatureSecretRotation,
+		FeatureExtendedProviders,
+		FeatureHigherRequests,
+		FeatureAgentScaleTier,
+		FeatureBasicAnalytics,
+		FeatureWebhookRetries,
+		FeatureCustomHeaders,
+		FeatureLongTimeout,
+		FeatureBulkOperations,
+		FeatureBasicProviders,
+		FeatureBaseRequests,
+		FeatureAgentStarter,
+		FeatureCommunitySupport,
+		FeatureBasicLogging,
+		FeatureStandardSLA,
+		FeaturePublishFunctions,
+		FeatureAgents,
+		FeatureTimeMachineBasic,
+		FeatureTimeMachineExtended,
+		FeatureTimeMachinePro,
+		FeatureTimeMachineEnterprise,
+		FeatureConsciousnessBasic,
+		FeatureConsciousnessAdvanced,
+		FeatureCollaborativeSessions,
+		// State Fabric add-ons (all available)
+		FeatureSFHotCache,
+		FeatureSFMultiRegion,
+		FeatureSFAIRecall,
+		FeatureSFAdvancedInsights,
+		FeatureSFAdvancedSecurity,
+	}
 )
 
 // GetAllFeatures returns all feature definitions
@@ -660,8 +781,12 @@ func GetFeaturesForPlan(plan string) []string {
 	switch plan {
 	case PlanFree:
 		return freeFeatures
+	case PlanEnterpriseSLA:
+		return enterpriseSLAFeatures
 	case PlanEnterprise, PlanAgentPro:
 		return enterpriseFeatures
+	case PlanMicroVMEnterprise:
+		return microVMEnterpriseFeatures
 	case PlanPro, PlanAgentScale:
 		return proFeatures
 	case PlanStarter, PlanAgentStarter:
@@ -741,6 +866,8 @@ func GetAllPlanInfo() []PlanInfo {
 		{Plan: PlanStarter, Features: starterFeatures},
 		{Plan: PlanPro, Features: proFeatures},
 		{Plan: PlanEnterprise, Features: enterpriseFeatures},
+		{Plan: PlanEnterpriseSLA, Features: enterpriseSLAFeatures},
+		{Plan: PlanMicroVMEnterprise, Features: microVMEnterpriseFeatures},
 		{Plan: PlanAgentStarter, Features: agentStarterFeatures},
 		{Plan: PlanAgentScale, Features: agentScaleFeatures},
 		{Plan: PlanAgentPro, Features: agentProFeatures},

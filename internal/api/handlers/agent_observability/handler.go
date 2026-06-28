@@ -71,14 +71,13 @@ type RunResponse struct {
 }
 
 type EventResponse struct {
-	EventID   string          `json:"event_id"`
-	Sequence  uint64          `json:"sequence"`
-	Kind      string          `json:"kind"`
-	Timestamp time.Time       `json:"timestamp"`
-	SystemID  string          `json:"system_id"`
-	Payload   json.RawMessage `json:"payload"`
-	ParentID  string          `json:"parent_id,omitempty"`
-	SpanID    string          `json:"span_id,omitempty"`
+	EventID      string          `json:"event_id"`
+	Sequence     uint64          `json:"sequence"`
+	Kind         string          `json:"kind"`
+	TimestampNs  uint64          `json:"timestamp_ns"`
+	SystemID     string          `json:"system_id"`
+	Payload      json.RawMessage `json:"payload"`
+	ParentID     string          `json:"parent_id,omitempty"`
 }
 
 type DecisionGraphResponse struct {
@@ -87,11 +86,11 @@ type DecisionGraphResponse struct {
 }
 
 type GraphNode struct {
-	EventID   string          `json:"event_id"`
-	Kind      string          `json:"kind"`
-	Sequence  uint64          `json:"sequence"`
-	Payload   json.RawMessage `json:"payload,omitempty"`
-	Timestamp time.Time       `json:"timestamp"`
+	EventID      string `json:"event_id"`
+	Kind         string `json:"kind"`
+	SystemID     string `json:"system_id"`
+	Sequence     uint64 `json:"sequence"`
+	TimestampNs  uint64 `json:"timestamp_ns"`
 }
 
 type GraphEdge struct {
@@ -154,7 +153,7 @@ func (h *Handler) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 
 	atlasTenantID := atlaspkg.DeriveAtlasTenantID(claims.TenantID)
 
-	metadata := map[string]string{
+	metadata := map[string]interface{}{
 		"tenant_id":  claims.TenantID.String(),
 		"agent_id":   req.AgentID,
 		"agent_type": req.AgentType,
@@ -321,15 +320,18 @@ func (h *Handler) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
 
 	responses := make([]*EventResponse, len(events))
 	for i, event := range events {
+		var parentID string
+		if event.Parent != nil {
+			parentID = *event.Parent
+		}
 		responses[i] = &EventResponse{
-			EventID:   event.EventID,
-			Sequence:  event.Sequence,
-			Kind:      event.Kind,
-			Timestamp: event.Timestamp,
-			SystemID:  event.SystemID,
-			Payload:   event.Payload,
-			ParentID:  event.ParentID,
-			SpanID:    event.SpanID,
+			EventID:     event.EventID,
+			Sequence:    event.Sequence,
+			Kind:        string(event.Kind),
+			TimestampNs: event.TimestampNs,
+			SystemID:    event.SystemID,
+			Payload:     event.Payload,
+			ParentID:    parentID,
 		}
 	}
 
@@ -383,15 +385,18 @@ func (h *Handler) HandleReplay(w http.ResponseWriter, r *http.Request) {
 		}
 		first = false
 
+		var parentID string
+		if event.Parent != nil {
+			parentID = *event.Parent
+		}
 		resp := &EventResponse{
-			EventID:   event.EventID,
-			Sequence:  event.Sequence,
-			Kind:      event.Kind,
-			Timestamp: event.Timestamp,
-			SystemID:  event.SystemID,
-			Payload:   event.Payload,
-			ParentID:  event.ParentID,
-			SpanID:    event.SpanID,
+			EventID:     event.EventID,
+			Sequence:    event.Sequence,
+			Kind:        string(event.Kind),
+			TimestampNs: event.TimestampNs,
+			SystemID:    event.SystemID,
+			Payload:     event.Payload,
+			ParentID:    parentID,
 		}
 		data, _ := json.Marshal(resp)
 		w.Write(data)
@@ -443,15 +448,18 @@ func (h *Handler) HandleStreamEvents(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return
 			}
+			var parentID string
+			if event.Parent != nil {
+				parentID = *event.Parent
+			}
 			resp := &EventResponse{
-				EventID:   event.EventID,
-				Sequence:  event.Sequence,
-				Kind:      event.Kind,
-				Timestamp: event.Timestamp,
-				SystemID:  event.SystemID,
-				Payload:   event.Payload,
-				ParentID:  event.ParentID,
-				SpanID:    event.SpanID,
+				EventID:     event.EventID,
+				Sequence:    event.Sequence,
+				Kind:        string(event.Kind),
+				TimestampNs: event.TimestampNs,
+				SystemID:    event.SystemID,
+				Payload:     event.Payload,
+				ParentID:    parentID,
 			}
 			if err := conn.WriteJSON(resp); err != nil {
 				h.logger.WithError(err).Error("failed to write event to WebSocket")
@@ -533,6 +541,8 @@ func (h *Handler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
 	if maxDepth == 0 {
 		maxDepth = 10
 	}
+	_ = eventID
+	_ = maxDepth
 
 	run, err := h.repo.GetRun(r.Context(), claims.TenantID, runID)
 	if err != nil {
@@ -545,7 +555,7 @@ func (h *Handler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	graph, err := h.atlasClient.GetGraph(r.Context(), run.AtlasRunID, eventID, maxDepth)
+	graph, err := h.atlasClient.GetGraph(r.Context(), run.AtlasRunID)
 	if err != nil {
 		h.logger.WithError(err).Error("failed to get graph from Atlas")
 		apierror.WriteError(w, apierror.NewInternal("failed to get graph"))
@@ -555,11 +565,11 @@ func (h *Handler) HandleGetGraph(w http.ResponseWriter, r *http.Request) {
 	nodes := make([]GraphNode, len(graph.Nodes))
 	for i, node := range graph.Nodes {
 		nodes[i] = GraphNode{
-			EventID:   node.EventID,
-			Kind:      node.Kind,
-			Sequence:  node.Sequence,
-			Payload:   node.Payload,
-			Timestamp: node.Timestamp,
+			EventID:     node.ID,
+			Kind:        node.Kind,
+			SystemID:    node.SystemID,
+			Sequence:    node.Sequence,
+			TimestampNs: node.TimestampNs,
 		}
 	}
 
@@ -726,7 +736,7 @@ func (h *Handler) HandleListSpans(w http.ResponseWriter, r *http.Request) {
 
 	spanMap := make(map[string]map[string]interface{})
 	for _, event := range events {
-		if event.Kind != "DECISION" {
+		if string(event.Kind) != "DECISION" {
 			continue
 		}
 		var payload map[string]interface{}
@@ -790,6 +800,23 @@ func (h *Handler) HandleUpdateConfig(w http.ResponseWriter, r *http.Request) {
 	var req UpdateConfigRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
+		return
+	}
+
+	if req.SamplingRate != nil && (*req.SamplingRate < 0 || *req.SamplingRate > 1) {
+		apierror.WriteError(w, apierror.NewBadRequest("sampling_rate must be between 0 and 1"))
+		return
+	}
+	if req.SampleHeadPercent != nil && (*req.SampleHeadPercent < 0 || *req.SampleHeadPercent > 100) {
+		apierror.WriteError(w, apierror.NewBadRequest("sample_head_percent must be between 0 and 100"))
+		return
+	}
+	if req.SampleTailCount != nil && *req.SampleTailCount < 0 {
+		apierror.WriteError(w, apierror.NewBadRequest("sample_tail_count must be non-negative"))
+		return
+	}
+	if req.RetentionDays != nil && *req.RetentionDays < 1 {
+		apierror.WriteError(w, apierror.NewBadRequest("retention_days must be at least 1"))
 		return
 	}
 

@@ -71,11 +71,28 @@ const (
 	EnterpriseDefaultTimeoutMs = 30_000  // 30 seconds
 	EnterpriseMaxTimeoutMs     = 300_000 // 5 minutes
 
+	// MicroVM Enterprise-specific limits (enhanced for heavy MicroVM workloads)
+	MicroVMEnterpriseMaxMicroVMs      = 500                    // 5x standard Enterprise
+	MicroVMEnterpriseDefaultMemoryMB  = 1024                   // 2x standard
+	MicroVMEnterpriseMaxMemoryMB      = 8192                   // 4x standard Enterprise (8GB)
+	MicroVMEnterpriseDefaultVCPU      = 4                       // 2x standard
+	MicroVMEnterpriseMaxVCPU          = 16                      // 4x standard Enterprise
+	MicroVMEnterpriseDefaultTimeoutMs = 60_000                  // 60 seconds
+	MicroVMEnterpriseMaxTimeoutMs     = 600_000                 // 10 minutes
+	MicroVMEnterpriseMaxConcurrentVMs  = 200                     // Max concurrent MicroVMs
+	MicroVMEnterpriseComputeBudgetCents = 5000                  // Included compute budget per month
+
 	// Enterprise tier pricing
 	EnterpriseBaseFeeMonthly   = 99.00 // $/month
 	EnterpriseRequestsPer10K   = 5000  // $0.50 per 10K requests (cents)
 	EnterpriseMicroVMCpuSecond = 2     // $0.02 per vCPU-second (cents)
 	EnterpriseMemoryGbSecond   = 2     // $0.002 per GB-second (cents)
+
+	// MicroVM Enterprise tier pricing (enhanced compute budget included)
+	MicroVMEnterpriseBaseFeeMonthly    = 299.00  // $/month
+	MicroVMEnterpriseRequestsPer10K   = 3000    // $0.30 per 10K requests (cents) - cheaper for high volume
+	MicroVMEnterpriseMicroVMCpuSecond  = 1      // $0.01 per vCPU-second (cents) - discounted
+	MicroVMEnterpriseMemoryGbSecond    = 1      // $0.001 per GB-second (cents) - discounted
 
 	// Time Machine replay window limits
 	FreeReplayWindowHours              = 24
@@ -130,6 +147,37 @@ const (
 	EnterpriseMaxStateFabrics  = -1 // Unlimited
 )
 
+// Enterprise SLA Plan specific limits
+const (
+	// SLA Target percentages by plan
+	FreeSLATargetPercent       = 0.0   // No SLA guarantee
+	StarterSLATargetPercent    = 99.5  // 99.5% uptime
+	ProSLATargetPercent        = 99.9  // 99.9% uptime
+	EnterpriseSLATargetPercent  = 99.99 // 99.99% uptime (four nines)
+	EnterpriseSLASpecialTargetPercent = 99.999 // 99.999% uptime (five nines) for enterprise_sla
+
+	// SLA response time targets (in minutes)
+	EnterpriseSLAResponseTimeMinutes     = 15  // Critical: 15 min response
+	EnterpriseSLAAcknowledgmentMinutes   = 5   // Acknowledge within 5 min
+	EnterpriseSLAResolutionTimeMinutes   = 60  // Resolution target: 1 hour
+	EnterpriseSLACriticalResolutionMin  = 30  // Critical issues: 30 min
+
+	// SLA credits (percentage of monthly fee credited for downtime)
+	EnterpriseSLACreditPercentBelow99   = 5  // 5% credit if below 99%
+	EnterpriseSLACreditPercentBelow999  = 10 // 10% credit if below 99.9%
+	EnterpriseSLACreditPercentBelow9999 = 25 // 25% credit if below 99.99%
+	EnterpriseSLACreditPercentBelow99999 = 50 // 50% credit if below 99.999%
+
+	// SLA incident thresholds
+	EnterpriseSLAMaxIncidentsPerMonth       = 4   // Max incidents before escalation
+	EnterpriseSLAMaxDowntimeMinutesPerMonth = 4.3 // ~4.3 min/month for 99.99%
+	EnterpriseSLASpecialMaxDowntimeMinutes = 0.43 // ~0.43 min/month for 99.999%
+
+	// SLA dashboard and reporting
+	EnterpriseSLADashboardRefreshSeconds   = 60  // Real-time dashboard refresh
+	EnterpriseSLAReportGenerationHours     = 24  // Daily SLA reports
+)
+
 // Plan type constants
 // NOTE: "professional" must match frontend plan-utils.ts PlanTier type
 const (
@@ -137,6 +185,8 @@ const (
 	PlanStarter    = "starter"
 	PlanPro        = "professional" // Was "pro" - changed for consistency with frontend
 	PlanEnterprise = "enterprise"
+	PlanEnterpriseSLA = "enterprise_sla" // Enterprise with enhanced SLA guarantees
+	PlanMicroVMEnterprise = "microvm_enterprise" // MicroVM-focused Enterprise plan
 )
 
 // AEP (Agent Execution Plan) tier constants
@@ -230,18 +280,20 @@ const (
 
 // Main Plan Monthly Pricing (cents) - 2026 optimized (Option C Hybrid)
 const (
-	StarterPriceCents        = 2400  // $24/month
-	ProPriceCents            = 7900  // $79/month
-	EnterprisePriceCents     = 29900 // $299/month base (includes 5M AI calls)
-	AgentEnterprisePriceCents = 49900 // $499/month - unlimited AI
+	StarterPriceCents         = 2400  // $24/month
+	ProPriceCents             = 7900  // $79/month
+	EnterprisePriceCents      = 29900 // $299/month base (includes 5M AI calls)
+	MicroVMEnterprisePriceCents = 39900 // $399/month - enhanced MicroVM capabilities
+	AgentEnterprisePriceCents  = 49900 // $499/month - unlimited AI
 )
 
 // Annual Pricing (2 months free = 10 months billed)
 const (
-	StarterAnnualCents        = 24000 // $240/year ($24/mo equiv)
-	ProAnnualCents            = 79000 // $790/year ($79/mo equiv)
-	EnterpriseAnnualCents     = 299000 // $2990/year ($299/mo equiv)
-	AgentEnterpriseAnnualCents = 499000 // $4990/year ($499/mo equiv)
+	StarterAnnualCents         = 24000  // $240/year ($24/mo equiv)
+	ProAnnualCents             = 79000  // $790/year ($79/mo equiv)
+	EnterpriseAnnualCents      = 299000 // $2990/year ($299/mo equiv)
+	MicroVMEnterpriseAnnualCents = 399000 // $3990/year ($399/mo equiv)
+	AgentEnterpriseAnnualCents  = 499000 // $4990/year ($499/mo equiv)
 )
 
 // Usage-Based Overage (cents per 1000 calls) - 2026 optimized
@@ -323,13 +375,83 @@ const (
 	RuntimeWasm          = "wasm"
 	RuntimePython        = "python"         // RustPython
 	RuntimePythonMicroVM = "python-microvm" // CPython in Firecracker
+	RuntimePrism         = "prism"          // Prism runtime for JavaScript/TypeScript
+	RuntimeBun           = "bun"            // Bun runtime
+	RuntimeDeno          = "deno"           // Deno runtime
 	// FlyPy runtime has been disabled - using MicroPython only
 )
 
 // IsEnterpriseTier returns true if the plan is enterprise or agent_enterprise
 // Both plans have access to enterprise features (SLA, Audit, etc.)
 func IsEnterpriseTier(plan string) bool {
-	return plan == PlanEnterprise || plan == PlanAgentEnterprise
+	return plan == PlanEnterprise || plan == PlanAgentEnterprise || plan == PlanEnterpriseSLA || plan == PlanMicroVMEnterprise
+}
+
+// IsMicroVMEnterprisePlan returns true if the plan is MicroVM Enterprise
+func IsMicroVMEnterprisePlan(plan string) bool {
+	return plan == PlanMicroVMEnterprise
+}
+
+// IsSLAPlan returns true if the plan has SLA features (Enterprise or Enterprise SLA)
+func IsSLAPlan(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanEnterpriseSLA || plan == PlanAgentEnterprise || plan == PlanMicroVMEnterprise
+}
+
+// GetSLATargetPercent returns the SLA target percentage for the given plan
+func GetSLATargetPercent(plan string) float64 {
+	switch plan {
+	case PlanEnterpriseSLA:
+		return EnterpriseSLASpecialTargetPercent
+	case PlanEnterprise, PlanAgentEnterprise:
+		return EnterpriseSLATargetPercent
+	case PlanPro:
+		return ProSLATargetPercent
+	case PlanStarter:
+		return StarterSLATargetPercent
+	default:
+		return FreeSLATargetPercent
+	}
+}
+
+// GetSLAMaxDowntimeMinutes returns the maximum allowed downtime minutes per month for SLA compliance
+func GetSLAMaxDowntimeMinutes(plan string) float64 {
+	switch plan {
+	case PlanEnterpriseSLA:
+		return EnterpriseSLASpecialMaxDowntimeMinutes
+	case PlanEnterprise, PlanAgentEnterprise:
+		return EnterpriseSLAMaxDowntimeMinutesPerMonth
+	case PlanPro:
+		return 43.2 // ~43.2 min/month for 99.9%
+	case PlanStarter:
+		return 219 // ~219 min/month for 99.5%
+	default:
+		return 0 // No SLA guarantee
+	}
+}
+
+// GetSLACreditPercent returns the credit percentage for SLA violations
+func GetSLACreditPercent(plan string, uptimePercent float64) int {
+	switch plan {
+	case PlanEnterpriseSLA:
+		if uptimePercent < 99.999 {
+			return EnterpriseSLACreditPercentBelow99999
+		}
+	case PlanEnterprise, PlanAgentEnterprise:
+		if uptimePercent < 99.99 {
+			return EnterpriseSLACreditPercentBelow9999
+		} else if uptimePercent < 99.9 {
+			return EnterpriseSLACreditPercentBelow999
+		} else if uptimePercent < 99.0 {
+			return EnterpriseSLACreditPercentBelow99
+		}
+	case PlanPro:
+		if uptimePercent < 99.9 {
+			return EnterpriseSLACreditPercentBelow999
+		} else if uptimePercent < 99.0 {
+			return EnterpriseSLACreditPercentBelow99
+		}
+	}
+	return 0 // No credit or not applicable
 }
 
 // IsAgentTier returns true if the plan is an AEP agent tier
@@ -681,29 +803,51 @@ func MaxRequestsPerMonth(plan string) int {
 
 // MicroVMLimits represents the resource limits for a MicroVM execution
 type MicroVMLimits struct {
-	MaxMicroVMs     int
-	DefaultMemoryMB int
-	MaxMemoryMB     int
-	DefaultVCPU     int
-	MaxVCPU         int
-	DefaultTimeout  int
-	MaxTimeout      int
+	MaxMicroVMs      int
+	MaxConcurrentVMs int  // Maximum concurrent VMs (0 = use MaxMicroVMs as limit)
+	DefaultMemoryMB  int
+	MaxMemoryMB      int
+	DefaultVCPU      int
+	MaxVCPU          int
+	DefaultTimeout   int
+	MaxTimeout       int
+	IncludedBudget   int  // Included compute budget in cents (for MicroVM Enterprise)
 }
 
 // GetMicroVMLimits returns the MicroVM resource limits for the given plan
 // Returns nil for non-enterprise plans (MicroVMs not available)
 func GetMicroVMLimits(plan string) *MicroVMLimits {
-	if plan != PlanEnterprise {
+	// Only PlanEnterprise and PlanMicroVMEnterprise have MicroVM support
+	if plan != PlanEnterprise && plan != PlanMicroVMEnterprise {
 		return nil
 	}
+
+	// MicroVM Enterprise has enhanced limits
+	if plan == PlanMicroVMEnterprise {
+		return &MicroVMLimits{
+			MaxMicroVMs:      MicroVMEnterpriseMaxMicroVMs,
+			MaxConcurrentVMs: MicroVMEnterpriseMaxConcurrentVMs,
+			DefaultMemoryMB:  MicroVMEnterpriseDefaultMemoryMB,
+			MaxMemoryMB:      MicroVMEnterpriseMaxMemoryMB,
+			DefaultVCPU:      MicroVMEnterpriseDefaultVCPU,
+			MaxVCPU:          MicroVMEnterpriseMaxVCPU,
+			DefaultTimeout:   MicroVMEnterpriseDefaultTimeoutMs,
+			MaxTimeout:       MicroVMEnterpriseMaxTimeoutMs,
+			IncludedBudget:   MicroVMEnterpriseComputeBudgetCents,
+		}
+	}
+
+	// Standard Enterprise limits
 	return &MicroVMLimits{
-		MaxMicroVMs:     EnterpriseMaxMicroVMs,
-		DefaultMemoryMB: EnterpriseDefaultMemoryMB,
-		MaxMemoryMB:     EnterpriseMaxMemoryMB,
+		MaxMicroVMs:      EnterpriseMaxMicroVMs,
+		MaxConcurrentVMs: EnterpriseMaxMicroVMs, // Concurrent = max for standard Enterprise
+		DefaultMemoryMB:  EnterpriseDefaultMemoryMB,
+		MaxMemoryMB:      EnterpriseMaxMemoryMB,
 		DefaultVCPU:     EnterpriseDefaultVCPU,
 		MaxVCPU:         EnterpriseMaxVCPU,
 		DefaultTimeout:  EnterpriseDefaultTimeoutMs,
 		MaxTimeout:      EnterpriseMaxTimeoutMs,
+		IncludedBudget:  0, // No included budget for standard Enterprise
 	}
 }
 
@@ -753,20 +897,28 @@ func ValidateMicroVMResources(plan string, memoryMB int, vCPU int, timeoutMs int
 
 // MicroVMBilling represents the billing breakdown for a MicroVM execution
 type MicroVMBilling struct {
-	BaseFeeMonthly int
-	RequestCharges int
-	ComputeCharges int
-	MemoryCharges  int
-	TotalCents     int
+	BaseFeeMonthly   int
+	RequestCharges   int
+	ComputeCharges   int
+	MemoryCharges    int
+	TotalCents       int
+	IncludedBudget   int  // Included compute budget (for MicroVM Enterprise)
+	UsedBudget       int  // Used portion of included budget
 }
 
 // CalculateMicroVMBilling calculates the billing for MicroVM usage
 func CalculateMicroVMBilling(plan string, requests int, computeSeconds float64, memoryMB int, memorySeconds float64) *MicroVMBilling {
-	if plan != PlanEnterprise {
+	// Only PlanEnterprise and PlanMicroVMEnterprise have MicroVM billing
+	if plan != PlanEnterprise && plan != PlanMicroVMEnterprise {
 		return nil
 	}
 
-	// Base fee
+	// MicroVM Enterprise uses different pricing
+	if plan == PlanMicroVMEnterprise {
+		return calculateMicroVMEnterpriseBilling(requests, computeSeconds, memoryMB, memorySeconds)
+	}
+
+	// Standard Enterprise billing
 	baseFeeCents := int(EnterpriseBaseFeeMonthly * 100)
 
 	// Request charges: $0.50 per 10K requests
@@ -775,12 +927,10 @@ func CalculateMicroVMBilling(plan string, requests int, computeSeconds float64, 
 		requestCharges += EnterpriseRequestsPer10K
 	}
 
-	// Compute charges: $0.02 per vCPU-second
-	// Using 2 vCPU as default
+	// Compute charges: $0.02 per vCPU-second (using default 2 vCPU)
 	computeCharges := int(computeSeconds * float64(EnterpriseMicroVMCpuSecond*EnterpriseDefaultVCPU))
 
 	// Memory charges: $0.002 per GB-second
-	// Convert MB to GB-seconds
 	memoryGBSeconds := memorySeconds * float64(memoryMB) / 1024.0
 	memoryCharges := int(memoryGBSeconds * float64(EnterpriseMemoryGbSecond))
 
@@ -792,6 +942,46 @@ func CalculateMicroVMBilling(plan string, requests int, computeSeconds float64, 
 		ComputeCharges: computeCharges,
 		MemoryCharges:  memoryCharges,
 		TotalCents:     total,
+		IncludedBudget: 0,
+		UsedBudget:     0,
+	}
+}
+
+// calculateMicroVMEnterpriseBilling calculates billing for MicroVM Enterprise plan
+// This plan has discounted rates and included compute budget
+func calculateMicroVMEnterpriseBilling(requests int, computeSeconds float64, memoryMB int, memorySeconds float64) *MicroVMBilling {
+	baseFeeCents := int(MicroVMEnterpriseBaseFeeMonthly * 100)
+
+	// Request charges: $0.30 per 10K requests (discounted for high volume)
+	requestCharges := (requests / 10000) * MicroVMEnterpriseRequestsPer10K
+	if requests%10000 > 0 {
+		requestCharges += MicroVMEnterpriseRequestsPer10K
+	}
+
+	// Compute charges: $0.01 per vCPU-second (discounted)
+	// Using 4 vCPU as default for MicroVM Enterprise
+	computeCharges := int(computeSeconds * float64(MicroVMEnterpriseMicroVMCpuSecond*MicroVMEnterpriseDefaultVCPU))
+
+	// Memory charges: $0.001 per GB-second (discounted)
+	memoryGBSeconds := memorySeconds * float64(memoryMB) / 1024.0
+	memoryCharges := int(memoryGBSeconds * float64(MicroVMEnterpriseMemoryGbSecond))
+
+	total := baseFeeCents + requestCharges + computeCharges + memoryCharges
+
+	// Calculate used budget
+	usedBudget := requestCharges + computeCharges + memoryCharges
+	if usedBudget > MicroVMEnterpriseComputeBudgetCents {
+		usedBudget = MicroVMEnterpriseComputeBudgetCents
+	}
+
+	return &MicroVMBilling{
+		BaseFeeMonthly: baseFeeCents,
+		RequestCharges: requestCharges,
+		ComputeCharges: computeCharges,
+		MemoryCharges:  memoryCharges,
+		TotalCents:     total,
+		IncludedBudget: MicroVMEnterpriseComputeBudgetCents,
+		UsedBudget:     usedBudget,
 	}
 }
 

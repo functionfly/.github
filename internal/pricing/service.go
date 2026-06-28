@@ -190,6 +190,22 @@ func (s *Service) getFallbackPricing(slug string) (*storage.AgentTierPricing, er
 			OveragePricePer1000Cents: 20,
 			IsActive:                 true,
 		}, nil
+	case plans.PlanMicroVMEnterprise:
+		monthly := plans.MicroVMEnterprisePriceCents
+		annual := plans.MicroVMEnterpriseAnnualCents
+		return &storage.AgentTierPricing{
+			TierSlug:                 slug,
+			DisplayName:              "MicroVM Enterprise",
+			MonthlyPriceCents:        monthly,
+			AnnualPriceCents:         &annual,
+			BaseCurrency:             "USD",
+			MaxAgents:                500, // Same as Enterprise
+			IncludedAICalls:          5000000, // Same as Enterprise
+			IncludedExecutions:       -1, // Unlimited
+			IncludedStorageGB:        1000, // Double standard Enterprise
+			OveragePricePer1000Cents: 3, // $0.03/1K - discounted for high volume
+			IsActive:                 true,
+		}, nil
 	default:
 		return nil, fmt.Errorf("unknown tier slug: %s", slug)
 	}
@@ -207,6 +223,8 @@ func (s *Service) getFallbackMonthlyPrice(slug string) int {
 		return plans.EnterprisePriceCents
 	case plans.PlanAgentEnterprise:
 		return plans.AgentEnterprisePriceCents
+	case plans.PlanMicroVMEnterprise:
+		return plans.MicroVMEnterprisePriceCents
 	default:
 		return 0
 	}

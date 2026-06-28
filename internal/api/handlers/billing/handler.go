@@ -78,6 +78,8 @@ type Handler struct {
 	redisClient *redis.Client
 	// PCI DSS audit helper for compliance logging
 	pciAuditHelper *helpers.PCIAuditHelper
+	// Billing repository for reconciliation and advanced billing operations
+	billingRepo *storage.BillingRepository
 	// Isolated bundle provisioner callback for one-click SaaS Starter provisioning (optional).
 	// Returns (status, componentCount, error). Set via SetBundleProvisioner during server init.
 	provisionBundleFn func(ctx context.Context, tenantID uuid.UUID, bundleSlug string) (string, int, error)
@@ -93,6 +95,11 @@ func (h *Handler) SetWalletService(walletSvc *wallet.Service) {
 // SetPCIAuditHelper injects the PCI audit helper for compliance logging.
 func (h *Handler) SetPCIAuditHelper(pciAudit *helpers.PCIAuditHelper) {
 	h.pciAuditHelper = pciAudit
+}
+
+// SetBillingRepository injects the billing repository for reconciliation and advanced billing operations.
+func (h *Handler) SetBillingRepository(billingRepo *storage.BillingRepository) {
+	h.billingRepo = billingRepo
 }
 
 // NewHandler creates a new billing handler.

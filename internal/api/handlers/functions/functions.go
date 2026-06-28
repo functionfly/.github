@@ -318,7 +318,7 @@ func (h *Handler) HandleDeployFunction(w http.ResponseWriter, r *http.Request) {
 	go h.deployFunctionAsync(r.Context(), function, backend, createdDeployment, user.TenantID, environment)
 
 	// Build the deployment URL
-	deploymentURL := fmt.Sprintf("https://%s.%s.functionfly.app", function.Name, backend.Region)
+	deploymentURL := fmt.Sprintf("https://%s.%s.functionfly.com", function.Name, backend.Region)
 
 	response := types.DeployFunctionResponse{
 		FunctionID:   function.ID.String(),

@@ -329,3 +329,16 @@ func registerRegistryRoutes(
 	// ── FRG (Function Registry + Live Runtime Graph) ──────────────────────────
 	// These routes are registered when FRG is initialized in routes.go
 }
+
+// registerAtlasRoutes wires Atlas Memory Engine trace replay endpoints.
+func registerAtlasRoutes(
+	api *mux.Router,
+	authMiddleware *middleware.AuthMiddleware,
+	atlasHandler *registryhandler.AtlasHandler,
+) {
+	api.HandleFunc("/atlas/traces", atlasHandler.HandleListTraces).Methods("GET", "OPTIONS")
+	api.HandleFunc("/atlas/traces/health", atlasHandler.HandleHealth).Methods("GET", "OPTIONS")
+	api.HandleFunc("/atlas/traces/search", authMiddleware.RequireAuth(atlasHandler.HandleSearchTraces)).Methods("POST", "OPTIONS")
+	api.HandleFunc("/atlas/traces/{runId}", atlasHandler.HandleGetTrace).Methods("GET", "OPTIONS")
+	api.HandleFunc("/atlas/traces/{runId}/graph", atlasHandler.HandleGetGraph).Methods("GET", "OPTIONS")
+}

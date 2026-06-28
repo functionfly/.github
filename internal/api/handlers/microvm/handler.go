@@ -53,7 +53,7 @@ func (h *Handler) GetUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	plan := h.getTenantPlan(r.Context(), tenantID)
-	if plan != plans.PlanEnterprise {
+	if !plans.IsEnterpriseTier(plan) {
 		http.Error(w, "MicroVMs are only available for Enterprise plan", http.StatusForbidden)
 		return
 	}
@@ -95,7 +95,7 @@ func (h *Handler) GetBilling(w http.ResponseWriter, r *http.Request) {
 	}
 
 	plan := h.getTenantPlan(r.Context(), tenantID)
-	if plan != plans.PlanEnterprise {
+	if !plans.IsEnterpriseTier(plan) {
 		http.Error(w, "MicroVMs are only available for Enterprise plan", http.StatusForbidden)
 		return
 	}
@@ -130,16 +130,32 @@ func (h *Handler) GetAuditLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	plan := h.getTenantPlan(r.Context(), tenantID)
-	if plan != plans.PlanEnterprise {
+	if !plans.IsEnterpriseTier(plan) {
 		http.Error(w, "MicroVMs are only available for Enterprise plan", http.StatusForbidden)
 		return
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit <= 0 || limit > 100 {
-		limit = 50
+	limitStr := r.URL.Query().Get("limit")
+	limit := 50 // default
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 100 {
+			limit = l
+		} else {
+			http.Error(w, "invalid limit parameter (must be 1-100)", http.StatusBadRequest)
+			return
+		}
 	}
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
+	offset := 0
+	offsetStr := r.URL.Query().Get("offset")
+	if offsetStr != "" {
+		if o, err := strconv.Atoi(offsetStr); err == nil && o >= 0 {
+			offset = o
+		} else {
+			http.Error(w, "invalid offset parameter (must be >= 0)", http.StatusBadRequest)
+			return
+		}
+	}
 
 	logs, err := h.microvmRepo.GetAuditLog(r.Context(), tenantID, limit, offset)
 	if err != nil {
@@ -162,7 +178,7 @@ func (h *Handler) GetQuota(w http.ResponseWriter, r *http.Request) {
 	}
 
 	plan := h.getTenantPlan(r.Context(), tenantID)
-	if plan != plans.PlanEnterprise {
+	if !plans.IsEnterpriseTier(plan) {
 		http.Error(w, "MicroVMs are only available for Enterprise plan", http.StatusForbidden)
 		return
 	}
@@ -296,6 +312,12 @@ func (h *Handler) AggregateBilling(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	plan := h.getTenantPlan(r.Context(), tenantID)
+	if !plans.IsEnterpriseTier(plan) {
+		http.Error(w, "MicroVMs are only available for Enterprise plan", http.StatusForbidden)
+		return
+	}
+
 	billingPeriod := time.Now().Format("2006-01")
 
 	record, err := h.microvmRepo.AggregateUsageForBilling(r.Context(), tenantID, billingPeriod)
@@ -306,7 +328,7 @@ func (h *Handler) AggregateBilling(w http.ResponseWriter, r *http.Request) {
 	}
 
 	billing := plans.CalculateMicroVMBilling(
-		plans.PlanEnterprise,
+		plan,
 		record.TotalExecutions,
 		record.TotalComputeSeconds,
 		record.AvgMemoryMB,

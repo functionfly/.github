@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/atlas"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/plans"
@@ -238,6 +239,24 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	cached := false
 	var resourceUsage *ResourceUsage
 
+	// Atlas tracing — start a trace run for this execution
+	var atlasRunID string
+	if h.AtlasTracer != nil && h.AtlasTracer.Enabled() {
+		atlasRunID, _ = h.AtlasTracer.StartExecutionTrace(r.Context(), &atlas.ExecutionTrace{
+			FunctionID:   fn.ID.String(),
+			FunctionName: fn.Name,
+			Author:       author,
+			Version:      fnVersion.Version,
+			Runtime:      fnVersion.Runtime,
+			Tier:         resolveTierFromRequest(fn, h.BackendRepo),
+			StartTime:    startTime,
+			InputPayload: execReq.Input,
+		})
+		if atlasRunID != "" {
+			logrus.WithField("atlas_run_id", atlasRunID).Debug("atlas: started execution trace")
+		}
+	}
+
 	// MicroVM execution tracking
 	var microvmExecutionID uuid.UUID
 	var microvmMemoryMB int
@@ -327,6 +346,28 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 
 	// Determine outcome
 	outcome, errorCode := determineOutcome(executionErr, statusCode)
+
+	// Atlas tracing — finish the trace with result or error
+	if h.AtlasTracer != nil && h.AtlasTracer.Enabled() && atlasRunID != "" {
+		atlasResult := &atlas.ExecutionResult{
+			Output:     result,
+			DurationMs: durationMs,
+			Cached:     cached,
+			StatusCode: statusCode,
+		}
+		if executionErr != nil {
+			atlasResult.Error = executionErr.Error()
+		}
+		if resourceUsage != nil {
+			atlasResult.ResourceUsage = &atlas.ResourceUsageResult{
+				MaxMemoryMB:    resourceUsage.MaxMemoryMB,
+				MemoryUsedMB:   resourceUsage.MemoryUsedMB,
+				CPUTimeUsedMs:  resourceUsage.CPUTimeUsedMs,
+				WallTimeUsedMs: resourceUsage.WallTimeUsedMs,
+			}
+		}
+		go h.AtlasTracer.FinishExecutionTrace(context.Background(), atlasRunID, atlasResult)
+	}
 
 	// Update MicroVM execution record if we created one
 	if microvmExecutionID != uuid.Nil {
