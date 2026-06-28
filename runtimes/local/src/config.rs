@@ -311,17 +311,27 @@ pub struct Config {
 
     /// Enable seccomp-BPF syscall filtering after initialization.
     /// When true, only syscalls in the runtime's allowlist are permitted.
+    /// Includes architecture validation, NO_NEW_PRIVS, and CLONE_NEWUSER
+    /// restriction.
     /// Default: false (opt-in for now; will default to true in production).
     #[arg(long, default_value = "false")]
     pub enable_seccomp: bool,
 
-    /// When seccomp is enabled, fail hard if seccomp filter cannot be applied.
-    /// In containerized environments where seccomp is not available (e.g., Docker
-    /// without --security-opt), seccomp will silently not be applied. Set this to
-    /// true to make that situation fatal instead.
-    /// Default: false for backward compatibility; recommended true for production.
+    /// When seccomp is enabled, use KILL_PROCESS as the default action for
+    /// disallowed syscalls (instead of ENOSYS).  This terminates the process
+    /// immediately on any syscall not in the allowlist.
+    /// Also controls whether filter installation failure is fatal.
+    /// Default: false for backward compatibility; required for production.
     #[arg(long, default_value = "false")]
     pub seccomp_strict: bool,
+
+    /// When seccomp is enabled, log disallowed syscalls via the kernel audit
+    /// subsystem before returning ENOSYS.  Use this to discover which syscalls
+    /// the runtime actually invokes before switching to --seccomp-strict.
+    /// Ignored when --seccomp-strict is true (strict mode logs and kills).
+    /// Default: false.
+    #[arg(long, default_value = "false")]
+    pub seccomp_monitor: bool,
 
     /// Enable Linux network namespace isolation.
     /// When true, the runtime process is moved to a new network namespace with
@@ -511,6 +521,7 @@ impl Default for Config {
             queue_max_queues: 16,
             enable_seccomp: false,
             seccomp_strict: false,
+            seccomp_monitor: false,
             enable_net_ns: false,
             netns_strict: false,
             wasm_pool_enabled: true,

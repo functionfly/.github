@@ -546,14 +546,29 @@ pub async fn run_server(
     // Apply seccomp-BPF profile after initialization is complete but before
     // serving requests.  This limits the blast radius of any Wasmtime sandbox
     // escape by restricting which host syscalls the runtime process can make.
+    //
+    // The profile includes:
+    // - Architecture validation (prevents ABI confusion attacks)
+    // - NO_NEW_PRIVS (prevents setuid privilege escalation)
+    // - CLONE_NEWUSER restriction (prevents user namespace escapes)
+    // - Syscall allowlist with configurable default action:
+    //   * --seccomp-strict=false: ENOSYS (graceful degradation)
+    //   * --seccomp-strict=true:  KILL_PROCESS (production hardening)
+    //   * --seccomp-monitor:      LOG + ENOSYS (audit logging for discovery)
     if config.enable_seccomp {
+        let seccomp_mode = if config.seccomp_strict {
+            crate::seccomp::SeccompMode::Strict
+        } else if config.seccomp_monitor {
+            crate::seccomp::SeccompMode::Monitor
+        } else {
+            crate::seccomp::SeccompMode::Permissive
+        };
         logger.log_with_correlation(
             crate::logging::LogLevel::Info,
-            "Applying seccomp-BPF syscall filter".to_string(),
+            format!("Applying seccomp-BPF syscall filter (mode: {:?})", seccomp_mode),
             &startup_correlation_id,
         );
-        if let Err(e) = crate::seccomp::apply_seccomp_profile(config.seccomp_strict) {
-            // In strict mode, seccomp failure is fatal; in permissive mode, it's just a warning.
+        if let Err(e) = crate::seccomp::apply_seccomp_profile_with_mode(seccomp_mode, config.seccomp_strict) {
             let level = if config.seccomp_strict {
                 crate::logging::LogLevel::Error
             } else {
@@ -566,6 +581,24 @@ pub async fn run_server(
             );
             if config.seccomp_strict {
                 return Err(anyhow::anyhow!("Seccomp is required but could not be applied: {}", e));
+            }
+        } else if config.seccomp_strict {
+            // Defense-in-depth: install a second filter with KILL_PROCESS
+            // on top of the first.  The kernel applies the most restrictive
+            // result from all installed filters, so this ensures any syscall
+            // not in the allowlist kills the process even if the first filter
+            // was somehow installed with a weaker action.
+            logger.log_with_correlation(
+                crate::logging::LogLevel::Info,
+                "Applying defense-in-depth seccomp filter (strict mode upgrade)".to_string(),
+                &startup_correlation_id,
+            );
+            if let Err(e) = crate::seccomp::enable_strict_mode() {
+                logger.log_with_correlation(
+                    crate::logging::LogLevel::Warn,
+                    format!("Defense-in-depth filter failed (non-fatal): {}", e),
+                    &startup_correlation_id,
+                );
             }
         }
     }

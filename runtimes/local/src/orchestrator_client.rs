@@ -198,7 +198,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_client_creation() {
-        let client = OrchestratorClient::new("http://localhost:8080".to_string(), 30);
+        let client = OrchestratorClient::new("http://localhost:8080".to_string(), 30)
+            .expect("Failed to create OrchestratorClient");
         assert_eq!(client.orchestrator_url, "http://localhost:8080");
         assert_eq!(client.timeout, Duration::from_secs(30));
     }

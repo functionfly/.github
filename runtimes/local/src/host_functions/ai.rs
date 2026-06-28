@@ -118,10 +118,11 @@ fn run_onnx_inference(model_name: &str, input: &str) -> anyhow::Result<String> {
 
     // Format the first output as JSON
     if let Some(first_output) = outputs.first() {
-        let values: &[f32] = first_output
-            .as_slice()
+        let view = first_output
+            .to_plain_array_view::<f32>()
             .map_err(|e| anyhow::anyhow!("Failed to get output values: {}", e))?;
-        serde_json::to_string(values)
+        let values: Vec<f32> = view.iter().copied().collect();
+        serde_json::to_string(&values)
             .map_err(|e| anyhow::anyhow!("Failed to serialize output: {}", e))
     } else {
         Err(anyhow::anyhow!("No outputs from model"))
