@@ -219,35 +219,6 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
         )
 
 
-<<<<<<< Updated upstream
-# Internal endpoint that bypasses auth - used by FRG backend
-# SECURITY: This endpoint is protected by network-level restrictions.
-# Only allow internal service-to-service calls (from known IPs/orchestrator)
-@router.post("/internal/composer/generate", response_model=FunctionGenerationResponse)
-async def internal_generate_function(
-    request: FunctionGenerationRequest,
-    X_Internal_Secret: Optional[str] = Header(None, alias="X-Internal-Secret"),
-):
-    """Internal function generation endpoint for FRG system use.
-
-    This endpoint bypasses API key auth but requires an internal secret header.
-    It should not be exposed publicly.
-    """
-    from ..config import settings
-
-    if not settings.internal_api_secret:
-        logger.error("Internal endpoint called but internal_api_secret not configured")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Internal service not properly configured",
-        )
-
-    if X_Internal_Secret != settings.internal_api_secret:
-        logger.warning(f"Internal endpoint called with invalid secret")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid internal credentials",
-=======
 # Internal endpoint with internal API key auth - used by FRG backend
 @router.post("/internal/composer/generate", response_model=FunctionGenerationResponse)
 async def internal_generate_function(
@@ -261,7 +232,6 @@ async def internal_generate_function(
     DO NOT expose this endpoint publicly - it should only be accessible from
     internal networks or through a properly restricted network policy.
     """
-    # Validate internal API key
     internal_key = settings.internal_api_key or os.environ.get("INTERNAL_API_KEY", "")
     if not internal_key:
         logger.error("Internal endpoint called but INTERNAL_API_KEY not configured")
@@ -276,7 +246,6 @@ async def internal_generate_function(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid internal API key",
             headers={"WWW-Authenticate": "ApiKey"},
->>>>>>> Stashed changes
         )
 
     generation_id = str(uuid.uuid4())
@@ -402,11 +371,7 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
         latency_ms = (pytime.time() - start_time) * 1000
         return FunctionGenerationResponse(
             success=False,
-<<<<<<< Updated upstream
-            error="Function generation failed. Please try again.",
-=======
             error=str(e),
->>>>>>> Stashed changes
             generation_id=generation_id,
             latency_ms=latency_ms,
         )

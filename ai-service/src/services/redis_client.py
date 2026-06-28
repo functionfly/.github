@@ -67,14 +67,9 @@ class RedisClient:
                 ssl=settings.redis_use_tls,
             )
             await client.ping()
-<<<<<<< Updated upstream
             logger.info(f"Using standard Redis (TLS: {settings.redis_use_tls})")
             instance._client = client
             return instance
-=======
-            logger.info("Using standard Redis" + (" with password" if settings.redis_password else ""))
-            return cls(client)
->>>>>>> Stashed changes
         except Exception as e:
             logger.warning(f"Failed to connect to Redis: {e}")
             return instance

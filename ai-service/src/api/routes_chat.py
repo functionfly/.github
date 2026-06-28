@@ -4,6 +4,7 @@ import logging
 from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Query, status, Body, Depends
+from pydantic import BaseModel
 
 from ..security.auth import (
     require_api_key_with_scope,

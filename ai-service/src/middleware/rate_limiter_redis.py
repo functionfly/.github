@@ -121,17 +121,15 @@ class RedisRateLimiter:
         burst_key = self._get_key(tenant_id, "burst")
 
         try:
-<<<<<<< Updated upstream
-            # Use pipeline if available, fall back to individual commands
+            pipe = None
             try:
                 pipe = redis._client.pipeline()
-=======
-            pipe = redis._client.pipeline() if hasattr(redis._client, 'pipeline') else None
+            except (AttributeError, TypeError):
+                pass
 
             config = _get_rate_limit_config()
 
             if pipe:
->>>>>>> Stashed changes
                 pipe.incr(minute_key)
                 pipe.expire(minute_key, 60)
                 pipe.incr(hour_key)
@@ -143,8 +141,7 @@ class RedisRateLimiter:
                 minute_count = results[0]
                 hour_count = results[2]
                 day_count = results[4]
-            except (AttributeError, TypeError):
-                # Pipeline not available, use individual commands
+            else:
                 minute_count = await redis._client.incr(minute_key)
                 await redis._client.expire(minute_key, 60)
                 hour_count = await redis._client.incr(hour_key)
@@ -152,59 +149,32 @@ class RedisRateLimiter:
                 day_count = await redis._client.incr(day_key)
                 await redis._client.expire(day_key, 86400)
 
-<<<<<<< Updated upstream
-            if minute_count > self.minute_limit:
-                retry_after = 60 - (now % 60)
-                raise RateLimitExceeded(
-                    f"Rate limit exceeded: {self.minute_limit} requests per minute",
-                    tenant_id=tenant_id,
-                    limit=self.minute_limit,
-=======
             if minute_count > config.requests_per_minute:
                 retry_after = 60 - (now % 60)
                 raise RateLimitExceeded(
                     f"Rate limit exceeded: {config.requests_per_minute} requests per minute",
                     tenant_id=tenant_id,
                     limit=config.requests_per_minute,
->>>>>>> Stashed changes
                     window_seconds=60,
                     retry_after=int(retry_after) + 1,
                 )
 
-<<<<<<< Updated upstream
-            if hour_count > self.hour_limit:
-                retry_after = 3600 - (now % 3600)
-                raise RateLimitExceeded(
-                    f"Rate limit exceeded: {self.hour_limit} requests per hour",
-                    tenant_id=tenant_id,
-                    limit=self.hour_limit,
-=======
             if hour_count > config.requests_per_hour:
                 retry_after = 3600 - (now % 3600)
                 raise RateLimitExceeded(
                     f"Rate limit exceeded: {config.requests_per_hour} requests per hour",
                     tenant_id=tenant_id,
                     limit=config.requests_per_hour,
->>>>>>> Stashed changes
                     window_seconds=3600,
                     retry_after=int(retry_after) + 1,
                 )
 
-<<<<<<< Updated upstream
-            if day_count > self.day_limit:
-                retry_after = 86400 - (now % 86400)
-                raise RateLimitExceeded(
-                    f"Rate limit exceeded: {self.day_limit} requests per day",
-                    tenant_id=tenant_id,
-                    limit=self.day_limit,
-=======
             if day_count > config.requests_per_day:
                 retry_after = 86400 - (now % 86400)
                 raise RateLimitExceeded(
                     f"Rate limit exceeded: {config.requests_per_day} requests per day",
                     tenant_id=tenant_id,
                     limit=config.requests_per_day,
->>>>>>> Stashed changes
                     window_seconds=86400,
                     retry_after=int(retry_after) + 1,
                 )

@@ -139,27 +139,21 @@ class AuditLogger:
     Failed writes are stored in a retry queue for later retry.
     """
 
-<<<<<<< Updated upstream
     # Maximum buffer size to prevent memory exhaustion
     MAX_BUFFER_SIZE = 1000
     # Maximum events per flush to prevent DB overload
     MAX_FLUSH_BATCH = 100
-=======
     MAX_RETRY_QUEUE_SIZE = 1000
->>>>>>> Stashed changes
 
     def __init__(self):
         self._logger = logging.getLogger("flymind.audit")
         self._lock = threading.Lock()
         self._buffer: List[Dict[str, Any]] = []
         self._buffer_size = 100
-<<<<<<< Updated upstream
         self._buffer_flush_interval = 30  # seconds
         self._last_flush_time = time.time()
-=======
         self._retry_queue: List[Dict[str, Any]] = []  # Failed events for retry
         self._retry_count: Dict[str, int] = {}  # event_id -> retry count
->>>>>>> Stashed changes
         self._rq_queue = None
         self._use_rq = False
         self._db_pool = None
@@ -410,12 +404,8 @@ class AuditLogger:
 
         Uses ARQ queue for background processing when available.
         Falls back to direct PostgreSQL batch inserts if RQ is unavailable.
-<<<<<<< Updated upstream
         Limits batch size to prevent DB overload.
-        Uses connection pooling for efficient database access.
-=======
         Includes events from retry queue to retry failed writes.
->>>>>>> Stashed changes
         """
         # Combine buffer with retry queue events
         events_to_flush = list(self._buffer)
@@ -443,46 +433,28 @@ class AuditLogger:
                 from datetime import datetime
                 from ..workers.rq_worker import process_audit_batch
 
-<<<<<<< Updated upstream
-                # Enqueue job for background processing using actual function
-                job_id = f"audit-{datetime.utcnow().timestamp()}"
-                self._rq_queue.enqueue(
-                    process_audit_batch,
-=======
                 job_id = f"audit-{datetime.utcnow().timestamp()}"
                 self._rq_queue.enqueue(
                     "src.workers.rq_worker.process_audit_batch",
->>>>>>> Stashed changes
                     events_to_flush,
                     job_id=job_id,
                 )
                 self._logger.info(f"Enqueued audit batch to RQ: {len(events_to_flush)} events")
-<<<<<<< Updated upstream
-                self._last_flush_time = time.time()
-=======
                 self._buffer.clear()
                 # Clear retry queue for successfully enqueued events
                 self._retry_queue.clear()
                 self._retry_count.clear()
->>>>>>> Stashed changes
+                self._last_flush_time = time.time()
                 return
             except Exception as e:
                 self._logger.warning(f"RQ enqueue failed, falling back to direct DB: {e}")
 
-<<<<<<< Updated upstream
         # Fallback: direct PostgreSQL batch insert with connection pooling
         db_pool = self._get_db_pool()
         if not db_pool:
             self._logger.warning("No database connection pool available for audit logging")
-=======
-        # Fallback: direct PostgreSQL batch insert
-        db_url = os.getenv("AUDIT_DATABASE_URL") or os.getenv("DATABASE_URL")
-        if not db_url:
-            self._logger.warning("No database URL configured for audit logging")
             # Keep events in retry queue for later
-            self._add_to_retry_queue(self._buffer)
-            self._buffer.clear()
->>>>>>> Stashed changes
+            self._add_to_retry_queue(events_to_flush)
             return
 
         conn = None
@@ -506,8 +478,11 @@ class AuditLogger:
                 """
                 execute_batch(cur, insert_sql, events_to_flush)
                 conn.commit()
-<<<<<<< Updated upstream
                 self._logger.info(f"Audit batch written to DB via pool: {len(events_to_flush)} events")
+                # Clear retry count for successfully written events
+                for event in events_to_flush:
+                    event_id = self._get_event_id(event)
+                    self._retry_count.pop(event_id, None)
                 self._last_flush_time = time.time()
         except Exception as e:
             self._logger.error(f"Failed to flush audit buffer to DB: {e}")
@@ -516,23 +491,11 @@ class AuditLogger:
                     self._buffer = events_to_flush + self._buffer
                 else:
                     self._logger.error("Audit buffer full, dropping oldest events")
+            # Move failed events to retry queue
+            self._add_to_retry_queue(events_to_flush)
         finally:
             if conn:
                 db_pool.putconn(conn)
-=======
-                self._logger.info(f"Audit batch written directly to DB: {len(self._buffer)} events")
-                # Clear retry count for successfully written events
-                for event in self._buffer:
-                    event_id = self._get_event_id(event)
-                    self._retry_count.pop(event_id, None)
-        except Exception as e:
-            self._logger.error(f"Failed to flush audit buffer to DB: {e}")
-            # Move failed events to retry queue
-            self._add_to_retry_queue(self._buffer)
-        finally:
-            self._buffer.clear()
-            if 'conn' in locals():
-                conn.close()
 
     def _get_event_id(self, event: Dict[str, Any]) -> str:
         """Generate a unique ID for an event for retry tracking."""
@@ -559,8 +522,7 @@ class AuditLogger:
             removed_id = self._get_event_id(removed)
             self._retry_count.pop(removed_id, None)
 
-        self._logger.warning(f"Added {len(events)} events to retry queue (total: {len(self._retry_queue)})"
->>>>>>> Stashed changes
+        self._logger.warning(f"Added {len(events)} events to retry queue (total: {len(self._retry_queue)})")
     
     def flush(self) -> None:
         """Force flush the audit buffer."""
