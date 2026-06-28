@@ -1,9 +1,11 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Chamber,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+} from '@/components/containment';
 import type { StateFabricAddOnDTO } from '@/api/billing';
-import { Check, Loader2, Package, Zap } from 'lucide-react';
+import { Check, Package, Zap } from 'lucide-react';
 
 interface AddOnsTabProps {
   addOnCatalog: StateFabricAddOnDTO[];
@@ -15,111 +17,98 @@ interface AddOnsTabProps {
 export function AddOnsTab({ addOnCatalog, entitledAddOnIds, onPurchase, isLoading }: AddOnsTabProps) {
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Card className="ff-card-velocity">
-          <CardHeader>
-            <Skeleton className="h-6 w-48" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-32 w-full" />
-            ))}
-          </CardContent>
-        </Card>
+      <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+        <Chamber nested>
+          <div style={{ height: 24, width: 192, background: 'var(--panel)', borderRadius: 'var(--radius)', marginBottom: 'var(--space-4)' }} />
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} style={{ height: 128, background: 'var(--panel)', borderRadius: 'var(--radius)', marginBottom: 'var(--space-3)' }} />
+          ))}
+        </Chamber>
       </div>
     );
   }
 
   if (addOnCatalog.length === 0) {
     return (
-      <div className="space-y-6">
-        <Card className="ff-card-velocity">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <Package className="h-5 w-5 text-brand-500" />
-              State Fabric Add-ons
-            </CardTitle>
-            <CardDescription>
-              Enhance your State Fabric experience with premium add-ons
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8">
-              <Package className="h-12 w-12 text-text-muted mx-auto mb-3" />
-              <p className="text-text-muted">No add-ons available at the moment</p>
+      <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+        <Chamber nested>
+          <div className="sc-billing-card-title" style={{ marginBottom: 'var(--space-2)' }}>
+            <Package style={{ width: 14, height: 14 }} />
+            State Fabric Add-ons
+          </div>
+          <div className="sc-billing-card-description" style={{ marginBottom: 'var(--space-5)' }}>
+            Enhance your State Fabric experience with premium add-ons
+          </div>
+          <div className="empty-state">
+            <div style={{ textAlign: 'center' }}>
+              <Package style={{ width: 48, height: 48, color: 'var(--text-faint)', margin: '0 auto var(--space-3)' }} />
+              <p style={{ color: 'var(--text-faint)' }}>No add-ons available at the moment</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </Chamber>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <Package className="h-5 w-5 text-brand-500" />
+    <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      <Chamber nested>
+        <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
+          <div className="sc-billing-card-title">
+            <Package style={{ width: 14, height: 14 }} />
             State Fabric Add-ons
-          </CardTitle>
-          <CardDescription>
-            Premium add-ons to enhance your State Fabric experience
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            {addOnCatalog.map((addon) => {
-              const isEntitled = entitledAddOnIds.includes(addon.id);
-              return (
-                <div
-                  key={addon.id}
-                  className={`p-4 rounded-lg border transition-colors ${
-                    isEntitled
-                      ? 'border-green-500/30 bg-green-500/5'
-                      : 'border-border-default bg-bg-secondary'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="font-semibold">{addon.name}</h4>
-                      <p className="text-2xl font-bold text-brand-500 mt-1">
-                        ${addon.price}
-                        <span className="text-sm text-text-muted font-normal">/{addon.period}</span>
-                      </p>
-                    </div>
-                    {isEntitled && (
-                      <Badge variant="success" className="ff-badge-success">
-                        <Check className="h-3 w-3 mr-1" />
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-text-secondary mb-4">{addon.description}</p>
-
-                  {isEntitled ? (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                      <Check className="h-4 w-4 text-green-400" />
-                      <span className="text-sm text-green-400">
-                        You have access to {addon.name}
-                      </span>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full border-brand-500/50 text-brand-500 hover:bg-brand-500/10"
-                      onClick={() => onPurchase(addon.id)}
-                    >
-                      <Zap className="mr-2 h-4 w-4" />
-                      Subscribe
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
           </div>
-        </CardContent>
-      </Card>
+          <div className="sc-billing-card-description">Premium add-ons to enhance your State Fabric experience</div>
+        </div>
+
+        <div className="sc-billing-grid sc-billing-grid-2">
+          {addOnCatalog.map((addon) => {
+            const isEntitled = entitledAddOnIds.includes(addon.id);
+            return (
+              <div
+                key={addon.id}
+                style={{
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius)',
+                  border: `1px solid ${isEntitled ? 'rgba(143, 255, 208, 0.3)' : 'var(--panel-edge)'}`,
+                  background: isEntitled ? 'rgba(143, 255, 208, 0.03)' : 'var(--panel)',
+                  transition: 'border-color var(--duration-fast) var(--ease-out)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+                  <div>
+                    <h4 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>{addon.name}</h4>
+                    <p style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 700, color: 'var(--status-ok)', marginTop: 'var(--space-1)' }}>
+                      ${addon.price}
+                      <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-dim)' }}>/{addon.period}</span>
+                    </p>
+                  </div>
+                  {isEntitled && <StatusPill status="live" label="Active" />}
+                </div>
+
+                <p style={{ fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5, marginBottom: 'var(--space-4)' }}>{addon.description}</p>
+
+                {isEntitled ? (
+                  <div className="sc-billing-info">
+                    <Check style={{ width: 14, height: 14 }} />
+                    <div className="sc-billing-info-content">
+                      <span className="sc-billing-info-text">You have access to {addon.name}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <FrameButton
+                    style={{ width: '100%' }}
+                    onClick={() => onPurchase(addon.id)}
+                    iconLeft={<Zap style={{ width: 14, height: 14 }} />}
+                  >
+                    Subscribe
+                  </FrameButton>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </Chamber>
     </div>
   );
 }

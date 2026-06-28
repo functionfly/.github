@@ -1,0 +1,661 @@
+/**
+ * FunctionFly Agent Observability Page — Sealed Containment
+ *
+ * All design tokens come from sc-tokens.css.
+ * Sub-components (AgentRunTimeline, DecisionGraphViewer, etc.) use their own styling;
+ * this file provides the page shell.
+ */
+
+@import '@/styles/sc-tokens.css';
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.obs-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-9);
+}
+
+@media (max-width: 480px) {
+  .obs-page { padding: 0 var(--space-4); gap: var(--space-5); }
+}
+
+/* ==========================================================================
+   Icon Sizes
+   ========================================================================== */
+
+.obs-icon-xs { width: 12px; height: 12px; }
+.obs-icon-sm { width: 16px; height: 16px; }
+
+/* ==========================================================================
+   Hero Chamber
+   ========================================================================== */
+
+.obs-hero__header {
+  margin-bottom: var(--space-4);
+}
+
+.obs-hero__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.obs-hero__title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .obs-hero__title { font-size: 28px; }
+}
+
+.obs-hero__subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-4);
+  max-width: 540px;
+}
+
+.obs-hero__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ==========================================================================
+   Main Grid
+   ========================================================================== */
+
+.obs-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 960px) {
+  .obs-main-grid { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   Left Panel
+   ========================================================================== */
+
+.obs-left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.obs-runs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 400px;
+  overflow-y: auto;
+  margin: var(--space-4) 0;
+}
+
+/* ==========================================================================
+   Section Title (shared)
+   ========================================================================== */
+
+.obs-section-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0;
+}
+
+.obs-section-desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Filters
+   ========================================================================== */
+
+.obs-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.obs-filters__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.obs-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.obs-input:focus {
+  outline: none;
+  border-color: var(--steel-light);
+  box-shadow: var(--shadow-input-focus);
+}
+
+.obs-input::placeholder { color: var(--text-faint); }
+
+.obs-select {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.obs-auto-refresh {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.obs-auto-refresh input[type="checkbox"] {
+  accent-color: var(--status-ok);
+}
+
+/* ==========================================================================
+   Run Item
+   ========================================================================== */
+
+.obs-run-item {
+  display: block;
+  width: 100%;
+  padding: var(--space-3);
+  background: transparent;
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+
+.obs-run-item:hover {
+  border-color: var(--steel-light);
+  background: var(--panel-raised);
+}
+
+.obs-run-item--selected {
+  border-color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.04);
+}
+
+.obs-run-item__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+.obs-run-item__agent {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.obs-run-item__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.obs-run-item__meta span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ==========================================================================
+   Stats Grid
+   ========================================================================== */
+
+.obs-stats__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.obs-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.obs-stat-cell {
+  text-align: center;
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.obs-stat-cell__value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0;
+}
+
+.obs-stat-cell__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Right Panel
+   ========================================================================== */
+
+.obs-right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ==========================================================================
+   Timeline
+   ========================================================================== */
+
+.obs-timeline__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.obs-timeline__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ==========================================================================
+   Tabs
+   ========================================================================== */
+
+.obs-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.obs-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.obs-tab:hover { color: var(--text); }
+
+.obs-tab--active {
+  color: var(--text);
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+}
+
+.obs-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ==========================================================================
+   Search Bar (events tab)
+   ========================================================================== */
+
+.obs-search-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.obs-search-icon {
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.obs-search-input {
+  flex: 1;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.obs-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.obs-empty--large {
+  padding: var(--space-9);
+}
+
+.obs-empty__icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-faint);
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.obs-empty__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.obs-empty__desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+  max-width: 400px;
+}
+
+/* ==========================================================================
+   Loading
+   ========================================================================== */
+
+.obs-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+}
+
+.obs-loading__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--panel-edge);
+  border-top-color: var(--status-ok);
+  border-radius: 50%;
+  animation: obs-spin 1s linear infinite;
+}
+
+.obs-loading__text {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+@keyframes obs-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Shortcuts Panel
+   ========================================================================== */
+
+.obs-shortcuts {
+  padding: var(--space-4);
+}
+
+/* ==========================================================================
+   End Run
+   ========================================================================== */
+
+.obs-end-run {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ==========================================================================
+   Atlas Config Panel
+   ========================================================================== */
+
+.atlas-config__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+
+.atlas-config__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 var(--space-1);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.atlas-config__desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.atlas-config__close {
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.atlas-config__close:hover { border-color: var(--steel-light); color: var(--text); }
+
+.atlas-config__loading {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: var(--space-4);
+  margin: 0;
+}
+
+.atlas-config__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.atlas-config__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.atlas-config__label {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.atlas-config__hint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+.atlas-config__control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.atlas-config__value {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 3rem;
+  text-align: right;
+}
+
+.atlas-config__unit {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.atlas-config__actions {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--panel-edge);
+}
+
+.atlas-config__error {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: #ef4444;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius);
+}
+
+.atlas-config__success {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: #22c55e;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: var(--radius);
+}
+
+/* Range slider */
+.atlas-range {
+  width: 150px;
+  accent-color: var(--accent);
+}
+
+/* Input */
+.atlas-input {
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.atlas-input:focus { outline: none; border-color: var(--steel-light); box-shadow: var(--shadow-input-focus); }
+.atlas-input--sm { width: 128px; }
+
+/* Switch */
+.atlas-switch {
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  background: var(--steel);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.atlas-switch--on { background: var(--status-ok); }
+
+.atlas-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.atlas-switch--on .atlas-switch__thumb { transform: translateX(18px); }
+
+/* Icon sizes */
+.atlas-icon-sm { width: 16px; height: 16px; }

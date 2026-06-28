@@ -1,19 +1,21 @@
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Chamber,
+  CornerBrace,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  TrustSeal,
+} from '@/components/containment';
 import type { Subscription, PaymentMethod, WalletInfo } from '@/api/billing';
-import type { CostSummary } from '@/api/usageAnalytics';
-import { formatCurrency, formatDate } from '@/pages/SettingsPage/settings-utils';
+import { formatDate } from '@/pages/SettingsPage/settings-utils';
 import { usePlan } from '@/hooks/usePlan';
 import {
   CreditCard,
   Zap,
-  Calendar,
   AlertCircle,
-  CheckCircle,
-  Clock,
   TrendingUp,
   Wallet,
 } from 'lucide-react';
@@ -63,242 +65,175 @@ export function OverviewTab({
   paymentMethods,
   projectedBilling,
   usageMetrics,
-  planLimits,
   isLoading,
   errors,
   onOpenPortal,
 }: OverviewTabProps) {
-  const { plan, displayName } = usePlan();
+  const { displayName } = usePlan();
   const defaultPayment = paymentMethods.find((pm) => pm.is_default) ?? paymentMethods[0];
 
   return (
-    <div className="space-y-6">
+    <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
       {/* Current Plan Card */}
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <Zap className="h-5 w-5 text-brand-500" />
+      <Chamber nested>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
+          <div className="sc-billing-card-title">
+            <Zap style={{ width: 14, height: 14 }} />
             Current Plan
-          </CardTitle>
-          <CardDescription>Your active subscription details</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading.subscription ? (
-            <div className="space-y-3">
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-48" />
-            </div>
-          ) : subscription ? (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant={subscription.status === 'active' ? 'success' : 'secondary'}
-                    className={subscription.status === 'active' ? 'ff-badge-success' : ''}
-                  >
-                    {subscription.status}
-                  </Badge>
-                  {subscription.cancel_at_period_end && (
-                    <Badge variant="outline" className="border-amber-500/50 text-amber-600">
-                      Cancels at period end
-                    </Badge>
-                  )}
-                  {subscription.is_trialing && (
-                    <Badge variant="secondary" className="border-blue-500/50 text-blue-600">
-                      Trial - {subscription.trial_days_remaining} days left
-                    </Badge>
-                  )}
-                </div>
-                <span className="text-2xl font-bold capitalize">{displayName}</span>
-              </div>
+          </div>
+          <div className="sc-billing-card-description">Your active subscription details</div>
+        </div>
 
-              <div className="grid grid-cols-2 gap-4 rounded-lg bg-bg-secondary p-4">
-                <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wide">Current Period</p>
-                  <p className="text-sm font-medium mt-1">
-                    {subscription.current_period_start
-                      ? formatDate(subscription.current_period_start)
-                      : '—'}{' '}
-                    —{' '}
-                    {subscription.current_period_end
-                      ? formatDate(subscription.current_period_end)
-                      : '—'}
-                  </p>
-                </div>
-                {subscription.status === 'active' && (
-                  <div>
-                    <p className="text-xs text-text-muted uppercase tracking-wide">Next Billing</p>
-                    <p className="text-sm font-medium mt-1">
-                      {subscription.current_period_end
-                        ? formatDate(subscription.current_period_end)
-                        : '—'}
-                    </p>
-                  </div>
+        {isLoading.subscription ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <div style={{ height: 24, width: 128, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+            <div style={{ height: 16, width: 192, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+          </div>
+        ) : subscription ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                <StatusPill status={subscription.status === 'active' ? 'live' : subscription.status === 'trialing' ? 'pending' : 'revoked'} label={subscription.status} />
+                {subscription.cancel_at_period_end && (
+                  <span className="sc-billing-badge sc-billing-badge-warning">Cancels at period end</span>
+                )}
+                {subscription.is_trialing && (
+                  <span className="sc-billing-badge sc-billing-badge-info">Trial — {subscription.trial_days_remaining} days left</span>
                 )}
               </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--text)', textTransform: 'capitalize' }}>{displayName}</span>
+            </div>
 
-              {defaultPayment && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary border border-border-default">
-                  <CreditCard className="h-4 w-4 text-text-muted" />
-                  <span className="text-sm">
-                    {defaultPayment.brand} ending in {defaultPayment.last4}
-                  </span>
-                  {defaultPayment.is_default && (
-                    <Badge variant="success" className="ml-auto text-xs">
-                      Default
-                    </Badge>
-                  )}
+            <div className="sc-billing-grid sc-billing-grid-2" style={{ padding: 'var(--space-4)', background: 'var(--panel)', borderRadius: 'var(--radius)', border: '1px solid var(--panel-edge)' }}>
+              <div>
+                <p className="sc-billing-stat-label">Current Period</p>
+                <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 'var(--space-1)' }}>
+                  {subscription.current_period_start ? formatDate(subscription.current_period_start) : '—'} — {subscription.current_period_end ? formatDate(subscription.current_period_end) : '—'}
+                </p>
+              </div>
+              {subscription.status === 'active' && (
+                <div>
+                  <p className="sc-billing-stat-label">Next Billing</p>
+                  <p style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 'var(--space-1)' }}>
+                    {subscription.current_period_end ? formatDate(subscription.current_period_end) : '—'}
+                  </p>
                 </div>
               )}
             </div>
-          ) : (
-            <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
-              <div>
-                <p className="font-medium text-amber-400">Free Plan</p>
-                <p className="text-sm text-amber-400/80">
-                  You are not subscribed to any paid plan.
-                </p>
+
+            {defaultPayment && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', padding: 'var(--space-3)', borderRadius: 'var(--radius)', background: 'var(--panel)', border: '1px solid var(--panel-edge)' }}>
+                <CreditCard style={{ width: 14, height: 14, color: 'var(--text-faint)' }} />
+                <span style={{ fontSize: 13, color: 'var(--text)' }}>
+                  {defaultPayment.brand} ending in {defaultPayment.last4}
+                </span>
+                {defaultPayment.is_default && (
+                  <span className="sc-billing-badge sc-billing-badge-success" style={{ marginLeft: 'auto' }}>Default</span>
+                )}
               </div>
+            )}
+          </div>
+        ) : (
+          <div className="sc-billing-info sc-billing-info-warning">
+            <AlertCircle style={{ width: 18, height: 18 }} />
+            <div className="sc-billing-info-content">
+              <div className="sc-billing-info-title">Free Plan</div>
+              <div className="sc-billing-info-text">You are not subscribed to any paid plan.</div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </Chamber>
 
       {/* Wallet Balance Card */}
       {isLoading.wallet ? (
-        <Card className="ff-card-velocity">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-amber-500" />
-              Registry Credits
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-8 w-32" />
-          </CardContent>
-        </Card>
+        <Chamber nested>
+          <div className="sc-billing-card-title" style={{ marginBottom: 'var(--space-4)' }}>
+            <Wallet style={{ width: 14, height: 14 }} />
+            Registry Credits
+          </div>
+          <div style={{ height: 32, width: 128, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+        </Chamber>
       ) : walletInfo ? (
-        <Card className="ff-card-velocity">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <Wallet className="h-5 w-5 text-amber-500" />
+        <Chamber nested>
+          <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
+            <div className="sc-billing-card-title">
+              <Wallet style={{ width: 14, height: 14, color: 'var(--status-pending)' }} />
               Registry Credits
-            </CardTitle>
-            <CardDescription>Prepaid balance for registry fees</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-xs text-text-muted uppercase tracking-wide">Balance</p>
-                <p className="text-2xl font-bold font-mono text-amber-500">
-                  {formatUsd(walletInfo.balance_usd)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-text-muted uppercase tracking-wide">Lifetime Earned</p>
-                <p className="text-lg font-medium font-mono">
-                  {formatUsd(walletInfo.lifetime_earnings_usd)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-text-muted uppercase tracking-wide">Fees Paid</p>
-                <p className="text-lg font-medium font-mono">
-                  {formatUsd(walletInfo.lifetime_fees_usd)}
-                </p>
-              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="sc-billing-card-description">Prepaid balance for registry fees</div>
+          </div>
+          <GaugeStrip>
+            <Gauge data={{ value: formatUsd(walletInfo.balance_usd), label: 'Balance' }} isFirst />
+            <Gauge data={{ value: formatUsd(walletInfo.lifetime_earnings_usd), label: 'Lifetime Earned' }} />
+            <Gauge data={{ value: formatUsd(walletInfo.lifetime_fees_usd), label: 'Fees Paid' }} />
+          </GaugeStrip>
+        </Chamber>
       ) : null}
 
       {/* Usage Summary Card */}
       {usageMetrics.length > 0 && (
-        <Card className="ff-card-velocity">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-brand-500" />
+        <Chamber nested>
+          <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
+            <div className="sc-billing-card-title">
+              <TrendingUp style={{ width: 14, height: 14 }} />
               Usage This Period
-            </CardTitle>
-            {projectedBilling && (
-              <CardDescription>
-                {projectedBilling.daysRemaining} days remaining
-              </CardDescription>
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {usageMetrics.map((metric, idx) => {
-                const percent =
-                  metric.limit > 0 ? Math.min((metric.current / metric.limit) * 100, 100) : 0;
-                const isOver = metric.current > metric.limit && metric.limit > 0;
-                return (
-                  <div key={idx} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{metric.label}</span>
-                      <span
-                        className={`font-mono tabular-nums ${isOver ? 'text-red-400' : 'text-text-secondary'}`}
-                      >
-                        {metric.current.toLocaleString()} / {metric.limit.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="relative h-2 rounded-full bg-bg-tertiary overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          isOver
-                            ? 'bg-gradient-to-r from-red-500 to-red-400'
-                            : percent > 80
-                              ? 'bg-gradient-to-r from-amber-500 to-orange-400'
-                              : 'bg-gradient-to-r from-brand-500 to-indigo-500'
-                        }`}
-                        style={{ width: `${Math.min(percent, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
             </div>
-
-            {projectedBilling && projectedBilling.daysRemaining > 0 && (
-              <div className="mt-4 pt-4 border-t border-border-default">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-text-muted">Projected total by period end</span>
-                  <span className="font-mono font-medium">
-                    {projectedBilling.projectedTotal.toLocaleString()} requests
-                  </span>
-                </div>
-              </div>
+            {projectedBilling && (
+              <div className="sc-billing-card-description">{projectedBilling.daysRemaining} days remaining</div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+            {usageMetrics.map((metric, idx) => {
+              const percent = metric.limit > 0 ? Math.min((metric.current / metric.limit) * 100, 100) : 0;
+              const isOver = metric.current > metric.limit && metric.limit > 0;
+              return (
+                <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{metric.label}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontVariantNumeric: 'tabular-nums', color: isOver ? 'var(--status-revoked)' : 'var(--text-dim)' }}>
+                      {metric.current.toLocaleString()} / {metric.limit.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="sc-billing-progress">
+                    <div
+                      className={`sc-billing-progress-bar ${isOver ? 'danger' : percent > 80 ? 'warning' : 'success'}`}
+                      style={{ width: `${Math.min(percent, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {projectedBilling && projectedBilling.daysRemaining > 0 && (
+            <>
+              <div className="sc-billing-divider" />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 13 }}>
+                <span style={{ color: 'var(--text-dim)' }}>Projected total by period end</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'var(--text)' }}>
+                  {projectedBilling.projectedTotal.toLocaleString()} requests
+                </span>
+              </div>
+            </>
+          )}
+        </Chamber>
       )}
 
       {/* Quick Actions */}
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="outline"
-              className="border-border-strong"
-              onClick={onOpenPortal}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              Manage Billing
-            </Button>
-            <Button
-              variant="outline"
-              className="border-border-strong"
-              onClick={() => (window.location.href = '/pricing')}
-            >
-              <Zap className="mr-2 h-4 w-4" />
-              Upgrade Plan
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <Chamber nested>
+        <div className="sc-billing-card-title" style={{ marginBottom: 'var(--space-4)' }}>Quick Actions</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+          <FrameButton onClick={onOpenPortal} iconLeft={<CreditCard style={{ width: 14, height: 14 }} />}>
+            Manage Billing
+          </FrameButton>
+          <SealedButton onClick={() => { window.location.href = '/pricing' }} iconLeft={<Zap style={{ width: 14, height: 14 }} />}>
+            Upgrade Plan
+          </SealedButton>
+        </div>
+      </Chamber>
     </div>
   );
 }

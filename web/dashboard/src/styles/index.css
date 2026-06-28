@@ -118,6 +118,9 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-text-accent: var(--text-accent);
+  --color-text: #eef2f0;
+  --color-text-dim: #7c8a8a;
+  --color-text-faint: #4a5358;
 
   /* Border Colors */
   --color-border: var(--border);
@@ -129,6 +132,15 @@
   /* Card Colors */
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+
+  /* Panel / Chamber Colors (Sealed Containment) */
+  --color-panel: #0e1318;
+  --color-panel-raised: #131922;
+  --color-panel-edge: #1c242b;
+  --color-chamber-bg: #0e1318;
+  --color-chamber-edge: #1c242b;
+  --color-steel: #2a3138;
+  --color-steel-light: #4a565f;
 
   /* Button Colors */
   --color-button-primary: var(--button-primary);
@@ -159,6 +171,11 @@
   --color-warning: #f59e0b;
   --color-info: #3b82f6;
 
+  /* Status indicator colors — reference SC tokens for theme awareness */
+  --color-status-ok: var(--status-ok, #8fffd0);
+  --color-status-pending: var(--status-pending, #e8c468);
+  --color-status-revoked: var(--status-revoked, #ff6b6b);
+
   /* Brand Colors - Velocity Orange */
   --color-brand-50: #fff7ed;
   --color-brand-100: #ffedd5;
@@ -187,9 +204,6 @@
   --font-sans: 'Instrument Sans', 'Inter', system-ui, -apple-system, sans-serif;
   --font-display: 'Ranade', 'Instrument Sans', system-ui, sans-serif;
   --font-mono: 'Commit Mono', 'JetBrains Mono', 'Fira Code', monospace;
-
-  /* Status indicator colors */
-  --color-status-pending: #6b7280;
 
   /* Aviation Theme Colors - Dark Mode values */
   --color-aviation-bg-primary: #08080c;
@@ -466,28 +480,28 @@ select:focus {
 /* Brand colored links — keep default global link color, but let sidebar links use sidebar text colors */
 a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ):not(.v-sidebar-link) {
+  ):not(.v-sidebar-link):not(.sc-breadcrumb__link):not(.sc-footer-link):not(.sc-footer-nav-link):not(.sc-footer-text) {
   color: #ff6b35;
   transition: color 0.2s ease;
 }
 
 a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ):not(.v-sidebar-link):hover {
+  ):not(.v-sidebar-link):not(.sc-breadcrumb__link):not(.sc-footer-link):not(.sc-footer-nav-link):not(.sc-footer-text):hover {
   color: #ff8c42;
 }
 
 [data-theme='light']
   a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ):not(.v-sidebar-link) {
+  ):not(.v-sidebar-link):not(.sc-breadcrumb__link):not(.sc-footer-link):not(.sc-footer-nav-link):not(.sc-footer-text) {
   color: #e85a2a;
 }
 
 [data-theme='light']
   a:not(.btn):not(.v-btn-primary):not(.v-btn-secondary):not(.v-btn-ghost):not(.v-btn-outline):not(
     .v-btn-brand-secondary
-  ):not(.v-sidebar-link):hover {
+  ):not(.v-sidebar-link):not(.sc-breadcrumb__link):not(.sc-footer-link):not(.sc-footer-nav-link):not(.sc-footer-text):hover {
   color: #c43e1a;
 }
 

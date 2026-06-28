@@ -620,9 +620,10 @@ export function useNamespaces() {
     staleTime: 0,
     queryFn: async () => {
       try {
-        return await unwrap<{ namespaces: VaultNamespace[]; total: number }>(
+        const result = await unwrap<{ namespaces: VaultNamespace[]; total: number }>(
           apiClient.get('/v1/vault/namespaces')
         );
+        return result ?? { namespaces: [] as VaultNamespace[], total: 0 };
       } catch {
         return { namespaces: [] as VaultNamespace[], total: 0 };
       }

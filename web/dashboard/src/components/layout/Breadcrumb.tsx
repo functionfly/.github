@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { ChevronRight, Plus } from 'lucide-react';
@@ -20,20 +19,10 @@ export function Breadcrumb() {
 
   const getContextualActions = (): ContextualAction[] => {
     if (location.pathname.startsWith('/functions')) {
-      return [
-        {
-          label: 'New Function',
-          onClick: () => (window.location.href = '/functions/new'),
-        },
-      ];
+      return [{ label: 'New Function', onClick: () => (window.location.href = '/functions/new') }];
     }
     if (location.pathname.startsWith('/providers')) {
-      return [
-        {
-          label: 'Connect Provider',
-          onClick: () => console.log('Open connect provider modal'),
-        },
-      ];
+      return [{ label: 'Connect Provider', onClick: () => console.log('Open connect provider modal') }];
     }
     return [];
   };
@@ -42,72 +31,28 @@ export function Breadcrumb() {
     const pathSegments = location.pathname.split('/').filter(Boolean);
     const breadcrumbs: BreadcrumbItem[] = [];
 
-    // Home → function marketplace (logged-in default)
-    breadcrumbs.push({
-      label: 'Home',
-      path: ROUTES.DASHBOARD,
-      isActive: location.pathname === ROUTES.DASHBOARD,
-    });
+    breadcrumbs.push({ label: 'Home', path: ROUTES.DASHBOARD, isActive: location.pathname === ROUTES.DASHBOARD });
 
-    // Handle different routes
     if (location.pathname === ROUTES.OVERVIEW || location.pathname.startsWith(`${ROUTES.OVERVIEW}/`)) {
       breadcrumbs[0].isActive = false;
-      breadcrumbs.push({
-        label: 'Overview',
-        path: ROUTES.OVERVIEW,
-        isActive: true,
-      });
+      breadcrumbs.push({ label: 'Overview', path: ROUTES.OVERVIEW, isActive: true });
     } else if (location.pathname.startsWith('/functions')) {
-      breadcrumbs.push({
-        label: 'Functions',
-        path: ROUTES.FUNCTIONS,
-        isActive: location.pathname === ROUTES.FUNCTIONS,
-      });
-
-      // If we're on a specific function page
+      breadcrumbs.push({ label: 'Functions', path: ROUTES.FUNCTIONS, isActive: location.pathname === ROUTES.FUNCTIONS });
       if (pathSegments.length > 1 && pathSegments[0] === 'functions') {
         const functionId = pathSegments[1];
-        if (functionId && functionId !== 'new') {
-          breadcrumbs.push({
-            label: `Function ${functionId}`,
-            isActive: true,
-          });
-        } else if (functionId === 'new') {
-          breadcrumbs.push({
-            label: 'New Function',
-            isActive: true,
-          });
-        }
+        if (functionId && functionId !== 'new') breadcrumbs.push({ label: `Function ${functionId}`, isActive: true });
+        else if (functionId === 'new') breadcrumbs.push({ label: 'New Function', isActive: true });
       }
     } else if (location.pathname.startsWith('/providers')) {
-      breadcrumbs.push({
-        label: 'Providers',
-        path: ROUTES.PROVIDERS,
-        isActive: location.pathname === ROUTES.PROVIDERS,
-      });
-
-      // If we're on a specific provider page
+      breadcrumbs.push({ label: 'Providers', path: ROUTES.PROVIDERS, isActive: location.pathname === ROUTES.PROVIDERS });
       if (pathSegments.length > 1 && pathSegments[0] === 'providers') {
         const providerId = pathSegments[1];
-        if (providerId) {
-          breadcrumbs.push({
-            label: `Provider ${providerId}`,
-            isActive: true,
-          });
-        }
+        if (providerId) breadcrumbs.push({ label: `Provider ${providerId}`, isActive: true });
       }
     } else if (location.pathname.startsWith('/analytics')) {
-      breadcrumbs.push({
-        label: 'Analytics',
-        path: ROUTES.ANALYTICS,
-        isActive: true,
-      });
+      breadcrumbs.push({ label: 'Analytics', path: ROUTES.ANALYTICS, isActive: true });
     } else if (location.pathname.startsWith('/settings')) {
-      breadcrumbs.push({
-        label: 'Settings',
-        path: ROUTES.SETTINGS,
-        isActive: true,
-      });
+      breadcrumbs.push({ label: 'Settings', path: ROUTES.SETTINGS, isActive: true });
     }
 
     return breadcrumbs;
@@ -116,27 +61,18 @@ export function Breadcrumb() {
   const breadcrumbs = generateBreadcrumbs();
   const contextualActions = getContextualActions();
 
-  if (breadcrumbs.length <= 1) {
-    return null; // Don't show breadcrumbs if we're just on Dashboard
-  }
+  if (breadcrumbs.length <= 1) return null;
 
   return (
-    <div className="hidden md:flex items-center gap-4">
-      <nav className="flex items-center gap-2 text-sm">
+    <div className="sc-breadcrumb">
+      <nav className="sc-breadcrumb__nav">
         {breadcrumbs.map((crumb, index) => (
-          <div key={index} className="flex items-center gap-2">
-            {index > 0 && <ChevronRight className="w-4 h-4 text-text-muted" />}
+          <div key={index} className="sc-breadcrumb__item">
+            {index > 0 && <ChevronRight className="sc-breadcrumb__sep" />}
             {crumb.path && !crumb.isActive ? (
-              <Link
-                to={crumb.path}
-                className="text-text-secondary hover:text-white transition-colors"
-              >
-                {crumb.label}
-              </Link>
+              <Link to={crumb.path} className="sc-breadcrumb__link">{crumb.label}</Link>
             ) : (
-              <span
-                className={cn(crumb.isActive ? 'text-white font-medium' : 'text-text-secondary')}
-              >
+              <span className={cn('sc-breadcrumb__text', crumb.isActive && 'sc-breadcrumb__text--active')}>
                 {crumb.label}
               </span>
             )}
@@ -144,20 +80,13 @@ export function Breadcrumb() {
         ))}
       </nav>
 
-      {/* Contextual Actions */}
       {contextualActions.length > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="sc-breadcrumb__actions">
           {contextualActions.map((action, index) => (
-            <Button
-              key={index}
-              variant="outline"
-              size="sm"
-              onClick={action.onClick}
-              className="h-7 px-2 text-xs border-white/20 hover:bg-white/5"
-            >
-              <Plus className="w-3 h-3 mr-1" />
+            <button key={index} className="sc-breadcrumb__action" onClick={action.onClick}>
+              <Plus className="sc-breadcrumb__action-icon" />
               {action.label}
-            </Button>
+            </button>
           ))}
         </div>
       )}

@@ -1057,3 +1057,211 @@
   border-color: rgba(0, 0, 0, 0.07);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }
+
+/* ==========================================================================
+   Sealed Containment Overrides — SC tokens for key surfaces
+   ========================================================================== */
+
+/* Cards */
+.registry-card {
+  background: var(--panel, #0e1318) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+.registry-card:hover {
+  border-color: var(--steel-light, #4a565f) !important;
+}
+
+.registry-list-card {
+  background: var(--panel, #0e1318) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+.registry-list-card:hover {
+  border-color: var(--steel-light, #4a565f) !important;
+}
+
+/* Sidebar */
+.registry-sidebar {
+  background: var(--panel, #0e1318) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+.registry-sidebar-header {
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+/* Search input */
+.registry-search-input input {
+  background: var(--panel-raised, #131922) !important;
+  border-color: var(--steel, #2a3138) !important;
+  color: var(--text, #eef2f0) !important;
+}
+
+.registry-search-input input:focus {
+  border-color: var(--steel-light, #4a565f) !important;
+  box-shadow: 0 0 0 1px var(--steel-light, #4a565f) inset !important;
+}
+
+.registry-search-input input::placeholder {
+  color: var(--text-faint, #4a5358) !important;
+}
+
+/* Controls bar */
+.registry-controls {
+  background: var(--panel, #0e1318) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+/* View toggle */
+.registry-view-toggle {
+  background: var(--panel-raised, #131922) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+.registry-view-btn {
+  color: var(--text-faint, #4a5358) !important;
+}
+
+.registry-view-btn.active {
+  background: var(--panel, #0e1318) !important;
+  color: var(--text, #eef2f0) !important;
+}
+
+/* Category items */
+.registry-cat-item {
+  color: var(--text-dim, #7c8a8a) !important;
+}
+
+.registry-cat-item:hover {
+  background: var(--panel-raised, #131922) !important;
+  color: var(--text, #eef2f0) !important;
+}
+
+.registry-cat-item.active {
+  background: var(--panel-raised, #131922) !important;
+  color: var(--text, #eef2f0) !important;
+  border-color: var(--status-ok, #8fffd0) !important;
+}
+
+/* Skeleton */
+.registry-skeleton-card {
+  background: linear-gradient(90deg, var(--panel-raised, #131922) 0%, var(--panel-edge, #1c242b) 50%, var(--panel-raised, #131922) 100%) !important;
+  background-size: 200% 100% !important;
+  animation: registry-shimmer 1.5s infinite !important;
+}
+
+@keyframes registry-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* Empty state */
+.registry-empty-state {
+  background: var(--panel, #0e1318) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+/* Filter chips */
+.registry-filter-chip {
+  background: var(--panel-raised, #131922) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+  color: var(--text-dim, #7c8a8a) !important;
+}
+
+/* Auth banner */
+.registry-auth-banner {
+  background: rgba(232, 196, 104, 0.06) !important;
+  border-color: rgba(232, 196, 104, 0.3) !important;
+}
+
+/* Stats bar */
+.registry-stats-bar {
+  background: var(--panel, #0e1318) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+.registry-stat-value {
+  color: var(--text, #eef2f0) !important;
+}
+
+.registry-stat-label {
+  color: var(--text-faint, #4a5358) !important;
+}
+
+/* Hero */
+.registry-hero {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 122, 61, 0.15) 0%, transparent 60%),
+    var(--bg, #0a0d11) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+}
+
+.registry-hero-title {
+  color: var(--text, #eef2f0) !important;
+}
+
+/* Label pill */
+.registry-label-pill {
+  background: var(--panel-raised, #131922) !important;
+  border-color: var(--panel-edge, #1c242b) !important;
+  color: var(--text-dim, #7c8a8a) !important;
+}
+
+/* Live badge */
+.registry-live-badge {
+  background: rgba(143, 255, 208, 0.06) !important;
+  border-color: rgba(143, 255, 208, 0.3) !important;
+  color: var(--status-ok, #8fffd0) !important;
+}
+
+/* Reliability badges */
+.registry-reliability-high { color: var(--status-ok, #8fffd0) !important; }
+.registry-reliability-mid { color: var(--status-pending, #e8c468) !important; }
+.registry-reliability-low { color: var(--status-revoked, #ff6b6b) !important; }
+
+/* Price badge */
+.registry-price-badge {
+  background: rgba(255, 122, 61, 0.06) !important;
+  border-color: rgba(255, 122, 61, 0.3) !important;
+  color: var(--accent, #ff7a3d) !important;
+}
+
+/* Deploy button */
+.btn-deploy {
+  background: linear-gradient(180deg, #ffffff, #d8dee2) !important;
+  color: var(--text-on-light, #0a0d11) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.4) inset, 0 6px 16px rgba(0,0,0,0.35) !important;
+}
+
+.btn-deploy:hover {
+  box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 8px 20px rgba(0,0,0,0.4) !important;
+}
+
+/* Try button */
+.btn-try {
+  background: transparent !important;
+  border-color: var(--steel, #2a3138) !important;
+  color: var(--text, #eef2f0) !important;
+}
+
+.btn-try:hover {
+  border-color: var(--steel-light, #4a565f) !important;
+}
+
+/* Card action buttons */
+.card-action-btn {
+  border-color: var(--steel, #2a3138) !important;
+  color: var(--text-dim, #7c8a8a) !important;
+}
+
+.card-action-btn:hover {
+  border-color: var(--steel-light, #4a565f) !important;
+  color: var(--text, #eef2f0) !important;
+}
+
+/* Section padding */
+.section-padding {
+  padding: var(--space-7, 48px) 0 !important;
+}
+
+@media (max-width: 480px) {
+  .section-padding { padding: var(--space-5, 24px) 0 !important; }
+}

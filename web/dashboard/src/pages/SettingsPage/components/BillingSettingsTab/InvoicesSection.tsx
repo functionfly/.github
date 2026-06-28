@@ -2,6 +2,7 @@ import type { Invoice } from '@/api/billing';
 import { getInvoicesErrorMessage } from '@/api/billing';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Chamber, CornerBrace, FrameButton, StatusPill } from '@/components/sc';
 import { CreditCard, Download } from 'lucide-react';
 
 interface InvoicesSectionProps {
@@ -20,14 +21,9 @@ export function InvoicesSection({
   formatDate,
 }: InvoicesSectionProps) {
   return (
-    <div
-      className="rounded-lg p-5"
-      style={{
-        background: 'var(--panel)',
-        border: '1px solid var(--panel-edge)',
-        boxShadow: 'var(--shadow-chamber)',
-      }}
-    >
+    <Chamber>
+      <CornerBrace position="tl" />
+      <CornerBrace position="br" />
       <div className="mb-4">
         <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
           Invoices
@@ -52,9 +48,7 @@ export function InvoicesSection({
               border: '1px solid rgba(232, 196, 104, 0.3)',
             }}
           >
-            <span className="w-5 h-5 shrink-0" style={{ color: 'var(--status-pending)' }}>
-              ⚠️
-            </span>
+            <StatusPill status="pending" label="Error" />
             <p className="text-sm" style={{ color: 'var(--status-pending)' }}>
               {getInvoicesErrorMessage(invoicesError)}
             </p>
@@ -95,24 +89,20 @@ export function InvoicesSection({
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge
-                    variant={invoice.status === 'paid' ? 'default' : 'secondary'}
-                    className={invoice.status === 'paid' ? 'ff-badge-success' : ''}
-                  >
-                    {invoice.status}
-                  </Badge>
+                  <StatusPill
+                    status={invoice.status === 'paid' ? 'live' : 'pending'}
+                    label={invoice.status}
+                  />
                   {invoice.invoice_pdf || invoice.hosted_invoice_url ? (
-                    <Button variant="ghost" size="sm" asChild style={{ color: 'var(--text-dim)' }}>
+                    <FrameButton size="sm" iconLeft={<Download className="w-4 h-4" />}>
                       <a
                         href={invoice.invoice_pdf || invoice.hosted_invoice_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1"
                       >
-                        <Download className="w-4 h-4" />
                         Download
                       </a>
-                    </Button>
+                    </FrameButton>
                   ) : invoice.status === 'paid' ? (
                     <span
                       className="text-xs"
@@ -128,6 +118,6 @@ export function InvoicesSection({
           </div>
         )}
       </div>
-    </div>
+    </Chamber>
   );
 }

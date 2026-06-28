@@ -8,10 +8,11 @@ import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { functionsApi } from '@/api/functions';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { 
-  Sparkles, Code2, Wand2, Loader2, Save, Play, Copy, Check, Edit3, RotateCcw, Wand, History, 
-  ChevronLeft, ChevronRight, GitBranch, Undo2, ExternalLink, FileCode2, Brain, Coins, 
-  Activity, BarChart3, Shield, MessageSquare, FileEdit, PlusCircle, AlertTriangle, 
+import { usePageTitle } from '@/hooks';
+import {
+  Sparkles, Code2, Wand2, Loader2, Save, Play, Copy, Check, Edit3, RotateCcw, Wand, History,
+  ChevronLeft, ChevronRight, GitBranch, Undo2, ExternalLink, FileCode2, Brain, Coins,
+  Activity, BarChart3, Shield, MessageSquare, FileEdit, PlusCircle, AlertTriangle,
   CheckCircle2, XCircle, Zap, Clock, Cpu, Settings2, Info, MoreVertical, Trash2,
   Download, Upload, RefreshCw, Eye, EyeOff, ArrowLeftRight, Maximize2, Minimize2
 } from 'lucide-react';
@@ -52,6 +53,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  PageGrid, Chamber, CornerBrace, TrustSeal,
+  SealedButton, FrameButton, StatusPill, AnnotationTag,
+} from '@/components/containment';
 
 import './styles.css';
 
@@ -400,6 +405,7 @@ export function AIComposerPage() {
   const queryClient = useQueryClient();
   const { theme } = useTheme();
   const monacoTheme = theme === 'light' ? 'vs' : 'vs-dark';
+  usePageTitle('AI Composer');
 
   const [description, setDescription] = useState('');
   const [runtime, setRuntime] = useState('python');
@@ -975,6 +981,7 @@ export function AIComposerPage() {
 
   return (
     <div className="composer-container p-6 space-y-6">
+      <PageGrid />
       {/* Header */}
       <div className="composer-header">
         <div className="flex items-center gap-4">

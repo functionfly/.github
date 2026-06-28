@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { CodePasteModal } from '../components/CodePaste';
 import { useNavigate } from 'react-router-dom';
+import { PageGrid } from '@/components/containment';
 import './PasteCodePage.css';
 
 export function PasteCodePage() {
@@ -19,6 +19,7 @@ export function PasteCodePage() {
 
   return (
     <div className="paste-code-page">
+      <PageGrid />
       <CodePasteModal
         isOpen={isModalOpen}
         onClose={handleClose}

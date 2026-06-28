@@ -169,11 +169,14 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                 </Tooltip>
               )}
 
-              {/* Logo */}
+              {/* Logo — hide on desktop in dashboard layout because the sidebar already shows it */}
               {isAuthenticated ? (
                 <Link
                   to="/dashboard"
-                  className="shrink-0 mr-4 md:mr-6"
+                  className={cn(
+                    'shrink-0 mr-4 md:mr-6',
+                    variant === 'dashboard' && 'lg:hidden'
+                  )}
                   aria-label="FunctionFly home"
                 >
                   <Logo />
@@ -181,7 +184,10 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               ) : (
                 <a
                   href={marketingHomeUrl}
-                  className="shrink-0 mr-4 md:mr-6"
+                  className={cn(
+                    'shrink-0 mr-4 md:mr-6',
+                    variant === 'dashboard' && 'lg:hidden'
+                  )}
                   aria-label="FunctionFly home"
                 >
                   <Logo />

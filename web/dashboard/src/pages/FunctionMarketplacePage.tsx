@@ -2,17 +2,19 @@ import { BrowseFunctionsView } from '@/components/registry/BrowseFunctionsView';
 import { MetaTags } from '@/components/seo/MetaTags';
 import { useWebVitals } from '@/hooks/useWebVitals';
 import { PublicAnalytics } from '@/components/common/PublicAnalytics';
+import { usePageTitle } from '@/hooks';
+import { PageGrid } from '@/components/containment';
 
 export function FunctionMarketplacePage() {
-  // Monitor Core Web Vitals
+  usePageTitle('Discover Functions');
+
   useWebVitals((metrics) => {
-    // Optional: Send to your analytics service
     console.log('Web Vitals:', metrics);
   });
 
   return (
-    <div className="aviation-marketplace min-h-screen flex flex-col">
-      {/* SEO Meta Tags */}
+    <div className="min-h-screen flex flex-col">
+      <PageGrid />
       <MetaTags
         title="Discover Functions | FunctionFly"
         description="Discover and deploy serverless functions. Browse the registry, deploy instantly, or try live in the playground."
@@ -20,10 +22,7 @@ export function FunctionMarketplacePage() {
         url={`${window.location.origin}/dashboard`}
         type="website"
       />
-
-      {/* Public Analytics (Hotjar for user behavior) */}
       <PublicAnalytics />
-
       <BrowseFunctionsView variant="dashboard" />
     </div>
   );

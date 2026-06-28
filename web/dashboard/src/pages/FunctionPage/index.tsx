@@ -28,6 +28,7 @@ import {
   ChevronRight,
   Clock,
   FileJson,
+  Layers,
   Package,
   Play,
   Shield,
@@ -57,6 +58,7 @@ import { TrustDashboardWidget } from '@/components/trust/TrustDashboardWidget';
 import { TrustHistory } from '@/components/trust/TrustHistory';
 import { ActivityFeed } from '@/components/common/ActivityFeed';
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
+import { TraceList } from '@/components/atlas';
 import type { TrustHistoryDataPoint } from '@/components/trust/TrustHistory';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import {
@@ -310,6 +312,7 @@ export default function FunctionPage() {
     { id: 'fp-trust', label: 'Trust' },
     { id: 'fp-activity', label: 'Activity' },
     { id: 'fp-execution', label: 'Execution' },
+    { id: 'fp-traces', label: 'Traces' },
     { id: 'fp-versions', label: 'Versions' },
     { id: 'fp-readme', label: 'README' },
     { id: 'fp-reviews', label: 'Reviews' },
@@ -659,6 +662,20 @@ export default function FunctionPage() {
                   />
                 </motion.div>
               )}
+
+              <motion.div
+                id="fp-traces"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="function-page-section function-page-section--delayed-3"
+              >
+                <div className="flex items-center gap-2 mb-4">
+                  <Layers className="h-6 w-6 text-brand-500" />
+                  <h2 className="text-2xl font-bold">Execution Traces</h2>
+                </div>
+                <TraceList functionFilter={{ author: functionInfo.author, name: functionInfo.name }} />
+              </motion.div>
 
               {versionsData?.versions && versionsData.versions.length > 0 && (
                 <motion.div

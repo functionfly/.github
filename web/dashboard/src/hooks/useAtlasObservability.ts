@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { tokenVault } from '../utils/token-vault';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -41,7 +42,8 @@ interface Config {
 }
 
 async function fetchJSON(url: string, options?: RequestInit) {
-  const token = localStorage.getItem('token');
+  await tokenVault.initialize();
+  const token = await tokenVault.getAccessToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -171,41 +173,46 @@ export function useAtlasStream(runId: string | undefined, options?: { autoRefres
       return;
     }
 
-    const wsUrl = `${API_BASE.replace('http', 'ws')}/v1/agent-observability/runs/${runId}/stream`;
-    const token = localStorage.getItem('token');
+    let ws: WebSocket | null = null;
 
-    const headers: Record<string, string> = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
+    (async () => {
+      const wsUrl = `${API_BASE.replace('http', 'ws')}/v1/agent-observability/runs/${runId}/stream`;
+      await tokenVault.initialize();
+      const token = await tokenVault.getAccessToken();
 
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    ws.onopen = () => {
-      setConnected(true);
-      if (token) {
-        ws.send(JSON.stringify({ headers }));
-      }
-    };
+      ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setEvents((prev) => [...prev, data]);
-      } catch (e) {
-        console.error('Failed to parse WebSocket message:', e);
-      }
-    };
+      ws.onopen = () => {
+        setConnected(true);
+        if (token) {
+          ws.send(JSON.stringify({ headers }));
+        }
+      };
 
-    ws.onclose = () => {
-      setConnected(false);
-    };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setEvents((prev) => [...prev, data]);
+        } catch (e) {
+          console.error('Failed to parse WebSocket message:', e);
+        }
+      };
 
-    ws.onerror = () => {
-      setConnected(false);
-    };
+      ws.onclose = () => {
+        setConnected(false);
+      };
+
+      ws.onerror = () => {
+        setConnected(false);
+      };
+    })();
 
     return () => {
-      ws.close();
+      if (ws) ws.close();
     };
   }, [runId, reconnectKey]);
 

@@ -57,17 +57,26 @@
    Tabs Container - SC Design
    ---------------------------------------- */
 .settings-page-tabs {
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  padding: 0 !important;
-  position: relative;
+  display: flex;
   gap: 0;
-  border-bottom: 1px solid var(--panel-edge) !important;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  position: relative;
+  border-bottom: 1px solid var(--panel-edge);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--steel) transparent;
 }
 
-.settings-page-tabs::before {
-  display: none;
+.settings-page-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.settings-page-tabs::-webkit-scrollbar-thumb {
+  background: var(--steel);
+  border-radius: 2px;
 }
 
 /* ----------------------------------------
@@ -75,33 +84,38 @@
    ---------------------------------------- */
 .settings-page-tab {
   position: relative;
-  border-radius: 0 !important;
-  color: var(--text-dim) !important;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: 0;
+  color: var(--text-dim);
   transition: all var(--duration-fast) var(--ease-out);
   padding: var(--space-3) var(--space-4);
   margin-bottom: -1px;
-  border: none !important;
-  border-bottom: 2px solid transparent !important;
-  background: transparent !important;
-  box-shadow: none !important;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  box-shadow: none;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .settings-page-tab:hover {
-  color: var(--text) !important;
-  background: transparent !important;
+  color: var(--text);
+  background: transparent;
 }
 
 .settings-page-tab[data-state='active'] {
-  color: var(--status-ok) !important;
-  background: transparent !important;
-  border-bottom: 2px solid var(--status-ok) !important;
+  color: var(--status-ok);
+  background: transparent;
+  border-bottom: 2px solid var(--status-ok);
 }
 
 .settings-page-tab[data-state='active'] svg {
-  color: var(--status-ok) !important;
+  color: var(--status-ok);
 }
 
 /* ----------------------------------------

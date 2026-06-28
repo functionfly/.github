@@ -1,17 +1,21 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import type { Subscription } from '@/api/billing';
-import { PLANS } from '@/lib/constants';
+import {
+  Chamber,
+  CornerBrace,
+  FrameButton,
+  SealedButton,
+  StatusPill,
+} from '@/components/containment';
 import { usePlan } from '@/hooks/usePlan';
-import { Check, Zap, ArrowUp, ArrowDown } from 'lucide-react';
+import { PLANS } from '@/lib/constants';
+import { ArrowDown, ArrowUp, Check, Zap } from 'lucide-react';
 
 interface PlansTabProps {
   subscription: Subscription | null;
   onOpenPortal: () => void;
 }
 
-const PLAN_ORDER = ['starter', 'professional', 'enterprise'] as const;
+const PLAN_ORDER = ['starter', 'professional', 'enterprise', 'microvm_enterprise'] as const;
 type PlanId = (typeof PLAN_ORDER)[number];
 
 export function PlansTab({ subscription, onOpenPortal }: PlansTabProps) {
@@ -22,156 +26,324 @@ export function PlansTab({ subscription, onOpenPortal }: PlansTabProps) {
   const currentTier = PLAN_ORDER.indexOf(currentPlan as PlanId) ?? 0;
 
   return (
-    <div className="space-y-6">
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <Zap className="h-5 w-5 text-brand-500" />
+    <div
+      className="sc-billing-fade-in"
+      style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}
+    >
+      {/* Current Plan */}
+      <Chamber nested>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <div
+          className="sc-billing-card-header"
+          style={{
+            margin: 'calc(-1 * var(--space-5))',
+            marginBottom: 'var(--space-5)',
+            padding: 'var(--space-4) var(--space-5)',
+          }}
+        >
+          <div className="sc-billing-card-title">
+            <Zap style={{ width: 14, height: 14 }} />
             Your Plan
-          </CardTitle>
-          <CardDescription>Manage your subscription plan</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 rounded-lg bg-gradient-to-r from-brand-500/10 to-brand-600/10 border border-border-default">
-            <div>
-              <h3 className="font-semibold font-display text-text-primary capitalize">
-                {displayName} Plan
-              </h3>
-              {currentPlanData && (
-                <p className="text-sm text-text-secondary mt-1">
-                  ${currentPlanData.price}/month
-                  {currentPlanData.annualDiscount > 0 && (
-                    <span className="ml-2 text-green-400">
-                      {Math.round(currentPlanData.annualDiscount * 100)}% annual discount
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
-            {subscription?.status === 'active' && (
-              <Badge variant="success" className="ff-badge-success">
-                Active
-              </Badge>
+          </div>
+          <div className="sc-billing-card-description">Manage your subscription plan</div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 'var(--space-4)',
+            borderRadius: 'var(--radius)',
+            background: 'linear-gradient(135deg, rgba(143, 255, 208, 0.05), var(--panel))',
+            border: '1px solid var(--panel-edge)',
+          }}
+        >
+          <div>
+            <h3
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 18,
+                fontWeight: 600,
+                color: 'var(--text)',
+                textTransform: 'capitalize',
+              }}
+            >
+              {displayName} Plan
+            </h3>
+            {currentPlanData && (
+              <p style={{ fontSize: 13, color: 'var(--text-dim)', marginTop: 'var(--space-1)' }}>
+                ${currentPlanData.price}/month
+                {currentPlanData.annualDiscount > 0 && (
+                  <span style={{ marginLeft: 'var(--space-2)', color: 'var(--status-ok)' }}>
+                    {Math.round(currentPlanData.annualDiscount * 100)}% annual discount
+                  </span>
+                )}
+              </p>
             )}
           </div>
+          {subscription?.status === 'active' && <StatusPill status="live" label="Active" />}
+        </div>
 
-          <div className="mt-4">
-            <h4 className="text-sm font-medium text-text-muted mb-3">Plan Limits</h4>
-            <div className="grid grid-cols-2 gap-3">
-              {currentPlanData?.limits && Object.entries(currentPlanData.limits).map(([key, value]) => {
+        <div style={{ marginTop: 'var(--space-5)' }}>
+          <h4
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              fontWeight: 500,
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              color: 'var(--text-faint)',
+              marginBottom: 'var(--space-3)',
+            }}
+          >
+            Plan Limits
+          </h4>
+          <div className="sc-billing-grid sc-billing-grid-2">
+            {currentPlanData?.limits &&
+              Object.entries(currentPlanData.limits).map(([key, value]) => {
                 if (typeof value !== 'number') return null;
                 return (
                   <div
                     key={key}
-                    className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-default"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: 'var(--space-3)',
+                      borderRadius: 'var(--radius)',
+                      background: 'var(--panel)',
+                      border: '1px solid var(--panel-edge)',
+                    }}
                   >
-                    <span className="text-xs text-text-muted capitalize">
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 11,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        color: 'var(--text-faint)',
+                      }}
+                    >
                       {key.replace(/([A-Z])/g, ' $1').trim()}
                     </span>
-                    <span className="font-mono text-sm font-medium">
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 13,
+                        fontWeight: 500,
+                        color: 'var(--text)',
+                      }}
+                    >
                       {value === Infinity ? 'Unlimited' : value.toLocaleString()}
                     </span>
                   </div>
                 );
               })}
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Chamber>
 
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display">Available Plans</CardTitle>
-          <CardDescription>Compare plans and upgrade or downgrade</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            {PLAN_ORDER.map((planId) => {
-              const planData = PLANS[planId.toUpperCase() as keyof typeof PLANS];
-              if (!planData) return null;
+      {/* Available Plans */}
+      <Chamber nested>
+        <div
+          className="sc-billing-card-header"
+          style={{
+            margin: 'calc(-1 * var(--space-5))',
+            marginBottom: 'var(--space-5)',
+            padding: 'var(--space-4) var(--space-5)',
+          }}
+        >
+          <div className="sc-billing-card-title">Available Plans</div>
+          <div className="sc-billing-card-description">Compare plans and upgrade or downgrade</div>
+        </div>
 
-              const planTier = PLAN_ORDER.indexOf(planId);
-              const isCurrent = currentPlan?.toLowerCase() === planId;
-              const isUpgrade = planTier > currentTier;
-              const isDowngrade = planTier < currentTier && planTier > 0;
+        <div className="sc-billing-grid sc-billing-grid-3">
+          {PLAN_ORDER.map((planId) => {
+            const planData = PLANS[planId.toUpperCase() as keyof typeof PLANS];
+            if (!planData) return null;
 
-              return (
+            const planTier = PLAN_ORDER.indexOf(planId);
+            const isCurrent = currentPlan?.toLowerCase() === planId;
+            const isUpgrade = planTier > currentTier;
+            const isDowngrade = planTier < currentTier && planTier > 0;
+
+            return (
+              <div
+                key={planId}
+                style={{
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius)',
+                  border: `1px solid ${isCurrent ? 'var(--status-ok)' : 'var(--panel-edge)'}`,
+                  background: isCurrent ? 'rgba(143, 255, 208, 0.05)' : 'var(--panel)',
+                  transition: 'border-color var(--duration-fast) var(--ease-out)',
+                }}
+              >
                 <div
-                  key={planId}
-                  className={`p-4 rounded-lg border transition-colors ${
-                    isCurrent
-                      ? 'border-brand-500 bg-brand-500/10'
-                      : 'border-border-default bg-bg-secondary hover:border-border-strong'
-                  }`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 'var(--space-3)',
+                  }}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-semibold capitalize">{planData.name}</h4>
-                    {isCurrent && (
-                      <Badge variant="success" className="ff-badge-success">
-                        Current
-                      </Badge>
-                    )}
-                  </div>
-
-                  <div className="mb-4">
-                    <span className="text-2xl font-bold">${planData.price}</span>
-                    <span className="text-text-muted">/month</span>
-                  </div>
-
-                  <div className="space-y-2 mb-4">
-                    {planData.limits && Object.entries(planData.limits).slice(0, 4).map(([key, value]) => {
-                      if (typeof value !== 'number') return null;
-                      return (
-                        <div key={key} className="flex items-center gap-2 text-xs text-text-secondary">
-                          <Check className="h-3 w-3 text-green-400" />
-                          <span className="capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}:{' '}
-                            {value === Infinity ? 'Unlimited' : value.toLocaleString()}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs mb-4">
-                    {isUpgrade && (
-                      <span className="flex items-center gap-1 text-green-400">
-                        <ArrowUp className="h-3 w-3" />
-                        Upgrade available
-                      </span>
-                    )}
-                    {isDowngrade && (
-                      <span className="flex items-center gap-1 text-amber-400">
-                        <ArrowDown className="h-3 w-3" />
-                        Downgrade available
-                      </span>
-                    )}
-                  </div>
-
-                  <Button
-                    variant={isCurrent ? 'outline' : 'default'}
-                    className="w-full"
-                    disabled={isCurrent}
-                    onClick={() => (window.location.href = `/pricing?tab=functions&plan=${planId}`)}
+                  <h4
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 16,
+                      fontWeight: 600,
+                      color: 'var(--text)',
+                      textTransform: 'capitalize',
+                    }}
                   >
-                    {isCurrent ? 'Current Plan' : isUpgrade ? 'Upgrade' : 'Change Plan'}
-                  </Button>
+                    {planData.name}
+                  </h4>
+                  {isCurrent && <StatusPill status="live" label="Current" />}
                 </div>
-              );
-            })}
-          </div>
 
-          <div className="mt-6 flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-default">
-            <div>
-              <p className="font-medium">Need more?</p>
-              <p className="text-sm text-text-muted">Contact sales for custom pricing and features</p>
-            </div>
-            <Button variant="outline" className="border-border-strong" onClick={onOpenPortal}>
-              Contact Sales
-            </Button>
+                <div style={{ marginBottom: 'var(--space-4)' }}>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 28,
+                      fontWeight: 700,
+                      color: 'var(--text)',
+                    }}
+                  >
+                    ${planData.price}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--text-dim)' }}>/month</span>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 'var(--space-2)',
+                    marginBottom: 'var(--space-4)',
+                  }}
+                >
+                  {planData.limits &&
+                    Object.entries(planData.limits)
+                      .slice(0, 4)
+                      .map(([key, value]) => {
+                        if (typeof value !== 'number') return null;
+                        return (
+                          <div
+                            key={key}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 'var(--space-2)',
+                              fontSize: 12,
+                              color: 'var(--text-dim)',
+                            }}
+                          >
+                            <Check
+                              style={{
+                                width: 12,
+                                height: 12,
+                                color: 'var(--status-ok)',
+                                flexShrink: 0,
+                              }}
+                            />
+                            <span style={{ textTransform: 'capitalize' }}>
+                              {key.replace(/([A-Z])/g, ' $1').trim()}:{' '}
+                              {value === Infinity ? 'Unlimited' : value.toLocaleString()}
+                            </span>
+                          </div>
+                        );
+                      })}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--space-2)',
+                    fontSize: 12,
+                    marginBottom: 'var(--space-4)',
+                  }}
+                >
+                  {isUpgrade && (
+                    <span
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: 'var(--status-ok)',
+                      }}
+                    >
+                      <ArrowUp style={{ width: 12, height: 12 }} />
+                      Upgrade available
+                    </span>
+                  )}
+                  {isDowngrade && (
+                    <span
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        color: 'var(--status-pending)',
+                      }}
+                    >
+                      <ArrowDown style={{ width: 12, height: 12 }} />
+                      Downgrade available
+                    </span>
+                  )}
+                </div>
+
+                {isCurrent ? (
+                  <FrameButton disabled style={{ width: '100%' }}>
+                    Current Plan
+                  </FrameButton>
+                ) : (
+                  <SealedButton
+                    style={{ width: '100%' }}
+                    onClick={() => {
+                      window.location.href = `/pricing?tab=functions&plan=${planId}`;
+                    }}
+                  >
+                    {isUpgrade ? 'Upgrade' : 'Change Plan'}
+                  </SealedButton>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="sc-billing-divider" />
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: 'var(--space-4)',
+            borderRadius: 'var(--radius)',
+            background: 'var(--panel)',
+            border: '1px solid var(--panel-edge)',
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 14,
+                fontWeight: 500,
+                color: 'var(--text)',
+              }}
+            >
+              Need more?
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
+              Contact sales for custom pricing and features
+            </p>
           </div>
-        </CardContent>
-      </Card>
+          <FrameButton onClick={onOpenPortal}>Contact Sales</FrameButton>
+        </div>
+      </Chamber>
     </div>
   );
 }

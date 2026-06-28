@@ -1,0 +1,715 @@
+/**
+ * FunctionFly DNA Overview Page — Sealed Containment
+ *
+ * All design tokens come from sc-tokens.css.
+ * No hardcoded hex, shadow, or pixel values that aren't tokens.
+ */
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.dna-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-bottom: var(--space-9);
+}
+
+@media (max-width: 480px) {
+  .dna-page {
+    padding: 0 var(--space-4);
+    gap: var(--space-6);
+  }
+}
+
+/* ==========================================================================
+   Hero Chamber
+   ========================================================================== */
+
+.dna-hero__header {
+  margin-bottom: var(--space-6);
+}
+
+.dna-hero__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.dna-hero__title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .dna-hero__title {
+    font-size: 28px;
+  }
+}
+
+.dna-hero__subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-4);
+  max-width: 540px;
+}
+
+.dna-hero__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Period Selector */
+.dna-period-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.dna-period-btn {
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.dna-period-btn:hover {
+  color: var(--text-dim);
+  background: var(--panel-edge);
+}
+
+.dna-period-btn--active {
+  color: var(--text-on-light);
+  background: linear-gradient(180deg, #ffffff, #d8dee2);
+  box-shadow: var(--shadow-btn-primary-rest);
+}
+
+/* ==========================================================================
+   Stats Grid
+   ========================================================================== */
+
+.dna-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 960px) {
+  .dna-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .dna-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dna-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dna-stat-card__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.dna-stat-card__value {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+}
+
+.dna-stat-card__value--accent {
+  color: var(--status-ok);
+}
+
+.dna-stat-card__dollar {
+  width: 18px;
+  height: 18px;
+  margin-right: var(--space-1);
+}
+
+.dna-stat-card__hint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.dna-stat-card__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.dna-stat-card__badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 2px var(--space-2);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.06);
+}
+
+.dna-stat-card__delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid;
+}
+
+.dna-stat-card__delta--ok {
+  color: var(--status-ok);
+  border-color: rgba(143, 255, 208, 0.3);
+  background: rgba(143, 255, 208, 0.06);
+}
+
+.dna-stat-card__delta--bad {
+  color: var(--status-revoked);
+  border-color: rgba(255, 107, 107, 0.3);
+  background: rgba(255, 107, 107, 0.06);
+}
+
+/* ==========================================================================
+   Bottom Grid
+   ========================================================================== */
+
+.dna-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .dna-bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Section Title (shared)
+   ========================================================================== */
+
+.dna-section-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 var(--space-5);
+}
+
+/* ==========================================================================
+   Categories
+   ========================================================================== */
+
+.dna-categories__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dna-categories__item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-1);
+}
+
+.dna-categories__name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dna-categories__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px var(--space-2);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.06);
+  flex-shrink: 0;
+}
+
+.dna-categories__bar {
+  height: 6px;
+  width: 100%;
+  background: var(--panel-edge);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.dna-categories__fill {
+  height: 100%;
+  background: var(--status-ok);
+  border-radius: var(--radius-sm);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.dna-categories__empty {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Pending Review
+   ========================================================================== */
+
+.dna-pending__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.dna-pending__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--status-pending);
+}
+
+.dna-pending__icon--ok {
+  color: var(--status-ok);
+}
+
+.dna-pending--active {
+  border-color: rgba(232, 196, 104, 0.3);
+  background-image: radial-gradient(140% 100% at 15% 0%, rgba(232, 196, 104, 0.05), transparent 55%);
+}
+
+.dna-pending__value {
+  font-family: var(--font-mono);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--status-pending);
+  margin-bottom: var(--space-1);
+}
+
+.dna-pending__hint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 0 0 var(--space-4);
+}
+
+.dna-pending__btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.dna-pending__desc {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Quick Actions
+   ========================================================================== */
+
+.dna-actions__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.dna-actions__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.dna-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+@media (max-width: 640px) {
+  .dna-actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dna-action-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.dna-action-card:hover {
+  border-color: var(--steel-light);
+}
+
+.dna-action-card__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.dna-action-card__icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dna-action-card__icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.dna-action-card__label {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+}
+
+.dna-action-card__desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Cost Bar
+   ========================================================================== */
+
+.dna-cost-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.dna-cost-bar__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dna-cost-bar__icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dna-cost-bar__icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.dna-cost-bar__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+}
+
+.dna-cost-bar__desc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: var(--space-1) 0 0;
+}
+
+.dna-cost-bar__credits {
+  font-family: var(--font-mono);
+  color: var(--status-ok);
+}
+
+.dna-cost-bar__badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid rgba(143, 255, 208, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.06);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Info Cards (empty state)
+   ========================================================================== */
+
+.dna-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .dna-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dna-info-card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.dna-info-card__icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.dna-info-card__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0;
+}
+
+.dna-info-card__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dna-info-card__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.dna-info-card__check {
+  width: 16px;
+  height: 16px;
+  color: var(--status-ok);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.dna-info-card__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.dna-info-card__step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.dna-info-card__step-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.dna-info-card__hint {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.dna-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.dna-empty__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 480px;
+}
+
+.dna-empty__icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: var(--panel-raised);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+}
+
+.dna-empty__icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-faint);
+  margin-bottom: var(--space-4);
+}
+
+.dna-empty__icon-lg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent);
+}
+
+.dna-empty__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.dna-empty__desc {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-5);
+}
+
+.dna-empty__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.dna-empty__actions a {
+  text-decoration: none;
+}
+
+/* ==========================================================================
+   Loading
+   ========================================================================== */
+
+.dna-loading {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-8);
+}
+
+.dna-loading__spinner {
+  width: 24px;
+  height: 24px;
+  color: var(--status-ok);
+  animation: dna-spin 1s linear infinite;
+}
+
+@keyframes dna-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

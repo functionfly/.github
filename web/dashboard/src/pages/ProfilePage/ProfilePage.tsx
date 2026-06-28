@@ -1,16 +1,3 @@
-/**
- * ProfilePage Component
- *
- * A comprehensive, feature-rich profile page for FunctionFly users.
- * Includes tabs for Overview, Functions, Activity, Analytics, About, and Settings.
- *
- * @example
- * <ProfilePage username="johndoe" isOwnProfile={false} />
- *
- * @example
- * <ProfilePage username="currentuser" isOwnProfile={true} />
- */
-
 import {
   usersApi,
   type MeResponse,
@@ -23,7 +10,6 @@ import {
 import { Navbar } from '@/components/common/Navbar';
 import { AvatarPicker } from '@/components/profile/AvatarPicker';
 import { EditProfileModal } from '@/components/profile/EditProfileModal';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserNotFoundView } from '@/components/ui/UserNotFoundView';
 import { Footer } from '@/pages/LandingPage/components';
 import { useAuthStore } from '@/stores/authStore';
@@ -38,7 +24,6 @@ import type {
 } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { motion } from 'framer-motion';
 import { Activity, BarChart3, BookOpen, Package, Settings, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
@@ -48,6 +33,14 @@ import { registryApi } from '@/api/registry';
 import { usePlan } from '@/hooks/usePlan';
 import { usePublicBadges } from '@/hooks/useCertification';
 import { SettingsContent } from '@/pages/SettingsPage/SettingsContent';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  AnnotationTag,
+  StatusPill,
+} from '@/components/containment';
 import { ProfileHeader } from './components/ProfileHeader';
 import {
   ProfileHeaderSkeleton,
@@ -62,9 +55,7 @@ import { FunctionsTab } from './components/tabs/FunctionsTab';
 import { OverviewTab } from './components/tabs/OverviewTab';
 import { transformToUserProfile } from './transformers';
 
-// ============================================================================
-// Main Profile Page Component
-// ============================================================================
+import './profile.css';
 
 export interface ProfilePageProps {
   username?: string;
@@ -117,16 +108,12 @@ export function ProfilePage({
     queryKey: ['enhanced-profile', username, isOwnProfile],
     queryFn: async () => {
       if (!username) throw new Error('Username is required');
-
-      // Use authenticated endpoint for own profile, public endpoint for others
       const profileApiCall = isOwnProfile ? usersApi.getMe() : usersApi.getPublicProfile(username);
-
       const [profileResponse, functionsResponse] = await Promise.all([
         profileApiCall,
         registryApi.getFunctions({ author: username, limit: 100 }),
       ]);
 
-      // Convert MeResponse to PublicUserProfile-like format for transformToUserProfile
       let profileData: any;
       if (isOwnProfile) {
         const meResponse = profileResponse as MeResponse;
@@ -148,9 +135,9 @@ export function ProfilePage({
           stats: meResponse.stats,
           publishedFunctions: [],
           profileNumber: meResponse.profileNumber,
-          isOnline: meResponse.isOnline ?? true, // Own profile defaults to online
+          isOnline: meResponse.isOnline ?? true,
           lastActive: meResponse.lastActive,
-          role: meResponse.role, // Pass admin role for badge display
+          role: meResponse.role,
         };
       } else {
         profileData = profileResponse;
@@ -173,12 +160,7 @@ export function ProfilePage({
         const status = (err as { response?: { status?: number } })?.response?.status;
         if (status === 404) {
           return {
-            executionStats: {
-              totalExecutions: 0,
-              totalUniqueUsers: 0,
-              functionCount: 0,
-              executionHistory: [],
-            },
+            executionStats: { totalExecutions: 0, totalUniqueUsers: 0, functionCount: 0, executionHistory: [] },
             popularFunctions: [],
             geographicStats: { regions: [] },
             deviceStats: { devices: [] },
@@ -193,30 +175,18 @@ export function ProfilePage({
 
   const analytics: ProfileAnalytics | undefined = analyticsResponse
     ? {
-        executionHistory:
-          analyticsResponse.executionStats?.executionHistory?.map((h) => ({
-            date: h.date,
-            executions: Number(h.executions) || 0,
-            uniqueUsers: Number(h.uniqueUsers) || 0,
-          })) || [],
-        popularFunctions:
-          analyticsResponse.popularFunctions?.map((f) => ({
-            functionId: f.id,
-            name: f.name,
-            executions: Number(f.executionCount) || 0,
-            percentage: 0,
-          })) || [],
-        geographicDistribution:
-          analyticsResponse.geographicStats?.regions?.map((r) => ({
-            country: r.region,
-            executions: Number(r.executions) || 0,
-            percentage: 0,
-          })) || [],
-        deviceStats:
-          analyticsResponse.deviceStats?.devices?.map((d) => ({
-            device: d.device,
-            percentage: 0,
-          })) || [],
+        executionHistory: analyticsResponse.executionStats?.executionHistory?.map((h) => ({
+          date: h.date,
+          executions: Number(h.executions) || 0,
+          uniqueUsers: Number(h.uniqueUsers) || 0,
+        })) || [],
+        popularFunctions: analyticsResponse.popularFunctions?.map((f) => ({
+          functionId: f.id, name: f.name, executions: Number(f.executionCount) || 0, percentage: 0,
+        })) || [],
+        geographicDistribution: analyticsResponse.geographicStats?.regions?.map((r) => ({
+          country: r.region, executions: Number(r.executions) || 0, percentage: 0,
+        })) || [],
+        deviceStats: analyticsResponse.deviceStats?.devices?.map((d) => ({ device: d.device, percentage: 0 })) || [],
         browserStats: [],
       }
     : undefined;
@@ -225,13 +195,10 @@ export function ProfilePage({
     queryKey: ['profile-achievements', username],
     queryFn: async () => {
       if (!username) throw new Error('Username is required');
-      try {
-        return await usersApi.getUserAchievements(username);
-      } catch (err: unknown) {
+      try { return await usersApi.getUserAchievements(username); }
+      catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 404) {
-          return { achievements: [], totalPoints: 0, available: 0 };
-        }
+        if (status === 404) return { achievements: [], totalPoints: 0, available: 0 };
         throw err;
       }
     },
@@ -239,7 +206,8 @@ export function ProfilePage({
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: certificatesResponse } = useQuery({ queryKey: ['profile-certifications', username],
+  const { data: certificatesResponse } = useQuery({
+    queryKey: ['profile-certifications', username],
     queryFn: async () => {
       if (!username) throw new Error('Username is required');
       try {
@@ -261,13 +229,10 @@ export function ProfilePage({
     queryKey: ['profile-activity', username],
     queryFn: async () => {
       if (!username) throw new Error('Username is required');
-      try {
-        return await usersApi.getUserActivity(username, { limit: 20 });
-      } catch (err: unknown) {
+      try { return await usersApi.getUserActivity(username, { limit: 20 }); }
+      catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 404) {
-          return { activities: [], limit: 20, offset: 0, total: 0 };
-        }
+        if (status === 404) return { activities: [], limit: 20, offset: 0, total: 0 };
         throw err;
       }
     },
@@ -279,13 +244,10 @@ export function ProfilePage({
     queryKey: ['profile-contributions', username],
     queryFn: async () => {
       if (!username) throw new Error('Username is required');
-      try {
-        return await usersApi.getUserContributions(username);
-      } catch (err: unknown) {
+      try { return await usersApi.getUserContributions(username); }
+      catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 404) {
-          return undefined;
-        }
+        if (status === 404) return undefined;
         throw err;
       }
     },
@@ -297,13 +259,10 @@ export function ProfilePage({
     queryKey: ['profile-skills', username],
     queryFn: async () => {
       if (!username) throw new Error('Username is required');
-      try {
-        return await usersApi.getUserSkills(username);
-      } catch (err: unknown) {
+      try { return await usersApi.getUserSkills(username); }
+      catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 404) {
-          return { skills: [] };
-        }
+        if (status === 404) return { skills: [] };
         throw err;
       }
     },
@@ -319,19 +278,8 @@ export function ProfilePage({
       icon: a.icon || 'Award',
       color: a.color || 'blue',
       unlockedAt: a.earnedAt,
-      tier: a.isCompleted
-        ? a.points >= 500
-          ? 'platinum'
-          : a.points >= 200
-            ? 'gold'
-            : a.points >= 100
-              ? 'silver'
-              : 'bronze'
-        : 'bronze',
-      progress: {
-        current: a.progress,
-        target: 100,
-      },
+      tier: a.isCompleted ? a.points >= 500 ? 'platinum' : a.points >= 200 ? 'gold' : a.points >= 100 ? 'silver' : 'bronze' : 'bronze',
+      progress: { current: a.progress, target: 100 },
     })) || [];
 
   const typeMap: Record<string, ActivityType> = {
@@ -354,7 +302,6 @@ export function ProfilePage({
       metadata: a.metadata,
     })) || [];
 
-  // Prepend "Joined FunctionFly" activity with join date (synthetic, from profile)
   const joinedActivity: UserActivity | null = profile
     ? {
         id: `joined-${profile.id}`,
@@ -364,9 +311,7 @@ export function ProfilePage({
         timestamp: profile.createdAt ?? new Date().toISOString(),
       }
     : null;
-  const activityData: UserActivity[] = joinedActivity
-    ? [joinedActivity, ...rawActivity]
-    : rawActivity;
+  const activityData: UserActivity[] = joinedActivity ? [joinedActivity, ...rawActivity] : rawActivity;
 
   const skillsData: Skill[] =
     skillsResponse?.skills?.map((s) => ({
@@ -395,9 +340,7 @@ export function ProfilePage({
                 contributionStreak: {
                   current: contributionResponse.currentStreak ?? 0,
                   longest: contributionResponse.longestStreak ?? 0,
-                  lastContribution:
-                    contributionResponse.lastContributionDate ??
-                    profile.stats.contributionStreak.lastContribution,
+                  lastContribution: contributionResponse.lastContributionDate ?? profile.stats.contributionStreak.lastContribution,
                 },
               }
             : {}),
@@ -418,57 +361,38 @@ export function ProfilePage({
   });
 
   const tabs: { value: ProfileTab; label: string; icon: React.ReactNode }[] = [
-    { value: 'overview', label: 'Overview', icon: <User className="w-4 h-4" /> },
-    {
-      value: 'functions',
-      label: 'Functions',
-      icon: <Package className="w-4 h-4" />,
-    },
-    {
-      value: 'activity',
-      label: 'Activity',
-      icon: <Activity className="w-4 h-4" />,
-    },
-    {
-      value: 'analytics',
-      label: 'Analytics',
-      icon: <BarChart3 className="w-4 h-4" />,
-    },
-    {
-      value: 'about',
-      label: 'About',
-      icon: <BookOpen className="w-4 h-4" />,
-    },
+    { value: 'overview', label: 'Overview', icon: <User className="profile-tab-icon" /> },
+    { value: 'functions', label: 'Functions', icon: <Package className="profile-tab-icon" /> },
+    { value: 'activity', label: 'Activity', icon: <Activity className="profile-tab-icon" /> },
+    { value: 'analytics', label: 'Analytics', icon: <BarChart3 className="profile-tab-icon" /> },
+    { value: 'about', label: 'About', icon: <BookOpen className="profile-tab-icon" /> },
   ];
 
   if (isOwnProfile) {
-    tabs.push({
-      value: 'settings',
-      label: 'Settings',
-      icon: <Settings className="w-4 h-4" />,
-    });
+    tabs.push({ value: 'settings', label: 'Settings', icon: <Settings className="profile-tab-icon" /> });
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="profile-page">
+      <PageGrid />
       <Navbar variant="dashboard" />
 
-      <main className="pt-16 pb-16">
-        <div className="max-w-7xl mx-auto">
+      <main className="profile-main">
+        <div className="profile-container">
           {isLoading && (
-            <div className="bg-card rounded-xl border border-border-subtle">
+            <Chamber className="profile-loading-chamber">
               <ProfileHeaderSkeleton />
-              <div className="px-4 md:px-8 py-4">
+              <div className="profile-loading-stats">
                 <StatsOverviewSkeleton />
               </div>
-              <div className="px-4 md:px-8 pb-8">
+              <div className="profile-loading-tabs">
                 <TabContentSkeleton />
               </div>
-            </div>
+            </Chamber>
           )}
 
           {isError && (
-            <div className="flex flex-col items-center justify-center py-24 px-4">
+            <div className="profile-error">
               <UserNotFoundView
                 username={username}
                 is404={(error as Error)?.message?.includes('404')}
@@ -478,12 +402,11 @@ export function ProfilePage({
           )}
 
           {profile && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="bg-card rounded-xl border border-border-subtle overflow-hidden"
-            >
+            <Chamber className="profile-chamber">
+              <CornerBrace position="tl" />
+              <CornerBrace position="br" />
+              <AnnotationTag primary={`USER ${profile.profileNumber ? `#${profile.profileNumber}` : ''}`} secondary={profile.username} position="top-right" />
+
               <ProfileHeader
                 profile={profile}
                 isOwnProfile={isOwnProfile}
@@ -499,70 +422,57 @@ export function ProfilePage({
 
               <StatsOverview stats={mergedProfile!.stats} />
 
-              <div className="border-t border-border-subtle mt-4">
-                <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                  <div className="px-4 md:px-8 overflow-x-auto">
-                    <TabsList className="bg-transparent border-b border-border-subtle rounded-none w-full justify-start h-auto p-0">
-                      {tabs.map((tab) => (
-                        <TabsTrigger
-                          key={tab.value}
-                          value={tab.value}
-                          className="rounded-none border-b-2 border-transparent data-[state=active]:border-brand-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none px-4 py-3 gap-2"
-                        >
-                          {tab.icon}
-                          {tab.label}
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
-                  </div>
+              {/* Tabs */}
+              <div className="profile-tabs-wrapper">
+                <div className="profile-tabs">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.value}
+                      className={`profile-tab ${activeTab === tab.value ? 'profile-tab--active' : ''}`}
+                      onClick={() => handleTabChange(tab.value)}
+                    >
+                      {tab.icon}
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
 
-                  <TabsContent value="overview" className="m-0">
-                    <OverviewTab profile={mergedProfile!} />
-                  </TabsContent>
-                  <TabsContent value="functions" className="m-0">
-                    <FunctionsTab profile={mergedProfile!} />
-                  </TabsContent>
-                  <TabsContent value="activity" className="m-0">
-                    <ActivityTab profile={mergedProfile!} />
-                  </TabsContent>
-                  <TabsContent value="analytics" className="m-0">
-                    {analytics ? (
-                      <AnalyticsTab analytics={analytics} />
-                    ) : (
-                      <div className="px-4 md:px-8 py-16 text-center">
-                        <BarChart3 className="w-12 h-12 mx-auto text-text-muted mb-4" />
-                        <p className="text-text-muted">Loading analytics...</p>
+                <div className="profile-tab-content">
+                  {activeTab === 'overview' && <OverviewTab profile={mergedProfile!} />}
+                  {activeTab === 'functions' && <FunctionsTab profile={mergedProfile!} />}
+                  {activeTab === 'activity' && <ActivityTab profile={mergedProfile!} />}
+                  {activeTab === 'analytics' && (
+                    analytics ? <AnalyticsTab analytics={analytics} /> : (
+                      <div className="profile-tab-empty">
+                        <BarChart3 className="profile-tab-empty__icon" />
+                        <p>Loading analytics...</p>
                       </div>
-                    )}
-                  </TabsContent>
-                  <TabsContent value="about" className="m-0">
+                    )
+                  )}
+                  {activeTab === 'about' && (
                     <AboutTab
                       profile={mergedProfile!}
                       isOwnProfile={isOwnProfile}
                       userSkills={skillsResponse?.skills}
                       onAddSkill={async (skill) => {
                         await usersApi.addSkill(skill as import('@/api/users').AddSkillRequest);
-                        queryClient.invalidateQueries({
-                          queryKey: ['profile-skills', username],
-                        });
+                        queryClient.invalidateQueries({ queryKey: ['profile-skills', username] });
                       }}
                       onRemoveSkill={async (skillId) => {
                         await usersApi.removeSkill(skillId);
-                        queryClient.invalidateQueries({
-                          queryKey: ['profile-skills', username],
-                        });
+                        queryClient.invalidateQueries({ queryKey: ['profile-skills', username] });
                       }}
                       isSkillsLoading={skillsResponse === undefined}
                     />
-                  </TabsContent>
-                  <TabsContent value="settings" className="m-0">
-                    <div className="px-4 md:px-8 pb-8">
+                  )}
+                  {activeTab === 'settings' && (
+                    <div className="profile-settings">
                       <SettingsContent showHeader={false} profile={mergedProfile ?? undefined} />
                     </div>
-                  </TabsContent>
-                </Tabs>
+                  )}
+                </div>
               </div>
-            </motion.div>
+            </Chamber>
           )}
         </div>
       </main>

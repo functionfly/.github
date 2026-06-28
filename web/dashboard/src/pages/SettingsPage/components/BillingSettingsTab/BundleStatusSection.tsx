@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { useProvisioningStatus } from '@/hooks/useProvisioning';
+import { Chamber, CornerBrace, FrameButton, SealedButton, StatusPill } from '@/components/sc';
 import { AlertCircle, ArrowRight, CheckCircle, ExternalLink, Loader2, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -21,30 +22,20 @@ export function BundleStatusSection() {
 
   if (isLoading) {
     return (
-      <div
-        className="rounded-lg p-5 flex items-center justify-center"
-        style={{
-          background: 'var(--panel)',
-          border: '1px solid var(--panel-edge)',
-          boxShadow: 'var(--shadow-chamber)',
-        }}
-      >
-        <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'var(--text-dim)' }} />
-      </div>
+      <Chamber>
+        <div className="flex items-center justify-center p-5">
+          <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'var(--text-dim)' }} />
+        </div>
+      </Chamber>
     );
   }
 
   // No bundle provisioned
   if (!statusData || !('bundle_slug' in statusData)) {
     return (
-      <div
-        className="rounded-lg p-5"
-        style={{
-          background: 'var(--panel)',
-          border: '1px solid var(--panel-edge)',
-          boxShadow: 'var(--shadow-chamber)',
-        }}
-      >
+      <Chamber>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
         <div className="mb-4">
           <h3
             className="font-display flex items-center gap-2 text-lg font-semibold"
@@ -66,20 +57,11 @@ export function BundleStatusSection() {
               No bundle active. Get Auth, Payments, Email, Analytics — provisioned in seconds.
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => navigate('/bundles')}
-            style={{
-              background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
-              color: 'var(--text-on-light)',
-              boxShadow: 'var(--shadow-btn-primary-rest)',
-            }}
-          >
+          <SealedButton size="sm" onClick={() => navigate('/bundles')} iconRight={<ArrowRight className="h-4 w-4" />}>
             View Bundles
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          </SealedButton>
         </div>
-      </div>
+      </Chamber>
     );
   }
 
@@ -97,14 +79,9 @@ export function BundleStatusSection() {
     : 0;
 
   return (
-    <div
-      className="rounded-lg p-5"
-      style={{
-        background: 'var(--panel)',
-        border: '1px solid var(--panel-edge)',
-        boxShadow: 'var(--shadow-chamber)',
-      }}
-    >
+    <Chamber>
+      <CornerBrace position="tl" />
+      <CornerBrace position="br" />
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3
@@ -120,31 +97,13 @@ export function BundleStatusSection() {
         </div>
         <div className="flex items-center gap-2">
           {isActive && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-              style={{ background: 'rgba(143, 255, 208, 0.06)', color: 'var(--status-ok)' }}
-            >
-              <CheckCircle className="h-3.5 w-3.5" />
-              Active
-            </span>
+            <StatusPill status="live" label="Active" />
           )}
           {isProvisioning && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-              style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent)' }}
-            >
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Provisioning
-            </span>
+            <StatusPill status="pending" label="Provisioning" />
           )}
           {hasFailures && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium"
-              style={{ background: 'rgba(232, 196, 104, 0.06)', color: 'var(--status-pending)' }}
-            >
-              <AlertCircle className="h-3.5 w-3.5" />
-              Partial
-            </span>
+            <StatusPill status="revoked" label="Partial" />
           )}
         </div>
       </div>
@@ -192,35 +151,19 @@ export function BundleStatusSection() {
 
         {/* Actions */}
         <div className="flex items-center gap-3 pt-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => navigate(`/bundles/provisioning?bundle=${bundle_slug}`)}
-            style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
-          >
+          <FrameButton size="sm" onClick={() => navigate(`/bundles/provisioning?bundle=${bundle_slug}`)}>
             View Details
-          </Button>
+          </FrameButton>
           {hasFailures && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate(`/bundles/provisioning?bundle=${bundle_slug}&retry=true`)}
-              style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
-            >
+            <FrameButton size="sm" onClick={() => navigate(`/bundles/provisioning?bundle=${bundle_slug}&retry=true`)}>
               Retry Failed
-            </Button>
+            </FrameButton>
           )}
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => navigate('/bundles')}
-            style={{ color: 'var(--text-dim)' }}
-          >
-            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+          <FrameButton size="sm" onClick={() => navigate('/bundles')} iconLeft={<ExternalLink className="h-3.5 w-3.5" />}>
             Change Bundle
-          </Button>
+          </FrameButton>
         </div>
       </div>
-    </div>
+    </Chamber>
   );
 }

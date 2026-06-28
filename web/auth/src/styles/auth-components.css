@@ -7,8 +7,8 @@
  * - utilities: Helper classes and animations
  */
 
-/* Import theme variables */
-@import './velocity-theme.css';
+/* Import SC design tokens */
+@import './sc-tokens.css';
 
 /* ==========================================================================
    Layer: Base

@@ -111,6 +111,7 @@ export const ROUTES = {
   AGENT_MEMORIES: '/agent-memories',
   AGENT_OBSERVABILITY: '/agent-observability',
   CONVERSATIONS: '/conversations',
+  FOUNDERS: '/founders',
   STATE: '/state',
   // Time Machine routes
   TIME_MACHINE: '/time-machine',
@@ -628,6 +629,150 @@ export const PLANS = {
       },
     },
   },
+  ENTERPRISE_SLA: {
+    id: 'enterprise_sla',
+    name: 'Enterprise SLA',
+    price: 499,
+    priceCents: 49900,
+    priceAnnualCents: 499000,
+    priceId: import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE_SLA || 'price_enterprise_sla_placeholder',
+    priceIdAnnual:
+      import.meta.env.VITE_STRIPE_PRICE_ENTERPRISE_SLA_ANNUAL ||
+      'price_enterprise_sla_annual_placeholder',
+    description: 'Enterprise with enhanced SLA guarantees (99.999% uptime)',
+    features: [
+      'Everything in Enterprise',
+      '99.999% uptime SLA (five nines)',
+      '15-minute response time guarantee',
+      'Automatic SLA credits for violations',
+      'Priority incident handling',
+      'Dedicated SLA engineer',
+      'Real-time uptime dashboard',
+      'Custom incident thresholds',
+      'Quarterly SLA review meetings',
+      'Unlimited functions',
+      'All providers',
+      'Unlimited AI calls/month',
+      'Unlimited agents & concurrency',
+      'Unlimited state writes',
+      '1-year log retention',
+      'Dedicated infrastructure',
+      '24/7 support',
+      'Volume discounts',
+      'On-premise deployment',
+      'Unlimited Time Machine + incident insurance',
+      'Unlimited State Fabric + all add-ons',
+    ],
+    overageRate: 0, // No overage (unlimited)
+    annualDiscount: 0.17, // 17% off
+    comingSoon: false,
+    limits: {
+      functions: Infinity,
+      providers: Infinity,
+      requests: Infinity,
+      customDomains: Infinity,
+      stateFabrics: Infinity,
+      agents: -1, // Unlimited
+      apps: -1, // Unlimited
+      secrets: Infinity,
+      tokensPerSecret: Infinity,
+      apiKeyBudgets: true,
+      perKeyCostAttribution: true,
+      highValueKeySeparation: true,
+      aiCallsPerMonth: -1, // Unlimited
+      agentConcurrency: -1, // Unlimited
+      agentCallsPerMinute: -1, // Unlimited
+      replayWindowHours: Infinity,
+      maxExecutionsPerReplay: Infinity,
+      maxConcurrentReplays: Infinity,
+      microVMs: {
+        enabled: true,
+        maxConcurrentVMs: 100,
+        defaultMemoryMB: 512,
+        maxMemoryMB: 2048,
+        defaultVCPU: 2,
+        maxVCPU: 4,
+        defaultTimeoutMs: 30000,
+        maxTimeoutMs: 300000,
+      },
+      sla: {
+        targetPercent: 99.999,
+        maxDowntimeMinutesPerMonth: 0.43,
+        responseTimeMinutes: 15,
+        acknowledgmentMinutes: 5,
+        creditPercent: 50,
+        premium: true,
+      },
+    },
+  },
+  MICROVM_ENTERPRISE: {
+    id: 'microvm_enterprise',
+    name: 'MicroVM Enterprise',
+    price: 399,
+    priceCents: 39900,
+    priceAnnualCents: 399000,
+    priceId:
+      import.meta.env.VITE_STRIPE_PRICE_MICROVM_ENTERPRISE ||
+      'price_microvm_enterprise_placeholder',
+    priceIdAnnual:
+      import.meta.env.VITE_STRIPE_PRICE_MICROVM_ENTERPRISE_ANNUAL ||
+      'price_microvm_enterprise_annual_placeholder',
+    description: 'High-scale MicroVM workloads with enhanced compute and memory',
+    features: [
+      'Everything in Enterprise',
+      '500 concurrent MicroVMs (5x standard)',
+      'Up to 8GB memory per MicroVM (4x standard)',
+      'Up to 16 vCPU per MicroVM (4x standard)',
+      '60s default timeout (2x standard)',
+      '10min max timeout',
+      'Included compute budget ($50/month)',
+      'Discounted overage rates',
+      '99.99% SLA',
+      'Dedicated support',
+      'Custom integrations',
+      'Per-API-key budgets & alerts',
+      'Volume discounts',
+      'On-premise deployment',
+      '500 agents included',
+      '50K state writes/hour',
+      '90-day Time Machine + live reconciliation + audit certificates',
+      'Unlimited State Fabric + all add-ons',
+    ],
+    overageRate: 3, // $0.03 per 1000 calls (discounted)
+    annualDiscount: 0.17, // 17% off
+    limits: {
+      functions: Infinity,
+      providers: Infinity,
+      requests: Infinity,
+      customDomains: Infinity,
+      sla: '99.99%',
+      stateFabrics: Infinity,
+      agents: 500,
+      apps: -1, // Unlimited
+      secrets: 1000000,
+      tokensPerSecret: 1000,
+      apiKeyBudgets: true,
+      perKeyCostAttribution: true,
+      highValueKeySeparation: true,
+      aiCallsPerMonth: 5000000,
+      agentConcurrency: 500,
+      agentCallsPerMinute: 2000,
+      replayWindowHours: 2160,
+      maxExecutionsPerReplay: 100000,
+      maxConcurrentReplays: 10,
+      microVMs: {
+        enabled: true,
+        maxConcurrentVMs: 200,
+        defaultMemoryMB: 1024,
+        maxMemoryMB: 8192,
+        defaultVCPU: 4,
+        maxVCPU: 16,
+        defaultTimeoutMs: 60000,
+        maxTimeoutMs: 600000,
+        includedBudgetCents: 5000, // $50 included compute budget
+      },
+    },
+  },
 } as const;
 
 // ============================================================================
@@ -902,7 +1047,8 @@ export const STATE_FABRIC_ADD_ONS = {
     price: 99,
     priceCents: 9900,
     period: '/mo',
-    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_MULTI_REGION || 'price_sf_multi_region_placeholder',
+    priceId:
+      import.meta.env.VITE_STRIPE_PRICE_SF_MULTI_REGION || 'price_sf_multi_region_placeholder',
   },
   AI_RECALL: {
     id: 'sf_ai_recall',
@@ -920,7 +1066,9 @@ export const STATE_FABRIC_ADD_ONS = {
     price: 79,
     priceCents: 7900,
     period: '/mo',
-    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_INSIGHTS || 'price_sf_advanced_insights_placeholder',
+    priceId:
+      import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_INSIGHTS ||
+      'price_sf_advanced_insights_placeholder',
   },
   ADVANCED_SECURITY: {
     id: 'sf_advanced_security',
@@ -929,7 +1077,9 @@ export const STATE_FABRIC_ADD_ONS = {
     price: 99,
     priceCents: 9900,
     period: '/mo',
-    priceId: import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_SECURITY || 'price_sf_advanced_security_placeholder',
+    priceId:
+      import.meta.env.VITE_STRIPE_PRICE_SF_ADVANCED_SECURITY ||
+      'price_sf_advanced_security_placeholder',
   },
 } as const;
 

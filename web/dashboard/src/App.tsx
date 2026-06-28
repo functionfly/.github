@@ -41,10 +41,11 @@ import { toast } from 'sonner';
 // Helper to create lazy loaded page components with named exports
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const lazyPage = (importFn: () => Promise<any>, exportName: string) =>
-  lazy(() => importFn().then((m) => ({ default: m[exportName] })));
+  lazy(() => importFn().then((m) => ({ default: m[exportName] ?? m.default })));
 
 // Route components - all lazy-loaded for code splitting
 const AgentAnalyticsPage = lazyPage(() => import('@/pages/AgentAnalyticsPage'), 'AgentAnalyticsPage');
+const AgentObservabilityPage = lazyPage(() => import('@/pages/AgentObservabilityPage'), 'AgentObservabilityPage');
 const AgentCreatePage = lazyPage(() => import('@/pages/AgentCreatePage'), 'AgentCreatePage');
 const AgentDetailPage = lazyPage(() => import('@/pages/AgentDetailPage'), 'AgentDetailPage');
 const AgentEditPage = lazyPage(() => import('@/pages/AgentEditPage'), 'AgentEditPage');
@@ -136,6 +137,7 @@ const NewReplayPage = lazyPage(() => import('@/pages/TimeMachinePage/NewReplayPa
 const ReplayDetailPage = lazyPage(() => import('@/pages/TimeMachinePage/ReplayDetailPage'), 'ReplayDetailPage');
 const UserDashboardFunctionsPage = lazyPage(() => import('@/pages/UserDashboardFunctionsPage'), 'UserDashboardFunctionsPage');
 const UserDashboardSettingsPage = lazyPage(() => import('@/pages/UserDashboardSettingsPage'), 'UserDashboardSettingsPage') as React.ComponentType<{ initialTab?: string }>;
+const VaultPage = lazyPage(() => import('@/pages/VaultPage'), 'VaultPage');
 const VerifyPage = lazyPage(() => import('@/pages/VerifyPage'), 'VerifyPage');
 const WalletPage = lazyPage(() => import('@/pages/WalletPage'), 'WalletPage');
 const AdaptiveUXPage = lazyPage(() => import('@/pages/AdaptiveUXPage'), 'AdaptiveUXPage');
@@ -155,6 +157,7 @@ const StatusPage = lazyPage(() => import('@/pages/StatusPage'), 'StatusPage');
 const StudioPage = lazyPage(() => import('@/pages/StudioPage'), 'StudioPage');
 const UniversalRuntimePage = lazyPage(() => import('@/pages/UniversalRuntimePage'), 'UniversalRuntimePage');
 const UsagePage = lazyPage(() => import('@/pages/UsagePage'), 'UsagePage');
+const BillingHubPage = lazyPage(() => import('@/pages/BillingHubPage'), 'BillingHubPage');
 
 // Loading fallback for Suspense boundaries
 function PageLoader() {
@@ -635,6 +638,7 @@ function AppContent() {
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="mcp" element={<MCPCenterPage />} />
             <Route path="usage" element={<UsagePage />} />
+            <Route path="billing" element={<BillingHubPage />} />
             <Route path="state-fabric" element={<StateFabricPage />} />
             <Route path="state-fabric/new" element={<StateFabricDetailPage />} />
             <Route path="state-fabric/:id" element={<StateFabricDetailPage />} />
@@ -666,6 +670,7 @@ function AppContent() {
             <Route path="dashboard/api-keys" element={<APIKeysPage />} />
             <Route path="dashboard/api-keys/:keyId" element={<APIKeyDetailPage />} />
             <Route path="secrets" element={<SecretsPage />} />
+            <Route path="vault" element={<VaultPage />} />
             <Route path="connectors/callback" element={<ConnectorsCallbackPage />} />
             <Route path="connectors" element={<Navigate to="/settings#integrations" replace />} />
             <Route path="brain" element={<BrainPage />} />
@@ -694,6 +699,7 @@ function AppContent() {
             <Route path="agents/:id/edit" element={<AgentEditPage />} />
             <Route path="agents/:id/wallet" element={<AgentWalletPage />} />
             <Route path="agents/:id/analytics" element={<AgentAnalyticsPage />} />
+            <Route path="agent-observability" element={<AgentObservabilityPage />} />
             <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
             <Route path="marketplace" element={<AgentsMarketplacePage />} />
             <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />

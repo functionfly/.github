@@ -1,13 +1,16 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
+import {
+  Chamber,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  Input,
+} from '@/components/containment';
 import type { WalletInfo, WalletTransaction } from '@/api/billing';
 import { getWalletErrorMessage } from '@/api/billing';
-import { Wallet, Plus, Loader2, ArrowUpRight, ArrowDownRight, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownRight, RefreshCw, AlertCircle } from 'lucide-react';
 
 interface WalletTabProps {
   walletInfo: WalletInfo | null;
@@ -60,170 +63,135 @@ export function WalletTab({
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-amber-500" />
+    <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      {/* Credits */}
+      <Chamber nested>
+        <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
+          <div className="sc-billing-card-title">
+            <Wallet style={{ width: 14, height: 14, color: 'var(--status-pending)' }} />
             Registry Credits
-          </CardTitle>
-          <CardDescription>
-            Prepaid balance for registry publish fees and platform charges
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <div className="grid grid-cols-3 gap-4">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
+          </div>
+          <div className="sc-billing-card-description">Prepaid balance for registry publish fees and platform charges</div>
+        </div>
+
+        {isLoading ? (
+          <div className="sc-billing-grid sc-billing-grid-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{ height: 64, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="sc-billing-info sc-billing-info-warning">
+            <AlertCircle style={{ width: 18, height: 18 }} />
+            <div className="sc-billing-info-content">
+              <div className="sc-billing-info-text">{getWalletErrorMessage(error)}</div>
             </div>
-          ) : error ? (
-            <div className="flex items-center gap-2 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <span className="w-5 h-5 text-amber-500 shrink-0">⚠️</span>
-              <p className="text-amber-500 text-sm">{getWalletErrorMessage(error)}</p>
+          </div>
+        ) : (
+          <>
+            <GaugeStrip>
+              <Gauge data={{ value: formatUsd(walletInfo?.balance_usd ?? 0), label: 'Balance' }} isFirst />
+              <Gauge data={{ value: formatUsd(walletInfo?.lifetime_earnings_usd ?? 0), label: 'Lifetime Earned' }} />
+              <Gauge data={{ value: formatUsd(walletInfo?.lifetime_fees_usd ?? 0), label: 'Fees Paid' }} />
+            </GaugeStrip>
+
+            <div style={{ marginTop: 'var(--space-5)' }}>
+              <label style={{ display: 'block', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-faint)', marginBottom: 'var(--space-2)' }}>
+                Add funds (USD)
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+                {WALLET_TOP_UP_PRESETS.map((n) => (
+                  <FrameButton
+                    key={n}
+                    size="sm"
+                    onClick={() => setTopUpAmountInput(String(n))}
+                  >
+                    ${n}
+                  </FrameButton>
+                ))}
+              </div>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={topUpAmountInput}
+                onChange={(e) => setTopUpAmountInput(e.target.value)}
+                placeholder="25.00"
+                style={{ maxWidth: 200 }}
+              />
+              <p style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 'var(--space-2)' }}>
+                Minimum ${MIN_WALLET_TOP_UP_USD.toFixed(2)} · maximum ${MAX_WALLET_TOP_UP_USD.toLocaleString()} per top-up.
+              </p>
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-3 gap-4 rounded-lg bg-bg-secondary border border-border-default p-4">
-                <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wide">Balance</p>
-                  <p className="text-2xl font-bold font-mono text-amber-500">
-                    {formatUsd(walletInfo?.balance_usd ?? 0)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wide">Lifetime Earned</p>
-                  <p className="text-lg font-medium font-mono">
-                    {formatUsd(walletInfo?.lifetime_earnings_usd ?? 0)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-text-muted uppercase tracking-wide">Fees Paid</p>
-                  <p className="text-lg font-medium font-mono">
-                    {formatUsd(walletInfo?.lifetime_fees_usd ?? 0)}
-                  </p>
-                </div>
-              </div>
 
-              <div className="space-y-3">
-                <Label htmlFor="wallet-top-up-amount">Add funds (USD)</Label>
-                <div className="flex flex-wrap gap-2">
-                  {WALLET_TOP_UP_PRESETS.map((n) => (
-                    <Button
-                      key={n}
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="border-border-strong tabular-nums hover:border-brand-500 hover:bg-brand-500/10 hover:text-brand-400 transition-colors duration-150"
-                      onClick={() => setTopUpAmountInput(String(n))}
-                    >
-                      ${n}
-                    </Button>
-                  ))}
-                </div>
-                <Input
-                  id="wallet-top-up-amount"
-                  type="text"
-                  inputMode="decimal"
-                  autoComplete="transaction-amount"
-                  value={topUpAmountInput}
-                  onChange={(e) => setTopUpAmountInput(e.target.value)}
-                  placeholder="25.00"
-                  className="max-w-[200px]"
-                />
-                <p className="text-xs text-text-muted">
-                  Minimum ${MIN_WALLET_TOP_UP_USD.toFixed(2)} · maximum $
-                  {MAX_WALLET_TOP_UP_USD.toLocaleString()} per top-up.
-                </p>
-              </div>
+            <SealedButton
+              loading={topUpSubmitting}
+              disabled={!topUpAmountValid}
+              onClick={handleTopUpClick}
+              iconLeft={<Plus style={{ width: 14, height: 14 }} />}
+            >
+              Buy credits
+            </SealedButton>
+          </>
+        )}
+      </Chamber>
 
-              <Button
-                type="button"
-                className="ff-btn-velocity"
-                disabled={topUpSubmitting || !topUpAmountValid}
-                onClick={handleTopUpClick}
-              >
-                {topUpSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Redirecting to checkout…
-                  </>
-                ) : (
-                  <>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Buy credits
-                  </>
-                )}
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-brand-500" />
+      {/* Transaction History */}
+      <Chamber nested>
+        <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
+          <div className="sc-billing-card-title">
+            <RefreshCw style={{ width: 14, height: 14 }} />
             Transaction History
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {walletTransactions.length === 0 ? (
-            <div className="text-center py-8">
-              <RefreshCw className="h-12 w-12 text-text-muted mx-auto mb-3" />
-              <p className="text-text-muted">No transactions yet</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {walletTransactions.slice(0, 10).map((tx) => (
+          </div>
+        </div>
+
+        {walletTransactions.length === 0 ? (
+          <div className="empty-state" style={{ minHeight: 120, flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <RefreshCw style={{ width: 48, height: 48, color: 'var(--text-faint)' }} />
+            <p style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>No transactions yet</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+            {walletTransactions.slice(0, 10).map((tx) => {
+              const isCredit = tx.type === 'credit' || tx.type === 'top_up';
+              return (
                 <div
                   key={tx.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-bg-secondary border border-border-default"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 'var(--space-3)',
+                    borderRadius: 'var(--radius)',
+                    background: 'var(--panel)',
+                    border: '1px solid var(--panel-edge)',
+                  }}
                 >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        tx.type === 'credit' || tx.type === 'top_up'
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-red-500/20 text-red-400'
-                      }`}
-                    >
-                      {tx.type === 'credit' || tx.type === 'top_up' ? (
-                        <ArrowUpRight className="h-4 w-4" />
-                      ) : (
-                        <ArrowDownRight className="h-4 w-4" />
-                      )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 'var(--radius)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: isCredit ? 'rgba(143, 255, 208, 0.1)' : 'rgba(255, 107, 107, 0.1)',
+                      color: isCredit ? 'var(--status-ok)' : 'var(--status-revoked)',
+                    }}>
+                      {isCredit ? <ArrowUpRight style={{ width: 14, height: 14 }} /> : <ArrowDownRight style={{ width: 14, height: 14 }} />}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{tx.description}</p>
-                      <p className="text-xs text-text-muted">{formatDate(tx.timestamp)}</p>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{tx.description}</p>
+                      <p style={{ fontSize: 11, color: 'var(--text-dim)' }}>{formatDate(tx.timestamp)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`font-mono font-medium ${
-                        tx.type === 'credit' || tx.type === 'top_up'
-                          ? 'text-green-400'
-                          : 'text-red-400'
-                      }`}
-                    >
-                      {tx.type === 'credit' || tx.type === 'top_up' ? '+' : '-'}
-                      {formatUsd(tx.amount)}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: isCredit ? 'var(--status-ok)' : 'var(--status-revoked)' }}>
+                      {isCredit ? '+' : '-'}{formatUsd(tx.amount)}
                     </span>
-                    <Badge
-                      variant={tx.status === 'completed' ? 'success' : 'secondary'}
-                      className={tx.status === 'completed' ? 'ff-badge-success' : ''}
-                    >
-                      {tx.status}
-                    </Badge>
+                    <StatusPill status={tx.status === 'completed' ? 'live' : tx.status === 'pending' ? 'pending' : 'revoked'} label={tx.status} />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              );
+            })}
+          </div>
+        )}
+      </Chamber>
     </div>
   );
 }

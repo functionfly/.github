@@ -33,7 +33,7 @@ import { galleryFunctionPath, useGalleryFunction, useRelatedFunctions } from './
 import { useFunctionSource } from './useFunctionSource';
 import './gallery.css';
 
-const MonacoEditor = lazy(() => import('@monaco-editor/react'));
+const MonacoEditor = lazy(() => import('@monaco-editor/react').then((m) => ({ default: m.Editor as React.ComponentType<unknown> })));
 
 export default function GalleryFunctionPage() {
   const { author, name } = useParams<{ author: string; name: string }>();

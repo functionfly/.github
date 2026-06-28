@@ -1,13 +1,12 @@
 /* ==========================================================================
    FunctionFly™ Auth - Velocity Brand Palette
-   Jet exhaust flames at sunset altitude
    
-   Note: Core CSS variables imported from velocity-theme.css via BaseLayout.astro
+   Note: Core CSS variables from sc-tokens.css via BaseLayout.astro
    This file extends with auth-specific component utilities.
    ========================================================================== */
 
-/* Import shared theme variables */
-@import './velocity-theme.css';
+/* Import SC tokens */
+@import './sc-tokens.css';
 
 /* Primary CTA Button - Velocity Style (Legacy: prefer ff-btn--primary) */
 .auth-btn-primary {

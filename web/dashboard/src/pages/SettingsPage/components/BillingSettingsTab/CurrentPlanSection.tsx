@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { PaymentMethodManager } from '@/components/ui/payment-method-manager';
 import { SpendingSummaryWidget } from '@/components/ui/spending-summary-widget';
+import { Chamber, CornerBrace, FrameButton, SealedButton, StatusPill } from '@/components/sc';
 import { Zap } from 'lucide-react';
 
 interface CurrentPlanSectionProps {
@@ -67,12 +68,10 @@ export function CurrentPlanSection({
             {subscription.plan} Plan
           </h3>
           <div className="flex items-center gap-2 mt-1">
-            <Badge
-              variant={subscription.status === 'active' ? 'success' : 'secondary'}
-              className={subscription.status === 'active' ? 'ff-badge-success' : ''}
-            >
-              {subscription.status}
-            </Badge>
+            <StatusPill
+              status={subscription.status === 'active' ? 'live' : subscription.status === 'pending' ? 'pending' : 'revoked'}
+              label={subscription.status}
+            />
             {subscription.cancel_at_period_end && (
               <Badge
                 variant="outline"
@@ -83,9 +82,7 @@ export function CurrentPlanSection({
             )}
           </div>
         </div>
-        <Badge variant="success" className="ff-badge-primary font-semibold px-3 py-1">
-          Current
-        </Badge>
+        <StatusPill status="live" label="Current" />
       </div>
 
       {/* Trial Period Display */}
@@ -312,7 +309,7 @@ export function CurrentPlanSection({
                     <span className="font-medium" style={{ color: 'var(--text)' }}>
                       {plan.name}
                     </span>
-                    {plan.isCurrent && <Badge variant="success">Current</Badge>}
+                    {plan.isCurrent && <StatusPill status="live" label="Current" />}
                     {recommended && !plan.isCurrent && (
                       <Badge variant="secondary">Recommended</Badge>
                     )}

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useBillingHub } from './useBillingHub';
 import { OverviewTab } from './components/OverviewTab';
 import { PlansTab } from './components/PlansTab';
@@ -6,9 +7,14 @@ import { InvoicesTab } from './components/InvoicesTab';
 import { PaymentMethodsTab } from './components/PaymentMethodsTab';
 import { WalletTab } from './components/WalletTab';
 import { UsageTab } from './components/UsageTab';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Chamber,
+  CornerBrace,
+  PageGrid,
+  SealedButton,
+  FrameButton,
+  AnnotationTag,
+} from '@/components/containment';
 import {
   CreditCard,
   FileText,
@@ -18,6 +24,7 @@ import {
   BarChart3,
   Package,
 } from 'lucide-react';
+import '@/styles/sc-billing.css';
 
 type BillingTab = 'overview' | 'plans' | 'addons' | 'invoices' | 'payment' | 'wallet' | 'usage';
 
@@ -33,76 +40,89 @@ const TABS: { id: BillingTab; label: string; icon: typeof LayoutDashboard }[] = 
 
 function BillingHubSkeleton() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-64" />
+    <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <div style={{ height: 32, width: 192, background: 'var(--panel-raised)', borderRadius: 'var(--radius)' }} />
+          <div style={{ height: 16, width: 256, background: 'var(--panel-raised)', borderRadius: 'var(--radius)' }} />
         </div>
       </div>
-      <Skeleton className="h-10 w-full max-w-2xl" />
-      <div className="grid gap-6">
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
+      <div style={{ height: 40, width: '100%', maxWidth: 640, background: 'var(--panel-raised)', borderRadius: 'var(--radius)' }} />
+      <Chamber nested>
+        <div style={{ height: 192, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+      </Chamber>
+      <Chamber nested>
+        <div style={{ height: 192, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+      </Chamber>
     </div>
   );
 }
 
 export function BillingHubPage() {
   const { state, actions, isLoading, errors, projectedBilling, usageMetrics, planLimits } = useBillingHub();
+  const [activeTab, setActiveTab] = useState<BillingTab>('overview');
 
   const isInitialLoading = isLoading.subscription && !state.subscription;
 
   if (isInitialLoading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
+      <div className="sc-billing-page">
         <BillingHubSkeleton />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="sc-billing-page">
+      <PageGrid />
+
       {/* Page Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-text-primary">Billing Hub</h1>
-          <p className="text-text-secondary mt-1">
-            Manage your subscription, invoices, and payment methods
-          </p>
+      <div className="sc-billing-header">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
+          <div>
+            <h1 className="sc-billing-title">
+              <span className="icon-wrapper">
+                <CreditCard style={{ width: 18, height: 18, color: 'var(--bg)' }} />
+              </span>
+              Billing Hub
+            </h1>
+            <p className="sc-billing-subtitle">
+              Manage your subscription, invoices, and payment methods
+            </p>
+          </div>
+          <FrameButton
+            onClick={actions.openBillingPortal}
+            iconLeft={<CreditCard style={{ width: 14, height: 14 }} />}
+          >
+            Open Billing Portal
+          </FrameButton>
         </div>
-        <Button
-          variant="outline"
-          onClick={actions.openBillingPortal}
-          className="border-border-strong"
-        >
-          <CreditCard className="mr-2 h-4 w-4" />
-          Open Billing Portal
-        </Button>
       </div>
 
       {/* Tab Navigation */}
-      <Tabs defaultValue="overview" className="w-full">
-        <div className="overflow-x-auto pb-2">
-          <TabsList className="mb-6 grid w-full grid-cols-7 gap-1">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <TabsTrigger
-                  key={tab.id}
-                  value={tab.id}
-                  className="flex items-center gap-2 text-xs sm:text-sm"
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                </TabsTrigger>
-              );
-            })}
-          </TabsList>
-        </div>
+      <div className="sc-billing-tabs" role="tablist">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              className={`sc-billing-tab ${isActive ? '' : ''}`}
+              data-state={isActive ? 'active' : 'inactive'}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <Icon style={{ width: 14, height: 14 }} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        <TabsContent value="overview">
+      {/* Tab Content */}
+      <div style={{ paddingTop: 'var(--space-6)' }}>
+        {activeTab === 'overview' && (
           <OverviewTab
             subscription={state.subscription}
             walletInfo={state.walletInfo}
@@ -114,42 +134,42 @@ export function BillingHubPage() {
             errors={errors}
             onOpenPortal={actions.openBillingPortal}
           />
-        </TabsContent>
+        )}
 
-        <TabsContent value="plans">
+        {activeTab === 'plans' && (
           <PlansTab
             subscription={state.subscription}
             onOpenPortal={actions.openBillingPortal}
           />
-        </TabsContent>
+        )}
 
-        <TabsContent value="addons">
+        {activeTab === 'addons' && (
           <AddOnsTab
             addOnCatalog={state.addOnCatalog}
             entitledAddOnIds={state.entitledAddOnIds}
             onPurchase={actions.handleAddOnPurchase}
             isLoading={isLoading.addOns}
           />
-        </TabsContent>
+        )}
 
-        <TabsContent value="invoices">
+        {activeTab === 'invoices' && (
           <InvoicesTab
             invoices={state.invoices}
             isLoading={isLoading.invoices}
             error={errors.invoices}
           />
-        </TabsContent>
+        )}
 
-        <TabsContent value="payment">
+        {activeTab === 'payment' && (
           <PaymentMethodsTab
             paymentMethods={state.paymentMethods}
             isLoading={isLoading.paymentMethods}
             error={errors.paymentMethods}
             onOpenPortal={actions.openBillingPortal}
           />
-        </TabsContent>
+        )}
 
-        <TabsContent value="wallet">
+        {activeTab === 'wallet' && (
           <WalletTab
             walletInfo={state.walletInfo}
             walletTransactions={state.walletTransactions}
@@ -157,9 +177,9 @@ export function BillingHubPage() {
             error={errors.wallet}
             onTopUp={actions.handleTopUp}
           />
-        </TabsContent>
+        )}
 
-        <TabsContent value="usage">
+        {activeTab === 'usage' && (
           <UsageTab
             usageData={state.usageData}
             projectedBilling={projectedBilling}
@@ -167,8 +187,8 @@ export function BillingHubPage() {
             costData={state.costData}
             isLoading={isLoading.usage}
           />
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   );
 }

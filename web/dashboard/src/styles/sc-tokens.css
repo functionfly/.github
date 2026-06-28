@@ -100,7 +100,7 @@
   /* ===== Z-INDEX SCALE ===== */
   --z-base: 0;
   --z-chamber-content: 2;
-  --z-nav: 10;
+  --z-nav: 60;
   --z-modal: 100;
   --z-toast: 200;
 }
@@ -138,10 +138,19 @@
   --shadow-seal: 0 0 8px rgba(5, 150, 105, 0.2);
 }
 
-/* Light mode sealed button - embossed metal, same as dark mode */
+/* Light mode sealed button - darker embossed metal with visible contrast */
 [data-theme='light'] .sealed-button {
-  background: linear-gradient(180deg, #ffffff, #d8dee2);
-  color: var(--text-on-light);
+  background: linear-gradient(180deg, #334155, #1e293b);
+  color: #f8fafc;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme='light'] .sealed-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #475569, #334155);
+}
+
+[data-theme='light'] .sealed-button:active:not(:disabled) {
+  background: linear-gradient(180deg, #1e293b, #0f172a);
 }
 
 /* ============================================================================

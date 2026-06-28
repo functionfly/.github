@@ -49,7 +49,7 @@ const VAULT_FEATURES: Record<VaultPlan, PlanLimits['features']> = {
     breakGlass: false,
     escrow: false,
     rbac: false,
-    namespaces: true,
+    namespaces: false,
     shares: false,
     sso: false,
     siemWebhooks: false,

@@ -193,6 +193,19 @@ export const API_URLS = {
     view: (id: string) => `${API}/receipts/${id}/view`,
     revoke: (id: string) => `${API}/receipts/${id}/revoke`,
   },
+
+  // ========================================================================
+  // Atlas Memory Engine Trace Endpoints
+  // ========================================================================
+  atlas: {
+    traces: {
+      list: () => `${API}/atlas/traces`,
+      get: (runId: string) => `${API}/atlas/traces/${runId}`,
+      graph: (runId: string) => `${API}/atlas/traces/${runId}/graph`,
+      search: () => `${API}/atlas/traces/search`,
+      health: () => `${API}/atlas/traces/health`,
+    },
+  },
 } as const;
 
 // ============================================================================

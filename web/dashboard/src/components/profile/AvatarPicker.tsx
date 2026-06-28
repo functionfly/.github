@@ -1,18 +1,5 @@
-/**
- * AvatarPicker – change profile picture: upload or choose a default FunctionFly avatar.
- */
-
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { Loader2, Upload, User } from 'lucide-react';
+import { Loader2, Upload, User, X } from 'lucide-react';
 import { useRef } from 'react';
 import { toast } from 'sonner';
 
@@ -68,16 +55,24 @@ export function AvatarPicker({
     onOpenChange(false);
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Profile picture</DialogTitle>
-          <DialogDescription>
-            Upload a photo or choose a default FunctionFly avatar.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-6 py-2">
+    <div className="avatar-modal-overlay" onClick={() => onOpenChange(false)}>
+      <div className="avatar-modal" onClick={(e) => e.stopPropagation()}>
+        {/* Header */}
+        <div className="avatar-modal__header">
+          <div>
+            <h2 className="avatar-modal__title">Profile picture</h2>
+            <p className="avatar-modal__desc">Upload a photo or choose a default FunctionFly avatar.</p>
+          </div>
+          <button className="avatar-modal__close" onClick={() => onOpenChange(false)} aria-label="Close">
+            <X className="avatar-modal__close-icon" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="avatar-modal__body">
           <input
             ref={inputRef}
             type="file"
@@ -85,24 +80,26 @@ export function AvatarPicker({
             className="hidden"
             onChange={handleUpload}
           />
-          <Button
+
+          {/* Upload button */}
+          <button
             type="button"
-            variant="outline"
-            className="w-full gap-2"
+            className="avatar-modal__upload-btn"
             onClick={() => inputRef.current?.click()}
             disabled={isLoading}
           >
             {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="avatar-modal__upload-icon avatar-modal__upload-icon--spin" />
             ) : (
-              <Upload className="h-4 w-4" />
+              <Upload className="avatar-modal__upload-icon" />
             )}
             Upload photo
-          </Button>
+          </button>
 
-          <div>
-            <p className="text-sm font-medium text-text-secondary mb-2">Default avatars</p>
-            <div className="flex gap-4">
+          {/* Default avatars */}
+          <div className="avatar-modal__defaults">
+            <p className="avatar-modal__defaults-label">Default avatars</p>
+            <div className="avatar-modal__defaults-grid">
               {DEFAULT_AVATARS.map(({ id, url, label }) => (
                 <button
                   key={id}
@@ -110,35 +107,35 @@ export function AvatarPicker({
                   onClick={() => handleDefault(url)}
                   disabled={isLoading}
                   className={cn(
-                    'rounded-full ring-2 ring-transparent transition focus:outline-none focus:ring-2 focus:ring-brand-500',
-                    currentAvatar === url && 'ring-brand-500'
+                    'avatar-modal__avatar-btn',
+                    currentAvatar === url && 'avatar-modal__avatar-btn--selected'
                   )}
                   title={label}
                 >
-                  <Avatar className="h-16 w-16 md:h-20 md:w-20">
-                    <AvatarImage src={url} alt={label} />
-                    <AvatarFallback className="bg-muted">
-                      <User className="h-8 w-8" />
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="avatar-modal__avatar-circle">
+                    <img src={url} alt={label} className="avatar-modal__avatar-img" />
+                    <div className="avatar-modal__avatar-fallback">
+                      <User className="avatar-modal__avatar-fallback-icon" />
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Remove photo */}
           {currentAvatar && (
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              className="w-full text-muted-foreground"
+              className="avatar-modal__remove-btn"
               onClick={handleClear}
               disabled={isLoading}
             >
               Remove photo
-            </Button>
+            </button>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }

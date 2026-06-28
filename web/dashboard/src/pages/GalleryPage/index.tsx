@@ -69,7 +69,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // Lazy load Monaco editor to reduce initial bundle size
-const MonacoEditor = lazy(() => import('@monaco-editor/react'));
+const MonacoEditor = lazy(() => import('@monaco-editor/react').then((m) => ({ default: m.Editor as React.ComponentType<unknown> })));
 
 // =============================================================================
 // Types & Interfaces

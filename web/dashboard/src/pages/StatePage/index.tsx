@@ -1,42 +1,43 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { usePageTitle } from "@/hooks";
 import { Database, Search, Plus, ChevronRight, Clock, Trash2, MoreVertical } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  useStates,
-  useDeleteState,
-} from "@/hooks/useState";
+import { useStates, useDeleteState } from "@/hooks/useState";
 import type { SimpleState } from "@/types";
+import {
+  PageGrid, Chamber, CornerBrace, TrustSeal,
+  SealedButton, FrameButton, StatusPill, AnnotationTag,
+} from "@/components/containment";
 import "./styles.css";
 
+const valueTypeToPill = (value: unknown): 'live' | 'pending' | 'revoked' => {
+  if (value === null) return 'revoked';
+  if (typeof value === 'boolean') return 'pending';
+  return 'live';
+};
+
+const getValueType = (value: unknown): string => {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+};
+
+const formatValue = (value: unknown): string => {
+  if (value === null) return "null";
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+};
+
 export function StatePage() {
+  usePageTitle('State');
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [prefixFilter, setPrefixFilter] = useState("");
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-  const { data: states, isLoading, error } = useStates({
-    prefix: prefixFilter || undefined,
-  });
+  const { data: states, isLoading, error } = useStates({ prefix: prefixFilter || undefined });
   const deleteState = useDeleteState();
 
   const filteredStates = states?.filter((state) =>
@@ -44,13 +45,8 @@ export function StatePage() {
     state.key.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCreate = () => {
-    navigate("/state/new");
-  };
-
-  const handleView = (path: string) => {
-    navigate(`/state/${encodeURIComponent(path)}`);
-  };
+  const handleCreate = () => navigate("/state/new");
+  const handleView = (path: string) => navigate(`/state/${encodeURIComponent(path)}`);
 
   const handleDelete = async (path: string) => {
     if (window.confirm(`Are you sure you want to delete "${path}"?`)) {
@@ -58,180 +54,120 @@ export function StatePage() {
     }
   };
 
-  const formatValue = (value: unknown): string => {
-    if (value === null) return "null";
-    if (typeof value === "object") return JSON.stringify(value);
-    return String(value);
-  };
-
-  const getValueType = (value: unknown): string => {
-    if (value === null) return "null";
-    if (Array.isArray(value)) return "array";
-    return typeof value;
-  };
-
-  const getValueTypeColor = (value: unknown): string => {
-    const type = getValueType(value);
-    switch (type) {
-      case "string":
-        return "bg-blue-100 text-blue-800";
-      case "number":
-        return "bg-green-100 text-green-800";
-      case "boolean":
-        return "bg-purple-100 text-purple-800";
-      case "object":
-        return "bg-orange-100 text-orange-800";
-      case "array":
-        return "bg-teal-100 text-teal-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
   return (
-    <div className="state-container state-content">
-      {/* Header */}
-      <div className="state-header">
-        <div className="state-header-left">
-          <div className="state-icon-container">
-            <Database className="state-icon" />
+    <div className="st-page">
+      <PageGrid />
+
+      {/* Hero */}
+      <Chamber className="st-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="MODULE ST-01" secondary="Simple State" position="top-right" />
+
+        <div className="st-hero__header">
+          <div className="st-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="st-hero__title">Simple State</h1>
           </div>
-          <div>
-            <h1 className="state-title">Simple State</h1>
-            <p className="state-subtitle">
-              Manage your key-value state storage
-            </p>
+          <p className="st-hero__subtitle">Manage your key-value state storage</p>
+          <div className="st-hero__actions">
+            <SealedButton onClick={handleCreate} iconLeft={<Plus className="st-icon-sm" />}>
+              {t("Create State")}
+            </SealedButton>
           </div>
         </div>
-        <div className="state-header-actions">
-          <Button onClick={handleCreate} className="btn-state-primary">
-            <Plus className="h-4 w-4" />
-            {t("Create State")}
-          </Button>
+      </Chamber>
+
+      {/* Search + Filter */}
+      <div className="st-controls">
+        <div className="st-search">
+          <Search className="st-search__icon" />
+          <input className="st-input st-search__input" placeholder="Search by path or key..."
+            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
+        <input className="st-input st-filter-input" placeholder="Filter by prefix..."
+          value={prefixFilter} onChange={(e) => setPrefixFilter(e.target.value)} />
       </div>
 
-      {/* Search and Filters */}
-      <Card className="state-search-card">
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="state-search-icon absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" />
-              <Input
-                placeholder="Search by path or key..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="state-search-input pl-10"
-              />
-            </div>
-            <Input
-              placeholder="Filter by prefix..."
-              value={prefixFilter}
-              onChange={(e) => setPrefixFilter(e.target.value)}
-              className="state-filter-input"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Table */}
+      <Chamber className="st-table-chamber">
+        <CornerBrace position="tr" />
+        <CornerBrace position="bl" />
 
-      {/* States Table */}
-      <Card className="state-table-card">
-        <CardHeader className="state-table-header">
-          <CardTitle className="state-table-title">States ({filteredStates?.length || 0})</CardTitle>
-        </CardHeader>
-        <CardContent className="state-table-content">
-          {isLoading ? (
-            <div className="state-loading-container">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="state-skeleton" />
-              ))}
-            </div>
-          ) : error ? (
-            <div className="state-error">
-              <p>Failed to load states: {(error as Error).message}</p>
-            </div>
-          ) : filteredStates?.length === 0 ? (
-            <div className="state-empty-state">
-              <Database className="state-empty-icon" />
-              <p className="state-empty-description mb-4">No states found</p>
-              <Button onClick={handleCreate} variant="outline" className="btn-state-outline">
-                Create your first state
-              </Button>
-            </div>
-          ) : (
-            <Table className="state-table">
-              <TableHeader>
-                <TableRow className="state-table-header-row">
-                  <TableHead className="state-table-header-cell">Path</TableHead>
-                  <TableHead className="state-table-header-cell">Key</TableHead>
-                  <TableHead className="state-table-header-cell">Value</TableHead>
-                  <TableHead className="state-table-header-cell">Version</TableHead>
-                  <TableHead className="state-table-header-cell">Updated</TableHead>
-                  <TableHead className="state-table-header-cell state-table-cell-actions"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+        <div className="st-table-header">
+          <h2 className="st-table-title">States ({filteredStates?.length || 0})</h2>
+        </div>
+
+        {isLoading ? (
+          <div className="st-loading">
+            {[...Array(5)].map((_, i) => <div key={i} className="st-skeleton" />)}
+          </div>
+        ) : error ? (
+          <div className="st-error">
+            <p>Failed to load states: {(error as Error).message}</p>
+          </div>
+        ) : filteredStates?.length === 0 ? (
+          <div className="st-empty">
+            <Database className="st-empty__icon" />
+            <p className="st-empty__desc">No states found</p>
+          </div>
+        ) : (
+          <div className="st-table-wrapper">
+            <table className="st-table">
+              <thead>
+                <tr>
+                  <th>Path</th>
+                  <th>Key</th>
+                  <th>Value</th>
+                  <th>Version</th>
+                  <th>Updated</th>
+                  <th className="st-th-actions"></th>
+                </tr>
+              </thead>
+              <tbody>
                 {filteredStates?.map((state) => (
-                  <TableRow
-                    key={state.path}
-                    className="state-table-body-row"
-                    onClick={() => handleView(state.path)}
-                  >
-                    <TableCell className="state-table-cell state-table-cell-path">
-                      {state.path}
-                    </TableCell>
-                    <TableCell className="state-table-cell state-table-cell-key">{state.key}</TableCell>
-                    <TableCell className="state-table-cell">
-                      <div className="state-table-cell-value">
-                        <span className="state-table-cell-value-text">
-                          {formatValue(state.value)}
-                        </span>
-                        <Badge className={getValueTypeColor(state.value)}>
+                  <tr key={state.path} className="st-table-row" onClick={() => handleView(state.path)}>
+                    <td className="st-td-path">{state.path}</td>
+                    <td className="st-td-key">{state.key}</td>
+                    <td>
+                      <div className="st-td-value">
+                        <span className="st-td-value-text">{formatValue(state.value)}</span>
+                        <span className={`st-type-badge st-type-badge--${getValueType(state.value)}`}>
                           {getValueType(state.value)}
-                        </Badge>
+                        </span>
                       </div>
-                    </TableCell>
-                    <TableCell className="state-table-cell">
-                      <Badge className="state-version-badge">v{state.version}</Badge>
-                    </TableCell>
-                    <TableCell className="state-table-cell">
-                      <div className="state-table-cell-updated">
-                        <Clock className="h-3 w-3" />
+                    </td>
+                    <td><span className="st-version-badge">v{state.version}</span></td>
+                    <td>
+                      <span className="st-td-updated">
+                        <Clock className="st-icon-xs" />
                         {new Date(state.updatedAt).toLocaleDateString()}
+                      </span>
+                    </td>
+                    <td className="st-td-actions" onClick={(e) => e.stopPropagation()}>
+                      <div className="st-menu-wrap">
+                        <button className="st-icon-btn" onClick={() => setOpenMenu(openMenu === state.path ? null : state.path)}>
+                          <MoreVertical className="st-icon-sm" />
+                        </button>
+                        {openMenu === state.path && (
+                          <div className="st-menu">
+                            <button className="st-menu__item" onClick={() => { handleView(state.path); setOpenMenu(null); }}>
+                              <ChevronRight className="st-icon-xs" /> View Details
+                            </button>
+                            <button className="st-menu__item st-menu__item--danger" onClick={() => { handleDelete(state.path); setOpenMenu(null); }}>
+                              <Trash2 className="st-icon-xs" /> Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    </TableCell>
-                    <TableCell className="state-table-cell state-table-cell-actions" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="btn-state-ghost h-8 w-8 p-0">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="state-dropdown-content">
-                          <DropdownMenuItem
-                            onClick={() => handleView(state.path)}
-                            className="state-dropdown-item cursor-pointer"
-                          >
-                            <ChevronRight className="state-dropdown-item-icon mr-2 h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDelete(state.path)}
-                            className="state-dropdown-item state-dropdown-item-danger cursor-pointer"
-                          >
-                            <Trash2 className="state-dropdown-item-icon mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Chamber>
     </div>
   );
 }

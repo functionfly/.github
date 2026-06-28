@@ -1,19 +1,66 @@
-import { AGENT_ENTERPRISE, PLANS, STATE_FABRIC_ADD_ONS } from './constants';
+import { AGENT_ENTERPRISE, PLANS } from './constants';
 
-export type PlanTier = 'free' | 'starter' | 'professional' | 'enterprise' | 'agent_enterprise';
+export type PlanTier =
+  | 'free'
+  | 'starter'
+  | 'professional'
+  | 'enterprise'
+  | 'enterprise_sla'
+  | 'agent_enterprise';
 
 export const PLAN_HIERARCHY: Record<PlanTier, number> = {
   free: 0,
   starter: 1,
   professional: 2,
   enterprise: 3,
-  agent_enterprise: 4, // Top tier - unlimited
+  enterprise_sla: 4, // Enhanced Enterprise with premium SLA
+  agent_enterprise: 5, // Top tier - unlimited
 };
 
 /**
- * Check if user is on enterprise plan
+ * Check if user is on enterprise plan (base or SLA)
  */
-export const isEnterprise = (plan?: string): boolean => plan?.toLowerCase() === 'enterprise';
+export const isEnterprise = (plan?: string): boolean => {
+  const p = plan?.toLowerCase();
+  return p === 'enterprise' || p === 'enterprise_sla';
+};
+
+/**
+ * Check if user is on Enterprise SLA plan (premium SLA)
+ */
+export const isEnterpriseSLA = (plan?: string): boolean => plan?.toLowerCase() === 'enterprise_sla';
+
+/**
+ * Get the SLA target percentage for the plan
+ */
+export const getSLATargetPercent = (plan?: string): number => {
+  if (plan?.toLowerCase() === 'enterprise_sla') {
+    return 99.999;
+  }
+  if (plan?.toLowerCase() === 'enterprise') {
+    return 99.99;
+  }
+  if (plan?.toLowerCase() === 'professional') {
+    return 99.9;
+  }
+  if (plan?.toLowerCase() === 'starter') {
+    return 99.5;
+  }
+  return 0; // No SLA for free tier
+};
+
+/**
+ * Check if the plan has premium SLA features (99.999%)
+ */
+export const hasPremiumSLA = (plan?: string): boolean => plan?.toLowerCase() === 'enterprise_sla';
+
+/**
+ * Check if SLA credits are enabled for the plan
+ */
+export const hasSLACredits = (plan?: string): boolean => {
+  const p = plan?.toLowerCase();
+  return p === 'enterprise_sla' || p === 'enterprise' || p === 'agent_enterprise';
+};
 
 /**
  * Check if user has at least the specified plan tier
@@ -238,45 +285,101 @@ export const formatSecretsRemaining = (currentCount: number, plan?: string): str
  * Feature availability by plan tier
  */
 export const FEATURES: Record<string, readonly PlanTier[]> = {
-  ADVANCED_ANALYTICS: ['professional', 'enterprise'],
-  CUSTOM_DASHBOARDS: ['enterprise'],
-  AUDIT_LOGS: ['enterprise'],
-  SLA_DASHBOARD: ['enterprise'],
-  DEDICATED_SUPPORT: ['enterprise'],
-  EXPORT_REPORTS: ['enterprise'],
-  TEAM_MANAGEMENT: ['professional', 'enterprise'],
-  API_ACCESS: ['starter', 'professional', 'enterprise'],
-  WEBHOOKS: ['professional', 'enterprise'],
-  CUSTOM_DOMAINS: ['starter', 'professional', 'enterprise'],
+  ADVANCED_ANALYTICS: ['professional', 'enterprise', 'enterprise_sla'],
+  CUSTOM_DASHBOARDS: ['enterprise', 'enterprise_sla'],
+  AUDIT_LOGS: ['enterprise', 'enterprise_sla'],
+  SLA_DASHBOARD: ['enterprise', 'enterprise_sla'],
+  /** Premium SLA with 99.999% uptime - Enterprise SLA only */
+  SLA_PREMIUM: ['enterprise_sla'],
+  /** SLA credits for violations - Enterprise and above */
+  SLA_CREDITS: ['enterprise', 'enterprise_sla', 'agent_enterprise'],
+  DEDICATED_SUPPORT: ['enterprise', 'enterprise_sla'],
+  EXPORT_REPORTS: ['enterprise', 'enterprise_sla'],
+  TEAM_MANAGEMENT: ['professional', 'enterprise', 'enterprise_sla'],
+  API_ACCESS: ['starter', 'professional', 'enterprise', 'enterprise_sla'],
+  WEBHOOKS: ['professional', 'enterprise', 'enterprise_sla'],
+  CUSTOM_DOMAINS: ['starter', 'professional', 'enterprise', 'enterprise_sla'],
   /** Stateful fabrics: Free has 1 (Sandbox), paid tiers per PLANS.limits.stateFabrics */
-  STATE_FABRIC: ['free', 'starter', 'professional', 'enterprise', 'agent_enterprise'],
+  STATE_FABRIC: [
+    'free',
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
   /** AI agents: Free has 0 quota; paid tiers per PLANS.limits.agents */
-  AGENTS: ['free', 'starter', 'professional', 'enterprise', 'agent_enterprise'],
-  UNLIMITED_FUNCTIONS: ['enterprise'],
-  UNLIMITED_PROVIDERS: ['enterprise'],
-  PRIORITY_SUPPORT: ['professional', 'enterprise'],
+  AGENTS: ['free', 'starter', 'professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
+  UNLIMITED_FUNCTIONS: ['enterprise', 'enterprise_sla'],
+  UNLIMITED_PROVIDERS: ['enterprise', 'enterprise_sla'],
+  PRIORITY_SUPPORT: ['professional', 'enterprise', 'enterprise_sla'],
   /** Enterprise sidebar section with SLA, Audit, Support */
-  ENTERPRISE_SECTION: ['professional', 'enterprise'],
+  ENTERPRISE_SECTION: ['professional', 'enterprise', 'enterprise_sla'],
   /** Time Machine: 24h replay, basic diff — available on all plans */
-  TIME_MACHINE_BASIC: ['free', 'starter', 'professional', 'enterprise', 'agent_enterprise'],
+  TIME_MACHINE_BASIC: [
+    'free',
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
   /** Time Machine: 72h replay window */
-  TIME_MACHINE_EXTENDED: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  TIME_MACHINE_EXTENDED: [
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
   /** Time Machine: 30-day replay, full diffs, dry-run reconciliation */
-  TIME_MACHINE_PRO: ['professional', 'enterprise', 'agent_enterprise'],
+  TIME_MACHINE_PRO: ['professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
   /** Time Machine: 90-day replay, live reconciliation, audit certificates */
-  TIME_MACHINE_ENTERPRISE: ['enterprise', 'agent_enterprise'],
+  TIME_MACHINE_ENTERPRISE: ['enterprise', 'enterprise_sla', 'agent_enterprise'],
   /** Time Machine: unlimited replay, custom rules, legal-grade certs */
   TIME_MACHINE_UNLIMITED: ['agent_enterprise'],
   /** Incident Insurance: dedicated engineer during critical incidents */
   TIME_MACHINE_INSURANCE: ['agent_enterprise'],
   /** Function DNA: AI-powered code evolution based on execution patterns */
-  FUNCTION_DNA: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  FUNCTION_DNA: ['starter', 'professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
+  /** Studio: AI-powered code & function studio */
+  STUDIO: ['agent_enterprise'],
   /** State Fabric Add-ons: available for purchase on paid plans (Starter+) */
-  SF_ADDON_HOT_CACHE: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
-  SF_ADDON_MULTI_REGION: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
-  SF_ADDON_AI_RECALL: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
-  SF_ADDON_ADVANCED_INSIGHTS: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
-  SF_ADDON_ADVANCED_SECURITY: ['starter', 'professional', 'enterprise', 'agent_enterprise'],
+  SF_ADDON_HOT_CACHE: [
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
+  SF_ADDON_MULTI_REGION: [
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
+  SF_ADDON_AI_RECALL: [
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
+  SF_ADDON_ADVANCED_INSIGHTS: [
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
+  SF_ADDON_ADVANCED_SECURITY: [
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;
@@ -309,6 +412,7 @@ export const hasUnlimitedResources = (plan?: string): boolean => isEnterprise(pl
 export const getPlanColor = (plan?: string): string => {
   switch (plan?.toLowerCase()) {
     case 'enterprise':
+    case 'enterprise_sla':
       return 'amber';
     case 'professional':
       return 'indigo';

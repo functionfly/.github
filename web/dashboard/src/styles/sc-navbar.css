@@ -1,136 +1,426 @@
 /**
- * Sealed Containment Navbar Theme
+ * Sealed Containment Navbar
  * FunctionFly Dashboard
  *
- * Design direction: containment glass, security foil, instrumentation
+ * All design tokens come from sc-tokens.css.
  */
 
-@import "./sc-tokens.css";
+@import './sc-tokens.css';
 
-/* ═══════════════════════════════════════════════
+/* ==========================================================================
    Navbar Container
-   ═══════════════════════════════════════════════ */
+   ========================================================================== */
 
 .sc-navbar {
-  background: var(--chamber-bg);
-  border-bottom: 1px solid var(--chamber-edge);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  height: 64px;
+  background: rgba(10, 13, 17, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--panel-edge);
+  transition:
+    background var(--duration-base) var(--ease-out),
+    border-color var(--duration-base) var(--ease-out);
 }
 
 [data-theme='light'] .sc-navbar {
-  background: rgba(255, 255, 255, 0.9);
-  border-bottom-color: #e2e8f0;
+  background: rgba(248, 250, 252, 0.95);
 }
 
-/* ═══════════════════════════════════════════════
-   Navbar Text
-   ═══════════════════════════════════════════════ */
-
-.sc-navbar-text {
-  color: var(--text);
-}
-
-.sc-navbar-text-secondary {
-  color: var(--text-dim);
-}
-
-.sc-navbar-link {
-  color: var(--text-dim);
-  text-decoration: none;
-  transition: color 0.15s ease;
-}
-
-.sc-navbar-link:hover {
-  color: var(--text);
-}
-
-.sc-navbar-link-active {
-  color: var(--text);
-}
-
-/* ═══════════════════════════════════════════════
-   Navbar Link with Active Indicator
-   ═══════════════════════════════════════════════ */
-
-.sc-navbar-link-indicator {
-  position: relative;
-  color: var(--text-dim);
-  text-decoration: none;
-  transition: color 0.15s ease;
-  padding-bottom: 4px;
-}
-
-.sc-navbar-link-indicator:hover {
-  color: var(--text);
-}
-
-.sc-navbar-link-indicator.active {
-  color: var(--text);
-}
-
-.sc-navbar-link-indicator .active-bar {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 100%;
-  height: 3px;
-  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899);
-  border-radius: 9999px;
-}
-
-/* ═══════════════════════════════════════════════
-   Navbar Button
-   ═══════════════════════════════════════════════ */
-
-.sc-navbar-btn {
-  display: inline-flex;
+.sc-navbar__inner {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--steel);
-  color: var(--text);
-  font-weight: 500;
-  font-size: 0.875rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--chamber-edge);
-  cursor: pointer;
-  transition: all 0.15s ease;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 var(--space-5);
+  gap: var(--space-4);
 }
 
-.sc-navbar-btn:hover:not(:disabled) {
-  background: var(--steel-light);
-  border-color: var(--status-ok);
-  transform: translateY(-1px);
+@media (max-width: 480px) {
+  .sc-navbar__inner { padding: 0 var(--space-4); }
 }
 
-.sc-navbar-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+/* ==========================================================================
+   Left Section
+   ========================================================================== */
+
+.sc-navbar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 
-/* ═══════════════════════════════════════════════
-   Navbar Icon Button
-   ═══════════════════════════════════════════════ */
-
-.sc-navbar-icon-btn {
-  display: inline-flex;
+.sc-navbar__menu-btn {
+  display: none;
   align-items: center;
   justify-content: center;
   width: 36px;
   height: 36px;
   background: transparent;
-  color: var(--text-dim);
-  border-radius: var(--radius);
   border: none;
+  border-radius: var(--radius);
+  color: var(--text-dim);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--duration-fast) var(--ease-out);
 }
 
-.sc-navbar-icon-btn:hover {
-  background: var(--steel);
+.sc-navbar__menu-btn:hover {
+  background: var(--panel-raised);
   color: var(--text);
 }
 
-[data-theme='light'] .sc-navbar-icon-btn:hover {
-  background: #f1f5f9;
+@media (max-width: 960px) {
+  .sc-navbar__menu-btn { display: flex; }
+}
+
+/* ==========================================================================
+   Center Section (contextual actions)
+   ========================================================================== */
+
+.sc-navbar__center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .sc-navbar__center { display: none; }
+}
+
+.sc-navbar__action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sc-navbar__action-btn:hover {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+
+.sc-navbar__action-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-on-light);
+}
+
+.sc-navbar__action-btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--text-on-light);
+}
+
+.sc-navbar__action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ==========================================================================
+   Right Section
+   ========================================================================== */
+
+.sc-navbar__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ==========================================================================
+   Command Palette Button
+   ========================================================================== */
+
+.sc-navbar__cmd-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-faint);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sc-navbar__cmd-btn:hover {
+  color: var(--text);
+  border-color: var(--steel-light);
+}
+
+@media (max-width: 768px) {
+  .sc-navbar__cmd-btn { display: none; }
+}
+
+.sc-navbar__cmd-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.sc-navbar__cmd-label {
+  font-size: 14px;
+}
+
+@media (max-width: 1024px) {
+  .sc-navbar__cmd-label { display: none; }
+}
+
+.sc-navbar__kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  padding: 1px var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-faint);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: calc(var(--radius) / 2);
+}
+
+@media (max-width: 1024px) {
+  .sc-navbar__kbd { display: none; }
+}
+
+/* ==========================================================================
+   Icon Button
+   ========================================================================== */
+
+.sc-navbar__icon-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sc-navbar__icon-btn:hover {
+  background: var(--panel-raised);
+  color: var(--text);
+}
+
+.sc-navbar__icon-btn--pulse {
+  animation: sc-navbar-pulse 2s ease-in-out;
+}
+
+@keyframes sc-navbar-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.sc-navbar__icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ==========================================================================
+   Status Dot (notification indicator)
+   ========================================================================== */
+
+.sc-navbar__status-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sc-navbar__status-dot--error { background: var(--status-revoked); }
+.sc-navbar__status-dot--warning { background: var(--status-pending); }
+.sc-navbar__status-dot--info { background: var(--foil-a); }
+
+/* ==========================================================================
+   Badge (notification count)
+   ========================================================================== */
+
+.sc-navbar__badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-on-light);
+  background: var(--status-revoked);
+  border-radius: 9px;
+}
+
+/* ==========================================================================
+   Plan Badge
+   ========================================================================== */
+
+.sc-navbar__plan-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sc-navbar__plan-badge:hover {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+
+@media (max-width: 640px) {
+  .sc-navbar__plan-badge { display: none; }
+}
+
+.sc-navbar__plan-icon {
+  width: 12px;
+  height: 12px;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .sc-navbar { height: 56px; }
+}
+
+/* ==========================================================================
+   Navbar Link Text
+   Force white in dark mode and black in light mode so links never pick up
+   the global brand-orange anchor color.
+   ========================================================================== */
+
+.sc-navbar a.sc-navbar-link-indicator,
+.sc-navbar a.sc-navbar-link,
+.sc-navbar nav a {
+  color: var(--text-primary) !important;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.sc-navbar a.sc-navbar-link-indicator:hover,
+.sc-navbar a.sc-navbar-link:hover,
+.sc-navbar nav a:hover {
+  opacity: 0.8;
+}
+
+[data-theme='light'] .sc-navbar a.sc-navbar-link-indicator,
+[data-theme='light'] .sc-navbar a.sc-navbar-link,
+[data-theme='light'] .sc-navbar nav a {
+  color: #0a0a0a !important;
+}
+
+/* ==========================================================================
+   Breadcrumb
+   ========================================================================== */
+
+.sc-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+@media (max-width: 768px) {
+  .sc-breadcrumb { display: none; }
+}
+
+.sc-breadcrumb__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 14px;
+}
+
+.sc-breadcrumb__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sc-breadcrumb__sep {
+  width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+}
+
+.sc-breadcrumb__link {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.sc-breadcrumb__link:hover {
+  color: var(--text);
+}
+
+.sc-breadcrumb__text {
+  color: var(--text-dim);
+}
+
+.sc-breadcrumb__text--active {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.sc-breadcrumb__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.sc-breadcrumb__action {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.sc-breadcrumb__action:hover {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+
+.sc-breadcrumb__action-icon {
+  width: 12px;
+  height: 12px;
 }

@@ -41,7 +41,7 @@ export function Logo({ size = "md", showText = true, className, variant = "defau
         className="shrink-0"
       />
       {showText && (
-        <span className={cn("ff-brand-3d tracking-tight", config.text)} data-text={APP_NAME}>
+        <span className={cn("ff-brand tracking-tight", config.text)}>
           {APP_NAME}
         </span>
       )}

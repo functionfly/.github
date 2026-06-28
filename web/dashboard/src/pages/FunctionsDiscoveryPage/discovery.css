@@ -1,0 +1,244 @@
+/**
+ * FunctionFly Functions Discovery Page — Sealed Containment
+ *
+ * All design tokens come from sc-tokens.css.
+ */
+
+@import '@/styles/sc-tokens.css';
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.disc-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-9);
+}
+
+@media (max-width: 480px) {
+  .disc-page { padding: 0 var(--space-4); gap: var(--space-5); }
+}
+
+/* ==========================================================================
+   Icon Sizes & Colors
+   ========================================================================== */
+
+.disc-icon-sm { width: 16px; height: 16px; }
+.disc-icon-orange { color: #f97316; }
+.disc-icon-green { color: var(--status-ok); }
+.disc-icon-purple { color: var(--foil-b); }
+.disc-icon-yellow { color: var(--status-pending); }
+.disc-icon-amber { color: var(--accent); }
+.disc-icon-blue { color: var(--foil-a); }
+.disc-icon-danger { color: var(--status-revoked); }
+
+/* ==========================================================================
+   Hero Chamber
+   ========================================================================== */
+
+.disc-hero__header {
+  margin-bottom: var(--space-4);
+}
+
+.disc-hero__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.disc-hero__title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .disc-hero__title { font-size: 28px; }
+}
+
+.disc-hero__subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-4);
+}
+
+.disc-hero__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* ==========================================================================
+   Filter Tabs
+   ========================================================================== */
+
+.disc-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.disc-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.disc-filter-btn:hover { color: var(--text); }
+
+.disc-filter-btn--active {
+  color: var(--text);
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+}
+
+/* ==========================================================================
+   Grid
+   ========================================================================== */
+
+.disc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 960px) { .disc-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .disc-grid { grid-template-columns: 1fr; } }
+
+/* ==========================================================================
+   Skeleton
+   ========================================================================== */
+
+.disc-skeleton {
+  height: 200px;
+  background: linear-gradient(90deg, var(--panel-raised) 0%, var(--panel-edge) 50%, var(--panel-raised) 100%);
+  background-size: 200% 100%;
+  animation: disc-shimmer 1.5s infinite;
+  border-radius: var(--radius);
+}
+
+@keyframes disc-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.disc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-9) var(--space-5);
+}
+
+.disc-empty__icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-faint);
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.disc-empty__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.disc-empty__desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-5);
+  max-width: 400px;
+}
+
+/* ==========================================================================
+   Modal
+   ========================================================================== */
+
+.disc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 13, 17, 0.7);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: disc-fade-in var(--duration-base) var(--ease-out);
+}
+
+.disc-modal {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-chamber);
+  max-width: 480px;
+  width: 100%;
+  padding: var(--space-5);
+  animation: disc-modal-enter var(--duration-base) var(--ease-out);
+}
+
+.disc-modal__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.disc-modal__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0;
+}
+
+.disc-modal__desc {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-5);
+}
+
+.disc-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+@keyframes disc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes disc-modal-enter { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }

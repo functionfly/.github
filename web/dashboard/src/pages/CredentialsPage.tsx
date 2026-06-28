@@ -1,10 +1,16 @@
-import { motion } from 'framer-motion';
 import { Award, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { PageLayout } from '@/components/layout/PageLayout';
-import { PageHeader } from '@/components/layout/PageHeader';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  SealedButton,
+  FrameButton,
+  AnnotationTag,
+  StatusPill,
+} from '@/components/containment';
 import { CredentialCard } from '@/components/certification/CredentialCard';
-import { Button } from '@/components/ui/button';
 import { useMyCredentials, useMyExams } from '@/hooks/useCertification';
 
 import './credentials-page.css';
@@ -18,135 +24,139 @@ export function CredentialsPage() {
   const exams = examsData?.exams || [];
 
   return (
-    <PageLayout>
-      <PageHeader
-        title="My Credentials"
-        subtitle="Your earned FunctionFly certifications and exam history."
-        className="mb-8"
-      />
+    <div className="cred-page">
+      <PageGrid />
+
+      {/* Hero */}
+      <Chamber className="cred-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="CHAMBER 01" secondary="My Credentials" position="top-right" />
+
+        <div className="cred-hero__header">
+          <div className="cred-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="cred-hero__title">My Credentials</h1>
+          </div>
+          <p className="cred-hero__subtitle">
+            Your earned FunctionFly certifications and exam history.
+          </p>
+        </div>
+      </Chamber>
 
       {/* Active Credentials */}
-      <div className="credentials-active-section">
-        <div className="credentials-section-header">
-          <Award className="h-5 w-5" />
-          <h3>Active Certifications</h3>
+      <Chamber className="cred-section">
+        <CornerBrace position="tr" />
+        <CornerBrace position="bl" />
+        <AnnotationTag primary="CHAMBER 02" secondary="Active Certifications" position="top-right" />
+
+        <div className="cred-section__header">
+          <Award className="cred-section__icon" />
+          <h2 className="cred-section__title">Active Certifications</h2>
         </div>
 
         {credsLoading ? (
-          <div className="credentials-loading">
-            <div className="credentials-loading-spinner" />
+          <div className="cred-loading">
+            <Loader2 className="cred-loading__spinner" />
           </div>
         ) : credentials.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="credentials-empty-state"
-          >
-            <div className="credentials-empty-state-icon">
-              <Award className="h-12 w-12" />
-            </div>
-            <h4>No Certifications Yet</h4>
-            <p>Start your certification journey and earn verifiable credentials.</p>
-            <button
-              onClick={() => navigate('/certification')}
-              className="btn-primary"
-            >
+          <div className="cred-empty">
+            <Award className="cred-empty__icon" />
+            <h3 className="cred-empty__title">No Certifications Yet</h3>
+            <p className="cred-empty__desc">Start your certification journey and earn verifiable credentials.</p>
+            <SealedButton onClick={() => navigate('/certification')}>
               Browse Certifications
-            </button>
-          </motion.div>
+            </SealedButton>
+          </div>
         ) : (
-          <div className="credentials-grid">
+          <div className="cred-grid">
             {credentials.map((cred) => (
               <CredentialCard key={cred.id} credential={cred} />
             ))}
           </div>
         )}
-      </div>
+      </Chamber>
 
       {/* Exam History */}
-      <div className="credentials-exam-section">
-        <div className="credentials-section-header">
-          <FileText className="h-5 w-5" />
-          <h3>Exam History</h3>
+      <Chamber className="cred-section">
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+
+        <div className="cred-section__header">
+          <FileText className="cred-section__icon" />
+          <h2 className="cred-section__title">Exam History</h2>
         </div>
 
         {examsLoading ? (
-          <div className="credentials-loading">
-            <div className="credentials-loading-spinner" />
+          <div className="cred-loading">
+            <Loader2 className="cred-loading__spinner" />
           </div>
         ) : exams.length === 0 ? (
-          <div className="credentials-empty-state">
-            <p className="text-sm text-text-muted">No exam attempts yet.</p>
+          <div className="cred-empty cred-empty--compact">
+            <p className="cred-empty__text">No exam attempts yet.</p>
           </div>
         ) : (
-          <div className="credentials-exam-list">
+          <div className="cred-exam-list">
             {exams.map((exam) => (
-              <motion.div
-                key={exam.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="credentials-exam-item"
-              >
-                <div className="credentials-exam-info">
-                  <div className={`credentials-exam-status ${exam.status}`} />
+              <div key={exam.id} className="cred-exam-item">
+                <div className="cred-exam-info">
+                  <div className={`cred-exam-dot cred-exam-dot--${exam.status}`} />
                   <div>
-                    <p className="credentials-exam-name">
-                      {exam.tier_id || 'Exam'}
-                    </p>
-                    <p className="credentials-exam-date">
+                    <p className="cred-exam-name">{exam.tier_id || 'Exam'}</p>
+                    <p className="cred-exam-date">
                       {new Date(exam.created_at || exam.started_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
-                <div className="credentials-exam-actions">
+                <div className="cred-exam-actions">
                   {exam.total_score != null && (
-                    <span className="credentials-exam-score">
-                      {exam.total_score.toFixed(1)}%
-                    </span>
+                    <span className="cred-exam-score">{exam.total_score.toFixed(1)}%</span>
                   )}
-                  <span className={`credentials-exam-status-badge ${exam.status}`}>
-                    {exam.status}
-                  </span>
+                  <StatusPill
+                    status={exam.status === 'passed' ? 'live' : exam.status === 'failed' ? 'revoked' : 'pending'}
+                    label={exam.status.replace('_', ' ')}
+                  />
                   {exam.status === 'in_progress' && (
-                    <button
+                    <SealedButton
+                      size="sm"
                       onClick={() => navigate(`/certification/exam/${exam.id}`)}
-                      className="credentials-exam-continue"
                     >
                       Continue
-                    </button>
+                    </SealedButton>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </Chamber>
 
-      {/* Verification link */}
+      {/* Verification CTA */}
       {credentials.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-          className="credentials-verification-section"
-        >
-          <div className="credentials-verification-content">
-            <div className="credentials-verification-info">
-              <h4>Share Your Credentials</h4>
-              <p>Anyone can verify your certifications at your public verification URL.</p>
+        <Chamber className="cred-verify">
+          <CornerBrace position="tr" />
+          <CornerBrace position="bl" />
+
+          <div className="cred-verify__content">
+            <div className="cred-verify__info">
+              <div className="cred-verify__title-row">
+                <TrustSeal size="md" />
+                <h2 className="cred-verify__title">Share Your Credentials</h2>
+              </div>
+              <p className="cred-verify__desc">Anyone can verify your certifications at your public verification URL.</p>
             </div>
             <a
               href={`/verify/${(window as any).__USERNAME__ || ''}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="credentials-verification-btn"
             >
-              <ExternalLink className="h-4 w-4" />
-              Verification Page
+              <SealedButton iconRight={<ExternalLink className="h-4 w-4" />}>
+                Verification Page
+              </SealedButton>
             </a>
           </div>
-        </motion.div>
+        </Chamber>
       )}
-    </PageLayout>
+    </div>
   );
 }

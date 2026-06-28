@@ -1,11 +1,123 @@
-/* ==========================================================================
-   Vault Page — Sealed Containment overrides
-   Re-themes the aviation-styled SecretList (and related surfaces) to match
-   the sealed-containment design system used by the rest of /vault.
-   ========================================================================== */
+/**
+ * FunctionFly Vault Page — Sealed Containment
+ *
+ * All design tokens come from sc-tokens.css.
+ * Sub-components (SecretsTab, SecurityTab, etc.) use overridden variables below.
+ */
 
 @import '@/styles/sc-tokens.css';
 @import '@/pages/SecretsPage/styles.css';
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.vault-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-9);
+}
+
+@media (max-width: 480px) {
+  .vault-page { padding: 0 var(--space-4); gap: var(--space-5); }
+}
+
+/* ==========================================================================
+   Hero Chamber
+   ========================================================================== */
+
+.vault-hero__header {
+  margin-bottom: var(--space-4);
+}
+
+.vault-hero__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.vault-hero__title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .vault-hero__title { font-size: 28px; }
+}
+
+.vault-hero__subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+  max-width: 540px;
+}
+
+/* ==========================================================================
+   Tabs
+   ========================================================================== */
+
+.vault-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.vault-tab {
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.vault-tab:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--panel-raised);
+}
+
+.vault-tab--active {
+  color: var(--text);
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+}
+
+.vault-tab:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Tab Content
+   ========================================================================== */
+
+.vault-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
 
 /* --------------------------------------------------------------------------
    Re-map SecretList variables inside the vault chamber

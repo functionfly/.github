@@ -133,11 +133,11 @@
 }
 
 [data-theme='light'] .v-sidebar-link {
-  color: #000000;
+  color: var(--text);
 }
 
 [data-theme='light'] .v-sidebar-link:hover {
-  color: #0f172a;
+  color: var(--text);
 }
 
 /* Active state: border-bottom indicator, NO filled background per SC spec 3.11 */
@@ -730,86 +730,85 @@
 }
 
 [data-theme='light'] .aviation-collapse-btn {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  color: #475569;
+  background: var(--panel);
+  border-color: var(--panel-edge);
+  color: var(--text-dim);
 }
 
 [data-theme='light'] .aviation-collapse-btn:hover {
-  background: #f8fafc;
-  border-color: #059669;
-  color: #059669;
+  background: var(--panel-raised);
+  border-color: var(--status-ok);
+  color: var(--status-ok);
 }
 
 [data-theme='light'] .aviation-sidebar-item {
-  color: #000000;
+  color: var(--text);
 }
 
 [data-theme='light'] .aviation-sidebar-item:hover {
   background: rgba(5, 150, 105, 0.05);
-  color: #0f172a;
+  color: var(--text);
 }
 
 [data-theme='light'] .aviation-sidebar-item-active {
-  background: rgba(5, 150, 105, 0.08);
-  color: #059669;
+  color: var(--status-ok);
 }
 
 [data-theme='light'] .aviation-sidebar-icon {
-  color: #64748b;
+  color: var(--text-dim);
 }
 
 [data-theme='light'] .aviation-sidebar-item:hover .aviation-sidebar-icon,
 [data-theme='light'] .aviation-sidebar-item-active .aviation-sidebar-icon {
-  color: #059669;
+  color: var(--status-ok);
 }
 
 [data-theme='light'] .aviation-sidebar-kbd {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #475569;
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+  color: var(--text-dim);
 }
 
 [data-theme='light'] .aviation-sidebar-section-title {
-  color: #000000;
+  color: var(--text);
 }
 
 [data-theme='light'] .aviation-status-badge-count {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #475569;
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+  color: var(--text-dim);
 }
 
 [data-theme='light'] .aviation-status-badge-count[data-type='warning'] {
   background: rgba(5, 150, 105, 0.1);
-  color: #059669;
+  color: var(--status-ok);
   border-color: rgba(5, 150, 105, 0.3);
 }
 
 [data-theme='light'] .aviation-status-badge-count[data-type='success'] {
   background: rgba(5, 150, 105, 0.1);
-  color: #059669;
+  color: var(--status-ok);
   border-color: rgba(5, 150, 105, 0.3);
 }
 
 [data-theme='light'] .aviation-sidebar-badge-new {
   background: rgba(5, 150, 105, 0.1);
-  color: #059669;
+  color: var(--status-ok);
   border-color: rgba(5, 150, 105, 0.3);
 }
 
 [data-theme='light'] .aviation-sidebar-badge-beta {
-  background: rgba(37, 99, 235, 0.1);
-  color: #2563eb;
-  border-color: rgba(37, 99, 235, 0.3);
+  background: rgba(159, 216, 255, 0.1);
+  color: var(--foil-a);
+  border-color: rgba(159, 216, 255, 0.3);
 }
 
 [data-theme='light'] .aviation-favorite-btn:hover {
-  color: #059669;
+  color: var(--status-ok);
 }
 
 [data-theme='light'] .aviation-favorite-btn.is-favorite {
-  color: #059669;
+  color: var(--status-ok);
 }
 
 [data-theme='light'] .aviation-profile:hover {
@@ -817,107 +816,100 @@
 }
 
 [data-theme='light'] .aviation-profile-initials {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #0f172a;
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+  color: var(--text);
 }
 
 [data-theme='light'] .aviation-profile-status {
-  border-color: #ffffff;
+  border-color: var(--panel);
 }
 
 [data-theme='light'] .aviation-signout {
-  color: #000000;
+  color: var(--text);
 }
 
 [data-theme='light'] .aviation-signout:hover {
   background: rgba(220, 38, 38, 0.08);
-  color: #dc2626;
+  color: var(--status-revoked);
 }
 
 [data-theme='light'] .aviation-environment-tabs {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
 }
 
 [data-theme='light'] .aviation-environment-tab {
-  color: #64748b;
+  color: var(--text-dim);
 }
 
 [data-theme='light'] .aviation-environment-tab:hover {
-  color: #0f172a;
-  background: #ffffff;
+  color: var(--text);
+  background: var(--panel);
 }
 
 [data-theme='light'] .aviation-environment-tab.active {
-  color: #ffffff;
-  background: #059669;
+  color: var(--bg);
+  background: var(--status-ok);
   box-shadow: 0 0 8px rgba(5, 150, 105, 0.4);
 }
 
 [data-theme='light'] .aviation-onboarding-progress {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  box-shadow: 0 0 0 1px #e2e8f0;
+  background: var(--panel);
+  border-color: var(--panel-edge);
 }
 
 [data-theme='light'] .aviation-onboarding-progress-header {
-  color: #059669;
+  color: var(--status-ok);
 }
 
 [data-theme='light'] .aviation-onboarding-progress-bar {
-  background: #e2e8f0;
+  background: var(--panel-edge);
 }
 
 [data-theme='light'] .aviation-onboarding-progress-fill {
-  background: linear-gradient(90deg, #059669, #2563eb);
+  background: linear-gradient(90deg, var(--status-ok), var(--foil-a));
 }
 
 [data-theme='light'] .aviation-sidebar-divider {
-  background: #e2e8f0;
-}
-
-[data-theme='light'] .aviation-sidebar-divider.mt-auto {
-  margin-top: auto;
+  background: var(--panel-edge);
 }
 
 [data-theme='light'] .aviation-shortcut-hint {
-  background: #ffffff;
-  border-color: #e2e8f0;
-  box-shadow:
-    0 0 0 1px #e2e8f0,
-    0 4px 12px rgba(0, 0, 0, 0.1);
-  color: #475569;
+  background: var(--panel);
+  border-color: var(--panel-edge);
+  box-shadow: var(--shadow-chamber);
+  color: var(--text-dim);
 }
 
 [data-theme='light'] .aviation-shortcut-hint kbd {
-  background: #f1f5f9;
-  border-color: #e2e8f0;
-  color: #0f172a;
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+  color: var(--text);
 }
 
 [data-theme='light'] .aviation-scroll::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
+  background: var(--steel);
 }
 
 [data-theme='light'] .aviation-scroll::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  background: var(--steel-light);
 }
 
 [data-theme='light'] .aviation-sidebar-mobile-sheet {
-  background: #ffffff;
-  border-color: #e2e8f0;
+  background: var(--panel);
+  border-color: var(--panel-edge);
 }
 
 [data-theme='light'] .aviation-sidebar-mobile-handle {
-  background: #e2e8f0;
+  background: var(--steel);
 }
 
 [data-theme='light'] .aviation-sidebar-drag-handle:hover {
-  color: #059669;
+  color: var(--status-ok);
 }
 
 [data-theme='light'] .aviation-sidebar-section-drag-over {
   background: rgba(5, 150, 105, 0.05);
-  border-color: #059669;
+  border-color: var(--status-ok);
 }

@@ -1,28 +1,21 @@
 /**
  * Shared settings content: Account, Billing, Developer, Notifications, Security, Privacy.
- * Used on the standalone /settings page and on /u/{username} (profile Settings tab).
+ * Uses Sealed Containment design system.
  *
  * URL STRUCTURE (Hash-based routing - long term):
  *   /u/:username/settings#account       → Account tab (default)
  *   /u/:username/settings#billing       → Billing tab
- *   /u/:username/settings#developer     → Developer tab (API Keys, Deploy Keys, Webhooks)
+ *   /u/:username/settings#developer     → Developer tab
  *   /u/:username/settings#notifications → Notifications tab
  *   /u/:username/settings#security      → Security tab
  *   /u/:username/settings#privacy       → Privacy tab
- *   /u/:username/settings#integrations  → Integrations tab (Brain connectors)
- *
- * BACKWARDS COMPATIBILITY:
- *   /u/:username/settings/billing      → Redirects to #billing (path-based, deprecated)
- *   ?subtab=billing                    → Redirects to #billing (query param, deprecated)
- *
- * Use getSettingsUrl(username, tab) from settings-utils.ts for generating URLs.
+ *   /u/:username/settings#integrations  → Integrations tab
  */
 
 import '@/styles/aviation-dashboard.css';
 import './styles.css';
 
 import { usersApi } from '@/api/users';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePageTitle } from '@/hooks';
 import { GitHubSettingsPage } from '@/pages/GitHubSettingsPage';
 import { useApiReachableStore } from '@/stores/apiReachableStore';
@@ -49,15 +42,11 @@ import { PrivacySettingsTab } from './components/PrivacySettingsTab';
 import { VALID_TABS, type SettingsTabValue } from './settings-utils';
 
 export interface SettingsContentProps {
-  /** When false, omit the "Settings" page title (e.g. when embedded in profile). */
   showHeader?: boolean;
-  /** Optional profile for Privacy tab (visibility, social links, etc.). */
   profile?: UserProfile | null;
-  /** Initial tab when opened via path (e.g. "billing" for /u/username/settings/billing). */
   initialTab?: string;
 }
 
-/** Get tab from hash, path, or query param - priority: hash > path > query > default */
 function getInitialTab(
   hash: string,
   initialTabProp: string | undefined,
@@ -75,6 +64,19 @@ function getInitialTab(
   }
   return 'account';
 }
+
+const TABS: { id: SettingsTabValue; label: string; icon: typeof User }[] = [
+  { id: 'account', label: 'Account', icon: User },
+  { id: 'billing', label: 'Billing', icon: CreditCard },
+  { id: 'developer', label: 'Developer', icon: Code },
+  { id: 'notifications', label: 'Notifications', icon: Bell },
+  { id: 'security', label: 'Security', icon: ShieldCheck },
+  { id: 'privacy', label: 'Privacy', icon: Shield },
+  { id: 'platform', label: 'Platform', icon: Dna },
+  { id: 'integrations', label: 'Integrations', icon: Link2 },
+  { id: 'github', label: 'GitHub', icon: Code },
+  { id: 'trust-api', label: 'Trust API', icon: Shield },
+];
 
 export function SettingsContent({
   showHeader = true,
@@ -114,11 +116,9 @@ export function SettingsContent({
   }, [meData?.plan, setUserPlan]);
   const displayPlan = meData?.plan ?? user?.plan ?? 'Starter';
 
-  // Update URL hash when tab changes (enables shareable links and browser history)
   useEffect(() => {
     const newHash = `#${activeTab}`;
     if (location.hash !== newHash) {
-      // Use replaceState for initial load, pushState for user-initiated changes
       window.history.replaceState(
         {},
         document.title,
@@ -127,7 +127,6 @@ export function SettingsContent({
     }
   }, [activeTab, location.pathname, location.search, location.hash]);
 
-  // Listen for hash changes (browser back/forward, external links)
   useEffect(() => {
     const handleHashChange = () => {
       const hashTab = location.hash.replace('#', '');
@@ -140,12 +139,10 @@ export function SettingsContent({
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  // Sync from path-based initialTab or query param on first load (backwards compat)
   useEffect(() => {
     const next = initialTabProp || subtabFromUrl;
     if (next && VALID_TABS.includes(next as SettingsTabValue)) {
       setActiveTab(next as SettingsTabValue);
-      // Also update hash to match
       window.history.replaceState(
         {},
         document.title,
@@ -154,7 +151,6 @@ export function SettingsContent({
     }
   }, [initialTabProp, subtabFromUrl, location.pathname, location.search]);
 
-  // Billing portal return: show success toast and clean URL
   useEffect(() => {
     const success = searchParams.get('success');
     if (success === 'true') {
@@ -169,7 +165,7 @@ export function SettingsContent({
   const returnUrl = `${window.location.origin}${location.pathname}${location.search ? location.search : ''}`;
 
   return (
-    <div className="settings-page space-y-6">
+    <div className="settings-page">
       {showHeader && (
         <div className="settings-page-header">
           <h1 className="settings-page-title">{t('settings.title')}</h1>
@@ -177,135 +173,52 @@ export function SettingsContent({
         </div>
       )}
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as SettingsTabValue)}
-        className="settings-tab-content space-y-6"
-      >
-        <TabsList className="settings-page-tabs">
-          <TabsTrigger
-            value="account"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <User className="h-4 w-4 shrink-0" />
-            {t('settings.account')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="billing"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <CreditCard className="h-4 w-4 shrink-0" />
-            {t('settings.billing')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="developer"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <Code className="h-4 w-4 shrink-0" />
-            {t('settings.developer')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <Bell className="h-4 w-4 shrink-0" />
-            {t('settings.notifications')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="security"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <ShieldCheck className="h-4 w-4 shrink-0" />
-            {t('settings.security')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="privacy"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <Shield className="h-4 w-4 shrink-0" />
-            {t('settings.privacy')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="platform"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <Dna className="h-4 w-4 shrink-0" />
-            Platform
-          </TabsTrigger>
-          <TabsTrigger
-            value="integrations"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <Link2 className="h-4 w-4 shrink-0" />
-            Integrations
-          </TabsTrigger>
-          <TabsTrigger
-            value="github"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <svg
-              role="img"
-              viewBox="0 0 24 24"
-              className="h-4 w-4 shrink-0"
-              xmlns="http://www.w3.org/2000/svg"
+      {/* Tab Navigation — containment-style tabs */}
+      <div className="settings-page-tabs" role="tablist">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          const tabLabel = tab.id === 'account' ? t('settings.account')
+            : tab.id === 'billing' ? t('settings.billing')
+            : tab.id === 'developer' ? t('settings.developer')
+            : tab.id === 'notifications' ? t('settings.notifications')
+            : tab.id === 'security' ? t('settings.security')
+            : tab.id === 'privacy' ? t('settings.privacy')
+            : tab.label;
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              className="settings-page-tab"
+              data-state={isActive ? 'active' : 'inactive'}
+              onClick={() => setActiveTab(tab.id)}
             >
-              <path
-                fill="currentColor"
-                d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"
-              />
-            </svg>
-            GitHub
-          </TabsTrigger>
-          <TabsTrigger
-            value="trust-api"
-            className="settings-page-tab gap-2 text-sm font-medium transition-all duration-200"
-          >
-            <Shield className="h-4 w-4 shrink-0" />
-            Trust API
-          </TabsTrigger>
-        </TabsList>
+              <Icon style={{ width: 14, height: 14 }} />
+              <span>{tabLabel}</span>
+            </button>
+          );
+        })}
+      </div>
 
-        <TabsContent value="account" className="settings-tab-content space-y-6">
-          <AccountSettingsTab />
-        </TabsContent>
-
-        <TabsContent value="billing" className="settings-tab-content space-y-6">
-          <BillingSettingsTab returnUrl={returnUrl} displayPlan={displayPlan} />
-        </TabsContent>
-
-        <TabsContent value="developer" className="settings-tab-content space-y-6">
-          <DeveloperSettingsTab />
-          <AuthSettingsTab />
-        </TabsContent>
-
-        <TabsContent value="notifications" className="settings-tab-content space-y-6">
-          <NotificationsSettingsTab />
-        </TabsContent>
-
-        <TabsContent value="security" className="settings-tab-content space-y-6">
-          <SecuritySettingsTab />
-        </TabsContent>
-
-        <TabsContent value="privacy" className="settings-tab-content space-y-6">
-          <PrivacySettingsTab profile={profile ?? undefined} />
-        </TabsContent>
-
-        <TabsContent value="platform" className="settings-tab-content space-y-6">
-          <PlatformSettingsTab />
-        </TabsContent>
-
-        <TabsContent value="integrations" className="settings-tab-content space-y-6">
-          <IntegrationsSettingsTab />
-        </TabsContent>
-
-        <TabsContent value="github" className="settings-tab-content space-y-6">
-          <GitHubSettingsPage />
-        </TabsContent>
-
-        <TabsContent value="trust-api" className="settings-tab-content space-y-6">
-          <TrustAPISettingsTab returnUrl={returnUrl} />
-        </TabsContent>
-      </Tabs>
+      {/* Tab Content */}
+      <div className="settings-tab-content" style={{ paddingTop: 'var(--space-6)' }}>
+        {activeTab === 'account' && <AccountSettingsTab />}
+        {activeTab === 'billing' && <BillingSettingsTab returnUrl={returnUrl} displayPlan={displayPlan} />}
+        {activeTab === 'developer' && (
+          <>
+            <DeveloperSettingsTab />
+            <AuthSettingsTab />
+          </>
+        )}
+        {activeTab === 'notifications' && <NotificationsSettingsTab />}
+        {activeTab === 'security' && <SecuritySettingsTab />}
+        {activeTab === 'privacy' && <PrivacySettingsTab profile={profile ?? undefined} />}
+        {activeTab === 'platform' && <PlatformSettingsTab />}
+        {activeTab === 'integrations' && <IntegrationsSettingsTab />}
+        {activeTab === 'github' && <GitHubSettingsPage />}
+        {activeTab === 'trust-api' && <TrustAPISettingsTab returnUrl={returnUrl} />}
+      </div>
     </div>
   );
 }

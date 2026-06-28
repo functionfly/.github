@@ -14,7 +14,6 @@ import {
 } from '@/api/billing';
 import { getCostSummary } from '@/api/usageAnalytics';
 import { EnterpriseSettingsSection } from '@/components/enterprise';
-import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Chamber, CornerBrace, FrameButton, SealedButton, StatusPill } from '@/components/sc';
 import { PLANS } from '@/lib/constants';
 import { useAuthStore } from '@/stores/authStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -339,14 +339,9 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
     <div className="space-y-6">
       <EnterpriseSettingsSection />
       <BundleStatusSection />
-      <div
-        className="rounded-lg p-5"
-        style={{
-          background: 'var(--panel)',
-          border: '1px solid var(--panel-edge)',
-          boxShadow: 'var(--shadow-chamber)',
-        }}
-      >
+      <Chamber>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
         <div className="mb-4">
           <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
             Current Plan
@@ -400,40 +395,22 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
           )}
 
           <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              variant="default"
+            <SealedButton
               onClick={() => openPortal(returnUrl)}
               disabled={billingPortalLoading}
-              style={{
-                background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
-                color: 'var(--text-on-light)',
-                boxShadow: 'var(--shadow-btn-primary-rest)',
-              }}
+              loading={billingPortalLoading}
             >
-              {billingPortalLoading ? 'Opening…' : 'Manage billing'}
-            </Button>
-            <Button
-              variant="outline"
+              Manage billing
+            </SealedButton>
+            <FrameButton
               disabled={billingPortalLoading}
               onClick={() => (window.location.href = '/pricing')}
-              style={{
-                borderColor: 'var(--steel)',
-                color: 'var(--text)',
-              }}
             >
-              {billingPortalLoading ? 'Opening…' : 'Upgrade Plan'}
-            </Button>
+              Upgrade Plan
+            </FrameButton>
             <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
               <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  style={{
-                    borderColor: 'var(--steel)',
-                    color: 'var(--text)',
-                  }}
-                >
-                  Contact Sales
-                </Button>
+                <FrameButton>Contact Sales</FrameButton>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
@@ -484,12 +461,10 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setContactModalOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleContactSales} disabled={contactSubmitting}>
+                  <FrameButton onClick={() => setContactModalOpen(false)}>Cancel</FrameButton>
+                  <SealedButton onClick={handleContactSales} disabled={contactSubmitting}>
                     {contactSubmitting ? 'Sending...' : 'Send Message'}
-                  </Button>
+                  </SealedButton>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -498,16 +473,9 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
               !subscription.cancel_at_period_end && (
                 <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
                   <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      style={{
-                        borderColor: 'var(--steel)',
-                        color: 'var(--text)',
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
+                    <FrameButton iconLeft={<Trash2 className="w-4 h-4" />}>
                       Cancel Subscription
-                    </Button>
+                    </FrameButton>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
@@ -533,23 +501,22 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button variant="outline" onClick={() => setCancelModalOpen(false)}>
+                      <FrameButton onClick={() => setCancelModalOpen(false)}>
                         Keep Subscription
-                      </Button>
-                      <Button
+                      </FrameButton>
+                      <SealedButton
                         onClick={handleCancelSubscription}
                         disabled={cancelSubmitting}
-                        variant="destructive"
                       >
                         {cancelSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
-                      </Button>
+                      </SealedButton>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
               )}
           </div>
         </div>
-      </div>
+      </Chamber>
 
       <WalletSection
         walletData={walletData}

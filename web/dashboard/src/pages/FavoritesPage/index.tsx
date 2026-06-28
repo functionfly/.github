@@ -1,45 +1,42 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useFavoritesStore } from '@/stores/favoritesStore';
+import { usePageTitle } from '@/hooks';
+import {
+  PageGrid, Chamber, CornerBrace, TrustSeal,
+  SealedButton, FrameButton, AnnotationTag,
+} from '@/components/containment';
+
+import './styles.css';
 
 export default function FavoritesPage() {
+  usePageTitle('Favorites');
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-
   const { favorites, total, fetchFavorites, isLoading, error } = useFavoritesStore();
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      await fetchFavorites(1, 50);
-      setLoading(false);
-    };
+    const load = async () => { setLoading(true); await fetchFavorites(1, 50); setLoading(false); };
     load();
   }, [fetchFavorites]);
 
-  const handleCreateFunction = () => {
-    navigate('/functions/new');
-  };
-
-  const handleGoToDiscovery = () => {
-    navigate('/functions/discovery/hot');
-  };
-
   if (loading || isLoading) {
     return (
-      <div className="favorites-page">
-        <div className="favorites-page-header">
-          <div className="favorites-page-title">
-            <Heart className="h-6 w-6 text-red-500" />
-            <h1>Your Favorites</h1>
+      <div className="fav-page">
+        <PageGrid />
+        <Chamber className="fav-hero">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <div className="fav-hero__header">
+            <div className="fav-hero__title-row">
+              <TrustSeal size="lg" />
+              <h1 className="fav-hero__title">Your Favorites</h1>
+            </div>
           </div>
-        </div>
-        <div className="favorites-loading">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="favorites-skeleton" />
-          ))}
+        </Chamber>
+        <div className="fav-grid">
+          {[...Array(6)].map((_, i) => <div key={i} className="fav-skeleton" />)}
         </div>
       </div>
     );
@@ -47,86 +44,88 @@ export default function FavoritesPage() {
 
   if (error) {
     return (
-      <div className="favorites-page">
-        <div className="favorites-page-header">
-          <div className="favorites-page-title">
-            <Heart className="h-6 w-6 text-red-500" />
-            <h1>Your Favorites</h1>
+      <div className="fav-page">
+        <PageGrid />
+        <Chamber className="fav-hero">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <div className="fav-hero__header">
+            <div className="fav-hero__title-row">
+              <TrustSeal size="lg" />
+              <h1 className="fav-hero__title">Your Favorites</h1>
+            </div>
           </div>
-        </div>
-        <div className="favorites-empty-state">
-          <Heart className="h-16 w-16 text-gray-400" />
-          <h2>Something went wrong</h2>
-          <p>{error}</p>
-          <Button className="btn-primary" onClick={() => fetchFavorites(1, 50)}>Try Again</Button>
-        </div>
+        </Chamber>
+        <Chamber className="fav-empty">
+          <Heart className="fav-empty__icon" />
+          <h2 className="fav-empty__title">Something went wrong</h2>
+          <p className="fav-empty__desc">{error}</p>
+          <SealedButton onClick={() => fetchFavorites(1, 50)}>Try Again</SealedButton>
+        </Chamber>
       </div>
     );
   }
 
   if (favorites.length === 0) {
     return (
-      <div className="favorites-page">
-        <div className="favorites-page-header">
-          <div className="favorites-page-title">
-            <Heart className="h-6 w-6 text-red-500" />
-            <h1>Your Favorites</h1>
+      <div className="fav-page">
+        <PageGrid />
+        <Chamber className="fav-hero" ribs>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <AnnotationTag primary="MODULE FAV-01" secondary="Favorites" position="top-right" />
+          <div className="fav-hero__header">
+            <div className="fav-hero__title-row">
+              <TrustSeal size="lg" />
+              <h1 className="fav-hero__title">Your Favorites</h1>
+            </div>
+            <p className="fav-hero__subtitle">Functions you favorite will appear here for quick access</p>
           </div>
-          <p className="favorites-page-subtitle">
-            Functions you favorite will appear here for quick access
-          </p>
-        </div>
-        <div className="favorites-empty-state">
-          <div className="favorites-empty-icon">
-            <Heart className="h-16 w-16 text-gray-400" />
-          </div>
-          <h2 className="favorites-empty-title">No favorites yet</h2>
-          <p className="favorites-empty-description">
-            Start exploring and add functions to your favorites by clicking the heart icon.
-          </p>
-          <div className="favorites-empty-actions">
-            <Button variant="secondary" onClick={handleGoToDiscovery}>
-              <Search className="h-4 w-4 mr-2" />
+        </Chamber>
+        <Chamber className="fav-empty">
+          <Heart className="fav-empty__icon" />
+          <h2 className="fav-empty__title">No favorites yet</h2>
+          <p className="fav-empty__desc">Start exploring and add functions to your favorites by clicking the heart icon.</p>
+          <div className="fav-empty__actions">
+            <FrameButton onClick={() => navigate('/functions/discovery/hot')} iconLeft={<Search className="fav-icon-sm" />}>
               Discover Functions
-            </Button>
-            <Button variant="secondary" onClick={handleCreateFunction}>
-              Create Your Own
-            </Button>
+            </FrameButton>
+            <FrameButton onClick={() => navigate('/functions/new')}>Create Your Own</FrameButton>
           </div>
-        </div>
+        </Chamber>
       </div>
     );
   }
 
   return (
-    <div className="favorites-page">
-      <div className="favorites-page-header">
-        <div className="favorites-page-title">
-          <Heart className="h-6 w-6 text-red-500 fill-current" />
-          <h1>Your Favorites</h1>
-        </div>
-        <p className="favorites-page-subtitle">
-          {total} {total === 1 ? 'function' : 'functions'} in your favorites
-        </p>
-      </div>
-
-      <div className="favorites-grid">
-        {favorites.map((fav) => (
-          <div
-            key={fav.function_id}
-            className="favorite-card"
-            onClick={() => navigate(`/functions/${fav.function_id}`)}
-          >
-            <div className="favorite-card-icon">
-              <Heart className="h-5 w-5 text-red-500 fill-current" />
-            </div>
-            <div className="favorite-card-info">
-              <h3 className="favorite-card-title">Function</h3>
-              <p className="favorite-card-meta">
-                Added {new Date(fav.created_at).toLocaleDateString()}
-              </p>
-            </div>
+    <div className="fav-page">
+      <PageGrid />
+      <Chamber className="fav-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="MODULE FAV-01" secondary="Favorites" position="top-right" />
+        <div className="fav-hero__header">
+          <div className="fav-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="fav-hero__title">Your Favorites</h1>
           </div>
+          <p className="fav-hero__subtitle">
+            {total} {total === 1 ? 'function' : 'functions'} in your favorites
+          </p>
+        </div>
+      </Chamber>
+
+      <div className="fav-grid">
+        {favorites.map((fav) => (
+          <button key={fav.function_id} className="fav-card" onClick={() => navigate(`/functions/${fav.function_id}`)}>
+            <div className="fav-card__icon-wrap">
+              <Heart className="fav-card__icon" />
+            </div>
+            <div className="fav-card__info">
+              <h3 className="fav-card__title">Function</h3>
+              <p className="fav-card__meta">Added {new Date(fav.created_at).toLocaleDateString()}</p>
+            </div>
+          </button>
         ))}
       </div>
     </div>

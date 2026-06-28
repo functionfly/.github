@@ -11,36 +11,18 @@ import {
   Search,
   RefreshCw,
   AlertTriangle,
-  Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { StatCard } from "@/components/common/StatCard";
-import { StatusBadge } from "@/components/common/StatusBadge";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Chamber,
+  CornerBrace,
+  PageGrid,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  Modal,
+} from "@/components/containment";
 import {
   useStateFabrics,
   useDeleteStateFabric,
@@ -53,60 +35,43 @@ import {
 } from "@/lib/plan-utils";
 import { ROUTES } from "@/lib/constants";
 import type { StateFabric } from "@/types";
+import "@/styles/sc-tokens.css";
 
 const getTypeIcon = (type: string) => {
   switch (type) {
-    case "session":
-      return "👤";
-    case "catalog":
-      return "📦";
-    case "cache":
-      return "⚡";
-    case "workflow":
-      return "🔄";
-    default:
-      return "🧵";
-  }
-};
-
-const getTypeColor = (type: string) => {
-  switch (type) {
-    case "session":
-      return "bg-blue-500/10 border-blue-500/20";
-    case "catalog":
-      return "bg-green-500/10 border-green-500/20";
-    case "cache":
-      return "bg-yellow-500/10 border-yellow-500/20";
-    case "workflow":
-      return "bg-purple-500/10 border-purple-500/20";
-    default:
-      return "bg-gray-500/10 border-gray-500/20";
+    case "session": return "👤";
+    case "catalog": return "📦";
+    case "cache": return "⚡";
+    case "workflow": return "🔄";
+    default: return "🧵";
   }
 };
 
 const getTypeLabel = (type: string) => {
   switch (type) {
-    case "session":
-      return "Session Store";
-    case "catalog":
-      return "Data Catalog";
-    case "cache":
-      return "Cache Layer";
-    case "workflow":
-      return "Workflow Engine";
-    default:
-      return "Custom Fabric";
+    case "session": return "Session Store";
+    case "catalog": return "Data Catalog";
+    case "cache": return "Cache Layer";
+    case "workflow": return "Workflow Engine";
+    default: return "Custom Fabric";
   }
+};
+
+const statusToPill = (status: string): "live" | "pending" | "revoked" => {
+  if (status === "online") return "live";
+  if (status === "degraded") return "pending";
+  return "revoked";
 };
 
 export function StateFabricPage() {
   const navigate = useNavigate();
   const { plan } = usePlan();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fabricToDelete, setFabricToDelete] = useState<StateFabric | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
   const { data: fabrics, isLoading, error, refetch } = useStateFabrics();
   const deleteFabric = useDeleteStateFabric();
@@ -120,8 +85,7 @@ export function StateFabricPage() {
     const matchesSearch =
       fabric.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fabric.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === "all" || fabric.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || fabric.status === statusFilter;
     const matchesType = typeFilter === "all" || fabric.type === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
   });
@@ -130,25 +94,7 @@ export function StateFabricPage() {
     total: fabrics?.length || 0,
     active: fabrics?.filter((f) => f.status === "online").length || 0,
     stores: fabrics?.reduce((acc, f) => acc + (f.stores?.length || 0), 0) || 0,
-    pipelines:
-      fabrics?.reduce((acc, f) => acc + (f.pipelines?.length || 0), 0) || 0,
-  };
-
-  const handleCreateFabric = () => {
-    navigate("/state-fabric/new");
-  };
-
-  const handleViewFabric = (id: string) => {
-    navigate(`/state-fabric/${id}`);
-  };
-
-  const handleEditFabric = (id: string) => {
-    navigate(`/state-fabric/${id}/edit`);
-  };
-
-  const handleDeleteClick = (fabric: StateFabric) => {
-    setFabricToDelete(fabric);
-    setDeleteDialogOpen(true);
+    pipelines: fabrics?.reduce((acc, f) => acc + (f.pipelines?.length || 0), 0) || 0,
   };
 
   const handleConfirmDelete = async () => {
@@ -159,58 +105,51 @@ export function StateFabricPage() {
     }
   };
 
-  const handleCancelDelete = () => {
-    setDeleteDialogOpen(false);
-    setFabricToDelete(null);
-  };
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <LoadingSpinner size="lg" />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 384 }}>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-faint)" }}>
+          Loading state fabrics...
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">
-              State Fabric
-            </h1>
-            <p className="text-text-secondary">
-              Manage state and data orchestration across your applications
-            </p>
-          </div>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-7)", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+        <PageGrid />
+        <div>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, color: "var(--text)" }}>State Fabric</h1>
+          <p style={{ color: "var(--text-dim)", marginTop: "var(--space-2)" }}>Manage state and data orchestration across your applications</p>
         </div>
-        <Card className="p-12 text-center">
-          <div className="text-red-400 mb-4">Failed to load state fabrics</div>
-          <Button onClick={() => refetch()} variant="outline">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Retry
-          </Button>
-        </Card>
+        <Chamber>
+          <div style={{ textAlign: "center", padding: "var(--space-8) 0" }}>
+            <p style={{ color: "var(--status-revoked)", marginBottom: "var(--space-4)" }}>Failed to load state fabrics</p>
+            <FrameButton onClick={() => refetch()} iconLeft={<RefreshCw style={{ width: 14, height: 14 }} />}>
+              Retry
+            </FrameButton>
+          </div>
+        </Chamber>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div style={{ maxWidth: 1180, margin: "0 auto", padding: "var(--space-7)", display: "flex", flexDirection: "column", gap: "var(--space-6)" }}>
+      <PageGrid />
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "var(--space-4)" }}>
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">State Fabric</h1>
-          <p className="text-text-secondary">
-            Manage state and data orchestration across your applications
-          </p>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: "-0.005em", color: "var(--text)" }}>State Fabric</h1>
+          <p style={{ color: "var(--text-dim)", marginTop: "var(--space-2)" }}>Manage state and data orchestration across your applications</p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Button
-            className="gap-2"
-            onClick={handleCreateFabric}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "var(--space-1)" }}>
+          <SealedButton
+            onClick={() => navigate("/state-fabric/new")}
             disabled={!canCreate}
+            iconLeft={<Plus style={{ width: 14, height: 14 }} />}
             title={
               !stateFabricUnlocked
                 ? "State Fabric is available on Starter and higher plans"
@@ -219,282 +158,199 @@ export function StateFabricPage() {
                   : undefined
             }
           >
-            <Plus className="w-4 h-4" />
             Create State Fabric
-          </Button>
+          </SealedButton>
           {!canCreate && (
-            <p className="text-xs text-text-muted text-right max-w-xs">
+            <p style={{ fontSize: 11, color: "var(--text-faint)", maxWidth: 280, textAlign: "right" }}>
               {!stateFabricUnlocked ? (
-                <>
-                  Upgrade to use State Fabric.{" "}
-                  <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
-                    View plans
-                  </Link>
-                </>
+                <>Upgrade to use State Fabric. <Link to={ROUTES.PRICING} style={{ color: "var(--status-ok)" }}>View plans</Link></>
               ) : (
-                <>
-                  Limit reached for your plan.{" "}
-                  <Link to={ROUTES.PRICING} className="text-brand-500 hover:underline">
-                    Upgrade
-                  </Link>
-                </>
+                <>Limit reached for your plan. <Link to={ROUTES.PRICING} style={{ color: "var(--status-ok)" }}>Upgrade</Link></>
               )}
             </p>
           )}
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Fabrics"
-          value={stats.total.toString()}
-          icon={<Database className="w-5 h-5 text-blue-500" />}
-          trend="neutral"
-        />
-        <StatCard
-          title="Active Fabrics"
-          value={stats.active.toString()}
-          change={{
-            value: stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0,
-            label: "of total",
-          }}
-          icon={<Activity className="w-5 h-5 text-green-500" />}
-          trend="up"
-        />
-        <StatCard
-          title="Total Stores"
-          value={stats.stores.toString()}
-          icon={<Network className="w-5 h-5 text-purple-500" />}
-          trend="neutral"
-        />
-        <StatCard
-          title="Active Pipelines"
-          value={stats.pipelines.toString()}
-          icon={<Zap className="w-5 h-5 text-yellow-500" />}
-          trend="neutral"
-        />
-      </div>
+      {/* Stats */}
+      <Chamber nested>
+        <GaugeStrip>
+          <Gauge data={{ value: stats.total, label: "Total Fabrics" }} isFirst />
+          <Gauge data={{ value: stats.active, label: "Active" }} />
+          <Gauge data={{ value: stats.stores, label: "Stores" }} />
+          <Gauge data={{ value: stats.pipelines, label: "Pipelines" }} />
+        </GaugeStrip>
+      </Chamber>
 
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-          <Input
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-3)" }}>
+        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
+          <Search style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", width: 14, height: 14, color: "var(--text-faint)" }} />
+          <input
             type="text"
             placeholder="Search state fabrics..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="input"
+            style={{ paddingLeft: 36 }}
           />
         </div>
-        <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="online">Online</SelectItem>
-              <SelectItem value="degraded">Degraded</SelectItem>
-              <SelectItem value="offline">Offline</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="session">Session</SelectItem>
-              <SelectItem value="catalog">Catalog</SelectItem>
-              <SelectItem value="cache">Cache</SelectItem>
-              <SelectItem value="workflow">Workflow</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" onClick={() => refetch()} aria-label="Refresh state fabrics">
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+        <div style={{ display: "flex", gap: "var(--space-2)" }}>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="input"
+            style={{ width: 140, cursor: "pointer", appearance: "none" }}
+          >
+            <option value="all">All Status</option>
+            <option value="online">Online</option>
+            <option value="degraded">Degraded</option>
+            <option value="offline">Offline</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="input"
+            style={{ width: 140, cursor: "pointer", appearance: "none" }}
+          >
+            <option value="all">All Types</option>
+            <option value="session">Session</option>
+            <option value="catalog">Catalog</option>
+            <option value="cache">Cache</option>
+            <option value="workflow">Workflow</option>
+            <option value="custom">Custom</option>
+          </select>
+          <FrameButton
+            size="sm"
+            onClick={() => refetch()}
+            iconLeft={<RefreshCw style={{ width: 14, height: 14 }} />}
+          />
         </div>
       </div>
 
-      {/* State Fabrics Grid */}
+      {/* Fabrics Grid */}
       {filteredFabrics && filteredFabrics.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(480px, 1fr))", gap: "var(--space-5)" }}>
           {filteredFabrics.map((fabric) => (
-            <Card
-              key={fabric.id}
-              className="hover:border-brand-500/30 transition-colors"
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg ${getTypeColor(
-                        fabric.type
-                      )}`}
-                    >
-                      {getTypeIcon(fabric.type)}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg text-text-primary">
-                        {fabric.name}
-                      </CardTitle>
-                      <p className="text-sm text-text-secondary">
-                        {fabric.description}
-                      </p>
-                      <Badge variant="secondary" className="mt-1 text-xs">
-                        {getTypeLabel(fabric.type)}
-                      </Badge>
-                    </div>
+            <Chamber nested key={fabric.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/state-fabric/${fabric.id}`)}>
+              {/* Header row */}
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "var(--space-4)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: "var(--radius)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 18, background: "var(--panel)", border: "1px solid var(--panel-edge)",
+                  }}>
+                    {getTypeIcon(fabric.type)}
                   </div>
-                  <StatusBadge status={fabric.status} />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Metrics */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-text-muted uppercase tracking-wide">
-                      Throughput
-                    </p>
-                    <p className="text-lg font-semibold text-text-primary">
-                      {fabric.metrics?.operationsPerSecond
-                        ? `${fabric.metrics.operationsPerSecond.toFixed(1)} ops/sec`
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-text-muted uppercase tracking-wide">
-                      Latency
-                    </p>
-                    <p className="text-lg font-semibold text-text-primary">
-                      {fabric.metrics?.averageLatency
-                        ? `${fabric.metrics.averageLatency.toFixed(0)}ms`
-                        : "N/A"}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-text-muted uppercase tracking-wide">
-                      Stores
-                    </p>
-                    <p className="text-lg font-semibold text-text-primary">
-                      {fabric.stores?.length || 0}
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-text-muted uppercase tracking-wide">
-                      Pipelines
-                    </p>
-                    <p className="text-lg font-semibold text-text-primary">
-                      {fabric.pipelines?.length || 0}
-                    </p>
+                  <div>
+                    <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600, color: "var(--text)" }}>{fabric.name}</h3>
+                    <p style={{ fontSize: 13, color: "var(--text-dim)" }}>{fabric.description}</p>
+                    <span style={{
+                      display: "inline-block", marginTop: "var(--space-1)",
+                      fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 500,
+                      textTransform: "uppercase", letterSpacing: "0.06em",
+                      color: "var(--text-faint)", padding: "2px 8px",
+                      borderRadius: "var(--radius-sm)", border: "1px solid var(--panel-edge)",
+                    }}>
+                      {getTypeLabel(fabric.type)}
+                    </span>
                   </div>
                 </div>
+                <StatusPill status={statusToPill(fabric.status)} label={fabric.status} />
+              </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-4 border-t border-border-subtle">
-                  <p className="text-xs text-text-muted">
-                    Updated {new Date(fabric.updatedAt).toLocaleDateString()}
-                  </p>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-text-secondary"
-                        aria-label="More options"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="bg-bg-tertiary border-white/8"
-                    >
-                      <DropdownMenuItem
-                        className="gap-2"
-                        onClick={() => handleViewFabric(fabric.id)}
-                      >
-                        <Activity className="w-4 h-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="gap-2"
-                        onClick={() => handleEditFabric(fabric.id)}
-                      >
-                        <Settings className="w-4 h-4" />
-                        Configure
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="gap-2 text-red-400"
-                        onClick={() => handleDeleteClick(fabric)}
-                      >
-                        <Database className="w-4 h-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+              {/* Metrics grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-4)", marginBottom: "var(--space-4)" }}>
+                {[
+                  { label: "Throughput", value: fabric.metrics?.operationsPerSecond ? `${fabric.metrics.operationsPerSecond.toFixed(1)} ops/sec` : "N/A" },
+                  { label: "Latency", value: fabric.metrics?.averageLatency ? `${fabric.metrics.averageLatency.toFixed(0)}ms` : "N/A" },
+                  { label: "Stores", value: String(fabric.stores?.length || 0) },
+                  { label: "Pipelines", value: String(fabric.pipelines?.length || 0) },
+                ].map((m) => (
+                  <div key={m.label}>
+                    <p style={{ fontFamily: "var(--font-mono)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-faint)", marginBottom: "var(--space-1)" }}>{m.label}</p>
+                    <p style={{ fontFamily: "var(--font-mono)", fontSize: 16, fontWeight: 500, color: "var(--text)" }}>{m.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "var(--space-4)", borderTop: "1px solid var(--panel-edge)" }}>
+                <p style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                  Updated {new Date(fabric.updatedAt).toLocaleDateString()}
+                </p>
+                <div style={{ display: "flex", gap: "var(--space-2)" }}>
+                  <FrameButton
+                    size="sm"
+                    onClick={(e) => { e.stopPropagation(); navigate(`/state-fabric/${fabric.id}/edit`); }}
+                    iconLeft={<Settings style={{ width: 12, height: 12 }} />}
+                  >
+                    Configure
+                  </FrameButton>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFabricToDelete(fabric);
+                      setDeleteDialogOpen(true);
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: 28, height: 28, borderRadius: "var(--radius)",
+                      background: "transparent", border: "1px solid var(--steel)",
+                      cursor: "pointer", color: "var(--status-revoked)",
+                      transition: "border-color var(--duration-fast) var(--ease-out)",
+                    }}
+                    title="Delete"
+                  >
+                    <Database style={{ width: 12, height: 12 }} />
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </Chamber>
           ))}
         </div>
       ) : (
-        <Card className="p-12 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-bg-tertiary flex items-center justify-center">
-            <Database className="w-8 h-8 text-text-muted" />
+        <Chamber>
+          <div style={{ textAlign: "center", padding: "var(--space-8) 0" }}>
+            <div style={{ width: 64, height: 64, margin: "0 auto var(--space-4)", borderRadius: "50%", background: "var(--panel-raised)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Database style={{ width: 32, height: 32, color: "var(--text-faint)" }} />
+            </div>
+            <h3 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 500, color: "var(--text)", marginBottom: "var(--space-2)" }}>
+              No state fabrics yet
+            </h3>
+            <p style={{ color: "var(--text-dim)", marginBottom: "var(--space-6)" }}>
+              {searchQuery
+                ? "No fabrics match your search."
+                : "Create your first state fabric to get started with data orchestration."}
+            </p>
+            <SealedButton onClick={() => navigate("/state-fabric/new")} iconLeft={<Plus style={{ width: 14, height: 14 }} />}>
+              Create State Fabric
+            </SealedButton>
           </div>
-          <h3 className="text-lg font-medium text-text-primary mb-2">
-            No state fabrics yet
-          </h3>
-          <p className="text-text-secondary mb-6">
-            {searchQuery
-              ? "No fabrics match your search."
-              : "Create your first state fabric to get started with data orchestration."}
-          </p>
-          <Button onClick={handleCreateFabric}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create State Fabric
-          </Button>
-        </Card>
+        </Chamber>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-500" />
-              Delete State Fabric
-            </DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{fabricToDelete?.name}"? This action cannot be undone.
-              All associated stores and pipelines will be permanently removed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={handleCancelDelete}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteFabric.isPending}
-            >
-              {deleteFabric.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Confirmation Modal */}
+      <Modal open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} title="Delete State Fabric">
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-3)", marginBottom: "var(--space-4)" }}>
+          <AlertTriangle style={{ width: 18, height: 18, color: "var(--status-revoked)", flexShrink: 0, marginTop: 2 }} />
+          <p style={{ fontSize: 14, color: "var(--text-dim)", lineHeight: 1.6 }}>
+            Are you sure you want to delete "{fabricToDelete?.name}"? This action cannot be undone.
+            All associated stores and pipelines will be permanently removed.
+          </p>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--space-3)" }}>
+          <FrameButton onClick={() => setDeleteDialogOpen(false)}>Cancel</FrameButton>
+          <SealedButton
+            onClick={handleConfirmDelete}
+            disabled={deleteFabric.isPending}
+            style={{ background: "var(--status-revoked)", color: "#fff" }}
+          >
+            {deleteFabric.isPending ? "Deleting..." : "Delete"}
+          </SealedButton>
+        </div>
+      </Modal>
     </div>
   );
 }

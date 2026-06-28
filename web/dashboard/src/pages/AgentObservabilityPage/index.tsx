@@ -2,25 +2,12 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { DateRangePicker } from '@/components/ui/date-picker';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Bot, Play, Pause, SkipForward, BarChart3, GitBranch, Clock, DollarSign, AlertCircle, Settings, Download, Search, Info } from 'lucide-react';
+import { Bot, Play, Pause, SkipForward, BarChart3, GitBranch, Clock, DollarSign, AlertCircle, Settings, Download, Search, Info, Layers } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '@/lib/constants';
 import { useAtlasRuns, useAtlasEvents, useAtlasStream, useAtlasConfig, RunsFilter, RunsPagination, EventsPagination } from '@/hooks/useAtlasObservability';
+import { useAtlasTrace } from '@/hooks/useAtlasTraces';
+import { ExecutionTraceViewer } from '@/components/atlas';
 import { useKeyboardShortcuts, KeyboardShortcutsHelp } from '@/hooks/useKeyboardShortcuts';
 import AgentRunTimeline from '@/components/observability/AgentRunTimeline';
 import DecisionGraphViewer from '@/components/observability/DecisionGraphViewer';
@@ -39,8 +26,22 @@ import ReconnectButton from '@/components/observability/ReconnectButton';
 import ConfirmDialog from '@/components/observability/ConfirmDialog';
 import RunMetadataPanel from '@/components/observability/RunMetadataPanel';
 import { RunsListSkeleton, EventsListSkeleton, StatsSkeleton } from '@/components/observability/Skeletons';
-import { EmptyState } from '@/components/ui/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
+import { DateRangePicker } from '@/components/ui/date-picker';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+  Card,
+} from '@/components/containment';
+
+import './observability.css';
 
 export function AgentObservabilityPage() {
   const { t } = useTranslation();
@@ -57,6 +58,7 @@ export function AgentObservabilityPage() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showConfig, setShowConfig] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [activeTab, setActiveTab] = useState<'events' | 'graph' | 'cost' | 'spans' | 'atlas-trace'>('events');
 
   const [runsPagination, setRunsPagination] = useState<RunsPagination>({ limit: 20, offset: 0, total: 0 });
   const [eventsPagination, setEventsPagination] = useState<EventsPagination>({ limit: 100, afterSequence: 0, total: 0 });
@@ -74,6 +76,8 @@ export function AgentObservabilityPage() {
   const { config, loading: configLoading, updateConfig } = useAtlasConfig();
 
   const selectedRun = runs?.find(r => r.id === selectedRunId);
+  const atlasRunId = selectedRun?.atlas_run_id || '';
+  const { data: atlasTrace, isLoading: atlasTraceLoading } = useAtlasTrace(atlasRunId);
 
   const filteredEvents = searchQuery
     ? events.filter(e =>
@@ -117,303 +121,289 @@ export function AgentObservabilityPage() {
     enabled: true,
   });
 
+  const tabs = [
+    { value: 'events' as const, label: 'Events' },
+    { value: 'graph' as const, label: 'Decision Graph' },
+    { value: 'cost' as const, label: 'Cost Breakdown' },
+    { value: 'spans' as const, label: 'Spans' },
+    { value: 'atlas-trace' as const, label: 'Atlas Trace', icon: Layers },
+  ];
+
+  const statusToPill = (status: string): 'live' | 'pending' | 'revoked' => {
+    if (status === 'completed') return 'live';
+    if (status === 'failed') return 'revoked';
+    return 'pending';
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Bot className="h-5 w-5 text-white" />
+    <div className="obs-page">
+      <PageGrid />
+
+      {/* Hero */}
+      <Chamber className="obs-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="MODULE OBS-01" secondary="Agent Observability" position="top-right" />
+
+        <div className="obs-hero__header">
+          <div className="obs-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="obs-hero__title">Agent Observability</h1>
+            <AtlasStatusBadge connected={connected} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">Agent Observability</h1>
-            <p className="text-muted-foreground text-sm">AI agent decision replay and debugging with Atlas</p>
+          <p className="obs-hero__subtitle">
+            AI agent decision replay and debugging with Atlas
+          </p>
+          <div className="obs-hero__actions">
+            <FrameButton size="sm" onClick={() => setShowShortcuts(!showShortcuts)} iconLeft={<Info className="obs-icon-sm" />}>
+              Shortcuts
+            </FrameButton>
+            <FrameButton size="sm" onClick={() => setShowConfig(!showConfig)} iconLeft={<Settings className="obs-icon-sm" />}>
+              Config
+            </FrameButton>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <AtlasStatusBadge connected={connected} />
-          <Button variant="outline" size="sm" onClick={() => setShowShortcuts(!showShortcuts)} className="gap-2">
-            <Info className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowConfig(!showConfig)} className="gap-2">
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      </Chamber>
 
       {showShortcuts && (
-        <Card className="p-4">
+        <Chamber className="obs-shortcuts">
           <KeyboardShortcutsHelp />
-        </Card>
+        </Chamber>
       )}
 
       {showConfig && (
         <AtlasConfigPanel config={config} onUpdate={updateConfig} loading={configLoading} />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Runs</CardTitle>
-              <CardDescription>AI agent execution history</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Filter by agent ID..."
-                  value={agentIdFilter}
-                  onChange={(e) => setAgentIdFilter(e.target.value)}
-                  className="flex-1"
-                />
-              </div>
+      {/* Main Grid */}
+      <div className="obs-main-grid">
+        {/* Left Panel: Runs */}
+        <div className="obs-left-panel">
+          <Chamber className="obs-runs-chamber">
+            <CornerBrace position="tl" />
+            <CornerBrace position="br" />
+            <h2 className="obs-section-title">Runs</h2>
+            <p className="obs-section-desc">AI agent execution history</p>
 
-              <div className="flex gap-2">
-                <DateRangePicker
-                  value={dateRange}
-                  onChange={(range) => setDateRange({ from: range.from, to: range.to })}
-                  placeholder="Filter by date..."
-                />
-              </div>
+            <div className="obs-filters">
+              <input
+                className="obs-input"
+                placeholder="Filter by agent ID..."
+                value={agentIdFilter}
+                onChange={(e) => setAgentIdFilter(e.target.value)}
+              />
+              <DateRangePicker
+                value={dateRange}
+                onChange={(range) => setDateRange({ from: range.from, to: range.to })}
+                placeholder="Filter by date..."
+              />
+              <select className="obs-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+                <option value="all">All Status</option>
+                <option value="running">Running</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+              </select>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="running">Running</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Switch id="auto-refresh" checked={autoRefresh} onCheckedChange={setAutoRefresh} />
-                  <Label htmlFor="auto-refresh" className="text-sm cursor-pointer">Auto-refresh</Label>
-                </div>
+              <div className="obs-filters__row">
+                <label className="obs-auto-refresh">
+                  <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
+                  <span>Auto-refresh</span>
+                </label>
                 <DataExport data={runs || []} filename="runs" />
               </div>
+            </div>
 
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {runsLoading ? (
-                  <RunsListSkeleton />
-                ) : runs?.length === 0 ? (
-                  <EmptyState
-                    icon={<Bot className="h-8 w-8" />}
-                    title="No runs found"
-                    description="Try adjusting your filters or wait for new runs to appear"
-                  />
-                ) : (
-                  runs?.map((run) => (
-                    <div
-                      key={run.id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        selectedRunId === run.id
-                          ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
-                          : 'border-border hover:border-purple-300'
-                      }`}
-                      onClick={() => setSelectedRunId(run.id)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && setSelectedRunId(run.id)}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-mono text-xs text-muted-foreground">{run.agent_id}</span>
-                        <Badge
-                          variant={run.status === 'completed' ? 'default' : run.status === 'failed' ? 'destructive' : 'secondary'}
-                        >
-                          {run.status}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {new Date(run.started_at).toLocaleTimeString()}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          ${run.total_cost_usd.toFixed(4)}
-                        </span>
-                      </div>
+            <div className="obs-runs-list">
+              {runsLoading ? (
+                <RunsListSkeleton />
+              ) : runs?.length === 0 ? (
+                <div className="obs-empty">
+                  <Bot className="obs-empty__icon" />
+                  <h3 className="obs-empty__title">No runs found</h3>
+                  <p className="obs-empty__desc">Try adjusting your filters or wait for new runs to appear</p>
+                </div>
+              ) : (
+                runs?.map((run) => (
+                  <button
+                    key={run.id}
+                    className={`obs-run-item ${selectedRunId === run.id ? 'obs-run-item--selected' : ''}`}
+                    onClick={() => setSelectedRunId(run.id)}
+                  >
+                    <div className="obs-run-item__header">
+                      <span className="obs-run-item__agent">{run.agent_id}</span>
+                      <StatusPill status={statusToPill(run.status)} label={run.status} />
                     </div>
-                  ))
-                )}
-              </div>
+                    <div className="obs-run-item__meta">
+                      <span><Clock className="obs-icon-xs" /> {new Date(run.started_at).toLocaleTimeString()}</span>
+                      <span><DollarSign className="obs-icon-xs" /> ${run.total_cost_usd.toFixed(4)}</span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
 
-              <PaginationControls
-                total={paginationInfo.total}
-                limit={paginationInfo.limit}
-                offset={paginationInfo.offset}
-                onPageChange={handleRunsPageChange}
-                loading={runsLoading}
-              />
-            </CardContent>
-          </Card>
+            <PaginationControls
+              total={paginationInfo.total}
+              limit={paginationInfo.limit}
+              offset={paginationInfo.offset}
+              onPageChange={handleRunsPageChange}
+              loading={runsLoading}
+            />
+          </Chamber>
 
+          {/* Statistics */}
           {selectedRun && (
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Statistics</CardTitle>
+            <Chamber className="obs-stats-chamber">
+              <CornerBrace position="tr" />
+              <CornerBrace position="bl" />
+              <div className="obs-stats__header">
+                <h2 className="obs-section-title">Statistics</h2>
                 <RunMetadataPanel run={selectedRun}>
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <Info className="h-4 w-4" />
-                    Details
-                  </Button>
+                  <FrameButton size="sm" iconLeft={<Info className="obs-icon-xs" />}>Details</FrameButton>
                 </RunMetadataPanel>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {runsLoading ? (
-                  <StatsSkeleton />
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-2xl font-bold">{selectedRun.event_count}</p>
-                      <p className="text-xs text-muted-foreground">Events</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-2xl font-bold">{selectedRun.error_count}</p>
-                      <p className="text-xs text-muted-foreground">Errors</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-2xl font-bold">{selectedRun.total_input_tokens}</p>
-                      <p className="text-xs text-muted-foreground">Input Tokens</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/50">
-                      <p className="text-2xl font-bold">{selectedRun.total_output_tokens}</p>
-                      <p className="text-xs text-muted-foreground">Output Tokens</p>
-                    </div>
+              </div>
+              {runsLoading ? (
+                <StatsSkeleton />
+              ) : (
+                <div className="obs-stats-grid">
+                  <div className="obs-stat-cell">
+                    <p className="obs-stat-cell__value">{selectedRun.event_count}</p>
+                    <p className="obs-stat-cell__label">Events</p>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <div className="obs-stat-cell">
+                    <p className="obs-stat-cell__value">{selectedRun.error_count}</p>
+                    <p className="obs-stat-cell__label">Errors</p>
+                  </div>
+                  <div className="obs-stat-cell">
+                    <p className="obs-stat-cell__value">{selectedRun.total_input_tokens}</p>
+                    <p className="obs-stat-cell__label">Input Tokens</p>
+                  </div>
+                  <div className="obs-stat-cell">
+                    <p className="obs-stat-cell__value">{selectedRun.total_output_tokens}</p>
+                    <p className="obs-stat-cell__label">Output Tokens</p>
+                  </div>
+                </div>
+              )}
+            </Chamber>
           )}
         </div>
 
-        <div className="lg:col-span-2 space-y-4">
+        {/* Right Panel: Detail */}
+        <div className="obs-right-panel">
           {selectedRunId ? (
             <>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle>Run Timeline</CardTitle>
-                      <CardDescription>Event sequence visualization</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {!connected && (
-                        <ReconnectButton onReconnect={reconnect} />
-                      )}
-                      <ReplayControls
-                        speed={replaySpeed}
-                        onSpeedChange={setReplaySpeed}
-                        isPlaying={isReplaying}
-                        onPlayPause={() => setIsReplaying(!isReplaying)}
-                      />
-                    </div>
+              {/* Timeline */}
+              <Chamber className="obs-timeline-chamber">
+                <CornerBrace position="tl" />
+                <CornerBrace position="br" />
+                <div className="obs-timeline__header">
+                  <div>
+                    <h2 className="obs-section-title">Run Timeline</h2>
+                    <p className="obs-section-desc">Event sequence visualization</p>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <AgentRunTimeline events={liveEvents.length > 0 ? liveEvents : events} />
-                </CardContent>
-              </Card>
+                  <div className="obs-timeline__controls">
+                    {!connected && <ReconnectButton onReconnect={reconnect} />}
+                    <ReplayControls speed={replaySpeed} onSpeedChange={setReplaySpeed} isPlaying={isReplaying} onPlayPause={() => setIsReplaying(!isReplaying)} />
+                  </div>
+                </div>
+                <AgentRunTimeline events={liveEvents.length > 0 ? liveEvents : events} />
+              </Chamber>
 
-              <Tabs defaultValue="events" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="events">Events</TabsTrigger>
-                  <TabsTrigger value="graph">Decision Graph</TabsTrigger>
-                  <TabsTrigger value="cost">Cost Breakdown</TabsTrigger>
-                  <TabsTrigger value="spans">Spans</TabsTrigger>
-                </TabsList>
+              {/* Tabs */}
+              <div className="obs-tabs">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.value}
+                    className={`obs-tab ${activeTab === tab.value ? 'obs-tab--active' : ''}`}
+                    onClick={() => setActiveTab(tab.value)}
+                  >
+                    {tab.icon && <tab.icon className="obs-icon-xs" />}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                <TabsContent value="events" className="space-y-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2 flex-1">
-                          <Search className="h-4 w-4 text-muted-foreground" />
-                          <Input
-                            placeholder="Search events..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="flex-1"
-                          />
-                        </div>
-                        <DataExport data={filteredEvents} filename={`events-${selectedRunId}`} />
-                      </div>
-                      {eventsLoading ? (
-                        <EventsListSkeleton />
-                      ) : (
-                        <EventDetailPanel events={filteredEvents} />
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+              <div className="obs-tab-content">
+                {activeTab === 'events' && (
+                  <Chamber>
+                    <div className="obs-search-bar">
+                      <Search className="obs-icon-sm obs-search-icon" />
+                      <input className="obs-input obs-search-input" placeholder="Search events..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+                      <DataExport data={filteredEvents} filename={`events-${selectedRunId}`} />
+                    </div>
+                    {eventsLoading ? <EventsListSkeleton /> : <EventDetailPanel events={filteredEvents} />}
+                  </Chamber>
+                )}
 
-                <TabsContent value="graph" className="space-y-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <DecisionGraphViewer runId={selectedRunId} onNodeClick={setSelectedNodeId} />
-                      {selectedNodeId && (
-                        <GraphNodeDetail
-                          nodeId={selectedNodeId}
-                          runId={selectedRunId}
-                          onClose={() => setSelectedNodeId(null)}
-                        />
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                {activeTab === 'graph' && (
+                  <Chamber>
+                    <DecisionGraphViewer runId={selectedRunId} onNodeClick={setSelectedNodeId} />
+                    {selectedNodeId && (
+                      <GraphNodeDetail nodeId={selectedNodeId} runId={selectedRunId} onClose={() => setSelectedNodeId(null)} />
+                    )}
+                  </Chamber>
+                )}
 
-                <TabsContent value="cost" className="space-y-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <CostBreakdownPanel runId={selectedRunId} />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                {activeTab === 'cost' && (
+                  <Chamber>
+                    <CostBreakdownPanel runId={selectedRunId} />
+                  </Chamber>
+                )}
 
-                <TabsContent value="spans" className="space-y-4">
-                  <Card>
-                    <CardContent className="pt-6">
-                      <SpanNavigator runId={selectedRunId} onSpanClick={setSelectedSpanId} />
-                      {selectedSpanId && (
-                        <SpanDetailPanel
-                          spanId={selectedSpanId}
-                          runId={selectedRunId}
-                          onClose={() => setSelectedSpanId(null)}
-                        />
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                {activeTab === 'spans' && (
+                  <Chamber>
+                    <SpanNavigator runId={selectedRunId} onSpanClick={setSelectedSpanId} />
+                    {selectedSpanId && (
+                      <SpanDetailPanel spanId={selectedSpanId} runId={selectedRunId} onClose={() => setSelectedSpanId(null)} />
+                    )}
+                  </Chamber>
+                )}
+
+                {activeTab === 'atlas-trace' && (
+                  <>
+                    {atlasTrace ? (
+                      <ExecutionTraceViewer run={atlasTrace.run} events={atlasTrace.events} graph={atlasTrace.graph} />
+                    ) : atlasTraceLoading ? (
+                      <Chamber className="obs-loading">
+                        <span className="obs-loading__spinner" />
+                        <span className="obs-loading__text">Loading Atlas trace...</span>
+                      </Chamber>
+                    ) : (
+                      <Chamber className="obs-empty">
+                        <Layers className="obs-empty__icon" />
+                        <h3 className="obs-empty__title">No Atlas Trace</h3>
+                        <p className="obs-empty__desc">
+                          {atlasRunId
+                            ? 'No trace data found for this run in Atlas Memory Engine.'
+                            : 'This run does not have an associated Atlas trace. Configure ATLAS_URL to enable tracing.'}
+                        </p>
+                      </Chamber>
+                    )}
+                  </>
+                )}
+              </div>
 
               {selectedRun?.status === 'running' && (
-                <ConfirmDialog
-                  title="End Run"
-                  description="Are you sure you want to end this run? This action cannot be undone."
-                  confirmLabel="End Run"
-                  variant="destructive"
-                  onConfirm={handleEndRun}
-                  trigger={
-                    <Button variant="destructive" size="sm" className="gap-2">
-                      End Run
-                    </Button>
-                  }
-                />
+                <div className="obs-end-run">
+                  <ConfirmDialog
+                    title="End Run"
+                    description="Are you sure you want to end this run? This action cannot be undone."
+                    confirmLabel="End Run"
+                    variant="destructive"
+                    onConfirm={handleEndRun}
+                    trigger={
+                      <SealedButton size="sm">End Run</SealedButton>
+                    }
+                  />
+                </div>
               )}
             </>
           ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <EmptyState
-                  icon={<Bot className="h-12 w-12" />}
-                  title="Select a run to view"
-                  description="Choose a run from the list to view its timeline, events, and decision graph"
-                />
-              </CardContent>
-            </Card>
+            <Chamber className="obs-empty obs-empty--large">
+              <Bot className="obs-empty__icon" />
+              <h3 className="obs-empty__title">Select a run to view</h3>
+              <p className="obs-empty__desc">Choose a run from the list to view its timeline, events, and decision graph</p>
+            </Chamber>
           )}
         </div>
       </div>

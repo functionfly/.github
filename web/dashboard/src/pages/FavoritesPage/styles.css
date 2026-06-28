@@ -1,0 +1,195 @@
+/**
+ * FunctionFly Favorites Page — Sealed Containment
+ *
+ * All design tokens come from sc-tokens.css.
+ */
+
+@import '@/styles/sc-tokens.css';
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.fav-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-9);
+}
+
+@media (max-width: 480px) {
+  .fav-page { padding: 0 var(--space-4); gap: var(--space-5); }
+}
+
+/* ==========================================================================
+   Icon Sizes
+   ========================================================================== */
+
+.fav-icon-sm { width: 16px; height: 16px; }
+
+/* ==========================================================================
+   Hero Chamber
+   ========================================================================== */
+
+.fav-hero__header {
+  margin-bottom: var(--space-4);
+}
+
+.fav-hero__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.fav-hero__title {
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .fav-hero__title { font-size: 28px; }
+}
+
+.fav-hero__subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Grid
+   ========================================================================== */
+
+.fav-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 960px) { .fav-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .fav-grid { grid-template-columns: 1fr; } }
+
+/* ==========================================================================
+   Favorite Card
+   ========================================================================== */
+
+.fav-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--duration-fast) var(--ease-out);
+  width: 100%;
+}
+
+.fav-card:hover { border-color: var(--steel-light); }
+
+.fav-card__icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: rgba(255, 107, 107, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fav-card__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--status-revoked);
+  fill: currentColor;
+}
+
+.fav-card__info { flex: 1; min-width: 0; }
+
+.fav-card__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.fav-card__meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.fav-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-9) var(--space-5);
+}
+
+.fav-empty__icon {
+  width: 64px;
+  height: 64px;
+  color: var(--text-faint);
+  margin-bottom: var(--space-5);
+  opacity: 0.5;
+}
+
+.fav-empty__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.fav-empty__desc {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-5);
+  max-width: 400px;
+}
+
+.fav-empty__actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   Skeleton
+   ========================================================================== */
+
+.fav-skeleton {
+  height: 80px;
+  background: linear-gradient(90deg, var(--panel-raised) 0%, var(--panel-edge) 50%, var(--panel-raised) 100%);
+  background-size: 200% 100%;
+  animation: fav-shimmer 1.5s infinite;
+  border-radius: var(--radius);
+}
+
+@keyframes fav-shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }

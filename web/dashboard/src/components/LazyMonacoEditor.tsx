@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
 
-const MonacoEditor = lazy(() => import('@monaco-editor/react').then(m => ({ default: m.default })));
+const MonacoEditor = lazy(() => import('@monaco-editor/react').then(m => ({ default: m.Editor })));
 
 interface LazyMonacoEditorProps {
   height?: string | number;

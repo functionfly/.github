@@ -1,962 +1,535 @@
+/**
+ * FunctionFly FRG Page — Sealed Containment
+ *
+ * All design tokens come from sc-tokens.css.
+ */
+
+@import '@/styles/sc-tokens.css';
+
 /* ==========================================================================
-   FunctionFly FRG (Function Runtime Graphs) Page - Aviation Theme
-   Cockpit-inspired styling for the graph workflow interface
-   Full light/dark mode support with Aviation aesthetic
+   Page Container
    ========================================================================== */
 
-/* ----------------------------------------
-   CSS Variables (FRG Theme - Aviation)
-   ---------------------------------------- */
-:root {
-  /* FRG Brand Colors - Aviation Palette */
-  --frg-primary: var(--ff-flame);
-  --frg-primary-hover: var(--ff-flame-dark);
-  --frg-primary-light: rgba(255, 107, 53, 0.1);
-  --frg-primary-border: rgba(255, 107, 53, 0.2);
-  --frg-cyan: var(--ff-cyan);
-  --frg-stratosphere: var(--ff-stratosphere);
-
-  /* Graph Status Colors - Aviation Status LED */
-  --frg-status-published-bg: rgba(16, 185, 129, 0.12);
-  --frg-status-published-text: var(--color-aviation-green);
-  --frg-status-published-border: rgba(16, 185, 129, 0.25);
-
-  --frg-status-draft-bg: rgba(245, 158, 11, 0.12);
-  --frg-status-draft-text: var(--color-aviation-amber);
-  --frg-status-draft-border: rgba(245, 158, 11, 0.25);
-
-  /* Graph Card Styles - Aviation Panel */
-  --frg-card-bg: var(--color-aviation-bg-panel);
-  --frg-card-border: var(--color-aviation-border-panel);
-  --frg-card-hover-border: var(--color-aviation-amber-dim);
-  --frg-card-text: var(--color-aviation-text-primary);
-  --frg-card-text-secondary: var(--color-aviation-text-secondary);
-  --frg-card-text-muted: var(--color-aviation-text-muted);
-
-  /* Template Card Colors */
-  --frg-template-ai-bg: rgba(168, 85, 247, 0.12);
-  --frg-template-ai-text: #a855f7;
-  --frg-template-ai-border: rgba(168, 85, 247, 0.25);
-
-  --frg-template-webhook-bg: rgba(59, 130, 246, 0.12);
-  --frg-template-webhook-text: #3b82f6;
-  --frg-template-webhook-border: rgba(59, 130, 246, 0.25);
-
-  --frg-template-data-bg: rgba(34, 197, 94, 0.12);
-  --frg-template-data-text: #22c55e;
-  --frg-template-data-border: rgba(34, 197, 94, 0.25);
-
-  --frg-template-etl-bg: rgba(249, 115, 22, 0.12);
-  --frg-template-etl-text: #f97316;
-  --frg-template-etl-border: rgba(249, 115, 22, 0.25);
-
-  /* Search/Select - Aviation Instrument */
-  --frg-input-bg: var(--color-aviation-bg-instrument);
-  --frg-input-border: var(--color-aviation-border-instrument);
-  --frg-input-text: var(--color-aviation-text-primary);
-  --frg-input-placeholder: var(--color-aviation-text-dim);
-
-  /* Animation Durations */
-  --frg-transition-fast: 150ms ease;
-  --frg-transition-normal: 250ms ease;
-  --frg-transition-slow: 350ms ease;
-
-  /* Shadows - Aviation Glow */
-  --frg-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --frg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --frg-shadow-glow: 0 0 20px rgba(255, 107, 53, 0.15);
-  --frg-shadow-cyan: 0 0 20px rgba(0, 212, 255, 0.2);
-  --frg-shadow-purple: 0 0 20px rgba(168, 85, 247, 0.2);
-}
-
-/* Light Mode Overrides */
-[data-theme='light'] {
-  --frg-card-bg: var(--color-aviation-bg-panel-light);
-  --frg-card-border: var(--color-aviation-border-panel-light);
-  --frg-card-hover-border: var(--color-aviation-amber-dim-light);
-  --frg-card-text: var(--color-aviation-text-primary-light);
-  --frg-card-text-secondary: var(--color-aviation-text-secondary-light);
-  --frg-card-text-muted: var(--color-aviation-text-muted-light);
-
-  --frg-input-bg: var(--color-aviation-bg-instrument-light);
-  --frg-input-border: var(--color-aviation-border-instrument-light);
-  --frg-input-text: var(--color-aviation-text-primary-light);
-  --frg-input-placeholder: var(--color-aviation-text-dim-light);
-
-  --frg-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --frg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
-  --frg-shadow-glow: 0 0 20px rgba(232, 90, 42, 0.1);
-  --frg-shadow-cyan: 0 0 20px rgba(0, 168, 204, 0.15);
-  --frg-shadow-purple: 0 0 20px rgba(168, 85, 247, 0.15);
-}
-
-/* ----------------------------------------
-   FRG Page Container
-   ---------------------------------------- */
 .frg-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  animation: aviation-fade-in-up 0.5s ease-out forwards;
+  gap: var(--space-6);
+  padding-bottom: var(--space-9);
 }
 
-/* ----------------------------------------
-   FRG Header
-   ---------------------------------------- */
-.frg-header {
+@media (max-width: 480px) {
+  .frg-page { padding: 0 var(--space-4); gap: var(--space-5); }
+}
+
+/* ==========================================================================
+   Icon Sizes
+   ========================================================================== */
+
+.frg-icon-xs { width: 12px; height: 12px; }
+.frg-icon-sm { width: 16px; height: 16px; }
+.frg-icon-accent { color: var(--accent); }
+
+/* ==========================================================================
+   Hero Chamber
+   ========================================================================== */
+
+.frg-hero__header {
+  margin-bottom: var(--space-4);
+}
+
+.frg-hero__title-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
 }
 
-.frg-title {
-  font-size: 1.875rem;
+.frg-hero__title {
+  font-family: var(--font-display);
+  font-size: 36px;
   font-weight: 700;
-  color: var(--frg-card-text);
-  line-height: 1.2;
-  font-family: var(--font-mono);
-  letter-spacing: -0.02em;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  margin: 0;
 }
 
-.frg-subtitle {
-  color: var(--frg-card-text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.5;
+@media (max-width: 480px) {
+  .frg-hero__title { font-size: 28px; }
 }
 
-/* ----------------------------------------
-   FRG Toolbar - Search and Actions
-   ---------------------------------------- */
-.frg-toolbar {
+.frg-hero__subtitle {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-4);
+}
+
+.frg-hero__actions {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-3);
 }
 
-@media (min-width: 640px) {
-  .frg-toolbar {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-  }
+/* ==========================================================================
+   Controls (Search + Filters)
+   ========================================================================== */
+
+.frg-controls {
+  display: flex;
+  gap: var(--space-3);
 }
 
-.frg-search-container {
+@media (max-width: 640px) {
+  .frg-controls { flex-direction: column; }
+}
+
+.frg-search {
   position: relative;
   flex: 1;
-  max-width: 28rem;
+  max-width: 448px;
 }
 
-.frg-search-icon {
+.frg-search__icon {
   position: absolute;
-  left: 0.75rem;
+  left: var(--space-3);
   top: 50%;
   transform: translateY(-50%);
-  width: 1rem;
-  height: 1rem;
-  color: var(--frg-card-text-secondary);
+  width: 16px;
+  height: 16px;
+  color: var(--text-faint);
   pointer-events: none;
 }
 
-.frg-search-input {
+.frg-search__input {
+  padding-left: var(--space-8) !important;
+}
+
+.frg-input {
   width: 100%;
-  padding-left: 2.5rem;
-  background-color: var(--frg-input-bg);
-  border: 1px solid var(--frg-input-border);
-  border-radius: 8px;
-  color: var(--frg-input-text);
+  padding: var(--space-2) var(--space-3);
   font-family: var(--font-mono);
-  font-size: 0.875rem;
-  height: 2.75rem;
-  transition: all var(--frg-transition-fast);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
 }
 
-.frg-search-input:focus {
-  outline: none;
-  border-color: var(--color-aviation-amber);
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim),
-    0 0 20px var(--color-aviation-amber-dim);
-}
+.frg-input:focus { outline: none; border-color: var(--steel-light); box-shadow: var(--shadow-input-focus); }
+.frg-input::placeholder { color: var(--text-faint); }
 
-.frg-search-input::placeholder {
-  color: var(--frg-input-placeholder);
-}
-
-.frg-toolbar-actions {
+.frg-filters {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-2);
 }
 
-/* ----------------------------------------
-   FRG Create Button - Aviation Style
-   ---------------------------------------- */
-.frg-create-button {
-  position: relative;
-  background: linear-gradient(
-    135deg,
-    var(--ff-flame) 0%,
-    var(--ff-stratosphere) 100%
-  );
-  border: 1px solid var(--ff-flame);
-  color: white;
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+.frg-select {
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
   cursor: pointer;
-  overflow: hidden;
-  transition: all var(--frg-transition-fast);
-  box-shadow: var(--frg-shadow-glow);
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
-.frg-create-button::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.5s ease;
-}
+.frg-select:focus { outline: none; border-color: var(--steel-light); box-shadow: var(--shadow-input-focus); }
 
-.frg-create-button:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 0 30px rgba(255, 107, 53, 0.4),
-    0 4px 12px rgba(0, 0, 0, 0.3);
-}
+/* ==========================================================================
+   Content Grid
+   ========================================================================== */
 
-.frg-create-button:hover::before {
-  left: 100%;
-}
-
-.frg-create-button:active {
-  transform: translateY(0);
-}
-
-/* ----------------------------------------
-   FRG Import Button - Aviation Outline
-   ---------------------------------------- */
-.frg-import-button {
-  position: relative;
-  background: var(--color-aviation-bg-instrument);
-  border: 1px solid var(--color-aviation-border-instrument);
-  color: var(--frg-card-text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  overflow: hidden;
-  transition: all var(--frg-transition-fast);
-}
-
-.frg-import-button:hover {
-  border-color: var(--color-aviation-amber);
-  color: var(--color-aviation-amber);
-  background: var(--color-aviation-amber-subtle);
-  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
-}
-
-/* ----------------------------------------
-   FRG Filter Select - Aviation Style
-   ---------------------------------------- */
-.frg-filter-select {
-  background-color: var(--frg-input-bg);
-  border: 1px solid var(--frg-input-border);
-  border-radius: 8px;
-  color: var(--frg-input-text);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  height: 2.75rem;
-  transition: all var(--frg-transition-fast);
-}
-
-.frg-filter-select:focus {
-  outline: none;
-  border-color: var(--color-aviation-amber);
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim),
-    0 0 20px var(--color-aviation-amber-dim);
-}
-
-/* ----------------------------------------
-   FRG Main Content Grid
-   ---------------------------------------- */
 .frg-content-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.5rem;
+  gap: var(--space-6);
 }
 
 @media (min-width: 1280px) {
-  .frg-content-grid {
-    grid-template-columns: 3fr 1fr;
-  }
+  .frg-content-grid { grid-template-columns: 3fr 1fr; }
 }
 
-/* ----------------------------------------
-   FRG Graph Cards Grid
-   ---------------------------------------- */
-.frg-graphs-grid {
+/* ==========================================================================
+   Graphs Grid
+   ========================================================================== */
+
+.frg-grid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
 }
 
-@media (min-width: 640px) {
-  .frg-graphs-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+@media (max-width: 960px) { .frg-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .frg-grid { grid-template-columns: 1fr; } }
 
-@media (min-width: 1024px) {
-  .frg-graphs-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
+/* ==========================================================================
+   Graph Card
+   ========================================================================== */
 
-/* ----------------------------------------
-   FRG Graph Card - Aviation Instrument
-   ---------------------------------------- */
-.frg-graph-card {
-  position: relative;
-  background: var(--frg-card-bg);
-  border: 1px solid var(--frg-card-border);
-  border-radius: 12px;
+.frg-card {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
   overflow: hidden;
-  transition: all var(--frg-transition-normal);
+  transition: border-color var(--duration-fast) var(--ease-out);
 }
 
-.frg-graph-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 30%,
-    rgba(255, 255, 255, 0.1) 70%,
-    transparent 100%
-  );
-}
+.frg-card:hover { border-color: var(--steel-light); }
 
-.frg-graph-card:hover {
-  border-color: var(--frg-card-hover-border);
-  transform: translateY(-4px);
-  box-shadow:
-    0 0 20px var(--color-aviation-amber-dim),
-    0 8px 24px rgba(0, 0, 0, 0.4);
-}
-
-/* Graph Card Thumbnail */
-.frg-graph-thumbnail {
+.frg-card__thumb {
   position: relative;
-  height: 8rem;
-  background: var(--color-aviation-bg-tertiary);
+  height: 128px;
+  background: var(--panel-raised);
   overflow: hidden;
 }
 
-.frg-graph-thumbnail::before {
-  content: '';
+.frg-card__badge-wrap {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 107, 53, 0.05) 0%, rgba(91, 124, 245, 0.05) 100%);
+  top: var(--space-2);
+  right: var(--space-2);
 }
 
-.frg-graph-thumbnail-grid {
-  position: absolute;
-  inset: 0;
-  opacity: 0.3;
+.frg-card__body {
+  padding: var(--space-3);
 }
 
-.frg-graph-thumbnail-node {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  box-shadow: 0 0 6px currentColor;
-}
-
-/* Graph Card Badge */
-.frg-graph-badge {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.65rem;
-  font-weight: 600;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.frg-graph-badge-published {
-  background: var(--frg-status-published-bg);
-  color: var(--frg-status-published-text);
-  border: 1px solid var(--frg-status-published-border);
-}
-
-.frg-graph-badge-draft {
-  background: var(--frg-status-draft-bg);
-  color: var(--frg-status-draft-text);
-  border: 1px solid var(--frg-status-draft-border);
-}
-
-.frg-graph-badge-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
-.frg-graph-badge-published .frg-graph-badge-dot {
-  background: var(--frg-status-published-text);
-  box-shadow: 0 0 4px var(--color-aviation-green-glow);
-}
-
-.frg-graph-badge-draft .frg-graph-badge-dot {
-  background: var(--frg-status-draft-text);
-  box-shadow: 0 0 4px var(--color-aviation-amber-glow);
-}
-
-/* Graph Card Content */
-.frg-graph-content {
-  padding: 0.75rem;
-}
-
-.frg-graph-header {
+.frg-card__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
-.frg-graph-title {
-  font-size: 0.875rem;
+.frg-card__title-group { min-width: 0; flex: 1; }
+
+.frg-card__title {
+  font-family: var(--font-body);
+  font-size: 14px;
   font-weight: 600;
-  color: var(--frg-card-text);
-  font-family: var(--font-mono);
+  color: var(--text);
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.frg-graph-meta {
-  font-size: 0.75rem;
-  color: var(--frg-card-text-secondary);
-  margin-top: 0.25rem;
+.frg-card__meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
 }
 
-.frg-graph-tags {
+.frg-card__menu-wrap { position: relative; }
+
+.frg-card__menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--text-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.frg-card:hover .frg-card__menu-btn { opacity: 1; }
+.frg-card__menu-btn:hover { background: var(--panel-raised); color: var(--text); }
+
+.frg-card__menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--space-1);
+  min-width: 140px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-chamber);
+  z-index: var(--z-modal);
+  padding: var(--space-1) 0;
+}
+
+.frg-card__menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.frg-card__menu-item:hover { background: var(--panel-raised); }
+.frg-card__menu-item--danger { color: var(--status-revoked); }
+.frg-card__menu-item--danger:hover { background: rgba(255, 107, 107, 0.06); }
+.frg-card__menu-sep { height: 1px; background: var(--panel-edge); margin: var(--space-1) 0; }
+
+.frg-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
 }
 
-.frg-graph-tag {
-  padding: 0.125rem 0.375rem;
-  border-radius: 4px;
-  font-size: 0.65rem;
+.frg-card__tag {
+  padding: 1px var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 500;
-  background: var(--color-aviation-bg-instrument);
-  color: var(--frg-card-text-secondary);
-  border: 1px solid var(--color-aviation-border-instrument);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
 }
 
-.frg-graph-stats {
+.frg-card__stats {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-aviation-border-panel);
-  font-size: 0.75rem;
-  color: var(--frg-card-text-muted);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--panel-edge);
 }
 
-.frg-graph-stat {
+.frg-card__stat {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
 }
 
-.frg-graph-stat-icon {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-.frg-graph-actions {
+.frg-card__actions {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-aviation-border-panel);
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--panel-edge);
   opacity: 0;
-  transition: opacity var(--frg-transition-fast);
+  transition: opacity var(--duration-fast) var(--ease-out);
 }
 
-.frg-graph-card:hover .frg-graph-actions {
-  opacity: 1;
-}
+.frg-card:hover .frg-card__actions { opacity: 1; }
 
-.frg-graph-action-button {
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
+.frg-card__action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 12px;
   font-weight: 500;
+  color: var(--text-dim);
   background: transparent;
-  border: 1px solid var(--color-aviation-border-instrument);
-  color: var(--frg-card-text-secondary);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: all var(--frg-transition-fast);
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
+  transition: all var(--duration-fast) var(--ease-out);
 }
 
-.frg-graph-action-button:hover {
-  border-color: var(--color-aviation-amber);
-  color: var(--color-aviation-amber);
-  background: var(--color-aviation-amber-subtle);
-}
+.frg-card__action:hover { border-color: var(--steel-light); color: var(--text); }
 
-.frg-graph-action-icon {
-  width: 0.75rem;
-  height: 0.75rem;
-}
+/* ==========================================================================
+   Thumbnail
+   ========================================================================== */
 
-/* ----------------------------------------
-   FRG Quick Start Templates Sidebar
-   ---------------------------------------- */
-.frg-templates-sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.frg-templates-card {
-  background: var(--frg-card-bg);
-  border: 1px solid var(--frg-card-border);
-  border-radius: 12px;
+.frg-thumb {
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  position: relative;
 }
 
-.frg-templates-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-aviation-amber-dim) 30%,
-    var(--color-aviation-amber-dim) 70%,
-    transparent 100%
-  );
+.frg-thumb__grid {
+  width: 100%;
+  height: 100%;
+  opacity: 0.3;
+  color: var(--text-faint);
 }
 
-.frg-templates-header {
+.frg-thumb__node--a { color: var(--foil-a); }
+.frg-thumb__node--b { color: var(--foil-b); }
+.frg-thumb__node--c { color: var(--foil-c); }
+.frg-thumb__edge { color: var(--steel); }
+
+/* ==========================================================================
+   Templates Sidebar
+   ========================================================================== */
+
+.frg-templates__header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--color-aviation-border-panel);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
 }
 
-.frg-templates-icon {
-  width: 1rem;
-  height: 1rem;
-  color: var(--ff-flame);
-}
-
-.frg-templates-title {
-  font-size: 0.875rem;
+.frg-templates__title {
+  font-family: var(--font-body);
+  font-size: 14px;
   font-weight: 600;
-  color: var(--frg-card-text);
-  font-family: var(--font-mono);
+  color: var(--text);
 }
 
-.frg-templates-list {
-  padding: 0.75rem;
+.frg-templates__list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
-/* ----------------------------------------
-   FRG Template Card
-   ---------------------------------------- */
-.frg-template-card {
-  position: relative;
-  background: var(--color-aviation-bg-instrument);
-  border: 1px solid var(--color-aviation-border-instrument);
-  border-radius: 8px;
-  padding: 0.75rem;
-  cursor: pointer;
-  transition: all var(--frg-transition-fast);
-  overflow: hidden;
-}
-
-.frg-template-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, var(--color-aviation-amber-subtle) 0%, transparent 50%);
-  opacity: 0;
-  transition: opacity var(--frg-transition-fast);
-}
-
-.frg-template-card:hover {
-  border-color: var(--color-aviation-amber);
-  transform: translateX(4px);
-  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
-}
-
-.frg-template-card:hover::before {
-  opacity: 1;
-}
-
-.frg-template-content {
-  position: relative;
+.frg-template {
   display: flex;
   align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.frg-template-icon-wrapper {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.frg-template-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-  color: white;
-}
-
-.frg-template-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.frg-template-name {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--frg-card-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.frg-template-description {
-  font-size: 0.75rem;
-  color: var(--frg-card-text-secondary);
-  margin-top: 0.125rem;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.frg-template-nodes {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  color: var(--frg-card-text-muted);
-}
-
-.frg-template-nodes-icon {
-  width: 0.75rem;
-  height: 0.75rem;
-}
-
-.frg-template-arrow {
-  width: 1rem;
-  height: 1rem;
-  color: var(--frg-card-text-muted);
-  flex-shrink: 0;
-  transition: all var(--frg-transition-fast);
-}
-
-.frg-template-card:hover .frg-template-arrow {
-  color: var(--color-aviation-amber);
-  transform: translateX(2px);
-}
-
-/* ----------------------------------------
-   FRG Empty State
-   ---------------------------------------- */
-.frg-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 5rem 1rem;
-  text-align: center;
-}
-
-.frg-empty-icon-wrapper {
-  width: 6rem;
-  height: 6rem;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(91, 124, 245, 0.1) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  position: relative;
-}
-
-.frg-empty-icon-wrapper::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, var(--ff-flame) 0%, var(--ff-stratosphere) 100%);
-  opacity: 0.1;
-}
-
-.frg-empty-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  color: var(--ff-flame);
-  position: relative;
-}
-
-.frg-empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--frg-card-text);
-  margin-bottom: 0.5rem;
-}
-
-.frg-empty-description {
-  font-size: 0.875rem;
-  color: var(--frg-card-text-secondary);
-  max-width: 24rem;
-  line-height: 1.5;
-  margin-bottom: 1.5rem;
-}
-
-/* ----------------------------------------
-   FRG Error State
-   ---------------------------------------- */
-.frg-error-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 5rem 1rem;
-  text-align: center;
-}
-
-.frg-error-icon-wrapper {
-  width: 6rem;
-  height: 6rem;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-}
-
-.frg-error-icon {
-  width: 2.5rem;
-  height: 2.5rem;
-  color: var(--color-aviation-red);
-}
-
-.frg-error-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--frg-card-text);
-  margin-bottom: 0.5rem;
-}
-
-.frg-error-description {
-  font-size: 0.875rem;
-  color: var(--frg-card-text-secondary);
-  max-width: 24rem;
-  line-height: 1.5;
-  margin-bottom: 1.5rem;
-}
-
-.frg-retry-button {
-  position: relative;
-  background: transparent;
-  border: 1px solid var(--color-aviation-border-instrument);
-  color: var(--frg-card-text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
-  font-weight: 500;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: all var(--frg-transition-fast);
+  transition: border-color var(--duration-fast) var(--ease-out);
+  text-align: left;
+  width: 100%;
 }
 
-.frg-retry-button:hover {
-  border-color: var(--color-aviation-amber);
-  color: var(--color-aviation-amber);
-  background: var(--color-aviation-amber-subtle);
-}
+.frg-template:hover { border-color: var(--steel-light); }
 
-/* ----------------------------------------
-   FRG Loading State
-   ---------------------------------------- */
-.frg-loading-state {
+.frg-template__icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 5rem 1rem;
+  flex-shrink: 0;
 }
 
-.frg-loading-spinner {
-  width: 2rem;
-  height: 2rem;
-  color: var(--ff-flame);
+.frg-template__icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.frg-template__info { flex: 1; min-width: 0; }
+
+.frg-template__name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0;
+}
+
+.frg-template__desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: var(--space-1) 0 0;
+  line-height: 1.4;
+}
+
+.frg-template__nodes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.frg-template__arrow {
+  width: 16px;
+  height: 16px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.frg-template:hover .frg-template__arrow { color: var(--text-dim); }
+
+/* ==========================================================================
+   Empty / Error / Loading
+   ========================================================================== */
+
+.frg-empty,
+.frg-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-9) var(--space-5);
+}
+
+.frg-empty__icon,
+.frg-error__icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-4);
+}
+
+.frg-empty__icon { color: var(--text-faint); opacity: 0.5; }
+.frg-error__icon { color: var(--status-revoked); }
+
+.frg-empty__title,
+.frg-error__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.frg-empty__desc,
+.frg-error__desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0 0 var(--space-5);
+  max-width: 400px;
+}
+
+.frg-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-9);
+}
+
+.frg-loading__spinner {
+  width: 24px;
+  height: 24px;
+  color: var(--status-ok);
   animation: frg-spin 1s linear infinite;
 }
 
-@keyframes frg-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+@keyframes frg-spin { to { transform: rotate(360deg); } }
 
-/* ----------------------------------------
-   FRG Dropdown Menu - Aviation Style
-   ---------------------------------------- */
-.frg-dropdown-content {
-  background: var(--color-aviation-bg-panel);
-  border: 1px solid var(--color-aviation-border-panel);
-  border-radius: 8px;
-  padding: 0.25rem;
-  min-width: 10rem;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
-}
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
 
-.frg-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  color: var(--frg-card-text-secondary);
-  cursor: pointer;
-  transition: all var(--frg-transition-fast);
-}
-
-.frg-dropdown-item:hover {
-  background: var(--color-aviation-bg-instrument);
-  color: var(--frg-card-text);
-}
-
-.frg-dropdown-item-danger {
-  color: var(--color-aviation-red);
-}
-
-.frg-dropdown-item-danger:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--color-aviation-red);
-}
-
-.frg-dropdown-separator {
-  height: 1px;
-  background: var(--color-aviation-border-panel);
-  margin: 0.25rem 0;
-}
-
-.frg-dropdown-icon {
-  width: 1rem;
-  height: 1rem;
-}
-
-/* ----------------------------------------
-   FRG More Actions Button
-   ---------------------------------------- */
-.frg-more-button {
-  opacity: 0;
-  transition: opacity var(--frg-transition-fast);
-}
-
-.frg-graph-card:hover .frg-more-button {
-  opacity: 1;
-}
-
-/* ----------------------------------------
-   FRG Animation Keyframes
-   ---------------------------------------- */
-@keyframes frg-fade-in-up {
-  0% {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes frg-glow-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 20px var(--color-aviation-amber-dim);
-  }
-  50% {
-    box-shadow: 0 0 40px var(--color-aviation-amber-glow);
-  }
-}
-
-/* ----------------------------------------
-   FRG Light Mode Specific Overrides
-   ---------------------------------------- */
-[data-theme='light'] .frg-graph-card:hover {
-  box-shadow:
-    0 0 20px var(--color-aviation-amber-dim-light),
-    0 8px 24px rgba(0, 0, 0, 0.1);
-}
-
-[data-theme='light'] .frg-template-card:hover {
-  box-shadow: 0 0 15px var(--color-aviation-amber-dim-light);
-}
-
-[data-theme='light'] .frg-create-button {
-  box-shadow: 0 4px 12px rgba(232, 90, 42, 0.25);
-}
-
-[data-theme='light'] .frg-create-button:hover {
-  box-shadow:
-    0 0 30px rgba(232, 90, 42, 0.35),
-    0 4px 12px rgba(0, 0, 0, 0.15);
+@media (max-width: 768px) {
+  .frg-hero__actions { flex-direction: column; }
+  .frg-controls { flex-direction: column; }
+  .frg-grid { grid-template-columns: 1fr; }
 }

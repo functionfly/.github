@@ -1,9 +1,13 @@
-import { motion } from 'framer-motion';
 import { Award, Shield, Crown, Calendar, ExternalLink, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CornerBrace,
+  TrustSeal,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+} from '@/components/containment';
 import type { CertCredential } from '@/api/certification';
 
 const tierIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -12,26 +16,24 @@ const tierIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   architect: Crown,
 };
 
-const tierGradients: Record<string, string> = {
-  blue: 'from-blue-500 to-cyan-500',
-  purple: 'from-purple-500 to-pink-500',
-  gold: 'from-amber-500 to-yellow-500',
-};
-
 interface CredentialCardProps {
   credential: CertCredential;
   compact?: boolean;
 }
 
+const statusMap: Record<string, 'live' | 'pending' | 'revoked'> = {
+  active: 'live',
+  expired: 'revoked',
+  revoked: 'revoked',
+};
+
 export function CredentialCard({ credential, compact }: CredentialCardProps) {
   const [copied, setCopied] = useState(false);
   const tierSlug = credential.tier?.slug || 'associate';
   const Icon = tierIcons[tierSlug] || Award;
-  const gradient = tierGradients[credential.tier?.slug === 'architect' ? 'gold' : credential.tier?.slug === 'professional' ? 'purple' : 'blue'] || tierGradients.blue;
 
-  const isExpired = credential.status === 'expired';
-  const isRevoked = credential.status === 'revoked';
   const isActive = credential.status === 'active';
+  const status = statusMap[credential.status] || 'pending';
 
   const copyNumber = async () => {
     await navigator.clipboard.writeText(credential.credential_number);
@@ -41,90 +43,75 @@ export function CredentialCard({ credential, compact }: CredentialCardProps) {
 
   if (compact) {
     return (
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        className={cn(
-          'credentials-card compact',
-          isActive ? '' : 'inactive'
-        )}
-      >
-        <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', gradient.replace('from-', 'bg-gradient-to-br from-'))}>
-          <Icon className="h-5 w-5 text-white" />
+      <div className={`cred-card cred-card--compact ${!isActive ? 'cred-card--inactive' : ''}`}>
+        <div className={`cred-card__compact-icon cred-card__compact-icon--${tierSlug}`}>
+          <Icon className="cred-card__compact-icon-svg" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-text-primary truncate">
-            {credential.tier?.name || 'Certification'}
-          </p>
-          <p className="text-xs text-text-muted font-mono">{credential.credential_number}</p>
+        <div className="cred-card__compact-info">
+          <p className="cred-card__compact-name">{credential.tier?.name || 'Certification'}</p>
+          <p className="cred-card__compact-number">{credential.credential_number}</p>
         </div>
-        <Badge variant={isActive ? 'success' : isExpired ? 'secondary' : 'destructive'}>
-          {credential.status}
-        </Badge>
-      </motion.div>
+        <StatusPill status={status} label={credential.status} />
+      </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        'credentials-card',
-        !isActive && 'inactive',
-        credential.tier?.slug === 'architect' ? 'gold' : credential.tier?.slug === 'professional' ? 'purple' : 'blue'
-      )}
-    >
+    <Card className={`cred-card cred-card--${tierSlug} ${!isActive ? 'cred-card--inactive' : ''}`}>
+      <CornerBrace position="tl" />
+      <CornerBrace position="br" />
+
       {/* Header */}
-      <div className="credentials-card-header">
-        <div className="credentials-card-info">
-          <div className="credentials-card-icon">
-            <Icon className="h-6 w-6" />
+      <div className="cred-card__header">
+        <div className="cred-card__info">
+          <div className={`cred-card__icon cred-card__icon--${tierSlug}`}>
+            <Icon className="cred-card__icon-svg" />
           </div>
           <div>
-            <h3 className="credentials-card-title">
-              {credential.tier?.name || 'Certification'}
-            </h3>
-            <p className="credentials-card-number">{credential.credential_number}</p>
+            <div className="cred-card__title-row">
+              <h3 className="cred-card__title">{credential.tier?.name || 'Certification'}</h3>
+              <TrustSeal size="sm" />
+            </div>
+            <p className="cred-card__number">{credential.credential_number}</p>
           </div>
         </div>
-        <span className={`credentials-status-badge ${credential.status}`}>
-          {credential.status}
-        </span>
+        <StatusPill status={status} label={credential.status} />
       </div>
 
       {/* Details */}
-      <div className="credentials-card-details">
-        <div className="credentials-card-detail">
-          <Calendar className="h-4 w-4" />
+      <div className="cred-card__details">
+        <div className="cred-card__detail">
+          <Calendar className="cred-card__detail-icon" />
           <span>Issued: {new Date(credential.issued_at).toLocaleDateString()}</span>
         </div>
-        <div className="credentials-card-detail">
-          <Calendar className="h-4 w-4" />
+        <div className="cred-card__detail">
+          <Calendar className="cred-card__detail-icon" />
           <span>Expires: {new Date(credential.expires_at).toLocaleDateString()}</span>
         </div>
       </div>
 
       {/* Actions */}
-      <div className="credentials-card-actions">
-        <button
+      <div className="cred-card__actions">
+        <FrameButton
           onClick={copyNumber}
-          className="btn-outline"
+          size="sm"
+          iconLeft={copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
         >
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? 'Copied' : 'Copy Number'}
-        </button>
+        </FrameButton>
         {credential.verification_url && (
           <a
             href={credential.verification_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-outline"
+            className="cred-card__verify-link"
           >
-            <ExternalLink className="h-4 w-4" />
-            Verify
+            <FrameButton size="sm" iconLeft={<ExternalLink className="h-4 w-4" />}>
+              Verify
+            </FrameButton>
           </a>
         )}
       </div>
-    </motion.div>
+    </Card>
   );
 }

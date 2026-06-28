@@ -146,6 +146,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           if (item.path === '/agents') return planHasFeature(plan, 'AGENTS');
           if (item.path === '/enterprise/support') return planHasFeature(plan, 'DEDICATED_SUPPORT');
           if (item.path === '/dna/overview') return planHasFeature(plan, 'FUNCTION_DNA');
+          if (item.path === '/studio') return planHasFeature(plan, 'STUDIO');
           return true;
         }),
       }))
@@ -718,11 +719,12 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className={cn(
-            'fixed left-0 top-0 z-50 min-h-screen flex flex-col',
+            'fixed left-0 top-0 z-40 flex flex-col',
+            'min-h-screen lg:min-h-0 lg:h-full',
             'aviation-sidebar',
             isCollapsed && 'aviation-sidebar-collapsed',
             !isLg && 'aviation-sidebar-mobile-sheet',
-            'lg:relative lg:translate-x-0 lg:h-full lg:z-auto'
+            'lg:relative lg:translate-x-0 lg:z-auto'
           )}
         >
           <CollapseButton />

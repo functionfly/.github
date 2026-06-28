@@ -28,6 +28,7 @@ import {
 } from '@/hooks/useFunctionDNA';
 import '@/styles/components.css';
 import type { FunctionHeaderData, TrustTier } from '@/types';
+import { TraceList } from '@/components/atlas';
 import {
   Activity,
   AlertTriangle,
@@ -36,6 +37,7 @@ import {
   Code2,
   Dna,
   Globe,
+  Layers,
   RotateCcw,
   XCircle,
 } from 'lucide-react';
@@ -515,7 +517,7 @@ export function FunctionDetailPage() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview">{t('functionDetail.overview')}</TabsTrigger>
           <TabsTrigger value="code" className="gap-1.5">
             <Code2 className="h-3.5 w-3.5" />
@@ -527,6 +529,10 @@ export function FunctionDetailPage() {
           <TabsTrigger value="dna" className="gap-1.5">
             <Dna className="h-3.5 w-3.5" />
             DNA
+          </TabsTrigger>
+          <TabsTrigger value="traces" className="gap-1.5">
+            <Layers className="h-3.5 w-3.5" />
+            Traces
           </TabsTrigger>
         </TabsList>
 
@@ -733,6 +739,22 @@ export function FunctionDetailPage() {
                   <Dna className="h-4 w-4" />
                   Enable DNA
                 </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="traces" className="space-y-4">
+          {functionData?.author ? (
+            <TraceList functionFilter={{ author: functionData.author, name: functionData.name }} />
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Layers className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">Atlas Traces</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  Execution traces are recorded by the Atlas Memory Engine when ATLAS_URL is configured.
+                </p>
               </CardContent>
             </Card>
           )}

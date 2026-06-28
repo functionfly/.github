@@ -1,14 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect } from 'react';
 import { Settings, Save, RotateCcw } from 'lucide-react';
+import {
+  Chamber,
+  CornerBrace,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+} from '@/components/containment';
 
 interface AtlasConfigPanelProps {
   config: {
@@ -23,20 +23,29 @@ interface AtlasConfigPanelProps {
 }
 
 export default function AtlasConfigPanel({ config, onUpdate, loading }: AtlasConfigPanelProps) {
-  const { t } = useTranslation();
   const [localConfig, setLocalConfig] = useState(config);
   const [saving, setSaving] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  if (config && !localConfig) {
-    setLocalConfig(config);
-  }
+  useEffect(() => {
+    if (config) {
+      setLocalConfig(config);
+    }
+  }, [config]);
 
   const handleSave = async () => {
     if (!localConfig) return;
     setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
     try {
       await onUpdate(localConfig);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (e: any) {
+      setSaveError(e?.message || 'Failed to save configuration');
     } finally {
       setSaving(false);
     }
@@ -44,137 +53,116 @@ export default function AtlasConfigPanel({ config, onUpdate, loading }: AtlasCon
 
   const handleReset = () => {
     setLocalConfig(config);
+    setSaveError(null);
+    setSaveSuccess(false);
   };
 
   if (!showPanel) {
     return (
-      <Button variant="outline" size="sm" onClick={() => setShowPanel(true)} className="gap-2">
-        <Settings className="h-4 w-4" />
+      <FrameButton size="sm" onClick={() => setShowPanel(true)} iconLeft={<Settings className="atlas-icon-sm" />}>
         Configure Atlas
-      </Button>
+      </FrameButton>
     );
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              Atlas Configuration
-            </CardTitle>
-            <CardDescription>Configure observability sampling and retention settings</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setShowPanel(false)}>
-            Close
-          </Button>
+    <Chamber className="atlas-config">
+      <CornerBrace position="tl" />
+      <CornerBrace position="br" />
+      <div className="atlas-config__header">
+        <div>
+          <h2 className="atlas-config__title"><Settings className="atlas-icon-sm" /> Atlas Configuration</h2>
+          <p className="atlas-config__desc">Configure observability sampling and retention settings</p>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {loading ? (
-          <div className="text-center py-4 text-muted-foreground">Loading configuration...</div>
-        ) : localConfig ? (
-          <>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium">Sampling Rate</label>
-                  <p className="text-xs text-muted-foreground">Percentage of runs to sample (0-100)</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[localConfig.sampling_rate * 100]}
-                    onValueChange={([v]) => setLocalConfig({ ...localConfig, sampling_rate: v / 100 })}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-[150px]"
-                  />
-                  <Badge variant="outline" className="w-16 justify-center">
-                    {Math.round(localConfig.sampling_rate * 100)}%
-                  </Badge>
-                </div>
-              </div>
+        <button className="atlas-config__close" onClick={() => setShowPanel(false)}>Close</button>
+      </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="text-sm font-medium">Trace Errors Only</label>
-                  <p className="text-xs text-muted-foreground">Only trace runs with errors</p>
-                </div>
-                <Switch
-                  checked={localConfig.trace_errors_only}
-                  onCheckedChange={(checked) => setLocalConfig({ ...localConfig, trace_errors_only: checked })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Sample Head Percent</label>
-                <p className="text-xs text-muted-foreground">Sample first N% of tokens per run</p>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[localConfig.sample_head_percent]}
-                    onValueChange={([v]) => setLocalConfig({ ...localConfig, sample_head_percent: v })}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="w-[150px]"
-                  />
-                  <Badge variant="outline" className="w-16 justify-center">
-                    {localConfig.sample_head_percent}%
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Sample Tail Count</label>
-                <p className="text-xs text-muted-foreground">Number of final events to always capture</p>
-                <Input
-                  type="number"
-                  value={localConfig.sample_tail_count}
-                  onChange={(e) => setLocalConfig({ ...localConfig, sample_tail_count: parseInt(e.target.value) || 0 })}
-                  className="w-32"
-                  min={0}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Retention Days</label>
-                <p className="text-xs text-muted-foreground">How long to keep observability data</p>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    value={localConfig.retention_days}
-                    onChange={(e) => setLocalConfig({ ...localConfig, retention_days: parseInt(e.target.value) || 0 })}
-                    className="w-32"
-                    min={1}
-                  />
-                  <span className="text-sm text-muted-foreground">days</span>
-                </div>
-              </div>
+      {loading ? (
+        <p className="atlas-config__loading">Loading configuration...</p>
+      ) : localConfig ? (
+        <div className="atlas-config__body">
+          {/* Sampling Rate */}
+          <div className="atlas-config__row">
+            <div>
+              <label className="atlas-config__label">Sampling Rate</label>
+              <p className="atlas-config__hint">Percentage of runs to sample (0–100)</p>
             </div>
-
-            <div className="flex items-center gap-3 pt-4 border-t">
-              <Button onClick={handleSave} disabled={saving} className="gap-2">
-                {saving ? (
-                  <>Saving...</>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
-              <Button variant="outline" onClick={handleReset} className="gap-2">
-                <RotateCcw className="h-4 w-4" />
-                Reset
-              </Button>
+            <div className="atlas-config__control">
+              <input type="range" min={0} max={100} step={1} value={Math.round(localConfig.sampling_rate * 100)}
+                onChange={(e) => setLocalConfig({ ...localConfig, sampling_rate: Number(e.target.value) / 100 })} className="atlas-range" />
+              <span className="atlas-config__value">{Math.round(localConfig.sampling_rate * 100)}%</span>
             </div>
-          </>
-        ) : (
-          <div className="text-center py-4 text-muted-foreground">No configuration available</div>
-        )}
-      </CardContent>
-    </Card>
+          </div>
+
+          {/* Trace Errors Only */}
+          <div className="atlas-config__row">
+            <div>
+              <label className="atlas-config__label">Trace Errors Only</label>
+              <p className="atlas-config__hint">Only trace runs with errors</p>
+            </div>
+            <button className={`atlas-switch ${localConfig.trace_errors_only ? 'atlas-switch--on' : ''}`}
+              onClick={() => setLocalConfig({ ...localConfig, trace_errors_only: !localConfig.trace_errors_only })}>
+              <span className="atlas-switch__thumb" />
+            </button>
+          </div>
+
+          {/* Sample Head Percent */}
+          <div className="atlas-config__row">
+            <div>
+              <label className="atlas-config__label">Sample Head Percent</label>
+              <p className="atlas-config__hint">Sample first N% of tokens per run</p>
+            </div>
+            <div className="atlas-config__control">
+              <input type="range" min={0} max={100} step={1} value={localConfig.sample_head_percent}
+                onChange={(e) => setLocalConfig({ ...localConfig, sample_head_percent: Number(e.target.value) })} className="atlas-range" />
+              <span className="atlas-config__value">{localConfig.sample_head_percent}%</span>
+            </div>
+          </div>
+
+          {/* Sample Tail Count */}
+          <div className="atlas-config__row">
+            <div>
+              <label className="atlas-config__label">Sample Tail Count</label>
+              <p className="atlas-config__hint">Number of final events to always capture</p>
+            </div>
+            <input type="number" min={0} value={localConfig.sample_tail_count}
+              onChange={(e) => setLocalConfig({ ...localConfig, sample_tail_count: parseInt(e.target.value) || 0 })}
+              className="atlas-input atlas-input--sm" />
+          </div>
+
+          {/* Retention Days */}
+          <div className="atlas-config__row">
+            <div>
+              <label className="atlas-config__label">Retention Days</label>
+              <p className="atlas-config__hint">How long to keep observability data</p>
+            </div>
+            <div className="atlas-config__control">
+              <input type="number" min={1} value={localConfig.retention_days}
+                onChange={(e) => setLocalConfig({ ...localConfig, retention_days: parseInt(e.target.value) || 0 })}
+                className="atlas-input atlas-input--sm" />
+              <span className="atlas-config__unit">days</span>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="atlas-config__actions">
+            <SealedButton onClick={handleSave} disabled={saving} loading={saving} iconLeft={<Save className="atlas-icon-sm" />}>
+              Save Changes
+            </SealedButton>
+            <FrameButton onClick={handleReset} iconLeft={<RotateCcw className="atlas-icon-sm" />}>
+              Reset
+            </FrameButton>
+          </div>
+          {saveError && (
+            <p className="atlas-config__error">{saveError}</p>
+          )}
+          {saveSuccess && (
+            <p className="atlas-config__success">Configuration saved successfully</p>
+          )}
+        </div>
+      ) : (
+        <p className="atlas-config__loading">No configuration available</p>
+      )}
+    </Chamber>
   );
 }

@@ -59,12 +59,14 @@ export interface MicroVMBillingRecord {
 
 export interface MicroVMLimits {
   max_micro_vms: number;
+  max_concurrent_vms: number; // Maximum concurrent VMs (0 = use max_micro_vms as limit)
   default_memory_mb: number;
   max_memory_mb: number;
   default_vcpu: number;
   max_vcpu: number;
   default_timeout: number;
   max_timeout: number;
+  included_budget?: number; // Included compute budget in cents (for MicroVM Enterprise)
 }
 
 export interface MicroVMAuditLog {

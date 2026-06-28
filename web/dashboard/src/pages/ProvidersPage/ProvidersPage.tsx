@@ -1,26 +1,17 @@
 import { ProviderIcon } from '@/components/common/ProviderIcon';
+import { usePageTitle } from '@/hooks';
 import { providersApi } from '@/api';
-import { StatusBadge } from '@/components/common/StatusBadge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { PROVIDERS, PROVIDER_EXTERNAL_DASHBOARD_URL, ROUTES } from '@/lib/constants';
 import { useProvidersStore } from '@/stores/providersStore';
 import type { ConnectedProvider, ProviderMaintenanceStatus } from '@/types';
 import {
   AlertCircle,
-  AlertTriangle,
-  Check,
-  ExternalLink,
   History,
   LayoutGrid,
   List,
   Loader2,
   Maximize2,
   Minimize2,
-  Plus,
   RefreshCw,
   RotateCw,
   Search,
@@ -31,6 +22,19 @@ import {
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+  Card,
+} from '@/components/containment';
 import { ProviderCard } from './components/ProviderCard';
 import { ProviderCardSkeleton } from './components/ProviderCardSkeleton';
 import { ConnectDialog } from './components/ConnectDialog';
@@ -39,26 +43,14 @@ import { DisconnectConfirmationDialog } from './components/DisconnectConfirmatio
 import { ProviderSearchFilter } from './components/ProviderSearchFilter';
 import { ApiKeyRotationDialog } from './components/ApiKeyRotationDialog';
 import { AutoFailoverDialog } from './components/AutoFailoverDialog';
-import {
-  ConnectionAuditLog,
-  generateMockAuditLog,
-  AuditLogEntry,
-} from './components/ConnectionAuditLog';
-import {
-  generateMockHealthData,
-} from './components/ConnectionHealthSparkline';
-import {
-  ProviderComparisonTable,
-} from './components/ProviderComparisonTooltip';
-import {
-  getAllProviderConfigs,
-  getProviderConfig,
-} from './constants/providerMeta';
+import { ConnectionAuditLog, generateMockAuditLog, AuditLogEntry } from './components/ConnectionAuditLog';
+import { generateMockHealthData } from './components/ConnectionHealthSparkline';
+import { ProviderComparisonTable } from './components/ProviderComparisonTooltip';
+import { getAllProviderConfigs, getProviderConfig } from './constants/providerMeta';
 import type { FailoverConfig } from './components/AutoFailoverDialog';
 import type { ProviderConfig } from './constants/providerMeta';
 import './styles.css';
 
-// Provider brand colors for accents (keys match PROVIDERS constant IDs)
 const providerAccents: Record<string, { border: string; glow: string; text: string }> = {
   workers: { border: '#f48120', glow: 'rgba(244, 129, 32, 0.15)', text: '#f48120' },
   vercel: { border: '#171717', glow: 'rgba(23, 23, 23, 0.15)', text: '#171717' },
@@ -68,7 +60,6 @@ const providerAccents: Record<string, { border: string; glow: string; text: stri
   'aws-lambda': { border: '#FF9900', glow: 'rgba(255, 153, 0, 0.20)', text: '#FF9900' },
 };
 
-// Extended provider data with mock stats for demonstration
 interface ExtendedProviderData extends ConnectedProvider {
   functionCount?: number;
   healthData?: ReturnType<typeof generateMockHealthData>;
@@ -81,14 +72,11 @@ type ViewMode = 'grid' | 'list';
 type DataDensity = 'compact' | 'comfortable' | 'dashboard';
 
 export function ProvidersPage() {
-  // State for new features
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [sortBy, setSortBy] = useState<SortOption>('name');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [dataDensity, setDataDensity] = useState<DataDensity>('comfortable');
-  const [glassMorphism, setGlassMorphism] = useState(true);
-  const [statusGlow, setStatusGlow] = useState(true);
   const [defaultProviderId, setDefaultProviderId] = useState<string | null>(null);
   const [settingDefault, setSettingDefault] = useState<string | null>(null);
   const [isRotating, setIsRotating] = useState(false);
@@ -97,46 +85,24 @@ export function ProvidersPage() {
   const [showComparisonTable, setShowComparisonTable] = useState(false);
   const [auditLogEntries] = useState<AuditLogEntry[]>(generateMockAuditLog());
 
-  // Failover configuration
   const [failoverConfig, setFailoverConfig] = useState<FailoverConfig>({
-    enabled: false,
-    primaryProviderId: null,
-    fallbackProviderId: null,
-    autoSwitchThreshold: 10,
-    switchbackDelay: 15,
+    enabled: false, primaryProviderId: null, fallbackProviderId: null, autoSwitchThreshold: 10, switchbackDelay: 15,
   });
   const [failoverDialogOpen, setFailoverDialogOpen] = useState(false);
-
-  // Dialog states
   const [rotationDialogOpen, setRotationDialogOpen] = useState(false);
   const [rotatingProvider, setRotatingProvider] = useState<ProviderConfig | null>(null);
 
-  // Original state from store
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
   const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
-  const [disconnectingProvider, setDisconnectingProvider] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const [disconnectingProvider, setDisconnectingProvider] = useState<{ id: string; name: string } | null>(null);
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
-  const [connectionTestResults, setConnectionTestResults] = useState<
-    Record<string, 'success' | 'error' | null>
-  >({});
+  const [connectionTestResults, setConnectionTestResults] = useState<Record<string, 'success' | 'error' | null>>({});
   const [maintenanceStatus, setMaintenanceStatus] = useState<Record<string, ProviderMaintenanceStatus>>({});
 
-  const {
-    providers,
-    error,
-    isLoading,
-    fetchProviders,
-    connectProvider,
-    disconnectProvider,
-    testConnection,
-    clearError,
-    startHealthCheckPolling,
-  } = useProvidersStore();
+  const { providers, error, isLoading, fetchProviders, connectProvider, disconnectProvider, testConnection, clearError, startHealthCheckPolling } = useProvidersStore();
 
-  // Extend providers with mock data
+  usePageTitle('Providers');
+
   const extendedProviders = useMemo<ExtendedProviderData[]>(() => {
     return providers.map((p) => ({
       ...p,
@@ -151,117 +117,67 @@ export function ProvidersPage() {
     providersApi.getProviderMaintenanceStatus().then(setMaintenanceStatus).catch(console.error);
   }, [fetchProviders]);
 
-  // Start health check polling when providers are loaded
   useEffect(() => {
     if (providers.length > 0) {
-      const stopPolling = startHealthCheckPolling(5 * 60 * 1000); // 5 minute interval
-      return () => {
-        stopPolling();
-      };
+      const stopPolling = startHealthCheckPolling(5 * 60 * 1000);
+      return () => { stopPolling(); };
     }
   }, [providers.length, startHealthCheckPolling]);
 
-  // Filter and sort providers
   const filteredProviders = useMemo(() => {
-    const allProviders = getAllProviderConfigs();
-
-    return allProviders.filter((provider) => {
-      // Search filter
+    return getAllProviderConfigs().filter((provider) => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        if (!provider.name.toLowerCase().includes(query) &&
-            !provider.id.toLowerCase().includes(query)) {
-          return false;
-        }
+        if (!provider.name.toLowerCase().includes(query) && !provider.id.toLowerCase().includes(query)) return false;
       }
-
-      // Status filter
       if (filterStatus !== 'all') {
         const isConnected = providers.some((p) => p.name === provider.id);
         const providerData = extendedProviders.find((p) => p.name === provider.id);
         const isDegraded = providerData?.status === 'degraded' || providerData?.status === 'offline';
-
         if (filterStatus === 'connected' && !isConnected) return false;
         if (filterStatus === 'available' && isConnected) return false;
         if (filterStatus === 'degraded' && (!isConnected || !isDegraded)) return false;
       }
-
       return true;
     }).sort((a, b) => {
       switch (sortBy) {
-        case 'name':
-          return a.name.localeCompare(b.name);
-        case 'regions':
-          return b.regions.length - a.regions.length;
-        case 'status': {
-          const aConnected = providers.some((p) => p.name === a.id);
-          const bConnected = providers.some((p) => p.name === b.id);
-          return Number(bConnected) - Number(aConnected);
-        }
-        case 'recent': {
-          const aData = extendedProviders.find((p) => p.name === a.id);
-          const bData = extendedProviders.find((p) => p.name === b.id);
-          if (!aData?.lastUsedAt) return 1;
-          if (!bData?.lastUsedAt) return -1;
-          return new Date(bData.lastUsedAt).getTime() - new Date(aData.lastUsedAt).getTime();
-        }
-        default:
-          return 0;
+        case 'name': return a.name.localeCompare(b.name);
+        case 'regions': return b.regions.length - a.regions.length;
+        case 'status': { const ac = providers.some((p) => p.name === a.id); const bc = providers.some((p) => p.name === b.id); return Number(bc) - Number(ac); }
+        case 'recent': { const ad = extendedProviders.find((p) => p.name === a.id); const bd = extendedProviders.find((p) => p.name === b.id); if (!ad?.lastUsedAt) return 1; if (!bd?.lastUsedAt) return -1; return new Date(bd.lastUsedAt).getTime() - new Date(ad.lastUsedAt).getTime(); }
+        default: return 0;
       }
     });
   }, [searchQuery, filterStatus, sortBy, providers, extendedProviders]);
 
-  // Stats for filter bar
   const connectedCount = providers.length;
   const degradedCount = providers.filter((p) => p.status === 'degraded' || p.status === 'offline').length;
   const totalCount = Object.keys(PROVIDERS).length;
   const availableCount = totalCount - connectedCount;
 
   const handleConnect = async (providerId: string, key?: string) => {
-    const isFunctionFly = providerId === 'functionfly-edge';
-    const providerKey = key ?? '';
-
     const maintenance = maintenanceStatus[providerId];
-    if (maintenance?.disabled) {
-      const reason = maintenance.reason || 'This provider is currently under maintenance';
-      throw new Error(reason);
-    }
-
+    if (maintenance?.disabled) throw new Error(maintenance.reason || 'This provider is currently under maintenance');
     try {
-      const result = await connectProvider({ providerId, apiKey: providerKey });
+      const result = await connectProvider({ providerId, apiKey: key ?? '' });
       await fetchProviders();
       setConnectionTestResults((prev) => ({ ...prev, [providerId]: null }));
       return result;
-    } catch (error) {
-      console.error('Failed to connect provider:', error);
-      throw error;
-    }
+    } catch (error) { console.error('Failed to connect provider:', error); throw error; }
   };
 
   const handleTestConnection = async (providerId: string) => {
     setTestingProvider(providerId);
     setConnectionTestResults((prev) => ({ ...prev, [providerId]: null }));
-
     try {
       const isSuccess = await testConnection(providerId);
-      const status = isSuccess ? 'success' : 'error';
-      setConnectionTestResults((prev) => ({ ...prev, [providerId]: status }));
-
-      if (isSuccess) {
-        setTimeout(() => {
-          setConnectionTestResults((prev) => ({ ...prev, [providerId]: null }));
-        }, 3000);
-      }
-    } catch (error) {
-      setConnectionTestResults((prev) => ({ ...prev, [providerId]: 'error' }));
-    } finally {
-      setTestingProvider(null);
-    }
+      setConnectionTestResults((prev) => ({ ...prev, [providerId]: isSuccess ? 'success' : 'error' }));
+      if (isSuccess) setTimeout(() => { setConnectionTestResults((prev) => ({ ...prev, [providerId]: null })); }, 3000);
+    } catch { setConnectionTestResults((prev) => ({ ...prev, [providerId]: 'error' })); } finally { setTestingProvider(null); }
   };
 
   const handleSetDefault = async (providerId: string) => {
     setSettingDefault(providerId);
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 500));
     setDefaultProviderId(providerId);
     setSettingDefault(null);
@@ -276,357 +192,131 @@ export function ProvidersPage() {
 
   const handleDisconnectConfirm = async () => {
     if (!disconnectingProvider) return;
-
     setDisconnecting(disconnectingProvider.name);
     clearError();
-
-    try {
-      await disconnectProvider(disconnectingProvider.id);
-      setDisconnectConfirmOpen(false);
-      setDisconnectingProvider(null);
-    } catch (error) {
-      console.error('Failed to disconnect provider:', error);
-    } finally {
-      setDisconnecting(null);
-    }
+    try { await disconnectProvider(disconnectingProvider.id); setDisconnectConfirmOpen(false); setDisconnectingProvider(null); }
+    catch (error) { console.error('Failed to disconnect provider:', error); } finally { setDisconnecting(null); }
   };
 
-  const handleDisconnectCancel = () => {
-    setDisconnectConfirmOpen(false);
-    setDisconnectingProvider(null);
-  };
-
-  const openRotationDialog = (provider: ProviderConfig) => {
-    setRotatingProvider(provider);
-    setRotationDialogOpen(true);
-  };
+  const openRotationDialog = (provider: ProviderConfig) => { setRotatingProvider(provider); setRotationDialogOpen(true); };
 
   const handleRotateKey = async (providerId: string, newApiKey: string) => {
     setIsRotating(true);
-    try {
-      await providersApi.rotateKey(providerId, newApiKey);
-    } finally {
-      setIsRotating(false);
-    }
+    try { await providersApi.rotateKey(providerId, newApiKey); } finally { setIsRotating(false); }
   };
 
   const handleSaveFailover = async (config: FailoverConfig) => {
     setIsSavingFailover(true);
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 800));
     setFailoverConfig(config);
     setIsSavingFailover(false);
   };
 
-  const isConnected = (catalogProviderId: string) =>
-    providers.some((p) => p.name === catalogProviderId);
-
-  const getProviderStatus = (catalogProviderId: string) => {
-    const connected = providers.find((p) => p.name === catalogProviderId);
-    return connected?.status || 'pending';
-  };
-
-  const getProviderData = (catalogProviderId: string) => {
-    return extendedProviders.find((p) => p.name === catalogProviderId);
-  };
-
-  const getAccent = (providerId: string) => {
-    return providerAccents[providerId] || {
-      border: '#f97316',
-      glow: 'rgba(249, 115, 22, 0.25)',
-      text: '#f97316',
-    };
-  };
+  const isConnected = (catalogProviderId: string) => providers.some((p) => p.name === catalogProviderId);
+  const getProviderStatus = (catalogProviderId: string) => providers.find((p) => p.name === catalogProviderId)?.status || 'pending';
+  const getProviderData = (catalogProviderId: string) => extendedProviders.find((p) => p.name === catalogProviderId);
+  const getAccent = (providerId: string) => providerAccents[providerId] || { border: '#f97316', glow: 'rgba(249, 115, 22, 0.25)', text: '#f97316' };
 
   const renderConnectDialog = (provider: ProviderConfig, accent: { border: string; glow: string; text: string }) => {
-    if (provider.id === 'aws-lambda') {
-      return (
-        <ConnectAWSDialog
-          provider={provider}
-          accent={accent}
-          onConnect={async (pid, key) => {
-            await handleConnect(pid, key);
-          }}
-        />
-      );
-    }
-    return (
-      <ConnectDialog
-        provider={provider}
-        accent={accent}
-        onConnect={async (pid, key) => (await handleConnect(pid, key)) ?? { success: false }}
-      />
-    );
+    if (provider.id === 'aws-lambda') return <ConnectAWSDialog provider={provider} accent={accent} onConnect={async (pid, key) => { await handleConnect(pid, key); }} />;
+    return <ConnectDialog provider={provider} accent={accent} onConnect={async (pid, key) => (await handleConnect(pid, key)) ?? { success: false }} />;
   };
 
-  // Get grid columns based on density mode
   const getGridColumns = () => {
     switch (dataDensity) {
-      case 'dashboard':
-        return 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
-      case 'compact':
-        return 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3';
-      case 'comfortable':
-      default:
-        return 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3';
-    }
-  };
-
-  // Density mode icons
-  const DensityIcon = () => {
-    switch (dataDensity) {
-      case 'compact':
-        return <Minimize2 className="w-4 h-4" />;
-      case 'dashboard':
-        return <LayoutGrid className="w-4 h-4" />;
-      case 'comfortable':
-      default:
-        return <Maximize2 className="w-4 h-4" />;
+      case 'dashboard': return 'provider-grid--dashboard';
+      case 'compact': return 'provider-grid--compact';
+      default: return 'provider-grid--comfortable';
     }
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="provider-header">
-        <div>
-          <h1 className="provider-title tracking-tight v-section-header">
-            Providers
-          </h1>
-          <p className="provider-subtitle">Connect and manage your deployment targets</p>
-        </div>
-        <div className="provider-header-actions">
-          {/* Data Density Toggle */}
-          <div className="provider-density-toggle">
-            <Button
-              variant={dataDensity === 'compact' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setDataDensity('compact')}
-              className={`provider-density-btn ${dataDensity === 'compact' ? 'provider-density-btn-active' : ''}`}
-              title="Compact view"
-            >
-              <Minimize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-xs">Compact</span>
-            </Button>
-            <Button
-              variant={dataDensity === 'comfortable' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setDataDensity('comfortable')}
-              className={`provider-density-btn ${dataDensity === 'comfortable' ? 'provider-density-btn-active' : ''}`}
-              title="Comfortable view"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-xs">Comfort</span>
-            </Button>
-            <Button
-              variant={dataDensity === 'dashboard' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setDataDensity('dashboard')}
-              className={`provider-density-btn ${dataDensity === 'dashboard' ? 'provider-density-btn-active' : ''}`}
-              title="Dashboard view"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-xs">Dashboard</span>
-            </Button>
+    <div className="prov-page">
+      <PageGrid />
 
-            <div className="w-px h-6 bg-border-subtle" />
+      {/* Hero */}
+      <Chamber className="prov-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="MODULE PV-01" secondary="Providers" position="top-right" />
 
-            <Button
-              variant={glassMorphism ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setGlassMorphism(!glassMorphism)}
-              className={`provider-status-btn ${glassMorphism ? 'provider-status-btn-active' : ''}`}
-              title={glassMorphism ? 'Disable glass effect' : 'Enable glass effect'}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-xs">Glass</span>
-            </Button>
-
-            <Button
-              variant={statusGlow ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setStatusGlow(!statusGlow)}
-              className={`provider-status-btn ${statusGlow ? 'provider-status-btn-active' : ''}`}
-              title={statusGlow ? 'Disable status glow' : 'Enable status glow'}
-            >
-              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-              <span className="hidden sm:inline text-xs">Glow</span>
-            </Button>
+        <div className="prov-hero__header">
+          <div className="prov-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="prov-hero__title">Providers</h1>
           </div>
-
-          <div className="w-px h-6 bg-border-subtle mx-1" />
-
-          <Button
-            variant={showAuditLog ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setShowAuditLog(!showAuditLog)}
-            className="gap-2"
-          >
-            <History className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-xs">Audit</span>
-          </Button>
-          <Button
-            variant={failoverConfig.enabled ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setFailoverDialogOpen(true)}
-            className="gap-2"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline text-xs">Failover</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowComparisonTable(!showComparisonTable)}
-            className={`gap-2 ${showComparisonTable ? 'bg-bg-secondary' : ''}`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-            <span className="hidden sm:inline">Compare</span>
-          </Button>
+          <p className="prov-hero__subtitle">Connect and manage your deployment targets</p>
+          <div className="prov-hero__actions">
+            <div className="prov-density-toggle">
+              {(['compact', 'comfortable', 'dashboard'] as const).map((d) => (
+                <button key={d} className={`prov-density-btn ${dataDensity === d ? 'prov-density-btn--active' : ''}`} onClick={() => setDataDensity(d)}>
+                  {d === 'compact' ? <Minimize2 className="prov-icon-xs" /> : d === 'dashboard' ? <LayoutGrid className="prov-icon-xs" /> : <Maximize2 className="prov-icon-xs" />}
+                  <span className="prov-density-label">{d === 'compact' ? 'Compact' : d === 'dashboard' ? 'Dashboard' : 'Comfort'}</span>
+                </button>
+              ))}
+            </div>
+            <FrameButton size="sm" onClick={() => setShowAuditLog(!showAuditLog)} iconLeft={<History className="prov-icon-xs" />}>Audit</FrameButton>
+            <FrameButton size="sm" onClick={() => setFailoverDialogOpen(true)} iconLeft={<Shield className="prov-icon-xs" />}>Failover</FrameButton>
+            <FrameButton size="sm" onClick={() => setShowComparisonTable(!showComparisonTable)} iconLeft={<LayoutGrid className="prov-icon-xs" />}>Compare</FrameButton>
+          </div>
         </div>
-      </div>
 
-      {/* Search and Filter Bar */}
+        <GaugeStrip>
+          <Gauge isFirst data={{ value: connectedCount, label: 'Connected' }} />
+          <Gauge data={{ value: availableCount, label: 'Available' }} />
+          <Gauge data={{ value: degradedCount, label: 'Degraded' }} />
+          <Gauge data={{ value: totalCount, label: 'Total Providers' }} />
+        </GaugeStrip>
+      </Chamber>
+
+      {/* Search and Filter */}
       <ProviderSearchFilter
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        filterStatus={filterStatus}
-        onFilterStatusChange={setFilterStatus}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        connectedCount={connectedCount}
-        availableCount={availableCount}
-        degradedCount={degradedCount}
-        totalCount={totalCount}
+        searchQuery={searchQuery} onSearchChange={setSearchQuery}
+        filterStatus={filterStatus} onFilterStatusChange={setFilterStatus}
+        sortBy={sortBy} onSortChange={setSortBy}
+        viewMode={viewMode} onViewModeChange={setViewMode}
+        connectedCount={connectedCount} availableCount={availableCount} degradedCount={degradedCount} totalCount={totalCount}
       />
 
-      {/* Theme Status Bar */}
-      <div className="provider-theme-status">
-        <span className="provider-theme-status-item provider-theme-status-item-density">
-          <DensityIcon />
-          Density: <span className="capitalize">{dataDensity}</span>
-        </span>
-        {glassMorphism && (
-          <span className="provider-theme-status-item provider-theme-status-item-glass">
-            <Sparkles className="w-3 h-3" />
-            Glass morphism enabled
-          </span>
-        )}
-        {statusGlow && (
-          <span className="provider-theme-status-item provider-theme-status-item-glow">
-            <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
-            Status glow enabled
-          </span>
-        )}
-      </div>
-
-      {/* Provider Comparison Table */}
+      {/* Comparison Table */}
       {showComparisonTable && (
-        <Card className="provider-comparison-card">
-          <CardHeader>
-            <CardTitle className="provider-comparison-title">
-              <LayoutGrid className="w-5 h-5" />
-              Provider Comparison
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ProviderComparisonTable providers={getAllProviderConfigs()} />
-          </CardContent>
-        </Card>
+        <Chamber className="prov-comparison">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <h2 className="prov-section-title"><LayoutGrid className="prov-icon-sm" /> Provider Comparison</h2>
+          <ProviderComparisonTable providers={getAllProviderConfigs()} />
+        </Chamber>
       )}
 
-      {/* Audit Log Panel */}
+      {/* Audit Log */}
       {showAuditLog && (
-        <Card className="provider-audit-card">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="provider-audit-title">
-                <History className="w-5 h-5" />
-                Connection Audit Log
-              </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => setShowAuditLog(false)}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ConnectionAuditLog entries={auditLogEntries} maxHeight={300} />
-          </CardContent>
-        </Card>
+        <Chamber className="prov-audit">
+          <div className="prov-audit__header">
+            <h2 className="prov-section-title"><History className="prov-icon-sm" /> Connection Audit Log</h2>
+            <button className="prov-close-btn" onClick={() => setShowAuditLog(false)}><X className="prov-icon-sm" /></button>
+          </div>
+          <ConnectionAuditLog entries={auditLogEntries} maxHeight={300} />
+        </Chamber>
       )}
 
-      {/* Stats Summary */}
-      <div className="provider-stats-summary">
-        {isLoading && (
-          <div className="provider-stats-loading">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Loading...</span>
-          </div>
-        )}
-        <div className="flex items-center gap-4 text-sm">
-          <span className="provider-stats-item">
-            <span className="provider-status-dot provider-status-dot-online" />
-            <span className="text-text-secondary">{connectedCount} connected</span>
-          </span>
-          <span className="provider-stats-item">
-            <span className="provider-status-dot provider-status-dot-degraded" />
-            <span className="text-text-secondary">{availableCount} available</span>
-          </span>
-          {defaultProviderId && (
-            <span className="provider-stats-default">
-              <Star className="w-3 h-3" />
-              <span className="text-xs">
-                Default: {getProviderConfig(defaultProviderId)?.name}
-              </span>
-            </span>
-          )}
-          {failoverConfig.enabled && (
-            <span className="provider-stats-failover">
-              <Shield className="w-3 h-3" />
-              <span className="text-xs">Auto-failover enabled</span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Error Message with Retry */}
+      {/* Error */}
       {error && (
-        <div className="provider-error">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="provider-error-icon" />
-            <div className="flex-1">
-              <p className="provider-error-title">Failed to load providers</p>
-              <p className="provider-error-message">{error}</p>
-              <div className="provider-error-actions">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="provider-error-btn-retry"
-                  onClick={() => fetchProviders()}
-                  disabled={isLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
-                  Retry
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="provider-error-btn-dismiss"
-                  onClick={clearError}
-                >
-                  Dismiss
-                </Button>
-              </div>
+        <div className="prov-error">
+          <AlertCircle className="prov-error__icon" />
+          <div className="prov-error__content">
+            <p className="prov-error__title">Failed to load providers</p>
+            <p className="prov-error__message">{error}</p>
+            <div className="prov-error__actions">
+              <FrameButton size="sm" onClick={() => fetchProviders()} iconLeft={<RefreshCw className={`prov-icon-xs ${isLoading ? 'prov-spin' : ''}`} />}>Retry</FrameButton>
+              <button className="prov-dismiss-btn" onClick={clearError}>Dismiss</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Providers Grid/List */}
+      {/* Provider Grid */}
       {viewMode === 'grid' ? (
-        <div className={`provider-grid ${getGridColumns()} gap-5`}>
+        <div className={`provider-grid ${getGridColumns()}`}>
           {isLoading && providers.length === 0
             ? Array.from({ length: 5 }).map((_, i) => <ProviderCardSkeleton key={i} />)
             : filteredProviders.map((provider) => {
@@ -634,180 +324,81 @@ export function ProvidersPage() {
                 const status = getProviderStatus(provider.id);
                 const providerData = getProviderData(provider.id);
                 const accent = getAccent(provider.id);
-
                 return (
                   <ProviderCard
-                    key={provider.id}
-                    provider={provider}
-                    connected={connected}
-                    status={status}
+                    key={provider.id} provider={provider} connected={connected} status={status}
                     isDefault={defaultProviderId === provider.id}
                     onSetDefault={connected ? () => handleSetDefault(provider.id) : undefined}
                     onDisconnect={() => openDisconnectConfirm(provider.id)}
                     onConnect={async (pid, key) => { await handleConnect(pid, key); }}
-                    onTestConnection={
-                      connected ? () => handleTestConnection(provider.id) : undefined
-                    }
+                    onTestConnection={connected ? () => handleTestConnection(provider.id) : undefined}
                     onRotateKey={connected ? () => openRotationDialog(provider) : undefined}
                     isDisconnecting={disconnecting === provider.id}
                     isTestingConnection={testingProvider === provider.id}
                     isSettingDefault={settingDefault === provider.id}
-                    lastUsedAt={providerData?.lastUsedAt}
-                    isStale={providerData?.isStale}
+                    lastUsedAt={providerData?.lastUsedAt} isStale={providerData?.isStale}
                     connectionTestResult={connectionTestResults[provider.id]}
-                    healthData={providerData?.healthData}
-                    last24hUptime={providerData?.last24hUptime}
-                    functionCount={providerData?.functionCount}
-                    accent={accent}
+                    healthData={providerData?.healthData} last24hUptime={providerData?.last24hUptime}
+                    functionCount={providerData?.functionCount} accent={accent}
                     connectDialog={renderConnectDialog(provider, accent)}
-                    glassMorphism={glassMorphism}
-                    density={dataDensity}
-                    statusGlow={statusGlow}
                   />
                 );
               })}
         </div>
       ) : (
-        // List View
-        <Card className="provider-list-card overflow-hidden">
-          <ScrollArea className="provider-list-scroll h-auto max-h-[600px]">
-            <div className="divide-y divide-border-subtle">
-              {filteredProviders.map((provider) => {
-                const connected = isConnected(provider.id);
-                const status = getProviderStatus(provider.id);
-                const providerData = getProviderData(provider.id);
-                const accent = getAccent(provider.id);
-
-                return (
-                  <div
-                    key={provider.id}
-                    className="provider-list-item"
-                  >
-                    <div
-                      className="provider-avatar"
-                      style={{ backgroundColor: `${accent.border}15` }}
-                    >
-                      <ProviderIcon provider={provider.id} size="md" />
-                    </div>
-                    <div className="provider-list-info flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-medium text-text-primary">{provider.name}</h4>
-                        {defaultProviderId === provider.id && (
-                          <Badge variant="outline" className="text-xs">
-                            <Star className="w-3 h-3 mr-1 fill-amber-400 text-amber-400" />
-                            Default
-                          </Badge>
-                        )}
-                        {connected ? (
-                          <Badge
-                            variant="outline"
-                            className="provider-badge-connected text-xs"
-                          >
-                            Connected
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="provider-badge-not-connected text-xs"
-                          >
-                            Not Connected
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm text-text-secondary truncate">
-                        {provider.regions.length} regions • {provider.regions.slice(0, 3).join(', ')}
-                        {provider.regions.length > 3 && ` +${provider.regions.length - 3} more`}
-                      </p>
-                    </div>
-                    <div className="provider-list-actions flex items-center gap-2">
-                      {connected ? (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleTestConnection(provider.id)}
-                            disabled={testingProvider === provider.id}
-                          >
-                            {testingProvider === provider.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                            <span className="ml-2 hidden sm:inline">Test</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openRotationDialog(provider)}
-                          >
-                            <RotateCw className="w-4 h-4" />
-                            <span className="ml-2 hidden sm:inline">Rotate</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openDisconnectConfirm(provider.id)}
-                            disabled={disconnecting === provider.id}
-                            className="text-error hover:text-error hover:bg-error/10"
-                          >
-                            {disconnecting === provider.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </>
-                      ) : (
-                        renderConnectDialog(provider, accent)
-                      )}
-                    </div>
+        <Chamber className="prov-list-chamber">
+          <div className="prov-list">
+            {filteredProviders.map((provider) => {
+              const connected = isConnected(provider.id);
+              const status = getProviderStatus(provider.id);
+              const accent = getAccent(provider.id);
+              return (
+                <div key={provider.id} className="prov-list-item">
+                  <div className="prov-list-avatar" style={{ backgroundColor: `${accent.border}15` }}>
+                    <ProviderIcon provider={provider.id} size="md" />
                   </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </Card>
+                  <div className="prov-list-info">
+                    <div className="prov-list-name-row">
+                      <h4 className="prov-list-name">{provider.name}</h4>
+                      {defaultProviderId === provider.id && <StatusPill status="pending" label="Default" />}
+                      <StatusPill status={connected ? 'live' : 'pending'} label={connected ? 'Connected' : 'Not Connected'} />
+                    </div>
+                    <p className="prov-list-meta">{provider.regions.length} regions &middot; {provider.regions.slice(0, 3).join(', ')}{provider.regions.length > 3 ? ` +${provider.regions.length - 3} more` : ''}</p>
+                  </div>
+                  <div className="prov-list-actions">
+                    {connected ? (
+                      <>
+                        <FrameButton size="sm" onClick={() => handleTestConnection(provider.id)} disabled={testingProvider === provider.id}>
+                          {testingProvider === provider.id ? <Loader2 className="prov-icon-xs prov-spin" /> : 'Test'}
+                        </FrameButton>
+                        <FrameButton size="sm" onClick={() => openRotationDialog(provider)}>Rotate</FrameButton>
+                        <button className="prov-delete-btn" onClick={() => openDisconnectConfirm(provider.id)} disabled={disconnecting === provider.id}>
+                          {disconnecting === provider.id ? <Loader2 className="prov-icon-xs prov-spin" /> : <Trash2 className="prov-icon-xs" />}
+                        </button>
+                      </>
+                    ) : renderConnectDialog(provider, accent)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Chamber>
       )}
 
-      {/* Disconnect Confirmation Dialog */}
+      {/* Dialogs */}
       {disconnectingProvider && (
         <DisconnectConfirmationDialog
-          providerName={
-            PROVIDERS[disconnectingProvider.name.toUpperCase() as keyof typeof PROVIDERS]?.name ||
-            disconnectingProvider.name
-          }
-          isOpen={disconnectConfirmOpen}
-          onClose={handleDisconnectCancel}
-          onConfirm={handleDisconnectConfirm}
-          isDisconnecting={!!disconnecting}
+          providerName={PROVIDERS[disconnectingProvider.name.toUpperCase() as keyof typeof PROVIDERS]?.name || disconnectingProvider.name}
+          isOpen={disconnectConfirmOpen} onClose={() => { setDisconnectConfirmOpen(false); setDisconnectingProvider(null); }}
+          onConfirm={handleDisconnectConfirm} isDisconnecting={!!disconnecting}
         />
       )}
-
-      {/* API Key Rotation Dialog */}
       {rotatingProvider && (
-        <ApiKeyRotationDialog
-          provider={rotatingProvider}
-          accent={getAccent(rotatingProvider.id)}
-          isOpen={rotationDialogOpen}
-          onClose={() => {
-            setRotationDialogOpen(false);
-            setRotatingProvider(null);
-          }}
-          onRotate={handleRotateKey}
-          isRotating={isRotating}
-        />
+        <ApiKeyRotationDialog provider={rotatingProvider} accent={getAccent(rotatingProvider.id)} isOpen={rotationDialogOpen}
+          onClose={() => { setRotationDialogOpen(false); setRotatingProvider(null); }} onRotate={handleRotateKey} isRotating={isRotating} />
       )}
-
-      {/* Auto-Failover Dialog */}
-      <AutoFailoverDialog
-        providers={getAllProviderConfigs()}
-        connectedProviderIds={providers.map((p) => p.name)}
-        currentConfig={failoverConfig}
-        isOpen={failoverDialogOpen}
-        onClose={() => setFailoverDialogOpen(false)}
-        onSave={handleSaveFailover}
-        isSaving={isSavingFailover}
-      />
+      <AutoFailoverDialog providers={getAllProviderConfigs()} connectedProviderIds={providers.map((p) => p.name)} currentConfig={failoverConfig}
+        isOpen={failoverDialogOpen} onClose={() => setFailoverDialogOpen(false)} onSave={handleSaveFailover} isSaving={isSavingFailover} />
     </div>
   );
 }

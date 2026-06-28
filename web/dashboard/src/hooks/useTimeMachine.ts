@@ -2,6 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import * as timeMachineApi from '@/api/timeMachine';
 import type { CreateReplayRequest } from '@/api/timeMachine';
+import * as billingApi from '@/api/billing';
+import type {
+  LiveReconciliationStatus,
+  LiveReconciliationSettings,
+  UpdateReconciliationSettingsRequest,
+  LiveReconciliationUsageResponse,
+} from '@/api/billing';
 
 const ACTIVE_STATUSES = new Set([
   'pending',
@@ -154,6 +161,79 @@ export function useTimeMachineLimits() {
   return useQuery({
     queryKey: timeMachineKeys.limits(),
     queryFn: () => timeMachineApi.getTimeMachineLimits(),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// ==================== Live Reconciliation (Enterprise) ====================
+
+export const liveReconciliationKeys = {
+  all: ['live-reconciliation'] as const,
+  status: () => [...liveReconciliationKeys.all, 'status'] as const,
+  settings: () => [...liveReconciliationKeys.all, 'settings'] as const,
+  usage: (params?: Record<string, unknown>) =>
+    [...liveReconciliationKeys.all, 'usage', params] as const,
+};
+
+export function useLiveReconciliationStatus() {
+  return useQuery({
+    queryKey: liveReconciliationKeys.status(),
+    queryFn: () => billingApi.getLiveReconciliationStatus(),
+    staleTime: 1000 * 60 * 5,
+    retry: (failureCount, error) => {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        (error as { response?: { status?: number } }).response?.status === 403
+      ) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+  });
+}
+
+export function useLiveReconciliationSettings() {
+  return useQuery({
+    queryKey: liveReconciliationKeys.settings(),
+    queryFn: () => billingApi.getLiveReconciliationSettings(),
+    staleTime: 1000 * 60 * 5,
+    retry: (failureCount, error) => {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'response' in error &&
+        (error as { response?: { status?: number } }).response?.status === 403
+      ) {
+        return false;
+      }
+      return failureCount < 3;
+    },
+  });
+}
+
+export function useUpdateLiveReconciliationSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (settings: UpdateReconciliationSettingsRequest) =>
+      billingApi.updateLiveReconciliationSettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: liveReconciliationKeys.settings() });
+      queryClient.invalidateQueries({ queryKey: liveReconciliationKeys.status() });
+      toast.success('Live Reconciliation settings updated');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update settings: ${error.message}`);
+    },
+  });
+}
+
+export function useLiveReconciliationUsage(params?: { start?: string; end?: string }) {
+  return useQuery({
+    queryKey: liveReconciliationKeys.usage(params as Record<string, unknown>),
+    queryFn: () => billingApi.getLiveReconciliationUsage(params),
     staleTime: 1000 * 60 * 5,
   });
 }

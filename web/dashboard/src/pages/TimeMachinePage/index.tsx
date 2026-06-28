@@ -6,30 +6,52 @@ import {
   History,
   Plus,
   Clock,
-  AlertCircle,
   CheckCircle2,
-  XCircle,
   Loader2,
   ArrowRight,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+} from '@/components/containment';
 import { useReplays, useTimeMachineLimits } from '@/hooks/useTimeMachine';
 import { usePlan } from '@/hooks/usePlan';
 import { cn, formatDateTime } from '@/lib/utils';
 
-const STATUS_CONFIG: Record<string, { label: string; icon: React.ReactNode }> = {
-  pending: { label: 'Pending', icon: <Clock className="w-3 h-3" /> },
-  scanning: { label: 'Scanning', icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-  replaying: { label: 'Replaying', icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-  diffing: { label: 'Diffing', icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-  reconciling: { label: 'Reconciling', icon: <Loader2 className="w-3 h-3 animate-spin" /> },
-  completed: { label: 'Completed', icon: <CheckCircle2 className="w-3 h-3" /> },
-  failed: { label: 'Failed', icon: <XCircle className="w-3 h-3" /> },
-  cancelled: { label: 'Cancelled', icon: <AlertCircle className="w-3 h-3" /> },
+const STATUS_MAP: Record<string, 'live' | 'pending' | 'revoked'> = {
+  completed: 'live',
+  failed: 'revoked',
+  cancelled: 'revoked',
+  pending: 'pending',
+  scanning: 'pending',
+  replaying: 'pending',
+  diffing: 'pending',
+  reconciling: 'pending',
 };
 
-function getStatusConfig(status: string) {
-  return STATUS_CONFIG[status] ?? { label: status, icon: null };
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  scanning: 'Scanning',
+  replaying: 'Replaying',
+  diffing: 'Diffing',
+  reconciling: 'Reconciling',
+  completed: 'Completed',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+};
+
+function getStatusPill(status: string) {
+  const mapped = STATUS_MAP[status] ?? 'pending';
+  const label = STATUS_LABELS[status] ?? status;
+  return { mapped, label };
 }
 
 export function TimeMachinePage() {
@@ -52,74 +74,69 @@ export function TimeMachinePage() {
     return { active, total, executionsReplayed, bugsFixed };
   }, [replays]);
 
-  const statCards = [
-    { title: 'Active Replays', value: stats.active, icon: <Loader2 className="w-5 h-5 text-blue-500" /> },
-    { title: 'Total Replays', value: stats.total, icon: <History className="w-5 h-5 text-brand-500" /> },
-    { title: 'Executions Replayed', value: stats.executionsReplayed, icon: <Clock className="w-5 h-5 text-purple-500" /> },
-    { title: 'Bugs Fixed', value: stats.bugsFixed, icon: <CheckCircle2 className="w-5 h-5 text-emerald-500" /> },
-  ];
-
   return (
-    <div className="tm-container">
-      <div className="tm-header">
-        <div className="tm-header-content">
-          <h1 className="tm-title">
-            <span className="tm-title-icon">
-              <History className="w-5 h-5" />
-            </span>
-            Time Machine
-          </h1>
-          <p className="tm-subtitle">
+    <div className="tm-page">
+      <PageGrid />
+
+      {/* Hero Chamber */}
+      <Chamber className="tm-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="MODULE TM-01" secondary="Time Machine" position="top-right" />
+
+        <div className="tm-hero__header">
+          <div className="tm-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="tm-hero__title">Time Machine</h1>
+          </div>
+          <p className="tm-hero__subtitle">
             Rewind and fix production bugs as if they never happened
           </p>
-        </div>
-        <Button asChild className="tm-button">
-          <Link to="/time-machine/new">
-            <Plus className="w-4 h-4 mr-2" />
-            New Replay
-          </Link>
-        </Button>
-      </div>
-
-      <div className="tm-stats-grid">
-        {statCards.map((stat, idx) => (
-          <div key={stat.title} className={cn("tm-stat-card", idx === 0 && "first")}>
-            <div className="tm-stat-header">
-              <span className="tm-stat-icon">{stat.icon}</span>
-              <span className="tm-stat-label">{stat.title}</span>
-            </div>
-            <div className="tm-stat-value">
-              {isLoading ? (
-                <Loader2 className="h-6 w-6 animate-spin text-text-muted" />
-              ) : (
-                stat.value.toLocaleString()
-              )}
-            </div>
+          <div className="tm-hero__actions">
+            <Link to="/time-machine/new">
+              <SealedButton iconLeft={<Plus className="h-4 w-4" />}>
+                New Replay
+              </SealedButton>
+            </Link>
           </div>
-        ))}
-      </div>
+        </div>
 
+        <GaugeStrip>
+          <Gauge isFirst data={{ value: stats.active, label: 'Active Replays' }} />
+          <Gauge data={{ value: stats.total, label: 'Total Replays' }} />
+          <Gauge data={{ value: stats.executionsReplayed.toLocaleString(), label: 'Executions Replayed' }} />
+          <Gauge data={{ value: stats.bugsFixed, label: 'Bugs Fixed' }} />
+        </GaugeStrip>
+      </Chamber>
+
+      {/* Loading */}
       {isLoading && (
         <div className="tm-loading">
-          <Loader2 className="tm-loading-spinner" />
+          <Loader2 className="tm-loading__spinner" />
         </div>
       )}
 
+      {/* Empty State */}
       {!isLoading && replays.length === 0 && (
-        <div className="tm-empty">
-          <History className="tm-empty-icon" />
-          <h3 className="tm-empty-title">No replays yet</h3>
-          <p className="tm-empty-description">
+        <Chamber className="tm-empty">
+          <History className="tm-empty__icon" />
+          <h3 className="tm-empty__title">No replays yet</h3>
+          <p className="tm-empty__desc">
             Create your first replay to rewind and fix production bugs. Select a time window and a target version, and the Time Machine will replay all executions to find differences.
           </p>
-        </div>
+        </Chamber>
       )}
 
+      {/* Replay Table */}
       {!isLoading && replays.length > 0 && (
-        <div className="tm-table-container">
+        <Chamber className="tm-table-chamber">
+          <CornerBrace position="tr" />
+          <CornerBrace position="bl" />
+
           <div className="tm-table-header">
             <h2 className="tm-table-title">Replay Jobs</h2>
           </div>
+
           <div className="tm-table-wrapper">
             <table className="tm-table">
               <thead>
@@ -128,19 +145,15 @@ export function TimeMachinePage() {
                   <th>Time Window</th>
                   <th>Status</th>
                   <th>Progress</th>
-                  <th className="text-right">Executions</th>
-                  <th className="text-right">Changed</th>
+                  <th className="tm-th-right">Executions</th>
+                  <th className="tm-th-right">Changed</th>
                   <th>Created</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {replays.map((replay) => {
-                  const statusCfg = getStatusConfig(replay.status);
-                  const statusClass = replay.status === 'pending' ? 'tm-status-pending' :
-                    ['scanning', 'replaying', 'diffing', 'reconciling'].includes(replay.status) ? 'tm-status-active' :
-                    replay.status === 'completed' ? 'tm-status-completed' :
-                    replay.status === 'failed' ? 'tm-status-failed' : 'tm-status-pending';
+                  const { mapped, label } = getStatusPill(replay.status);
                   return (
                     <tr key={replay.id}>
                       <td>
@@ -153,10 +166,7 @@ export function TimeMachinePage() {
                         {new Date(replay.window_end).toLocaleDateString()}
                       </td>
                       <td>
-                        <span className={cn("tm-status", statusClass)}>
-                          {statusCfg.icon}
-                          {statusCfg.label}
-                        </span>
+                        <StatusPill status={mapped} label={label} />
                       </td>
                       <td>
                         <div className="tm-progress">
@@ -184,7 +194,7 @@ export function TimeMachinePage() {
                       </td>
                       <td className="tm-action">
                         <Link to={`/time-machine/${replay.id}`} className="tm-action-link">
-                          <ArrowRight className="w-4 h-4" />
+                          <ArrowRight className="h-4 w-4" />
                         </Link>
                       </td>
                     </tr>
@@ -193,63 +203,42 @@ export function TimeMachinePage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Chamber>
       )}
 
+      {/* Plan Limits */}
       {limits && (
-        <div className="tm-limits-panel">
-          <div className="tm-limits-header">
-            <Clock className="tm-limits-icon" />
-            <h2 className="tm-limits-title">Plan Limits — {displayName}</h2>
+        <Chamber className="tm-limits">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <AnnotationTag primary="PLAN" secondary={displayName} position="top-right" />
+
+          <div className="tm-limits__header">
+            <Clock className="tm-limits__icon" />
+            <h2 className="tm-limits__title">Plan Limits — {displayName}</h2>
           </div>
-          <div className="tm-limits-content">
-            <div className="tm-limits-grid">
-              <div className="tm-limit-item">
-                <p className="tm-limit-label">Replay Window</p>
-                <p className={cn("tm-limit-value", limits.unlimited && "tm-limit-value-unlimited")}>
-                  {limits.unlimited ? 'Unlimited' : `${limits.replay_window_hours}h`}
-                </p>
-              </div>
-              <div className="tm-limit-item">
-                <p className="tm-limit-label">Max Executions per Replay</p>
-                <p className={cn("tm-limit-value", limits.unlimited && "tm-limit-value-unlimited")}>
-                  {limits.unlimited ? 'Unlimited' : limits.max_executions_per_replay.toLocaleString()}
-                </p>
-              </div>
-              <div className="tm-limit-item">
-                <p className="tm-limit-label">Concurrent Replays</p>
-                <p className={cn("tm-limit-value", limits.unlimited && "tm-limit-value-unlimited")}>
-                  {limits.unlimited ? 'Unlimited' : limits.max_concurrent_replays}
-                </p>
-              </div>
-              <div className="tm-limit-item">
-                <p className="tm-limit-label">Data Retention</p>
-                <p className="tm-limit-value">{limits.data_retention_days} days</p>
-              </div>
-              <div className="tm-limit-item">
-                <p className="tm-limit-label">Auto Reconciliation</p>
-                <p className={cn("tm-limit-value", !limits.auto_reconciliation && "tm-limit-value-disabled")}>
-                  {limits.auto_reconciliation ? (
-                    <span className="tm-status tm-status-completed">Enabled</span>
-                  ) : (
-                    <span className="tm-limit-value-disabled">Not available</span>
-                  )}
-                </p>
-              </div>
-              <div className="tm-limit-item">
-                <p className="tm-limit-label">Audit Certificates</p>
-                <p className={cn("tm-limit-value", !limits.audit_certificates && "tm-limit-value-disabled")}>
-                  {limits.audit_certificates ? (
-                    <span className="tm-status tm-status-completed">Included</span>
-                  ) : (
-                    <span className="tm-limit-value-disabled">Not available</span>
-                  )}
-                </p>
-              </div>
-            </div>
+
+          <div className="tm-limits-grid">
+            <LimitItem label="Replay Window" value={limits.unlimited ? 'Unlimited' : `${limits.replay_window_hours}h`} highlight={limits.unlimited} />
+            <LimitItem label="Max Executions per Replay" value={limits.unlimited ? 'Unlimited' : limits.max_executions_per_replay.toLocaleString()} highlight={limits.unlimited} />
+            <LimitItem label="Concurrent Replays" value={limits.unlimited ? 'Unlimited' : limits.max_concurrent_replays} highlight={limits.unlimited} />
+            <LimitItem label="Data Retention" value={`${limits.data_retention_days} days`} />
+            <LimitItem label="Auto Reconciliation" value={limits.auto_reconciliation ? 'Enabled' : 'Not available'} highlight={limits.auto_reconciliation} disabled={!limits.auto_reconciliation} />
+            <LimitItem label="Audit Certificates" value={limits.audit_certificates ? 'Included' : 'Not available'} highlight={limits.audit_certificates} disabled={!limits.audit_certificates} />
           </div>
-        </div>
+        </Chamber>
       )}
+    </div>
+  );
+}
+
+function LimitItem({ label, value, highlight, disabled }: { label: string; value: string | number; highlight?: boolean; disabled?: boolean }) {
+  return (
+    <div className="tm-limit-item">
+      <p className="tm-limit-label">{label}</p>
+      <p className={cn('tm-limit-value', highlight && 'tm-limit-value--ok', disabled && 'tm-limit-value--disabled')}>
+        {value}
+      </p>
     </div>
   );
 }

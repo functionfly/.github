@@ -1,8 +1,8 @@
 import type { WalletInfo } from '@/api/billing';
 import { getWalletErrorMessage } from '@/api/billing';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Chamber, CornerBrace, FrameButton, SealedButton, StatusPill } from '@/components/sc';
 import { Loader2, Wallet } from 'lucide-react';
 import {
   MAX_WALLET_TOP_UP_USD,
@@ -35,14 +35,9 @@ export function WalletSection({
   onWalletTopUp,
 }: WalletSectionProps) {
   return (
-    <div
-      className="rounded-lg p-5"
-      style={{
-        background: 'var(--panel)',
-        border: '1px solid var(--panel-edge)',
-        boxShadow: 'var(--shadow-chamber)',
-      }}
-    >
+    <Chamber>
+      <CornerBrace position="tl" />
+      <CornerBrace position="br" />
       <div className="mb-4">
         <h3
           className="font-display flex items-center gap-2 text-lg font-semibold"
@@ -73,9 +68,7 @@ export function WalletSection({
               border: '1px solid rgba(232, 196, 104, 0.3)',
             }}
           >
-            <span className="w-5 h-5 shrink-0" style={{ color: 'var(--status-pending)' }}>
-              ⚠️
-            </span>
+            <StatusPill status="pending" label="Warning" />
             <p className="text-sm" style={{ color: 'var(--status-pending)' }}>
               {getWalletErrorMessage(walletError)}
             </p>
@@ -135,17 +128,13 @@ export function WalletSection({
               </Label>
               <div className="flex flex-wrap gap-2">
                 {WALLET_TOP_UP_PRESETS.map((n) => (
-                  <Button
+                  <FrameButton
                     key={n}
-                    type="button"
-                    variant="outline"
                     size="sm"
-                    className="tabular-nums transition-colors duration-150"
-                    style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
                     onClick={() => onTopUpAmountChange(String(n))}
                   >
                     ${n}
-                  </Button>
+                  </FrameButton>
                 ))}
               </div>
               <Input
@@ -183,31 +172,17 @@ export function WalletSection({
                 )}
               </p>
             </div>
-            <Button
-              type="button"
+            <SealedButton
               disabled={topUpSubmitting || !topUpAmountValid}
               onClick={onWalletTopUp}
-              style={{
-                background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
-                color: 'var(--text-on-light)',
-                boxShadow: 'var(--shadow-btn-primary-rest)',
-              }}
+              loading={topUpSubmitting}
+              iconLeft={<Wallet className="h-4 w-4" />}
             >
-              {topUpSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Redirecting to checkout…
-                </>
-              ) : (
-                <>
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Buy credits
-                </>
-              )}
-            </Button>
+              Buy credits
+            </SealedButton>
           </>
         )}
       </div>
-    </div>
+    </Chamber>
   );
 }

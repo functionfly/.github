@@ -12,14 +12,26 @@ import {
   Activity,
   CheckCircle2,
   Clock,
+  Loader2,
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+  Card,
+} from '@/components/containment';
 import { useEnterpriseDNAInsights } from '@/hooks/useFunctionDNA';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+
+import './dna-overview.css';
 
 type Period = '7d' | '30d' | '90d';
 
@@ -43,7 +55,6 @@ export default function DNAOverviewPage() {
   const latencyImprovement = insights?.avg_latency_improvement_pct || 0;
   const acceptanceRate = totalMutations > 0 ? (acceptedMutations / totalMutations) * 100 : 0;
 
-  // Previous period data from the insights response
   const prevCostSavings = (insights as any)?.prev_period_cost_savings_usd ?? null;
   const prevLatency = (insights as any)?.prev_period_latency_improvement_pct ?? null;
 
@@ -63,41 +74,42 @@ export default function DNAOverviewPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <LoadingSpinner />
+      <div className="dna-page">
+        <PageGrid />
+        <div className="dna-loading">
+          <Loader2 className="dna-loading__spinner" />
+        </div>
       </div>
     );
   }
 
   if (error || !insights) {
     return (
-      <div className="space-y-6 max-w-6xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-velocity-500/10">
-            <Dna className="h-6 w-6 text-velocity-500" />
+      <div className="dna-page">
+        <PageGrid />
+
+        <Chamber className="dna-hero">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <div className="dna-hero__header">
+            <div className="dna-hero__title-row">
+              <TrustSeal size="lg" />
+              <h1 className="dna-hero__title">Function DNA</h1>
+            </div>
+            <p className="dna-hero__subtitle">Living code that evolves based on real production traffic</p>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary font-display">Function DNA</h1>
-            <p className="text-sm text-text-secondary">
-              Living code that evolves based on real production traffic
-            </p>
-          </div>
-        </div>
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Dna className="h-12 w-12 text-text-muted mb-4" />
-            <h3 className="text-lg font-semibold text-text-primary mb-2">DNA Not Available</h3>
-            <p className="text-sm text-text-secondary mb-4 text-center max-w-md">
-              Unable to load DNA insights. Please ensure you have functions with DNA enabled.
-            </p>
-            <Link to="/functions/my">
-              <Button variant="outline" className="gap-1.5">
-                Go to Functions
-                <ChevronRight className="h-4 w-4 opacity-60" />
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
+        </Chamber>
+
+        <Chamber className="dna-empty">
+          <Dna className="dna-empty__icon" />
+          <h3 className="dna-empty__title">DNA Not Available</h3>
+          <p className="dna-empty__desc">Unable to load DNA insights. Please ensure you have functions with DNA enabled.</p>
+          <Link to="/functions/my">
+            <FrameButton iconRight={<ChevronRight className="h-4 w-4" />}>
+              Go to Functions
+            </FrameButton>
+          </Link>
+        </Chamber>
       </div>
     );
   }
@@ -105,97 +117,90 @@ export default function DNAOverviewPage() {
   // Empty state — no functions with DNA yet
   if (totalFunctions === 0) {
     return (
-      <div className="space-y-6 max-w-6xl mx-auto">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-velocity-500/10">
-            <Dna className="h-6 w-6 text-velocity-500" />
+      <div className="dna-page">
+        <PageGrid />
+
+        <Chamber className="dna-hero" ribs>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <AnnotationTag primary="MODULE DNA-01" secondary="Function DNA" position="top-right" />
+          <div className="dna-hero__header">
+            <div className="dna-hero__title-row">
+              <TrustSeal size="lg" />
+              <h1 className="dna-hero__title">Function DNA</h1>
+            </div>
+            <p className="dna-hero__subtitle">Living code that evolves based on real production traffic</p>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary font-display">Function DNA</h1>
-            <p className="text-sm text-text-secondary">
-              Living code that evolves based on real production traffic
+        </Chamber>
+
+        <Chamber className="dna-empty">
+          <CornerBrace position="tr" />
+          <CornerBrace position="bl" />
+          <div className="dna-empty__center">
+            <div className="dna-empty__icon-wrap">
+              <Dna className="dna-empty__icon-lg" />
+            </div>
+            <h2 className="dna-empty__title">Enable Function DNA</h2>
+            <p className="dna-empty__desc">
+              Function DNA tracks execution patterns and proposes AI-powered code optimizations.
+              Enable it from Platform Settings to start analyzing your functions.
             </p>
+            <div className="dna-empty__actions">
+              <Link to="/settings#platform">
+                <SealedButton iconLeft={<Sparkles className="h-4 w-4" />} iconRight={<ChevronRight className="h-4 w-4" />}>
+                  Enable in Platform Settings
+                </SealedButton>
+              </Link>
+              <Link to="/functions/my">
+                <FrameButton iconRight={<ChevronRight className="h-4 w-4" />}>
+                  Browse Functions
+                </FrameButton>
+              </Link>
+            </div>
           </div>
-        </div>
+        </Chamber>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="md:col-span-2">
-            <CardContent className="flex flex-col items-center justify-center py-16 px-8">
-              <div className="p-3 rounded-2xl bg-velocity-500/10 mb-4">
-                <Dna className="h-10 w-10 text-velocity-500" />
-              </div>
-              <h3 className="text-xl font-semibold text-text-primary mb-2">Enable Function DNA</h3>
-              <p className="text-sm text-text-secondary mb-6 text-center max-w-lg">
-                Function DNA tracks execution patterns and proposes AI-powered code optimizations.
-                Enable it from Platform Settings to start analyzing your functions.
-              </p>
-              <div className="flex items-center gap-3">
-                <Link to="/settings#platform">
-                  <Button className="gap-1.5">
-                    <Sparkles className="h-4 w-4" />
-                    Enable in Platform Settings
-                    <ChevronRight className="h-4 w-4 opacity-60" />
-                  </Button>
-                </Link>
-                <Link to="/functions/my">
-                  <Button variant="outline" className="gap-1.5">
-                    Browse Functions
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Activity className="h-4 w-4 text-velocity-500" />
-                What you'll see
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        <div className="dna-info-grid">
+          <Card className="dna-info-card">
+            <div className="dna-info-card__header">
+              <Activity className="dna-info-card__icon" />
+              <h3 className="dna-info-card__title">What you'll see</h3>
+            </div>
+            <div className="dna-info-card__list">
               {[
                 'AI-proposed code mutations based on execution patterns',
                 'Latency and cost optimization recommendations',
                 'Accept/reject mutations with canary deployment',
                 'Evolution history and fitness scores per function',
               ].map((item, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-velocity-500 mt-0.5 shrink-0" />
-                  <span className="text-sm text-text-secondary">{item}</span>
+                <div key={i} className="dna-info-card__item">
+                  <CheckCircle2 className="dna-info-card__check" />
+                  <span>{item}</span>
                 </div>
               ))}
-            </CardContent>
+            </div>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Sparkles className="h-4 w-4 text-velocity-500" />
-                Quick Start
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                {[
-                  { step: '1', text: 'Go to Platform Settings' },
-                  { step: '2', text: 'Enable Auto-Evolution' },
-                  { step: '3', text: 'Wait for DNA analysis' },
-                ].map(({ step, text }) => (
-                  <div key={step} className="flex items-center gap-2 text-sm">
-                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-velocity-500/10 text-velocity-500 text-xs font-bold shrink-0">
-                      {step}
-                    </span>
-                    <span className="text-text-primary">{text}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-text-muted">
-                DNA analyzes function execution patterns over time and proposes optimizations
-                automatically.
-              </p>
-            </CardContent>
+          <Card className="dna-info-card">
+            <div className="dna-info-card__header">
+              <Sparkles className="dna-info-card__icon" />
+              <h3 className="dna-info-card__title">Quick Start</h3>
+            </div>
+            <div className="dna-info-card__steps">
+              {[
+                { step: '01', text: 'Go to Platform Settings' },
+                { step: '02', text: 'Enable Auto-Evolution' },
+                { step: '03', text: 'Wait for DNA analysis' },
+              ].map(({ step, text }) => (
+                <div key={step} className="dna-info-card__step">
+                  <span className="dna-info-card__step-num">{step}</span>
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
+            <p className="dna-info-card__hint">
+              DNA analyzes function execution patterns over time and proposes optimizations automatically.
+            </p>
           </Card>
         </div>
       </div>
@@ -205,342 +210,215 @@ export default function DNAOverviewPage() {
   const hasPending = pendingMutations > 0;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Page header + period selector */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="p-2 rounded-xl bg-velocity-500/10">
-          <Dna className="h-6 w-6 text-velocity-500" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary font-display">Function DNA</h1>
-          <p className="text-sm text-text-secondary">
-            Living code that evolves based on real production traffic
-          </p>
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex items-center rounded-lg border border-border-subtle bg-bg-secondary p-0.5">
-            {(['7d', '30d', '90d'] as Period[]).map((p) => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200',
-                  period === p
-                    ? 'bg-velocity-500 text-white shadow-sm'
-                    : 'text-text-muted hover:text-text-secondary hover:bg-surface-elevated'
-                )}
-              >
-                {p.toUpperCase()}
-              </button>
-            ))}
+    <div className="dna-page">
+      <PageGrid />
+
+      {/* Hero */}
+      <Chamber className="dna-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="MODULE DNA-01" secondary="Function DNA" position="top-right" />
+
+        <div className="dna-hero__header">
+          <div className="dna-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="dna-hero__title">Function DNA</h1>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {PERIOD_LABELS[period]}
-          </Badge>
+          <p className="dna-hero__subtitle">Living code that evolves based on real production traffic</p>
+          <div className="dna-hero__controls">
+            <div className="dna-period-selector">
+              {(['7d', '30d', '90d'] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={cn('dna-period-btn', period === p && 'dna-period-btn--active')}
+                >
+                  {p.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            <StatusPill status="live" label={PERIOD_LABELS[period]} />
+          </div>
         </div>
-      </div>
 
-      {/* Stats grid — 3 cols, 2 rows */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* 1. Functions Analyzed */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Functions Analyzed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-text-primary">{totalFunctions}</div>
-            <p className="text-xs text-text-muted mt-1">with active DNA profiles</p>
-          </CardContent>
+        <GaugeStrip>
+          <Gauge isFirst data={{ value: totalFunctions, label: 'Functions Analyzed' }} />
+          <Gauge data={{ value: totalMutations, label: 'Mutations Proposed' }} />
+          <Gauge data={{ value: `${acceptanceRate.toFixed(0)}%`, label: 'Acceptance Rate' }} />
+        </GaugeStrip>
+      </Chamber>
+
+      {/* Stats Grid */}
+      <div className="dna-stats-grid">
+        <Card className="dna-stat-card">
+          <span className="dna-stat-card__label">Functions Analyzed</span>
+          <span className="dna-stat-card__value">{totalFunctions}</span>
+          <span className="dna-stat-card__hint">with active DNA profiles</span>
         </Card>
 
-        {/* 2. Mutations Proposed */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Mutations Proposed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold text-text-primary">{totalMutations}</div>
-              {acceptedMutations > 0 && (
-                <Badge
-                  variant="outline"
-                  className="text-xs text-velocity-500 border-velocity-500/30"
-                >
-                  {acceptedMutations} accepted
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-text-muted mt-1">across all functions</p>
-          </CardContent>
-        </Card>
-
-        {/* 3. Acceptance Rate */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Acceptance Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-text-primary">{acceptanceRate.toFixed(0)}%</div>
-            <p className="text-xs text-text-muted mt-1">
-              {acceptedMutations}/{totalMutations} mutations approved
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* 4. Avg Fitness Score */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Avg Fitness Score
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-text-primary">{avgFitness.toFixed(1)}%</div>
-            <p className="text-xs text-text-muted mt-1">across all functions</p>
-          </CardContent>
-        </Card>
-
-        {/* 5. Latency Improvement */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Latency Improvement
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold text-velocity-500">
-                +{latencyImprovement.toFixed(1)}%
-              </div>
-              {latencyDelta && (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'text-xs gap-0.5',
-                    latencyDelta.positive
-                      ? 'text-velocity-500 border-velocity-500/30'
-                      : 'text-red-400 border-red-400/30'
-                  )}
-                >
-                  {latencyDelta.icon}
-                  {latencyDelta.value}%
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-text-muted mt-1">average improvement vs baseline</p>
-          </CardContent>
-        </Card>
-
-        {/* 6. Cost Savings */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">Cost Savings</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <div className="text-3xl font-bold text-velocity-500">
-                <DollarSign className="inline h-5 w-5" />
-                {costSavings.toFixed(0)}
-              </div>
-              {costDelta && (
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    'text-xs gap-0.5',
-                    costDelta.positive
-                      ? 'text-velocity-500 border-velocity-500/30'
-                      : 'text-red-400 border-red-400/30'
-                  )}
-                >
-                  {costDelta.icon}
-                  {costDelta.value}%
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-text-muted mt-1">USD saved via optimizations</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Second row: Top Categories + Pending Review */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Top Categories with bar chart */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-text-secondary">
-              Top Bottleneck Categories
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {insights.top_bottleneck_categories && insights.top_bottleneck_categories.length > 0 ? (
-              <div className="space-y-3">
-                {insights.top_bottleneck_categories.slice(0, 5).map((cat, i) => {
-                  const maxCount = insights.top_bottleneck_categories?.[0]?.count || 1;
-                  const widthPct = (cat.count / maxCount) * 100;
-                  return (
-                    <div key={i} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-text-primary font-medium truncate">
-                          {cat.category}
-                        </span>
-                        <Badge
-                          variant="outline"
-                          className="text-xs text-velocity-500 border-velocity-500/30 font-mono shrink-0"
-                        >
-                          {cat.count}
-                        </Badge>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-surface-elevated overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-velocity-500 to-velocity-400 transition-all duration-500"
-                          style={{ width: `${widthPct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-text-muted">No bottleneck data yet</p>
+        <Card className="dna-stat-card">
+          <span className="dna-stat-card__label">Mutations Proposed</span>
+          <div className="dna-stat-card__row">
+            <span className="dna-stat-card__value">{totalMutations}</span>
+            {acceptedMutations > 0 && (
+              <span className="dna-stat-card__badge">{acceptedMutations} accepted</span>
             )}
-          </CardContent>
+          </div>
+          <span className="dna-stat-card__hint">across all functions</span>
         </Card>
 
-        {/* Pending Review or All Caught Up */}
-        {hasPending ? (
-          <Card className="border-velocity-500/30 bg-velocity-500/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-text-secondary">
-                <Clock className="h-4 w-4 text-velocity-500" />
-                Pending Review
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="text-3xl font-bold text-velocity-500">{pendingMutations}</div>
-              <p className="text-xs text-text-muted">
+        <Card className="dna-stat-card">
+          <span className="dna-stat-card__label">Acceptance Rate</span>
+          <span className="dna-stat-card__value">{acceptanceRate.toFixed(0)}%</span>
+          <span className="dna-stat-card__hint">{acceptedMutations}/{totalMutations} mutations approved</span>
+        </Card>
+
+        <Card className="dna-stat-card">
+          <span className="dna-stat-card__label">Avg Fitness Score</span>
+          <span className="dna-stat-card__value">{avgFitness.toFixed(1)}%</span>
+          <span className="dna-stat-card__hint">across all functions</span>
+        </Card>
+
+        <Card className="dna-stat-card">
+          <span className="dna-stat-card__label">Latency Improvement</span>
+          <div className="dna-stat-card__row">
+            <span className="dna-stat-card__value dna-stat-card__value--accent">+{latencyImprovement.toFixed(1)}%</span>
+            {latencyDelta && (
+              <span className={cn('dna-stat-card__delta', latencyDelta.positive ? 'dna-stat-card__delta--ok' : 'dna-stat-card__delta--bad')}>
+                {latencyDelta.icon} {latencyDelta.value}%
+              </span>
+            )}
+          </div>
+          <span className="dna-stat-card__hint">average improvement vs baseline</span>
+        </Card>
+
+        <Card className="dna-stat-card">
+          <span className="dna-stat-card__label">Cost Savings</span>
+          <div className="dna-stat-card__row">
+            <span className="dna-stat-card__value dna-stat-card__value--accent">
+              <DollarSign className="dna-stat-card__dollar" />{costSavings.toFixed(0)}
+            </span>
+            {costDelta && (
+              <span className={cn('dna-stat-card__delta', costDelta.positive ? 'dna-stat-card__delta--ok' : 'dna-stat-card__delta--bad')}>
+                {costDelta.icon} {costDelta.value}%
+              </span>
+            )}
+          </div>
+          <span className="dna-stat-card__hint">USD saved via optimizations</span>
+        </Card>
+      </div>
+
+      {/* Bottom row */}
+      <div className="dna-bottom-grid">
+        {/* Top Categories */}
+        <Chamber className="dna-categories">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <h2 className="dna-section-title">Top Bottleneck Categories</h2>
+          {insights.top_bottleneck_categories && insights.top_bottleneck_categories.length > 0 ? (
+            <div className="dna-categories__list">
+              {insights.top_bottleneck_categories.slice(0, 5).map((cat, i) => {
+                const maxCount = insights.top_bottleneck_categories?.[0]?.count || 1;
+                const widthPct = (cat.count / maxCount) * 100;
+                return (
+                  <div key={i} className="dna-categories__item">
+                    <div className="dna-categories__item-header">
+                      <span className="dna-categories__name">{cat.category}</span>
+                      <span className="dna-categories__count">{cat.count}</span>
+                    </div>
+                    <div className="dna-categories__bar">
+                      <div className="dna-categories__fill" style={{ width: `${widthPct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="dna-categories__empty">No bottleneck data yet</p>
+          )}
+        </Chamber>
+
+        {/* Pending Review */}
+        <Chamber className={cn('dna-pending', hasPending && 'dna-pending--active')}>
+          <CornerBrace position="tr" />
+          <CornerBrace position="bl" />
+          {hasPending ? (
+            <>
+              <div className="dna-pending__header">
+                <Clock className="dna-pending__icon" />
+                <h2 className="dna-section-title">Pending Review</h2>
+              </div>
+              <div className="dna-pending__value">{pendingMutations}</div>
+              <p className="dna-pending__hint">
                 mutation{pendingMutations !== 1 ? 's' : ''} awaiting your approval
               </p>
               <Link to="/functions/my?dna_pending=true">
-                <Button size="sm" className="w-full gap-1.5 mt-1">
+                <SealedButton className="dna-pending__btn" iconRight={<ChevronRight className="h-4 w-4" />}>
                   Review Mutations
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                </SealedButton>
               </Link>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-text-secondary">
-                <CheckCircle2 className="h-4 w-4 text-success" />
-                All Caught Up
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-text-secondary">
-                No pending mutations — all proposed changes have been reviewed.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+            </>
+          ) : (
+            <>
+              <div className="dna-pending__header">
+                <CheckCircle2 className="dna-pending__icon dna-pending__icon--ok" />
+                <h2 className="dna-section-title">All Caught Up</h2>
+              </div>
+              <p className="dna-pending__desc">No pending mutations — all proposed changes have been reviewed.</p>
+            </>
+          )}
+        </Chamber>
       </div>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-velocity-500" />
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              {
-                label: 'Browse Functions',
-                description: 'View functions with DNA profiles',
-                icon: Dna,
-                href: '/functions/my',
-                cta: 'Go to Functions',
-              },
-              {
-                label: 'Evolution History',
-                description: 'Track all mutation events across functions',
-                icon: GitBranch,
-                href: '/functions/my?tab=evolution',
-                cta: 'View History',
-              },
-              {
-                label: 'Platform Settings',
-                description: 'Configure DNA auto-evolution and notifications',
-                icon: Activity,
-                href: '/settings#platform',
-                cta: 'Configure',
-              },
-              {
-                label: 'Performance Analytics',
-                description: 'Deep-dive into latency, cost, and fitness metrics',
-                icon: BarChart3,
-                href: '/analytics',
-                cta: 'View Analytics',
-              },
-            ].map(({ label, description, icon: Icon, href, cta }) => (
-              <div
-                key={label}
-                className="flex items-center justify-between p-4 rounded-lg border border-border-subtle bg-card hover:border-velocity-500/30 hover:bg-velocity-500/5 transition-colors group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-velocity-500/10">
-                    <Icon className="h-4 w-4 text-velocity-500" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-text-primary text-sm">{label}</p>
-                    <p className="text-xs text-text-muted">{description}</p>
-                  </div>
+      <Chamber className="dna-actions">
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <div className="dna-actions__header">
+          <Sparkles className="dna-actions__icon" />
+          <h2 className="dna-section-title">Quick Actions</h2>
+        </div>
+        <div className="dna-actions-grid">
+          {[
+            { label: 'Browse Functions', description: 'View functions with DNA profiles', icon: Dna, href: '/functions/my', cta: 'Go to Functions' },
+            { label: 'Evolution History', description: 'Track all mutation events across functions', icon: GitBranch, href: '/functions/my?tab=evolution', cta: 'View History' },
+            { label: 'Platform Settings', description: 'Configure DNA auto-evolution and notifications', icon: Activity, href: '/settings#platform', cta: 'Configure' },
+            { label: 'Performance Analytics', description: 'Deep-dive into latency, cost, and fitness metrics', icon: BarChart3, href: '/analytics', cta: 'View Analytics' },
+          ].map(({ label, description, icon: Icon, href, cta }) => (
+            <Link key={label} to={href} className="dna-action-card">
+              <div className="dna-action-card__info">
+                <div className="dna-action-card__icon-wrap">
+                  <Icon className="dna-action-card__icon" />
                 </div>
-                <Link to={href}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 shrink-0 group-hover:border-velocity-500/40"
-                  >
-                    {cta}
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </Link>
+                <div>
+                  <p className="dna-action-card__label">{label}</p>
+                  <p className="dna-action-card__desc">{description}</p>
+                </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              <FrameButton size="sm" iconRight={<ChevronRight className="h-4 w-4" />}>
+                {cta}
+              </FrameButton>
+            </Link>
+          ))}
+        </div>
+      </Chamber>
 
       {/* Cost Indicator */}
-      <div className="rounded-xl border border-border-subtle bg-bg-secondary/50 p-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-velocity-500/10">
-            <Sparkles className="h-4 w-4 text-velocity-500" />
+      <div className="dna-cost-bar">
+        <div className="dna-cost-bar__info">
+          <div className="dna-cost-bar__icon-wrap">
+            <Sparkles className="dna-cost-bar__icon" />
           </div>
           <div>
-            <p className="text-sm font-medium text-text-primary">Mutation Cost</p>
-            <p className="text-xs text-text-muted">
+            <p className="dna-cost-bar__title">Mutation Cost</p>
+            <p className="dna-cost-bar__desc">
               Each accepted mutation costs{' '}
-              <span className="font-mono text-velocity-500">50 credits</span> from your wallet.
+              <span className="dna-cost-bar__credits">50 credits</span> from your wallet.
               Rejected mutations are free.
             </p>
           </div>
-          <Badge
-            variant="outline"
-            className="ml-auto font-mono text-velocity-500 border-velocity-500/30"
-          >
-            50 cr
-          </Badge>
         </div>
+        <span className="dna-cost-bar__badge">50 cr</span>
       </div>
     </div>
   );

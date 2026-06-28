@@ -1,25 +1,20 @@
 import { functionsApi } from '@/api/functions';
 import { favoritesApi } from '@/api/favorites';
 import { registryApi, RegistryFunction } from '@/api/registry';
-import { AviationEmptyState } from '@/components/functions/AviationEmptyState';
 import { AviationFunctionCard } from '@/components/functions/AviationFunctionCard';
-import { PageHeader } from '@/components/layout/PageHeader';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { FunctionConfig } from '@/types';
 import { Flame, Loader2, Sparkles, Star, TrendingUp, Trash2, User, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  PageGrid, Chamber, CornerBrace, TrustSeal,
+  SealedButton, FrameButton, StatusPill, AnnotationTag,
+} from '@/components/containment';
+import { usePageTitle } from '@/hooks';
+
+import './discovery.css';
 
 interface FunctionSummary {
   id: string;
@@ -32,7 +27,6 @@ interface FunctionSummary {
   avg_duration_ms?: number;
   author?: string;
   isPublic?: boolean;
-  // Optional fields for FunctionConfig compatibility
   region?: string;
   code?: string;
   env_vars?: Array<{ key: string; value: string; isSecret?: boolean }>;
@@ -44,46 +38,18 @@ interface FunctionSummary {
 type FilterType = 'hot' | 'trending' | 'new' | 'popular' | 'favorites' | 'my';
 
 const FILTER_CONFIG: Record<FilterType, { title: string; icon: React.ReactNode; description: string }> = {
-  hot: {
-    title: 'Hot Functions',
-    icon: <Flame className="w-5 h-5 text-orange-500" />,
-    description: 'Functions trending right now with high activity',
-  },
-  trending: {
-    title: 'Trending',
-    icon: <TrendingUp className="w-5 h-5 text-green-500" />,
-    description: 'Functions gaining popularity this week',
-  },
-  new: {
-    title: 'New Arrivals',
-    icon: <Sparkles className="w-5 h-5 text-purple-500" />,
-    description: 'Recently created and published functions',
-  },
-  popular: {
-    title: 'Most Popular',
-    icon: <Zap className="w-5 h-5 text-yellow-500" />,
-    description: 'Most used functions of all time',
-  },
-  favorites: {
-    title: 'Your Favorites',
-    icon: <Star className="w-5 h-5 text-amber-500" />,
-    description: 'Functions you have starred',
-  },
-  my: {
-    title: 'My Functions',
-    icon: <User className="w-5 h-5 text-blue-500" />,
-    description: 'Functions you have created',
-  },
+  hot: { title: 'Hot Functions', icon: <Flame className="disc-icon-sm disc-icon-orange" />, description: 'Functions trending right now with high activity' },
+  trending: { title: 'Trending', icon: <TrendingUp className="disc-icon-sm disc-icon-green" />, description: 'Functions gaining popularity this week' },
+  new: { title: 'New Arrivals', icon: <Sparkles className="disc-icon-sm disc-icon-purple" />, description: 'Recently created and published functions' },
+  popular: { title: 'Most Popular', icon: <Zap className="disc-icon-sm disc-icon-yellow" />, description: 'Most used functions of all time' },
+  favorites: { title: 'Your Favorites', icon: <Star className="disc-icon-sm disc-icon-amber" />, description: 'Functions you have starred' },
+  my: { title: 'My Functions', icon: <User className="disc-icon-sm disc-icon-blue" />, description: 'Functions you have created' },
 };
 
 function getFilterFromPath(pathname: string): FilterType {
-  const pathParts = pathname.split('/');
-  const lastSegment = pathParts[pathParts.length - 1];
+  const lastSegment = pathname.split('/').pop();
   const validFilters: FilterType[] = ['hot', 'trending', 'new', 'popular', 'favorites', 'my'];
-  if (validFilters.includes(lastSegment as FilterType)) {
-    return lastSegment as FilterType;
-  }
-  return 'hot';
+  return validFilters.includes(lastSegment as FilterType) ? (lastSegment as FilterType) : 'hot';
 }
 
 export function FunctionsDiscoveryPage() {
@@ -95,6 +61,12 @@ export function FunctionsDiscoveryPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [functionToDelete, setFunctionToDelete] = useState<FunctionSummary | null>(null);
 
+  const filter = getFilterFromPath(location.pathname);
+  const config = FILTER_CONFIG[filter] || FILTER_CONFIG.hot;
+  const isMyFunctionsPage = filter === 'my';
+
+  usePageTitle(config.title);
+
   const deleteMutation = useMutation({
     mutationFn: (id: string) => functionsApi.delete(id),
     onSuccess: () => {
@@ -104,25 +76,15 @@ export function FunctionsDiscoveryPage() {
       setFunctionToDelete(null);
       loadFunctions();
     },
-    onError: () => {
-      toast.error('Failed to delete function');
-      setDeleteDialogOpen(false);
-    },
+    onError: () => { toast.error('Failed to delete function'); setDeleteDialogOpen(false); },
   });
 
-  const filter = getFilterFromPath(location.pathname);
-  const config = FILTER_CONFIG[filter] || FILTER_CONFIG.hot;
-
-  useEffect(() => {
-    loadFunctions();
-  }, [filter]);
+  useEffect(() => { loadFunctions(); }, [filter]);
 
   const loadFunctions = async () => {
     setLoading(true);
     try {
       let data: FunctionSummary[] = [];
-
-      // Fetch user's functions and public registry functions (except for 'favorites' and 'my' which have different sources)
       const needsRegistry = filter !== 'my' && filter !== 'favorites';
       const [userRes, registryRes, favoritesRes, myRegistryRes] = await Promise.allSettled([
         functionsApi.list(),
@@ -136,292 +98,144 @@ export function FunctionsDiscoveryPage() {
       const userFavorites = favoritesRes.status === 'fulfilled' ? (favoritesRes.value.favorites || []) : [];
       const myRegistryFunctions: RegistryFunction[] = myRegistryRes.status === 'fulfilled' ? (myRegistryRes.value.functions || []) : [];
 
-      // Convert user functions to FunctionSummary format (camelCase -> snake_case)
       const userFunctions: FunctionSummary[] = userFunctionsRaw.map((f) => ({
-        id: f.id,
-        name: f.name,
-        description: f.code?.substring(0, 100) || 'No description',
-        runtime: f.version || 'unknown',
-        created_at: f.createdAt,
-        updated_at: f.updatedAt,
-        execution_count: 0,
-        author: undefined,
-        isPublic: false,
+        id: f.id, name: f.name, description: f.code?.substring(0, 100) || 'No description',
+        runtime: f.version || 'unknown', created_at: f.createdAt, updated_at: f.updatedAt,
+        execution_count: 0, author: undefined, isPublic: false,
       }));
 
-      // Convert registry functions to FunctionSummary format
       const mappedPublicFunctions: FunctionSummary[] = publicFunctions.map((f) => ({
-        id: f.id,
-        name: `${f.author}/${f.name}`,
-        description: f.description,
-        runtime: f.latest_version?.split('@')[0] || 'unknown',
-        created_at: f.created_at,
-        updated_at: f.created_at,
-        execution_count: Math.floor(f.popularity_score * 100),
-        author: f.author,
-        isPublic: true,
+        id: f.id, name: `${f.author}/${f.name}`, description: f.description,
+        runtime: f.latest_version?.split('@')[0] || 'unknown', created_at: f.created_at, updated_at: f.created_at,
+        execution_count: Math.floor(f.popularity_score * 100), author: f.author, isPublic: true,
       }));
 
-      // Convert user's own registry functions (from GitHub import etc.)
       const mappedMyRegistryFunctions: FunctionSummary[] = myRegistryFunctions.map((f) => ({
-        id: f.id,
-        name: `${f.author}/${f.name}`,
-        description: f.description,
-        runtime: f.latest_version?.split('@')[0] || 'unknown',
-        created_at: f.created_at,
-        updated_at: f.created_at,
-        execution_count: Math.floor(f.popularity_score * 100),
-        author: f.author,
-        isPublic: f.visibility === 'public',
+        id: f.id, name: `${f.author}/${f.name}`, description: f.description,
+        runtime: f.latest_version?.split('@')[0] || 'unknown', created_at: f.created_at, updated_at: f.created_at,
+        execution_count: Math.floor(f.popularity_score * 100), author: f.author, isPublic: f.visibility === 'public',
       }));
 
-      // Build a map of favorite function IDs for quick lookup
       const favoriteIds = new Set(userFavorites.map((fav) => fav.function_id));
-
-      // Combine both sources (exclude duplicates based on name)
       const userFunctionNames = new Set(userFunctions.map((f) => f.name));
       const uniquePublicFunctions = mappedPublicFunctions.filter((f) => !userFunctionNames.has(f.name.split('/')[1] || f.name));
-
       const allFunctions = [...userFunctions, ...uniquePublicFunctions];
 
       switch (filter) {
-        case 'hot':
-        case 'trending':
-          data = allFunctions.sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0)).slice(0, 50);
-          break;
+        case 'hot': case 'trending':
+          data = allFunctions.sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0)).slice(0, 50); break;
         case 'new':
-          data = allFunctions.sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          ).slice(0, 50);
-          break;
+          data = allFunctions.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 50); break;
         case 'popular':
-          data = allFunctions.sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0)).slice(0, 50);
-          break;
+          data = allFunctions.sort((a, b) => (b.execution_count || 0) - (a.execution_count || 0)).slice(0, 50); break;
         case 'favorites':
-          data = allFunctions.filter((f) => favoriteIds.has(f.id));
-          break;
+          data = allFunctions.filter((f) => favoriteIds.has(f.id)); break;
         case 'my': {
-          // Merge user's private registry functions with their published registry functions (deduplicate by name)
-          // Published registry functions use "author/name" format, private ones use just "name"
           const seenNames = new Set(userFunctions.map((f) => f.name.toLowerCase()));
           const merged = [...userFunctions];
           for (const fn of mappedMyRegistryFunctions) {
-            // Extract the base name from "author/name" format
             const baseName = (fn.name.split('/')[1] || fn.name).toLowerCase();
-            if (!seenNames.has(baseName)) {
-              seenNames.add(baseName);
-              merged.push(fn);
-            }
+            if (!seenNames.has(baseName)) { seenNames.add(baseName); merged.push(fn); }
           }
-          data = merged;
-          break;
+          data = merged; break;
         }
-        default:
-          data = allFunctions;
+        default: data = allFunctions;
       }
-
       setFunctions(data);
-    } catch (error) {
-      toast.error('Failed to load functions');
-    } finally {
-      setLoading(false);
-    }
+    } catch { toast.error('Failed to load functions'); } finally { setLoading(false); }
   };
 
-  const handleCreateFunction = () => {
-    navigate('/functions/new');
-  };
-
-  const handleDeleteClick = (fn: FunctionConfig) => {
-    const summary: FunctionSummary = {
-      ...fn,
-      created_at: fn.createdAt,
-      updated_at: fn.updatedAt,
-    };
-    setFunctionToDelete(summary);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (functionToDelete) {
-      deleteMutation.mutate(functionToDelete.id);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setDeleteDialogOpen(false);
-    setFunctionToDelete(null);
-  };
-
-  const isMyFunctionsPage = filter === 'my';
-
-  const isNewDiscoveryPage = location.pathname === '/functions/discovery/new';
+  const handleCreateFunction = () => navigate('/functions/new');
+  const handleDeleteClick = (fn: FunctionConfig) => { setFunctionToDelete({ ...fn, created_at: fn.createdAt, updated_at: fn.updatedAt }); setDeleteDialogOpen(true); };
+  const handleConfirmDelete = () => { if (functionToDelete) deleteMutation.mutate(functionToDelete.id); };
 
   return (
-    <div className={isNewDiscoveryPage ? 'discovery-new-page' : 'discovery-page'}>
-      <div className="discovery-page-content">
-        <header className={isNewDiscoveryPage ? 'discovery-new-header' : 'discovery-header'}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className={isNewDiscoveryPage ? 'discovery-new-title' : 'discovery-header-title'}>
-                <span className="icon-wrapper">{config.icon}</span>
-                {config.title}
-                {isNewDiscoveryPage && filter === 'new' && (
-                  <span className="discovery-new-badge">Fresh</span>
-                )}
-              </h1>
-              <p className={isNewDiscoveryPage ? 'discovery-new-subtitle' : 'discovery-header-subtitle'}>
-                {config.description}
-              </p>
-            </div>
-            <Button
-              onClick={handleCreateFunction}
-              className="bg-aviation-amber hover:bg-aviation-amber-glow text-aviation-bg-primary"
-            >
-              Create Function
-            </Button>
-          </div>
-        </header>
+    <div className="disc-page">
+      <PageGrid />
 
-        <nav className={isNewDiscoveryPage ? 'discovery-new-filters' : 'discovery-filters'}>
-          {(Object.keys(FILTER_CONFIG) as FilterType[]).map((f) => (
-            <button
-              key={f}
-              className={`${isNewDiscoveryPage ? 'discovery-new-filter-btn' : 'discovery-filter-btn'} ${filter === f ? 'active' : ''}`}
-              onClick={() => navigate(`/functions/discovery/${f}`)}
-            >
-              {FILTER_CONFIG[f].icon}
-              {FILTER_CONFIG[f].title}
-            </button>
-          ))}
-        </nav>
+      {/* Hero */}
+      <Chamber className="disc-hero" ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary={`MODULE FN-${filter.toUpperCase()}`} secondary={config.title} position="top-right" />
 
-        <main className="discovery-page-content">
-          {loading ? (
-            <div className={isNewDiscoveryPage ? 'discovery-new-loading' : 'discovery-loading'}>
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className={isNewDiscoveryPage ? 'discovery-new-skeleton' : 'discovery-skeleton'} />
-              ))}
-            </div>
-          ) : functions.length === 0 ? (
-            <div className={isNewDiscoveryPage ? 'discovery-new-empty' : 'discovery-empty'}>
-              <div className={isNewDiscoveryPage ? 'discovery-new-empty-icon' : 'discovery-empty-icon'}>{config.icon}</div>
-              <h2 className={isNewDiscoveryPage ? 'discovery-new-empty-title' : 'discovery-empty-title'}>
-                No functions found
-              </h2>
-              <p className={isNewDiscoveryPage ? 'discovery-new-empty-description' : 'discovery-empty-description'}>
-                No {filter} functions available right now. Be the first to create one!
-              </p>
-              <Button
-                onClick={handleCreateFunction}
-                className={isNewDiscoveryPage ? 'discovery-new-empty-btn' : ''}
-                variant={isNewDiscoveryPage ? undefined : 'default'}
-              >
-                Create Function
-              </Button>
-            </div>
-          ) : (
-            <div className={isNewDiscoveryPage ? 'discovery-new-grid' : 'discovery-grid'}>
-              {functions.map((fn, index) => (
-              <AviationFunctionCard
-                key={fn.id}
-                index={index}
-                isNewStyle={isNewDiscoveryPage}
-                fn={{
-                  id: fn.id,
-                  name: fn.name,
-                  providers: ['registry'],
-                  region: fn.region || 'auto',
-                  code: fn.code || '',
-                  envVars: (fn.env_vars || []).map(ev => ({ ...ev, isSecret: ev.isSecret ?? false })),
-                  tenantId: fn.tenant_id || '',
-                  createdAt: fn.created_at,
-                  updatedAt: fn.updated_at,
-                  version: fn.version || '1.0',
-                  status: fn.status || 'draft',
-                  executionCount: fn.execution_count || 0,
-                  avgDurationMs: fn.avg_duration_ms,
-                }}
-                onView={(id) => {
-                  if (fn.author) {
-                    // Navigate to registry function (public or private)
-                    const funcName = fn.name.split('/')[1] || fn.name;
-                    navigate(`/fx/${fn.author}/${funcName}`);
-                  } else {
-                    // Navigate to user's private registry function
-                    navigate(`/functions/${id}`);
-                  }
-                }}
-                onEdit={(id) => {
-                  if (fn.author) {
-                    const funcName = fn.name.split('/')[1] || fn.name;
-                    navigate(`/fx/${fn.author}/${funcName}`);
-                  } else {
-                    navigate(`/functions/${id}/edit`);
-                  }
-                }}
-                onDelete={isMyFunctionsPage ? handleDeleteClick : undefined}
-              />
-            ))}
+        <div className="disc-hero__header">
+          <div className="disc-hero__title-row">
+            <TrustSeal size="lg" />
+            <h1 className="disc-hero__title">{config.title}</h1>
           </div>
-          )}
-        </main>
+          <p className="disc-hero__subtitle">{config.description}</p>
+          <div className="disc-hero__actions">
+            <SealedButton onClick={handleCreateFunction}>Create Function</SealedButton>
+          </div>
+        </div>
+      </Chamber>
+
+      {/* Filter Tabs */}
+      <div className="disc-filters">
+        {(Object.keys(FILTER_CONFIG) as FilterType[]).map((f) => (
+          <button key={f} className={`disc-filter-btn ${filter === f ? 'disc-filter-btn--active' : ''}`}
+            onClick={() => navigate(`/functions/discovery/${f}`)}>
+            {FILTER_CONFIG[f].icon}
+            {FILTER_CONFIG[f].title}
+          </button>
+        ))}
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent
-          style={{
-            background: 'var(--color-aviation-bg-secondary)',
-            borderColor: 'var(--color-aviation-red-dim, rgba(239,68,68,0.3))',
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle
-              className="flex items-center gap-2"
-              style={{ color: 'var(--color-aviation-text-primary)' }}
-            >
-              <Trash2 className="w-5 h-5" style={{ color: 'var(--color-aviation-red)' }} />
-              Delete Function
-            </DialogTitle>
-            <DialogDescription
-              style={{ color: 'var(--color-aviation-text-secondary)' }}
-            >
-              Are you sure you want to delete "{functionToDelete?.name}"? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCancelDelete}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleConfirmDelete}
-              disabled={deleteMutation.isPending}
-              style={{
-                background: 'var(--color-aviation-red)',
-                color: 'white',
+      {/* Content */}
+      {loading ? (
+        <div className="disc-grid">
+          {Array.from({ length: 6 }).map((_, i) => <div key={i} className="disc-skeleton" />)}
+        </div>
+      ) : functions.length === 0 ? (
+        <Chamber className="disc-empty">
+          <div className="disc-empty__icon">{config.icon}</div>
+          <h2 className="disc-empty__title">No functions found</h2>
+          <p className="disc-empty__desc">No {filter} functions available right now. Be the first to create one!</p>
+          <SealedButton onClick={handleCreateFunction}>Create Function</SealedButton>
+        </Chamber>
+      ) : (
+        <div className="disc-grid">
+          {functions.map((fn, index) => (
+            <AviationFunctionCard
+              key={fn.id} index={index}
+              fn={{
+                id: fn.id, name: fn.name, providers: ['registry'], region: fn.region || 'auto',
+                code: fn.code || '', envVars: (fn.env_vars || []).map(ev => ({ ...ev, isSecret: ev.isSecret ?? false })),
+                tenantId: fn.tenant_id || '', createdAt: fn.created_at, updatedAt: fn.updated_at,
+                version: fn.version || '1.0', status: fn.status || 'draft',
+                executionCount: fn.execution_count || 0, avgDurationMs: fn.avg_duration_ms,
               }}
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              onView={(id) => { if (fn.author) { navigate(`/fx/${fn.author}/${fn.name.split('/')[1] || fn.name}`); } else { navigate(`/functions/${id}`); } }}
+              onEdit={(id) => { if (fn.author) { navigate(`/fx/${fn.author}/${fn.name.split('/')[1] || fn.name}`); } else { navigate(`/functions/${id}/edit`); } }}
+              onDelete={isMyFunctionsPage ? handleDeleteClick : undefined}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Delete Dialog */}
+      {deleteDialogOpen && (
+        <div className="disc-modal-overlay" onClick={() => setDeleteDialogOpen(false)}>
+          <div className="disc-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="disc-modal__header">
+              <Trash2 className="disc-icon-sm disc-icon-danger" />
+              <h2 className="disc-modal__title">Delete Function</h2>
+            </div>
+            <p className="disc-modal__desc">
+              Are you sure you want to delete "{functionToDelete?.name}"? This action cannot be undone.
+            </p>
+            <div className="disc-modal__actions">
+              <FrameButton onClick={() => setDeleteDialogOpen(false)}>Cancel</FrameButton>
+              <SealedButton onClick={handleConfirmDelete} disabled={deleteMutation.isPending} loading={deleteMutation.isPending}>
+                Delete
+              </SealedButton>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+export default FunctionsDiscoveryPage;

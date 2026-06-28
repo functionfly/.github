@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, WifiOff, Pause, Play } from 'lucide-react';
+import { tokenVault } from '@/utils/token-vault';
 
 interface RealtimeStreamProps {
   runId: string | null;
@@ -21,36 +22,41 @@ export default function RealtimeStream({ runId, onEvent }: RealtimeStreamProps) 
       return;
     }
 
-    const API_BASE = import.meta.env.VITE_API_URL || '';
-    const wsUrl = `${API_BASE.replace('http', 'ws')}/v1/agent-observability/runs/${runId}/stream`;
-    const token = localStorage.getItem('token');
+    let ws: WebSocket | null = null;
 
-    const ws = new WebSocket(wsUrl);
+    (async () => {
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const wsUrl = `${API_BASE.replace('http', 'ws')}/v1/agent-observability/runs/${runId}/stream`;
+      await tokenVault.initialize();
+      const token = await tokenVault.getAccessToken();
 
-    ws.onopen = () => {
-      setConnected(true);
-      if (token) {
-        ws.send(JSON.stringify({ headers: { Authorization: `Bearer ${token}` } }));
-      }
-    };
+      ws = new WebSocket(wsUrl);
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        setEventCount((prev) => prev + 1);
-        setBuffer((prev) => [...prev.slice(-99), data]);
-        onEvent?.(data);
-      } catch (e) {
-        console.error('Failed to parse WebSocket message:', e);
-      }
-    };
+      ws.onopen = () => {
+        setConnected(true);
+        if (token) {
+          ws.send(JSON.stringify({ headers: { Authorization: `Bearer ${token}` } }));
+        }
+      };
 
-    ws.onclose = () => {
-      setConnected(false);
-    };
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          setEventCount((prev) => prev + 1);
+          setBuffer((prev) => [...prev.slice(-99), data]);
+          onEvent?.(data);
+        } catch (e) {
+          console.error('Failed to parse WebSocket message:', e);
+        }
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+      };
+    })();
 
     return () => {
-      ws.close();
+      if (ws) ws.close();
     };
   }, [runId, paused, onEvent]);
 

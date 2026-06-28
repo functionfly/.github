@@ -58,7 +58,8 @@ export function useVaultSecrets() {
     staleTime: 0,
     queryFn: async () => {
       try {
-        return await vaultApi.listSecrets();
+        const result = await vaultApi.listSecrets();
+        return result ?? { secrets: [] as SecretMetadata[], total: 0, limit: 0, offset: 0 };
       } catch {
         return { secrets: [] as SecretMetadata[], total: 0, limit: 0, offset: 0 } as unknown as { secrets: SecretMetadata[]; total: number; limit: number; offset: number };
       }

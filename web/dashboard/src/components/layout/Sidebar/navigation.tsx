@@ -239,13 +239,6 @@ export const navigationSections: NavSection[] = [
         description: 'SDK integrations',
       },
       {
-        path: '/settings#integrations',
-        label: 'Connectors',
-        icon: Link2,
-        badge: 'new',
-        description: 'Link external accounts to feed your Brain',
-      },
-      {
         path: ROUTES.VAULT,
         label: 'Vault',
         icon: Key,
@@ -407,6 +400,12 @@ export const navigationSections: NavSection[] = [
         description: 'Manage subscription, invoices, and payments',
       },
       {
+        path: ROUTES.FOUNDERS,
+        label: 'Founders',
+        icon: Sparkles,
+        description: 'Founder program and referral stats',
+      },
+      {
         path: ROUTES.ENTERPRISE_SUPPORT,
         label: 'Support',
         icon: LifeBuoy,
@@ -439,7 +438,6 @@ export const NAV_LABEL_KEYS: Record<string, string> = {
   'SDK': 'nav.sdk',
   'Secrets': 'nav.secrets',
   'API Keys': 'nav.apiKeys',
-  'Connectors': 'nav.connectors',
   'Bundles': 'nav.bundles',
   'Analytics': 'nav.analytics',
   'Observability': 'nav.observability',
@@ -457,6 +455,7 @@ export const NAV_LABEL_KEYS: Record<string, string> = {
   'GitHub Import': 'nav.githubImport',
   'Settings': 'nav.settings',
   'Billing': 'nav.billing',
+  'Founders': 'nav.founders',
   'Support': 'nav.support',
   'Recent': 'nav.recent',
   'Getting Started': 'nav.gettingStarted',

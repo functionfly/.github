@@ -1,9 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Chamber,
+  FrameButton,
+  StatusPill,
+} from '@/components/containment';
 import type { PaymentMethod } from '@/api/billing';
-import { CreditCard, Plus, Trash2 } from 'lucide-react';
+import { CreditCard, Plus, Trash2, AlertCircle } from 'lucide-react';
 
 interface PaymentMethodsTabProps {
   paymentMethods: PaymentMethod[];
@@ -19,106 +20,104 @@ export function PaymentMethodsTab({
   onOpenPortal,
 }: PaymentMethodsTabProps) {
   return (
-    <div className="space-y-6">
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <CreditCard className="h-5 w-5 text-brand-500" />
+    <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      <Chamber nested>
+        <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
+          <div className="sc-billing-card-title">
+            <CreditCard style={{ width: 14, height: 14 }} />
             Payment Methods
-          </CardTitle>
-          <CardDescription>Manage your payment methods for subscriptions and top-ups</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
+          </div>
+          <div className="sc-billing-card-description">Manage your payment methods for subscriptions and top-ups</div>
+        </div>
+
+        {isLoading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {[1, 2].map((i) => (
+              <div key={i} style={{ height: 80, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="sc-billing-info sc-billing-info-warning">
+            <AlertCircle style={{ width: 18, height: 18 }} />
+            <div className="sc-billing-info-content">
+              <div className="sc-billing-info-text">{error.message}</div>
             </div>
-          ) : error ? (
-            <div className="flex items-center gap-2 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
-              <span className="w-5 h-5 text-amber-500 shrink-0">⚠️</span>
-              <p className="text-amber-500 text-sm">{error.message}</p>
-            </div>
-          ) : paymentMethods.length === 0 ? (
-            <div className="text-center py-12">
-              <CreditCard className="h-12 w-12 text-text-muted mx-auto mb-3" />
-              <p className="text-text-muted">No payment methods</p>
-              <p className="text-sm text-text-muted mb-4">
-                Add a payment method to manage your subscription
-              </p>
-              <Button variant="outline" className="border-border-strong" onClick={onOpenPortal}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Payment Method
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {paymentMethods.map((pm) => (
-                <div
-                  key={pm.stripe_payment_method_id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-bg-secondary border border-border-default"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-brand-500/20 flex items-center justify-center">
-                      <CreditCard className="w-5 h-5 text-brand-500" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-text-primary">
-                        {pm.brand} •••• {pm.last4}
-                      </p>
-                      <p className="text-sm text-text-muted">
-                        Expires {pm.exp_month.toString().padStart(2, '0')}/{pm.exp_year}
-                      </p>
-                    </div>
+          </div>
+        ) : paymentMethods.length === 0 ? (
+          <div className="empty-state" style={{ minHeight: 160, flexDirection: 'column', gap: 'var(--space-3)' }}>
+            <CreditCard style={{ width: 48, height: 48, color: 'var(--text-faint)' }} />
+            <p style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>No payment methods</p>
+            <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 'var(--space-4)' }}>Add a payment method to manage your subscription</p>
+            <FrameButton onClick={onOpenPortal} iconLeft={<Plus style={{ width: 14, height: 14 }} />}>
+              Add Payment Method
+            </FrameButton>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+            {paymentMethods.map((pm) => (
+              <div
+                key={pm.stripe_payment_method_id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: 'var(--space-4)',
+                  borderRadius: 'var(--radius)',
+                  background: 'var(--panel)',
+                  border: '1px solid var(--panel-edge)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 'var(--radius)', background: 'rgba(143, 255, 208, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CreditCard style={{ width: 18, height: 18, color: 'var(--status-ok)' }} />
                   </div>
-                  <div className="flex items-center gap-3">
-                    {pm.is_default && (
-                      <Badge variant="success" className="ff-badge-success">
-                        Default
-                      </Badge>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                      onClick={onOpenPortal}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div>
+                    <p style={{ fontWeight: 500, color: 'var(--text)' }}>
+                      {pm.brand} •••• {pm.last4}
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                      Expires {pm.exp_month.toString().padStart(2, '0')}/{pm.exp_year}
+                    </p>
                   </div>
                 </div>
-              ))}
-
-              <div className="pt-4 border-t border-border-default">
-                <Button variant="outline" className="border-border-strong" onClick={onOpenPortal}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Payment Method
-                </Button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                  {pm.is_default && <StatusPill status="live" label="Default" />}
+                  <button
+                    onClick={onOpenPortal}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 28, height: 28, borderRadius: 'var(--radius)',
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      color: 'var(--status-revoked)',
+                      transition: 'background var(--duration-fast) var(--ease-out)',
+                    }}
+                    title="Remove payment method"
+                  >
+                    <Trash2 style={{ width: 14, height: 14 }} />
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ))}
 
-      <Card className="ff-card-velocity">
-        <CardHeader>
-          <CardTitle className="font-display">Billing Portal</CardTitle>
-          <CardDescription>
-            Manage your payment methods and subscription through our secure billing portal
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-text-muted mb-4">
-            For advanced payment method management, invoice download, and subscription changes,
-            use our secure billing portal.
-          </p>
-          <Button variant="outline" className="border-border-strong" onClick={onOpenPortal}>
-            <CreditCard className="mr-2 h-4 w-4" />
-            Open Billing Portal
-          </Button>
-        </CardContent>
-      </Card>
+            <div style={{ paddingTop: 'var(--space-4)', borderTop: '1px solid var(--panel-edge)' }}>
+              <FrameButton onClick={onOpenPortal} iconLeft={<Plus style={{ width: 14, height: 14 }} />}>
+                Add Payment Method
+              </FrameButton>
+            </div>
+          </div>
+        )}
+      </Chamber>
+
+      {/* Billing Portal */}
+      <Chamber nested>
+        <div className="sc-billing-card-title" style={{ marginBottom: 'var(--space-2)' }}>Billing Portal</div>
+        <p style={{ fontSize: 13, color: 'var(--text-dim)', marginBottom: 'var(--space-4)' }}>
+          For advanced payment method management, invoice download, and subscription changes, use our secure billing portal.
+        </p>
+        <FrameButton onClick={onOpenPortal} iconLeft={<CreditCard style={{ width: 14, height: 14 }} />}>
+          Open Billing Portal
+        </FrameButton>
+      </Chamber>
     </div>
   );
 }

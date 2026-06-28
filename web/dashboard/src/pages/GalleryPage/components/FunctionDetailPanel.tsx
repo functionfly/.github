@@ -10,7 +10,7 @@ import { RUNTIME_COLORS } from '../constants';
 import { useFunctionSource, useFunctionStats } from '../useFunctionSource';
 import { TrustGauge } from './TrustGauge';
 
-const MonacoEditor = lazy(() => import('@monaco-editor/react'));
+const MonacoEditor = lazy(() => import('@monaco-editor/react').then((m) => ({ default: m.Editor as React.ComponentType<unknown> })));
 
 interface FunctionDetailPanelProps {
   fn: GalleryFunction;

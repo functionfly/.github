@@ -1044,3 +1044,83 @@ export async function applyAffiliateCode(request: {
     headers,
   });
 }
+
+// ==================== Live Reconciliation (Enterprise) ====================
+
+export interface LiveReconciliationStatus {
+  plan: string;
+  live_reconciliation_active: boolean;
+  auto_reconcile_enabled: boolean;
+  scheduled_reconcile_enabled: boolean;
+  schedule_cron?: string;
+  last_reconciliation_at?: string;
+  next_scheduled_reconcile?: string;
+  total_reconciliations: number;
+  successful_reconciliations: number;
+  failed_reconciliations: number;
+  audit_export_enabled: boolean;
+  soc2_compliant: boolean;
+  hipaa_compliant: boolean;
+}
+
+export interface LiveReconciliationSettings {
+  plan: string;
+  auto_reconcile_enabled: boolean;
+  scheduled_reconcile_enabled: boolean;
+  schedule_cron: string;
+  audit_export_enabled: boolean;
+  notify_on_completion: boolean;
+  notify_on_failure: boolean;
+}
+
+export interface UpdateReconciliationSettingsRequest {
+  auto_reconcile_enabled: boolean;
+  scheduled_reconcile_enabled: boolean;
+  schedule_cron: string;
+  audit_export_enabled: boolean;
+  notify_on_completion: boolean;
+  notify_on_failure: boolean;
+}
+
+export interface LiveReconciliationUsageResponse {
+  plan: string;
+  period_start: string;
+  period_end: string;
+  total_reconciliations: number;
+  total_executions_reconciled: number;
+  avg_duration_ms: number;
+  success_rate: number;
+}
+
+export async function getLiveReconciliationStatus(): Promise<LiveReconciliationStatus> {
+  return apiClient.get<LiveReconciliationStatus>('/v1/billing/live-reconciliation/status');
+}
+
+export async function getLiveReconciliationSettings(): Promise<LiveReconciliationSettings> {
+  return apiClient.get<LiveReconciliationSettings>('/v1/billing/live-reconciliation/settings');
+}
+
+export async function updateLiveReconciliationSettings(
+  settings: UpdateReconciliationSettingsRequest
+): Promise<LiveReconciliationSettings> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+  return apiClient.post<LiveReconciliationSettings>(
+    '/v1/billing/live-reconciliation/settings',
+    settings,
+    { headers }
+  );
+}
+
+export async function getLiveReconciliationUsage(params?: {
+  start?: string;
+  end?: string;
+}): Promise<LiveReconciliationUsageResponse> {
+  return apiClient.get<LiveReconciliationUsageResponse>(
+    '/v1/billing/live-reconciliation/usage',
+    { params }
+  );
+}
