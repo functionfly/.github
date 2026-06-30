@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"time"
@@ -478,26 +479,16 @@ func (s *WebhookService) ValidateWebhookURL(urlStr string) error {
 
 // isPrivateIP checks if an IP is in a private range
 func isPrivateIP(host string) bool {
-	// Simple check - in production would use proper IP parsing
-	privatePrefixes := []string{
-		"10.",
-		"172.16.", "172.17.", "172.18.", "172.19.",
-		"172.20.", "172.21.", "172.22.", "172.23.",
-		"172.24.", "172.25.", "172.26.", "172.27.",
-		"172.28.", "172.29.", "172.30.", "172.31.",
-		"192.168.",
-		"127.",
-		"0.",
-		"::1",
-		"fc00:",
-		"fe80:",
-	}
-
-	for _, prefix := range privatePrefixes {
-		if len(host) >= len(prefix) && host[:len(prefix)] == prefix {
-			return true
+	ip := net.ParseIP(host)
+	if ip == nil {
+		// Not an IP address - could be a hostname
+		// Try to resolve it to check the resolved IP
+		ips, err := net.LookupIP(host)
+		if err != nil || len(ips) == 0 {
+			return false
 		}
+		ip = ips[0]
 	}
 
-	return false
+	return ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified()
 }

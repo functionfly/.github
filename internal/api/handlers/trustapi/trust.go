@@ -286,6 +286,13 @@ func (h *Handler) HandleGetVerification(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Ownership check: API key partner must own this verification
+	partner := getPartnerFromContext(r)
+	if partner != nil && verification.PartnerID != partner.ID {
+		h.writeError(w, http.StatusForbidden, "Not authorized to view this verification", "forbidden")
+		return
+	}
+
 	response := trustapi.VerificationResponse{
 		ID:                    verification.ID,
 		VerificationID:        verification.VerificationID,
@@ -383,6 +390,13 @@ func (h *Handler) HandleGetReport(w http.ResponseWriter, r *http.Request) {
 	report, err := h.trustRepo.GetReportByReportID(reportID)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Report not found", "report_not_found")
+		return
+	}
+
+	// Ownership check: API key partner must own this report
+	partner := getPartnerFromContext(r)
+	if partner != nil && report.PartnerID != partner.ID {
+		h.writeError(w, http.StatusForbidden, "Not authorized to view this report", "forbidden")
 		return
 	}
 

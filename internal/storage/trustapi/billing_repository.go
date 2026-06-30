@@ -396,6 +396,15 @@ func (r *BillingRepository) GetPartnerByStripeCustomerID(ctx context.Context, cu
 	return &partner, nil
 }
 
+// GetPartnerByContactEmail retrieves a partner by contact email (for JWT user resolution)
+func (r *BillingRepository) GetPartnerByContactEmail(ctx context.Context, email string) (*TrustAPIPartner, error) {
+	var partner TrustAPIPartner
+	if err := r.db.WithContext(ctx).Where("contact_email = ?", email).First(&partner).Error; err != nil {
+		return nil, err
+	}
+	return &partner, nil
+}
+
 // ListPartnersWithFilters lists partners with optional filters
 func (r *BillingRepository) ListPartnersWithFilters(status, tier string, limit, offset int) ([]TrustAPIPartner, int64, error) {
 	var partners []TrustAPIPartner

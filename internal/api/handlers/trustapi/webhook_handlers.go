@@ -83,6 +83,10 @@ func (h *WebhookHandler) HandleCreateWebhook(w http.ResponseWriter, r *http.Requ
 	}
 
 	if req.Secret != "" {
+		if len(req.Secret) < 32 {
+			h.writeError(w, http.StatusBadRequest, "Webhook secret must be at least 32 characters", "invalid_secret")
+			return
+		}
 		webhook.Secret = req.Secret
 	}
 
@@ -118,7 +122,7 @@ func (h *WebhookHandler) HandleCreateWebhook(w http.ResponseWriter, r *http.Requ
 		MaxRetries:    webhook.MaxRetries,
 		CustomHeaders: headers,
 		CreatedAt:     webhook.CreatedAt,
-		UpdatedAt:     webhook.UpdatedAt,
+		Secret:        webhook.Secret, // Only shown on creation — save this, it won't be shown again
 	}
 
 	h.writeJSON(w, http.StatusCreated, response)
@@ -281,6 +285,10 @@ func (h *WebhookHandler) HandleUpdateWebhook(w http.ResponseWriter, r *http.Requ
 		webhook.Events = eventsJSON
 	}
 	if req.Secret != "" {
+		if len(req.Secret) < 32 {
+			h.writeError(w, http.StatusBadRequest, "Webhook secret must be at least 32 characters", "invalid_secret")
+			return
+		}
 		webhook.Secret = req.Secret
 	}
 	if req.Status != "" {

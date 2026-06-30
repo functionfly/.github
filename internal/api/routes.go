@@ -30,7 +30,9 @@ import (
 	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/docs"
+	"github.com/functionfly/functionfly/internal/aikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
+	"github.com/functionfly/functionfly/internal/api/handlers/aimodels"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
 	agentobs "github.com/functionfly/functionfly/internal/api/handlers/agent_observability"
@@ -58,6 +60,7 @@ import (
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
+	foundershandler "github.com/functionfly/functionfly/internal/api/handlers/founders"
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
 	"github.com/functionfly/functionfly/internal/api/helpers"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
@@ -80,6 +83,7 @@ import (
 	drehandler "github.com/functionfly/functionfly/internal/api/handlers/registry/dre"
 	registryexecution "github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	runtimehandler "github.com/functionfly/functionfly/internal/api/handlers/runtime"
+	sandboxhandler "github.com/functionfly/functionfly/internal/api/handlers/sandbox"
 	"github.com/functionfly/functionfly/internal/api/handlers/schedule"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
 	"github.com/functionfly/functionfly/internal/api/handlers/simulation"
@@ -96,6 +100,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/workflow"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
+	"github.com/functionfly/functionfly/internal/auth"
 	atlaspkg "github.com/functionfly/functionfly/internal/atlas"
 	"github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/bundler"
@@ -153,6 +158,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	usersHandler := usersHandlerPkg.NewHandler(s.repo, s.authSvc)
 	favoritesHandler := usersHandlerPkg.NewFavoritesHandler(s.repo)
 	presenceHandler := usersHandlerPkg.NewPresenceHandler(s.repo, s.authSvc, s.redisClient, s.logger)
+	foundersHandler := foundershandler.NewHandler(s.repo, s.notificationSvc, s.logger)
+	foundersVotesHandler := foundershandler.NewVotesHandler(s.repo, s.logger)
+	foundersEarlyAccessHandler := foundershandler.NewEarlyAccessHandler(s.repo, s.logger)
 	// ── Wallet Service Initialization ────────────────────────────────────────────
 	// Initialize the unified wallet system (replaces user_wallets and agent_billing_controls)
 	walletRepo := wallet.NewRepository(s.postgresDB.GORM)
@@ -492,6 +500,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	pluginHandler := plugin.NewHandler(pluginStorageAdapter)
 	var (
 		runtimeHandler  = runtimehandler.New()
+		sandboxHandler  = sandboxhandler.New()
 		microvmRepo     = storage.NewMicroVMRepository(s.postgresDB.DB)
 		microvmHandler  = microvm.NewHandler(microvmRepo, s.repo)
 	)
@@ -586,6 +595,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath)
 	registryHandler.SetRuntimeRouter(runtimeRouter)
+	s.runtimeRouter = runtimeRouter
 
 	// Atlas Memory Engine tracer (optional, enabled via ATLAS_URL env var)
 	atlasTracer := atlaspkg.NewTracer(nil)
@@ -1055,8 +1065,8 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.Use(maintenanceMiddleware.CheckMaintenanceMode)
 	s.router.Use(middleware.EnvironmentMiddleware)
 	s.router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(middleware.BodySizeLimitMiddleware(1 << 20)(next.ServeHTTP))
-	}) // 1MB default
+		return http.HandlerFunc(middleware.BodySizeLimitMiddleware(4 << 20)(next.ServeHTTP))
+	}) // 4MB default — must accommodate base64-encoded profile photos
 
 	s.router.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(advancedSecurityMiddleware.CORSMiddleware(http.HandlerFunc(next.ServeHTTP)))
@@ -1144,6 +1154,22 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		mfaHandler, notificationHandler, notificationWSHandler,
 		presenceHandler,
 	)
+
+	// ── Founders (protected) ────────────────────────────────────────────────
+	api.HandleFunc("/founders/status", authMiddleware.RequireAuth(foundersHandler.HandleGetStatus)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/claim", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(foundersHandler.HandleAssignFounder))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/founders/leaderboard", authMiddleware.RequireAuth(foundersHandler.HandleGetLeaderboard)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/public-leaderboard", foundersHandler.HandleGetPublicLeaderboard).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/my-rank", authMiddleware.RequireAuth(foundersHandler.HandleGetMyRank)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/votes", authMiddleware.RequireAuth(foundersVotesHandler.HandleListVotes)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/votes/{id}", authMiddleware.RequireAuth(foundersVotesHandler.HandleGetVote)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/votes/{id}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(foundersVotesHandler.HandleCastVote))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/founders/votes/{id}/results", authMiddleware.RequireAuth(foundersVotesHandler.HandleGetResults)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/early-access", authMiddleware.RequireAuth(foundersEarlyAccessHandler.HandleListFeatures)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/early-access/{slug}", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(foundersEarlyAccessHandler.HandleClaimAccess))).Methods("POST", "OPTIONS")
+	api.HandleFunc("/founders/early-access/my", authMiddleware.RequireAuth(foundersEarlyAccessHandler.HandleGetUserAccess)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/referral-code", authMiddleware.RequireAuth(usersHandler.HandleGetMyReferralCode)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/founders/referral-stats", authMiddleware.RequireAuth(usersHandler.HandleGetMyReferralStats)).Methods("GET", "OPTIONS")
 
 	// Wire billing handler to bundle provisioner for isolated auto-provisioning
 	billingHandler.SetBundleProvisioner(provisioning.ProvisionBundleForBilling(s.bundleProvisioner))
@@ -1312,6 +1338,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		certHandler,
 	)
 
+	// ── Admin AI Model Preferences (provider/model enable/disable) ──────────
+	aiModelsPrefsRepo := storage.NewAIModelPreferencesRepository(s.postgresDB.DB)
+	aiModelsHandler := aimodels.NewHandler(s.repo, aiModelsPrefsRepo, s.redisClient, os.Getenv("AI_SERVICE_URL"))
+	adminAIRoutes := api.PathPrefix("/admin/ai").Subrouter()
+	adminAIRoutes.HandleFunc("/models/catalog", authMiddleware.RequirePermission(auth.PermSystemRead)(aiModelsHandler.HandleGetCatalog)).Methods("GET", "OPTIONS")
+	adminAIRoutes.HandleFunc("/models/preferences", authMiddleware.RequirePermission(auth.PermSystemRead)(aiModelsHandler.HandleGetPreferences)).Methods("GET", "OPTIONS")
+	adminAIRoutes.HandleFunc("/models/preferences", authMiddleware.RequirePermission(auth.PermSystemWrite)(aiModelsHandler.HandlePutPreferences)).Methods("PUT", "OPTIONS")
+
 	// Trust API for external platform partners
 	registerTrustAPIRoutes(s, api, registryRepo)
 
@@ -1443,8 +1477,12 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Runtime Optimization Endpoint (receives suggestions from Rust GraphOptimizer) ──
 	api.HandleFunc("/optimizations", optimizationHandler.ReceiveOptimizationSuggestion).Methods("POST", "OPTIONS")
 
+	// ── Sandbox Management ───────────────────────────────────────────────────
+	sandboxHandler.RegisterRoutes(api)
+
 	// ── AI Service Proxy (for AI Composer + Gallery features) ───────────────
-	aiProxyHandler := NewAIProxyHandler()
+	byokRepo := aikeys.NewRepository(s.postgresDB.GORM)
+	aiProxyHandler := NewAIProxyHandler(byokRepo)
 
 	// AI Composer routes - paths are relative to /v1 subrouter
 	protected.HandleFunc("/ai/composer/generate", authMiddleware.RequireAuth(aiProxyHandler.HandleGenerateFunction)).Methods("POST", "OPTIONS")
@@ -1453,6 +1491,15 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/ai/composer/refine/stream", authMiddleware.RequireAuth(aiProxyHandler.HandleRefineFunctionStream)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/ai/health", aiProxyHandler.HandleHealth).Methods("GET", "OPTIONS")
 	api.HandleFunc("/ai/status", aiProxyHandler.HandleAIStatus).Methods("GET", "OPTIONS")
+
+	// ── BYOK AI Provider Keys ────────────────────────────────────────────────
+	byokHandler := aikeys.NewHandler(byokRepo, s.repo)
+	protected.HandleFunc("/ai-keys/connect", authMiddleware.RequireAuth(byokHandler.HandleConnectKey)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/ai-keys", authMiddleware.RequireAuth(byokHandler.HandleListKeys)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/ai-keys/providers", authMiddleware.RequireAuth(byokHandler.HandleListSupportedProviders)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/ai-keys/{provider}", authMiddleware.RequireAuth(byokHandler.HandleDisconnectKey)).Methods("DELETE", "OPTIONS")
+	protected.HandleFunc("/ai-keys/{provider}/test", authMiddleware.RequireAuth(byokHandler.HandleTestKey)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/ai-keys/{provider}/rotate", authMiddleware.RequireAuth(byokHandler.HandleRotateKey)).Methods("POST", "OPTIONS")
 
 	// ── MicroVM (Enterprise) endpoints ───────────────────────────────────────
 	// Usage and quota

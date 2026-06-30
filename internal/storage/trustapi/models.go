@@ -283,11 +283,17 @@ func DefaultAPIKeyScopes() []string {
 
 // AllAPIKeyScopes lists all available scopes
 var AllAPIKeyScopes = []string{
-	"trust:read",           // Read trust scores and history
-	"trust:write",          // Submit trust reports
-	"verification:request", // Request function verification
-	"reports:submit",       // Submit trust issue reports
-	"partners:manage",      // Manage partner account (admin only)
+	"trust:read",              // Read trust scores and history
+	"trust:write",             // Submit trust reports
+	"verification:request",    // Request function verification
+	"reports:submit",          // Submit trust issue reports
+	"partners:manage",         // Manage partner account (admin only)
+	"attestation:read",        // View attestations and verify chains
+	"attestation:create",      // Create new attestations
+	"attestation:revoke",      // Revoke attestations (admin/security)
+	"attestation:manage",      // Full attestation lifecycle management
+	"trust_policy:evaluate",   // Evaluate functions against trust policies
+	"trust_policy:manage",     // Create/update/delete trust policies
 }
 
 // HasScope checks if the key has a specific scope

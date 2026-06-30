@@ -200,14 +200,29 @@ func (r *RevocationRepository) CreateAttestation(attestation *TrustAttestation) 
 	rand.Read(b)
 	attestation.AttestationID = "att_" + hex.EncodeToString(b)
 
-	// Calculate proof hash for immutability
-	attestation.ProofHash = attestation.CalculateProofHash()
-
 	if attestation.Status == "" {
 		attestation.Status = string(AttestationStatusValid)
 	}
 	if attestation.AttestedAt.IsZero() {
 		attestation.AttestedAt = time.Now()
+	}
+	if attestation.AttesterType == "" {
+		attestation.AttesterType = "system"
+	}
+
+	// Populate PreviousHash from the most recent attestation for this function
+	if attestation.PreviousHash == "" {
+		latest, err := r.GetLatestAttestationForFunction(attestation.FunctionID)
+		if err == nil && latest != nil {
+			attestation.PreviousHash = latest.ProofHash
+		}
+	}
+
+	// Calculate proof hash and sign
+	signer := GetSigner()
+	if err := signer.SignAttestation(attestation); err != nil {
+		// Fall back to unsigned if signer is unavailable
+		attestation.ProofHash = attestation.CalculateProofHash()
 	}
 
 	return r.db.Create(attestation).Error
@@ -327,6 +342,75 @@ func (r *RevocationRepository) VerifyAttestationIntegrity(attestationID string) 
 	}
 
 	return attestation.VerifyIntegrity(), nil
+}
+
+// GetLatestAttestationForFunction gets the most recent attestation (any type, valid status)
+// for a function, used to populate PreviousHash when creating a new attestation.
+func (r *RevocationRepository) GetLatestAttestationForFunction(functionID uuid.UUID) (*TrustAttestation, error) {
+	var attestation TrustAttestation
+	err := r.db.Where("function_id = ? AND status = ?", functionID, AttestationStatusValid).
+		Order("attested_at DESC").
+		First(&attestation).Error
+
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &attestation, nil
+}
+
+// VerifyAttestationChain verifies the full hash chain of attestations for a function.
+// Returns true if the chain is intact (each PreviousHash matches the prior attestation's ProofHash).
+func (r *RevocationRepository) VerifyAttestationChain(functionID uuid.UUID) (bool, int, error) {
+	attestations, err := r.GetAttestationChain(functionID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	if len(attestations) == 0 {
+		return true, 0, nil
+	}
+
+	// First attestation should have no PreviousHash
+	if attestations[0].PreviousHash != "" {
+		return false, 0, nil
+	}
+
+	// Verify each attestation's integrity and chain link
+	for i := 0; i < len(attestations); i++ {
+		if !attestations[i].VerifyIntegrity() {
+			return false, i, nil
+		}
+
+		if i > 0 {
+			expected := attestations[i-1].ProofHash
+			if attestations[i].PreviousHash != expected {
+				return false, i, nil
+			}
+		}
+	}
+
+	return true, len(attestations), nil
+}
+
+// ExpireStaleAttestations marks attestations past their ValidUntil as expired.
+func (r *RevocationRepository) ExpireStaleAttestations() (int64, error) {
+	result := r.db.Model(&TrustAttestation{}).
+		Where("status = ? AND valid_until IS NOT NULL AND valid_until < ?", AttestationStatusValid, time.Now()).
+		Update("status", AttestationStatusExpired)
+
+	return result.RowsAffected, result.Error
+}
+
+// CountValidAttestationsForFunction counts valid attestations for a function.
+func (r *RevocationRepository) CountValidAttestationsForFunction(functionID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.Model(&TrustAttestation{}).
+		Where("function_id = ? AND status = ?", functionID, AttestationStatusValid).
+		Count(&count).Error
+	return count, err
 }
 
 // ============================================
@@ -590,4 +674,134 @@ func (r *RevocationRepository) InvalidateCacheForFunction(functionID uuid.UUID) 
 func (r *RevocationRepository) CleanExpiredEvaluations(olderThan time.Time) error {
 	return r.db.Where("evaluated_at < ? AND is_cached = ?", olderThan, true).
 		Delete(&TrustPolicyEvaluation{}).Error
+}
+
+// ============================================
+// Chain of Custody (Delegation Attestations)
+// ============================================
+
+// CreateDelegationAttestation creates an attestation that records a delegation
+// from one function/agent to another, forming a chain of custody.
+func (r *RevocationRepository) CreateDelegationAttestation(
+	delegatorFunctionID uuid.UUID,
+	delegatorAgentID string,
+	delegatorTrustScore float64,
+	delegateeFunctionID uuid.UUID,
+	delegateeVersion string,
+	delegateeName string,
+	delegateeAuthor string,
+	inputHash string,
+	outputHash string,
+	chainID string,
+	parentAttestationID string,
+) (*TrustAttestation, error) {
+	// Determine delegation depth from parent
+	depth := 0
+	if parentAttestationID != "" {
+		parent, err := r.GetAttestationByAttestationID(parentAttestationID)
+		if err == nil {
+			depth = parent.DelegationDepth + 1
+		}
+	}
+
+	// Generate chain ID if not provided
+	if chainID == "" {
+		b := make([]byte, 12)
+		rand.Read(b)
+		chainID = "chain_" + hex.EncodeToString(b)
+	}
+
+	attestation := &TrustAttestation{
+		FunctionID:          delegateeFunctionID,
+		FunctionVersion:     delegateeVersion,
+		FunctionAuthor:      delegateeAuthor,
+		FunctionName:        delegateeName,
+		Type:                string(AttestationTypeDelegation),
+		Title:               fmt.Sprintf("Delegation from %s", delegatorAgentID),
+		Description:         fmt.Sprintf("Function delegated to %s/%s by agent %s", delegateeAuthor, delegateeName, delegatorAgentID),
+		AttesterID:          delegatorFunctionID,
+		AttesterType:        "agent",
+		AttesterName:        delegatorAgentID,
+		Results:             json.RawMessage(fmt.Sprintf(`{"delegator_function_id":"%s","delegator_agent_id":"%s","delegator_trust_score":%.2f,"chain_id":"%s","depth":%d}`, delegatorFunctionID, delegatorAgentID, delegatorTrustScore, chainID, depth)),
+		DelegationChainID:   chainID,
+		ParentAttestationID: parentAttestationID,
+		DelegationDepth:     depth,
+		DelegatorFunctionID: &delegatorFunctionID,
+		DelegatorAgentID:    delegatorAgentID,
+		DelegatorTrustScore: delegatorTrustScore,
+		DelegationInputHash: inputHash,
+		DelegationOutputHash: outputHash,
+	}
+
+	if err := r.CreateAttestation(attestation); err != nil {
+		return nil, fmt.Errorf("create delegation attestation: %w", err)
+	}
+
+	return attestation, nil
+}
+
+// GetDelegationChain returns all attestations in a delegation chain,
+// ordered by depth (original caller first).
+func (r *RevocationRepository) GetDelegationChain(chainID string) ([]TrustAttestation, error) {
+	var attestations []TrustAttestation
+	err := r.db.Where("delegation_chain_id = ?", chainID).
+		Order("delegation_depth ASC, attested_at ASC").
+		Find(&attestations).Error
+	return attestations, err
+}
+
+// GetDelegationChainForFunction returns all delegation chains a function participated in.
+func (r *RevocationRepository) GetDelegationChainsForFunction(functionID uuid.UUID) ([]string, error) {
+	var chainIDs []string
+	err := r.db.Model(&TrustAttestation{}).
+		Where("(function_id = ? OR delegator_function_id = ?) AND delegation_chain_id != '' AND delegation_chain_id IS NOT NULL", functionID, functionID).
+		Distinct("delegation_chain_id").
+		Pluck("delegation_chain_id", &chainIDs).Error
+	return chainIDs, err
+}
+
+// VerifyDelegationChain verifies the integrity of a delegation chain.
+// Returns true if all attestations are valid, properly linked, and the chain is unbroken.
+func (r *RevocationRepository) VerifyDelegationChain(chainID string) (bool, int, error) {
+	attestations, err := r.GetDelegationChain(chainID)
+	if err != nil {
+		return false, 0, err
+	}
+
+	if len(attestations) == 0 {
+		return true, 0, nil
+	}
+
+	// Verify each attestation's integrity
+	for i, att := range attestations {
+		if !att.VerifyIntegrity() {
+			return false, i, nil
+		}
+
+		// Verify depth ordering
+		if att.DelegationDepth != i {
+			return false, i, nil
+		}
+
+		// Verify parent linkage (except first attestation)
+		if i > 0 {
+			if att.ParentAttestationID != attestations[i-1].AttestationID {
+				return false, i, nil
+			}
+		} else if att.ParentAttestationID != "" {
+			// First attestation should have no parent (or parent from a different chain)
+			// This is acceptable — the chain may start from a delegation request
+		}
+
+		// Verify signature if present
+		if att.Signature != "" {
+			signer := GetSigner()
+			valid, err := signer.VerifyAttestationSignature(&att)
+			if err != nil || !valid {
+				return false, i, nil
+			}
+		}
+	}
+
+	return true, len(attestations), nil
 }

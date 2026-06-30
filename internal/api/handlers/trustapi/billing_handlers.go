@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/google/uuid"
@@ -24,6 +25,27 @@ func NewBillingHandler(service *BillingService, repo *trustapi.BillingRepository
 		service: service,
 		repo:    repo,
 	}
+}
+
+// resolvePartner resolves the partner for the current request.
+// It first checks API key context, then falls back to JWT user context.
+func (h *BillingHandler) resolvePartner(r *http.Request) *trustapi.TrustAPIPartner {
+	// First try API key context
+	if partner := getPartnerFromContext(r); partner != nil {
+		return partner
+	}
+
+	// Fall back to JWT user context - look up partner by user email
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.Email == "" {
+		return nil
+	}
+
+	partner, err := h.repo.GetPartnerByContactEmail(r.Context(), claims.Email)
+	if err != nil {
+		return nil
+	}
+	return partner
 }
 
 // ============================================
@@ -82,7 +104,7 @@ type TierPricingResponse struct {
 // HandleGetBillingStatus handles GET /v1/partners/{partner_id}/billing
 // Returns current billing status for a partner
 func (h *BillingHandler) HandleGetBillingStatus(w http.ResponseWriter, r *http.Request) {
-	partner := getPartnerFromContext(r)
+	partner := h.resolvePartner(r)
 	if partner == nil {
 		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
@@ -146,7 +168,7 @@ type BillingStatusResponse struct {
 // HandleCreateCheckout handles POST /v1/partners/{partner_id}/billing/checkout
 // Creates a Stripe checkout session for tier upgrade
 func (h *BillingHandler) HandleCreateCheckout(w http.ResponseWriter, r *http.Request) {
-	partner := getPartnerFromContext(r)
+	partner := h.resolvePartner(r)
 	if partner == nil {
 		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
@@ -205,7 +227,7 @@ type CheckoutResponse struct {
 // HandleEnrollFounderMode handles POST /v1/partners/{partner_id}/founder
 // Enrolls a partner in founder mode (free tier with limits)
 func (h *BillingHandler) HandleEnrollFounderMode(w http.ResponseWriter, r *http.Request) {
-	partner := getPartnerFromContext(r)
+	partner := h.resolvePartner(r)
 	if partner == nil {
 		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
@@ -254,7 +276,7 @@ type FounderModeRequest struct {
 // HandleGetUsageReport handles GET /v1/partners/{partner_id}/billing/usage
 // Returns detailed usage report for the current billing period
 func (h *BillingHandler) HandleGetUsageReport(w http.ResponseWriter, r *http.Request) {
-	partner := getPartnerFromContext(r)
+	partner := h.resolvePartner(r)
 	if partner == nil {
 		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return
@@ -275,7 +297,7 @@ func (h *BillingHandler) HandleGetUsageReport(w http.ResponseWriter, r *http.Req
 // HandleGetInvoices handles GET /v1/partners/{partner_id}/billing/invoices
 // Returns billing history for a partner
 func (h *BillingHandler) HandleGetInvoices(w http.ResponseWriter, r *http.Request) {
-	partner := getPartnerFromContext(r)
+	partner := h.resolvePartner(r)
 	if partner == nil {
 		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
 		return

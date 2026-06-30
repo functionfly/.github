@@ -492,7 +492,8 @@ func (r *Repository) CheckRateLimit(partnerID uuid.UUID, limitType string, limit
 	return true, remaining, nil
 }
 
-// IncrementRateLimit increments the rate limit counter for a partner
+// IncrementRateLimit increments the rate limit counter for a partner atomically.
+// Uses UPDATE ... SET request_count = request_count + 1 for atomicity.
 func (r *Repository) IncrementRateLimit(partnerID uuid.UUID, limitType string) error {
 	now := time.Now()
 	var windowStart time.Time
@@ -513,6 +514,75 @@ func (r *Repository) IncrementRateLimit(partnerID uuid.UUID, limitType string) e
 	return r.db.Model(&TrustAPIRateLimit{}).
 		Where("partner_id = ? AND limit_type = ? AND window_start = ?", partnerID, limitType, windowStart).
 		UpdateColumn("request_count", gorm.Expr("request_count + 1")).Error
+}
+
+// CheckAndIncrementRateLimit atomically checks and increments the rate limit counter.
+// This eliminates the race condition between check and increment.
+// Returns (allowed, remaining, error).
+func (r *Repository) CheckAndIncrementRateLimit(partnerID uuid.UUID, limitType string, limit int) (bool, int, error) {
+	now := time.Now()
+	var windowStart, windowEnd time.Time
+
+	switch limitType {
+	case "minute":
+		windowStart = now.Truncate(time.Minute)
+		windowEnd = windowStart.Add(time.Minute)
+	case "hour":
+		windowStart = now.Truncate(time.Hour)
+		windowEnd = windowStart.Add(time.Hour)
+	case "day":
+		windowStart = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		windowEnd = windowStart.Add(24 * time.Hour)
+	case "month":
+		windowStart = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
+		windowEnd = windowStart.AddDate(0, 1, 0)
+	default:
+		return true, limit, fmt.Errorf("unknown limit type: %s", limitType)
+	}
+
+	// Atomic upsert: insert if not exists with count=1, or increment existing
+	// Uses PostgreSQL's ON CONFLICT for atomicity
+	var rateLimit TrustAPIRateLimit
+	err := r.db.Where("partner_id = ? AND limit_type = ? AND window_start = ?", partnerID, limitType, windowStart).
+		First(&rateLimit).Error
+
+	if err == gorm.ErrRecordNotFound {
+		// Create new record with count=1
+		rateLimit = TrustAPIRateLimit{
+			ID:           uuid.New(),
+			PartnerID:    partnerID,
+			LimitType:    limitType,
+			WindowStart:  windowStart,
+			WindowEnd:    windowEnd,
+			RequestCount: 1,
+		}
+		if err := r.db.Create(&rateLimit).Error; err != nil {
+			return false, limit, err
+		}
+		return true, limit - 1, nil
+	} else if err != nil {
+		return false, limit, err
+	}
+
+	// Increment atomically and get the new count
+	result := r.db.Model(&TrustAPIRateLimit{}).
+		Where("partner_id = ? AND limit_type = ? AND window_start = ? AND request_count < ?", partnerID, limitType, windowStart, limit).
+		UpdateColumn("request_count", gorm.Expr("request_count + 1"))
+
+	if result.Error != nil {
+		return false, 0, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		// No rows updated means we're at or over the limit
+		return false, 0, nil
+	}
+
+	remaining := limit - rateLimit.RequestCount - 1
+	if remaining < 0 {
+		remaining = 0
+	}
+	return true, remaining, nil
 }
 
 // CleanupOldRateLimits removes rate limit records older than 24 hours

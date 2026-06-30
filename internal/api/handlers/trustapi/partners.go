@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/google/uuid"
@@ -211,6 +212,13 @@ func (h *Handler) HandleUpdatePartner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Verify ownership: JWT user must own this partner
+	claims := middleware.GetUserFromContext(r)
+	if claims != nil && claims.Email != partner.ContactEmail {
+		h.writeError(w, http.StatusForbidden, "Not authorized to update this partner", "forbidden")
+		return
+	}
+
 	// Parse update fields
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
@@ -231,24 +239,19 @@ func (h *Handler) HandleUpdatePartner(w http.ResponseWriter, r *http.Request) {
 	if websiteURL, ok := updates["website_url"].(string); ok {
 		partner.WebsiteURL = websiteURL
 	}
-	if tier, ok := updates["tier"].(string); ok {
-		partner.Tier = tier
-		// Update rate limits based on new tier
-		tierConfig := trustapi.GetRateLimitConfig(tier)
-		partner.RateLimitPerMinute = tierConfig.PerMinute
-		partner.RateLimitPerDay = tierConfig.PerDay
-		partner.MonthlyRequestLimit = tierConfig.MonthlyRequestLimit
+	// Tier changes are NOT allowed via this endpoint — must go through Stripe checkout
+	// to prevent partners from self-upgrading without payment
+	if _, ok := updates["tier"]; ok {
+		h.writeError(w, http.StatusBadRequest, "Tier cannot be changed directly. Use the billing checkout endpoint to upgrade.", "tier_change_forbidden")
+		return
 	}
 	if webhookURL, ok := updates["webhook_url"].(string); ok {
 		partner.WebhookURL = webhookURL
 	}
-	if status, ok := updates["status"].(string); ok {
-		if err := h.trustRepo.UpdatePartnerStatus(partnerID, status); err != nil {
-			h.logger.WithError(err).Error("Failed to update partner status")
-			h.writeError(w, http.StatusInternalServerError, "Failed to update partner status", "internal_error")
-			return
-		}
-		partner.Status = status
+	// Status changes are NOT allowed via this endpoint — admin-only operation
+	if _, ok := updates["status"]; ok {
+		h.writeError(w, http.StatusBadRequest, "Status cannot be changed directly. Contact support.", "status_change_forbidden")
+		return
 	}
 
 	if err := h.trustRepo.UpdatePartner(partner); err != nil {
@@ -287,6 +290,18 @@ func (h *Handler) HandleGetPartnerUsage(w http.ResponseWriter, r *http.Request) 
 	partnerID, err := uuid.Parse(partnerIDStr)
 	if err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid partner ID", "invalid_partner_id")
+		return
+	}
+
+	// Verify ownership: JWT user must own this partner
+	partner, err := h.trustRepo.GetPartnerByID(partnerID)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "Partner not found", "partner_not_found")
+		return
+	}
+	claims := middleware.GetUserFromContext(r)
+	if claims != nil && claims.Email != partner.ContactEmail {
+		h.writeError(w, http.StatusForbidden, "Not authorized to view this partner's usage", "forbidden")
 		return
 	}
 
@@ -496,10 +511,36 @@ func (h *Handler) HandleListAPIKeys(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) HandleRevokeAPIKey(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	keyIDStr := vars["key_id"]
+	partnerIDStr := vars["partner_id"]
 
 	keyID, err := uuid.Parse(keyIDStr)
 	if err != nil {
 		h.writeError(w, http.StatusBadRequest, "Invalid key ID", "invalid_key_id")
+		return
+	}
+
+	partnerID, err := uuid.Parse(partnerIDStr)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid partner ID", "invalid_partner_id")
+		return
+	}
+
+	// Verify the key belongs to this partner (ownership check)
+	keys, err := h.apikeyRepo.ListAPIKeysForPartner(r.Context(), partnerID, true)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to list API keys for ownership check")
+		h.writeError(w, http.StatusInternalServerError, "Failed to verify key ownership", "internal_error")
+		return
+	}
+	keyFound := false
+	for _, k := range keys {
+		if k.ID == keyID {
+			keyFound = true
+			break
+		}
+	}
+	if !keyFound {
+		h.writeError(w, http.StatusForbidden, "API key does not belong to this partner", "forbidden")
 		return
 	}
 

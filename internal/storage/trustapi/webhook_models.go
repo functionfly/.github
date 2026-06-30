@@ -292,6 +292,7 @@ type WebhookResponse struct {
 	CustomHeaders  map[string]string `json:"custom_headers,omitempty"`
 	CreatedAt      time.Time         `json:"created_at"`
 	UpdatedAt      time.Time         `json:"updated_at"`
+	Secret         string            `json:"secret,omitempty"` // Only populated on creation — shown once
 }
 
 // WebhookListResponse represents a list of webhooks

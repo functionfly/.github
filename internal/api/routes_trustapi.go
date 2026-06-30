@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
@@ -50,6 +51,20 @@ func registerTrustAPIRoutes(
 	// Initialize extended handler with revocation and webhook capabilities
 	extendedHandler := trustapi.NewExtendedHandler(apikeyRepo, trustRepo, registryRepo, revocationRepo, webhookService)
 
+	// Initialize and wire audit log repository for compliance logging
+	auditLogRepo := trustapirepo.NewAuditLogRepository(s.postgresDB.GORM)
+	extendedHandler.SetAuditLogRepository(auditLogRepo)
+
+	// Initialize Merkle audit trail repository
+	merkleRepo := trustapirepo.NewMerkleRepository(s.postgresDB.GORM)
+	extendedHandler.SetMerkleRepository(merkleRepo)
+
+	// Start background job for automatic revocation expiration
+	extendedHandler.StartRevocationExpirationJob(context.Background())
+
+	// Start background job for automatic attestation expiration
+	extendedHandler.StartAttestationExpirationJob(context.Background())
+
 	// Initialize streaming handler
 	trustStreamer := trustapi.NewTrustScoreStreamer(registryRepo, logging.Logger())
 	go trustStreamer.Run()
@@ -62,11 +77,15 @@ func registerTrustAPIRoutes(
 	// Get internal auth middleware for JWT-protected routes
 	internalAuthMiddleware := middleware.NewAuthMiddleware(s.authSvc)
 
+	// Feature middleware for plan-based access control (JWT-authenticated users)
+	featureMiddleware := middleware.NewFeatureMiddleware()
+
 	// Create a subrouter for Trust API
 	trustAPI := api.PathPrefix("/v1").Subrouter()
 
 	// Apply global Trust API middleware
-	// Order: Usage Tracking -> Rate Limiting -> Authentication
+	// Order: Body Size Limit -> Usage Tracking -> Rate Limiting -> Authentication
+	trustAPI.Use(trustapi.BodySizeLimit(1 << 20)) // 1MB max body size
 	trustAPI.Use(usageTrackingMiddleware.Track())
 	trustAPI.Use(rateLimitMiddleware.RateLimit())
 
@@ -97,40 +116,132 @@ func registerTrustAPIRoutes(
 	trustAuthRouter.HandleFunc("/batch", trustHandler.HandleBatchTrustScore).Methods("POST")
 	trustAuthRouter.HandleFunc("/history/{function_id}", trustHandler.HandleGetTrustHistory).Methods("GET")
 
-	// Trust verification endpoints (requires verification:request scope)
+	// Trust verification endpoints (requires verification:request scope or Starter+ plan)
 	trustAuthRouter.Handle("/verify",
 		authMiddleware.RequireScope("verification:request")(http.HandlerFunc(trustHandler.HandleSubmitVerification))).Methods("POST")
+	trustAuthRouter.Handle("/verify",
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_verification")(
+				http.HandlerFunc(trustHandler.HandleSubmitVerification)).ServeHTTP(w, r)
+		}))).Methods("POST")
 	trustAuthRouter.HandleFunc("/verify/{verification_id}", trustHandler.HandleGetVerification).Methods("GET")
 
-	// Trust reporting endpoints (requires reports:submit scope)
+	// Trust reporting endpoints (requires reports:submit scope or Starter+ plan)
 	trustAuthRouter.Handle("/report",
 		authMiddleware.RequireScope("reports:submit")(http.HandlerFunc(trustHandler.HandleSubmitReport))).Methods("POST")
+	trustAuthRouter.Handle("/report",
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_reports")(
+				http.HandlerFunc(trustHandler.HandleSubmitReport)).ServeHTTP(w, r)
+		}))).Methods("POST")
 	trustAuthRouter.HandleFunc("/report/{report_id}", trustHandler.HandleGetReport).Methods("GET")
 
 	// ============================================
 	// Extended Trust API Routes (New Functionality)
 	// ============================================
 
-	// Attestation endpoints (API key auth)
+	// Attestation read endpoints (API key auth, default trust:read scope)
 	trustAuthRouter.HandleFunc("/attestations", extendedHandler.HandleGetAttestations).Methods("GET")
 	trustAuthRouter.HandleFunc("/attestations/{attestation_id}", extendedHandler.HandleGetAttestation).Methods("GET")
 	trustAuthRouter.HandleFunc("/attestations/{attestation_id}/verify", extendedHandler.HandleVerifyAttestation).Methods("GET")
 	trustAuthRouter.HandleFunc("/attestations/chain/{function_id}", extendedHandler.HandleGetAttestationChain).Methods("GET")
+	trustAuthRouter.HandleFunc("/attestations/chain/{function_id}/verify", extendedHandler.HandleVerifyChain).Methods("GET")
+	trustAuthRouter.HandleFunc("/attestations/public-key", extendedHandler.HandleGetPublicKey).Methods("GET")
+	// Blog-referenced aliases
+	trustAuthRouter.HandleFunc("/keys", extendedHandler.HandleGetPublicKey).Methods("GET")
 
-	// Policy endpoints (public read/evaluate, JWT for write)
+	// Attestation create: API key partners need attestation:create scope + startup tier,
+	// JWT users need Professional+ plan (attestation_create feature)
+	trustAuthRouter.Handle("/attestations",
+		authMiddleware.RequireScope("attestation:create")(
+			authMiddleware.RequireTier("startup")(
+				http.HandlerFunc(extendedHandler.HandleCreateAttestation)))).Methods("POST")
+	trustAuthRouter.Handle("/attestations",
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("attestation_create")(
+				http.HandlerFunc(extendedHandler.HandleCreateAttestation)).ServeHTTP(w, r)
+		}))).Methods("POST")
+
+	// Attestation revoke: API key partners need attestation:revoke scope + business tier,
+	// JWT users need Enterprise plan (attestation_revoke feature)
+	trustAuthRouter.Handle("/attestations/{attestation_id}/revoke",
+		authMiddleware.RequireScope("attestation:revoke")(
+			authMiddleware.RequireTier("business")(
+				http.HandlerFunc(extendedHandler.HandleRevokeAttestation)))).Methods("POST")
+	trustAuthRouter.Handle("/attestations/{attestation_id}/revoke",
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("attestation_revoke")(
+				http.HandlerFunc(extendedHandler.HandleRevokeAttestation)).ServeHTTP(w, r)
+		}))).Methods("POST")
+
+	// Verification completion: API key partners need verification:request scope,
+	// JWT users need Starter+ plan (trust_verification feature)
+	trustAuthRouter.Handle("/verify/{verification_id}/complete",
+		authMiddleware.RequireScope("verification:request")(
+			http.HandlerFunc(extendedHandler.HandleCompleteVerification))).Methods("POST")
+	trustAuthRouter.Handle("/verify/{verification_id}/complete",
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_verification")(
+				http.HandlerFunc(extendedHandler.HandleCompleteVerification)).ServeHTTP(w, r)
+		}))).Methods("POST")
+
+	// Policy endpoints — evaluate requires API key (trust:read) or JWT (Pro+)
 	trustAuthRouter.Handle("/policies",
-		internalAuthMiddleware.RequireAuth(extendedHandler.HandleListPolicies)).Methods("GET")
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_policy_evaluate")(
+				http.HandlerFunc(extendedHandler.HandleListPolicies)).ServeHTTP(w, r)
+		}))).Methods("GET")
 	trustAuthRouter.HandleFunc("/policies/{policy_id}", extendedHandler.HandleGetPolicy).Methods("GET")
-	trustAuthRouter.HandleFunc("/policies/evaluate", extendedHandler.HandleEvaluatePolicy).Methods("POST")
-	trustAuthRouter.HandleFunc("/policies/evaluate/batch", extendedHandler.HandleBatchEvaluatePolicy).Methods("POST")
+	trustAuthRouter.Handle("/policies/evaluate",
+		authMiddleware.RequireScope("trust:read")(http.HandlerFunc(extendedHandler.HandleEvaluatePolicy))).Methods("POST")
+	trustAuthRouter.Handle("/policies/evaluate",
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_policy_evaluate")(
+				http.HandlerFunc(extendedHandler.HandleEvaluatePolicy)).ServeHTTP(w, r)
+		}))).Methods("POST")
+	trustAuthRouter.Handle("/policies/evaluate/batch",
+		authMiddleware.RequireScope("trust:read")(http.HandlerFunc(extendedHandler.HandleBatchEvaluatePolicy))).Methods("POST")
+	trustAuthRouter.Handle("/policies/evaluate/batch",
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_policy_evaluate")(
+				http.HandlerFunc(extendedHandler.HandleBatchEvaluatePolicy)).ServeHTTP(w, r)
+		}))).Methods("POST")
 
-	// Policy management requires JWT authentication
+	// Policy management requires JWT authentication + Pro+ plan
 	trustAuthRouter.Handle("/policies",
-		internalAuthMiddleware.RequireAuth(extendedHandler.HandleCreatePolicy)).Methods("POST")
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_policy_manage")(
+				http.HandlerFunc(extendedHandler.HandleCreatePolicy)).ServeHTTP(w, r)
+		}))).Methods("POST")
 	trustAuthRouter.Handle("/policies/{policy_id}",
-		internalAuthMiddleware.RequireAuth(extendedHandler.HandleUpdatePolicy)).Methods("PUT")
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_policy_manage")(
+				http.HandlerFunc(extendedHandler.HandleUpdatePolicy)).ServeHTTP(w, r)
+		}))).Methods("PUT")
 	trustAuthRouter.Handle("/policies/{policy_id}",
-		internalAuthMiddleware.RequireAuth(extendedHandler.HandleDeletePolicy)).Methods("DELETE")
+		internalAuthMiddleware.RequireAuth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			featureMiddleware.RequireFeature("trust_policy_manage")(
+				http.HandlerFunc(extendedHandler.HandleDeletePolicy)).ServeHTTP(w, r)
+		}))).Methods("DELETE")
+
+	// ============================================
+	// Merkle Audit Trail Routes
+	// ============================================
+	// Read endpoints (API key auth with trust:read scope — default)
+	trustAuthRouter.HandleFunc("/merkle/head", extendedHandler.HandleGetMerkleTreeHead).Methods("GET")
+	trustAuthRouter.HandleFunc("/merkle/root", extendedHandler.HandleGetMerkleRoot).Methods("GET")
+	trustAuthRouter.HandleFunc("/merkle/inclusion", extendedHandler.HandleGetMerkleInclusionProof).Methods("GET")
+	trustAuthRouter.HandleFunc("/merkle/consistency", extendedHandler.HandleGetMerkleConsistencyProof).Methods("GET")
+	trustAuthRouter.HandleFunc("/merkle/verify/inclusion", extendedHandler.HandleVerifyMerkleInclusion).Methods("POST")
+	// Blog-referenced: GET /v1/trust/merkle/proof/{attestation_id} — looks up leaf index by attestation ID
+	trustAuthRouter.HandleFunc("/merkle/proof/{attestation_id}", extendedHandler.HandleGetMerkleProofForAttestation).Methods("GET")
+
+	// ============================================
+	// Chain of Custody (Delegation) Routes
+	// ============================================
+	trustAuthRouter.HandleFunc("/delegation/chain/{chain_id}", extendedHandler.HandleGetDelegationChain).Methods("GET")
+	trustAuthRouter.HandleFunc("/delegation/chain/{chain_id}/verify", extendedHandler.HandleVerifyDelegationChain).Methods("GET")
+	trustAuthRouter.HandleFunc("/delegation/function/{function_id}", extendedHandler.HandleGetFunctionDelegationChains).Methods("GET")
 
 	// Revocation endpoints require admin/internal JWT authentication
 	revokeRouter := trustAPI.PathPrefix("/trust/revoke").Subrouter()
@@ -142,6 +253,12 @@ func registerTrustAPIRoutes(
 		internalAuthMiddleware.RequireAuth(extendedHandler.HandleCheckFunctionRevoked)).Methods("GET")
 	revokeRouter.Handle("/{revocation_id}",
 		internalAuthMiddleware.RequireAuth(extendedHandler.HandleGetRevocation)).Methods("GET")
+
+	// Revocation create/lift (admin only, requires auth)
+	revokeRouter.Handle("",
+		internalAuthMiddleware.RequireAuth(extendedHandler.HandleRevokeTrust)).Methods("POST")
+	revokeRouter.Handle("/{revocation_id}/lift",
+		internalAuthMiddleware.RequireAuth(extendedHandler.HandleUnrevokeTrust)).Methods("POST")
 
 	// ============================================
 	// Webhook Management Routes (JWT authenticated)
@@ -189,6 +306,10 @@ func registerTrustAPIRoutes(
 		// Initialize billing repository for the handler
 		trustBillingRepo := trustapirepo.NewBillingRepository(s.postgresDB.GORM)
 		billingHandler := trustapi.NewBillingHandler(s.GetTrustBillingService(), trustBillingRepo)
+
+		// Stripe webhook (no auth - uses Stripe signature verification)
+		stripeWebhookHandler := trustapi.NewStripeWebhookHandler(s.GetTrustBillingService(), trustBillingRepo)
+		api.HandleFunc("/v1/webhooks/stripe", stripeWebhookHandler.HandleStripeWebhook).Methods("POST")
 
 		// Tier pricing (public)
 		trustAPI.HandleFunc("/partners/tiers", billingHandler.HandleGetTierPricing).Methods("GET")

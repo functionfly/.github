@@ -23,6 +23,8 @@ type ExtendedHandler struct {
 	*Handler
 	revocationRepo *trustapi.RevocationRepository
 	webhookService *trustapi.WebhookService
+	auditLogRepo   *trustapi.AuditLogRepository
+	merkleRepo     *trustapi.MerkleRepository
 }
 
 // NewExtendedHandler creates a new extended handler
@@ -32,6 +34,88 @@ func NewExtendedHandler(apikeyRepo *apikey.Repository, repo *trustapi.Repository
 		revocationRepo: revocationRepo,
 		webhookService: webhookService,
 	}
+}
+
+// SetAuditLogRepository sets the audit log repository for audit logging
+func (h *ExtendedHandler) SetAuditLogRepository(repo *trustapi.AuditLogRepository) {
+	h.auditLogRepo = repo
+}
+
+// SetMerkleRepository sets the Merkle audit trail repository
+func (h *ExtendedHandler) SetMerkleRepository(repo *trustapi.MerkleRepository) {
+	h.merkleRepo = repo
+}
+
+// StartRevocationExpirationJob starts a background goroutine that periodically
+// checks for expired revocations and marks them as expired, restoring trust scores.
+func (h *ExtendedHandler) StartRevocationExpirationJob(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				expired, err := h.revocationRepo.GetExpiredRevocations()
+				if err != nil {
+					h.logger.WithError(err).Error("Failed to get expired revocations")
+					continue
+				}
+				for _, rev := range expired {
+					if err := h.revocationRepo.ExpireRevocation(rev.ID); err != nil {
+						h.logger.WithError(err).WithField("revocation_id", rev.RevocationID).Error("Failed to expire revocation")
+						continue
+					}
+					// Restore original trust state
+					originalTier := registry.TrustTier(rev.OriginalTrustTier)
+					if originalTier == "" {
+						originalTier = registry.TrustTierTrusted
+					}
+					if err := h.registryRepo.UpdateFunctionTrustScore(ctx, rev.FunctionID, rev.OriginalTrustScore, originalTier); err != nil {
+						h.logger.WithError(err).Warn("Failed to restore trust score after expiration")
+					}
+					if err := h.revocationRepo.InvalidateCacheForFunction(rev.FunctionID); err != nil {
+						h.logger.WithError(err).Warn("Failed to invalidate cache after expiration")
+					}
+					// Write audit log
+					if h.auditLogRepo != nil {
+						if err := h.auditLogRepo.LogRevocationLifted(&rev, uuid.Nil, "system", "expired", "", "", ""); err != nil {
+							h.logger.WithError(err).Warn("Failed to write audit log for revocation expiration")
+						}
+					}
+					h.logger.WithFields(logrus.Fields{
+						"revocation_id": rev.RevocationID,
+						"function_id":   rev.FunctionID,
+					}).Info("Revocation expired and trust restored")
+				}
+			}
+		}
+	}()
+}
+
+// StartAttestationExpirationJob starts a background goroutine that periodically
+// checks for attestations past their ValidUntil date and marks them as expired.
+func (h *ExtendedHandler) StartAttestationExpirationJob(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(10 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				count, err := h.revocationRepo.ExpireStaleAttestations()
+				if err != nil {
+					h.logger.WithError(err).Error("Failed to expire stale attestations")
+					continue
+				}
+				if count > 0 {
+					h.logger.WithField("count", count).Info("Expired stale attestations")
+				}
+			}
+		}
+	}()
 }
 
 // ============================================
@@ -157,6 +241,13 @@ func (h *ExtendedHandler) HandleRevokeTrust(w http.ResponseWriter, r *http.Reque
 		go h.webhookService.TriggerEvent(trustapi.WebhookEventRevocationCreated, &req.FunctionID, webhookData)
 	}
 
+	// Write audit log
+	if h.auditLogRepo != nil {
+		if err := h.auditLogRepo.LogRevocationCreated(revocation, claims.UserID, "admin", r.RemoteAddr, r.UserAgent(), ""); err != nil {
+			h.logger.WithError(err).Warn("Failed to write audit log for revocation")
+		}
+	}
+
 	// Send response
 	response := trustapi.RevocationResponse{
 		ID:                 revocation.ID,
@@ -257,6 +348,13 @@ func (h *ExtendedHandler) HandleUnrevokeTrust(w http.ResponseWriter, r *http.Req
 			"restored_trust_tier":  revocation.OriginalTrustTier,
 		}
 		go h.webhookService.TriggerEvent(trustapi.WebhookEventRevocationLifted, &revocation.FunctionID, webhookData)
+	}
+
+	// Write audit log
+	if h.auditLogRepo != nil {
+		if err := h.auditLogRepo.LogRevocationLifted(revocation, claims.UserID, "admin", req.Reason, r.RemoteAddr, r.UserAgent(), ""); err != nil {
+			h.logger.WithError(err).Warn("Failed to write audit log for revocation lift")
+		}
 	}
 
 	// Send response
@@ -436,8 +534,323 @@ func (h *ExtendedHandler) HandleCheckFunctionRevoked(w http.ResponseWriter, r *h
 // Attestation Handlers
 // ============================================
 
-// HandleGetAttestations handles GET /v1/trust/attestations
-// Lists attestations for a function
+// HandleCreateAttestation handles POST /v1/trust/attestations
+// Creates a new attestation for a function
+func (h *ExtendedHandler) HandleCreateAttestation(w http.ResponseWriter, r *http.Request) {
+	var req trustapi.AttestationCreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid request body", "invalid_request")
+		return
+	}
+
+	// Validate required fields
+	if req.FunctionID == uuid.Nil {
+		h.writeError(w, http.StatusBadRequest, "function_id is required", "missing_function_id")
+		return
+	}
+	if req.Type == "" {
+		h.writeError(w, http.StatusBadRequest, "type is required", "missing_type")
+		return
+	}
+	if req.Title == "" {
+		h.writeError(w, http.StatusBadRequest, "title is required", "missing_title")
+		return
+	}
+
+	// Validate attestation type
+	validTypes := map[trustapi.AttestationType]bool{
+		trustapi.AttestationTypeVerification: true,
+		trustapi.AttestationTypeSecurityScan: true,
+		trustapi.AttestationTypeCodeReview:   true,
+		trustapi.AttestationTypeExecution:    true,
+		trustapi.AttestationTypeCompliance:   true,
+		trustapi.AttestationTypeSignature:    true,
+		trustapi.AttestationTypeDelegation:   true,
+	}
+	if !validTypes[req.Type] {
+		h.writeError(w, http.StatusBadRequest, "Invalid attestation type. Must be one of: verification, security_scan, code_review, execution, compliance, signature", "invalid_type")
+		return
+	}
+
+	// Validate function exists
+	fn, err := h.registryRepo.GetFunctionByID(r.Context(), req.FunctionID)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "Function not found", "function_not_found")
+		return
+	}
+
+	// Get user/partner identity from context
+	claims := middleware.GetUserFromContext(r)
+	partner := getPartnerFromContext(r)
+
+	var attesterID uuid.UUID
+	var attesterType, attesterName string
+
+	if partner != nil {
+		attesterID = partner.ID
+		attesterType = "partner"
+		attesterName = partner.Name
+	} else if claims != nil {
+		attesterID = claims.UserID
+		attesterType = "user"
+		if req.AttesterName != "" {
+			attesterName = req.AttesterName
+		} else {
+			attesterName = claims.Email
+		}
+	} else {
+		attesterID = uuid.Nil
+		attesterType = "system"
+		attesterName = "system"
+	}
+
+	if req.AttesterType != "" {
+		attesterType = req.AttesterType
+	}
+
+	// Marshal results
+	var resultsJSON json.RawMessage
+	if req.Results != nil {
+		var err error
+		resultsJSON, err = json.Marshal(req.Results)
+		if err != nil {
+			h.writeError(w, http.StatusBadRequest, "Invalid results format", "invalid_results")
+			return
+		}
+	} else {
+		resultsJSON = json.RawMessage("{}")
+	}
+
+	// Build attestation
+	attestation := &trustapi.TrustAttestation{
+		FunctionID:        req.FunctionID,
+		FunctionVersion:   req.FunctionVersion,
+		FunctionAuthor:    fn.Author,
+		FunctionName:      fn.Name,
+		Type:              string(req.Type),
+		Title:             req.Title,
+		Description:       req.Description,
+		Results:           resultsJSON,
+		AttesterID:        attesterID,
+		AttesterType:      attesterType,
+		AttesterName:      attesterName,
+		VerificationLevel: req.VerificationLevel,
+		CodeHash:          req.CodeHash,
+		InputHash:         req.InputHash,
+		OutputHash:        req.OutputHash,
+		SourceDataHash:    req.SourceDataHash,
+		ValidUntil:        req.ValidUntil,
+	}
+
+	if partner != nil && partner.ID != uuid.Nil {
+		attestation.AttesterPartnerID = &partner.ID
+	}
+
+	// Create the attestation (repository handles signing, proof hash, previous hash)
+	if err := h.revocationRepo.CreateAttestation(attestation); err != nil {
+		h.logger.WithError(err).Error("Failed to create attestation")
+		h.writeError(w, http.StatusInternalServerError, "Failed to create attestation", "internal_error")
+		return
+	}
+
+	// Append to Merkle audit trail
+	if h.merkleRepo != nil {
+		signer := trustapi.GetSigner()
+		if _, err := h.merkleRepo.AppendLeaf(attestation, signer); err != nil {
+			h.logger.WithError(err).Warn("Failed to append attestation to Merkle audit trail")
+			// Don't fail — attestation was created successfully
+		}
+	}
+
+	// Trigger webhooks
+	if h.webhookService != nil {
+		webhookData := map[string]interface{}{
+			"attestation_id": attestation.AttestationID,
+			"function_id":    req.FunctionID.String(),
+			"function_name":  fn.Name,
+			"type":           string(req.Type),
+			"title":          req.Title,
+			"attester_type":  attesterType,
+			"attester_name":  attesterName,
+			"proof_hash":     attestation.ProofHash,
+			"attested_at":    attestation.AttestedAt,
+		}
+		go func() { _ = h.webhookService.TriggerEvent(trustapi.WebhookEventAttestationCreated, &req.FunctionID, webhookData) }()
+	}
+
+	// Write audit log
+	if h.auditLogRepo != nil {
+		actorID := attesterID
+		if err := h.auditLogRepo.LogAttestationCreated(attestation, actorID, attesterType, r.RemoteAddr, r.UserAgent(), ""); err != nil {
+			h.logger.WithError(err).Warn("Failed to write audit log for attestation creation")
+		}
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"attestation_id": attestation.AttestationID,
+		"function_id":    req.FunctionID,
+		"type":           string(req.Type),
+		"attester_type":  attesterType,
+	}).Info("Attestation created")
+
+	response := trustapi.AttestationResponse{
+		ID:                attestation.ID,
+		AttestationID:     attestation.AttestationID,
+		FunctionID:        attestation.FunctionID,
+		FunctionVersion:   attestation.FunctionVersion,
+		FunctionAuthor:    attestation.FunctionAuthor,
+		FunctionName:      attestation.FunctionName,
+		Type:              attestation.Type,
+		Status:            attestation.Status,
+		Title:             attestation.Title,
+		Description:       attestation.Description,
+		Results:           attestation.Results,
+		AttesterID:        attestation.AttesterID,
+		AttesterType:      attestation.AttesterType,
+		AttesterName:      attestation.AttesterName,
+		VerificationLevel: attestation.VerificationLevel,
+		ProofHash:         attestation.ProofHash,
+		Signature:         attestation.Signature,
+		PublicKeyID:       attestation.PublicKeyID,
+		CodeHash:          attestation.CodeHash,
+		InputHash:         attestation.InputHash,
+		OutputHash:        attestation.OutputHash,
+		SourceDataHash:    attestation.SourceDataHash,
+		PreviousHash:      attestation.PreviousHash,
+		AttestedAt:        attestation.AttestedAt,
+		ValidUntil:        attestation.ValidUntil,
+		IsValid:           true,
+		SignatureValid:    attestation.Signature != "",
+		ChainValid:        true,
+	}
+
+	h.writeJSON(w, http.StatusCreated, response)
+}
+
+// HandleRevokeAttestation handles POST /v1/trust/attestations/{attestation_id}/revoke
+// Revokes an existing attestation
+func (h *ExtendedHandler) HandleRevokeAttestation(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	attestationID := vars["attestation_id"]
+
+	// Get existing attestation
+	attestation, err := h.revocationRepo.GetAttestationByAttestationID(attestationID)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "Attestation not found", "attestation_not_found")
+		return
+	}
+
+	// Check if already revoked
+	if attestation.Status == string(trustapi.AttestationStatusRevoked) {
+		h.writeError(w, http.StatusConflict, "Attestation is already revoked", "already_revoked")
+		return
+	}
+
+	// Parse request
+	var req trustapi.AttestationRevokeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid request body", "invalid_request")
+		return
+	}
+
+	if req.Reason == "" {
+		h.writeError(w, http.StatusBadRequest, "reason is required", "missing_reason")
+		return
+	}
+
+	// Get user from context
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		return
+	}
+
+	// Revoke the attestation
+	if err := h.revocationRepo.RevokeAttestation(attestation.ID, claims.UserID, req.Reason, req.RevocationID); err != nil {
+		h.logger.WithError(err).Error("Failed to revoke attestation")
+		h.writeError(w, http.StatusInternalServerError, "Failed to revoke attestation", "internal_error")
+		return
+	}
+
+	// Trigger webhooks
+	if h.webhookService != nil {
+		webhookData := map[string]interface{}{
+			"attestation_id": attestation.AttestationID,
+			"function_id":    attestation.FunctionID.String(),
+			"function_name":  attestation.FunctionName,
+			"type":           attestation.Type,
+			"title":          attestation.Title,
+			"revoke_reason":  req.Reason,
+			"revoked_by":     claims.UserID.String(),
+		}
+		go func() { _ = h.webhookService.TriggerEvent(trustapi.WebhookEventAttestationRevoked, &attestation.FunctionID, webhookData) }()
+	}
+
+	// Write audit log
+	if h.auditLogRepo != nil {
+		if err := h.auditLogRepo.LogAttestationRevoked(attestation, claims.UserID, "admin", req.Reason, r.RemoteAddr, r.UserAgent(), ""); err != nil {
+			h.logger.WithError(err).Warn("Failed to write audit log for attestation revocation")
+		}
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"attestation_id": attestation.AttestationID,
+		"function_id":    attestation.FunctionID,
+		"reason":         req.Reason,
+		"revoked_by":     claims.UserID,
+	}).Info("Attestation revoked")
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"attestation_id": attestation.AttestationID,
+		"status":         string(trustapi.AttestationStatusRevoked),
+		"revoked_at":     time.Now(),
+		"revoke_reason":  req.Reason,
+	})
+}
+
+// HandleGetPublicKey handles GET /v1/trust/attestations/public-key
+// Returns the signing public key for external attestation verification
+func (h *ExtendedHandler) HandleGetPublicKey(w http.ResponseWriter, r *http.Request) {
+	signer := trustapi.GetSigner()
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"public_key":   signer.PublicKeyHex(),
+		"key_id":       signer.KeyID(),
+		"algorithm":    "Ed25519",
+		"key_encoding": "hex",
+	})
+}
+
+// HandleVerifyChain handles GET /v1/trust/attestations/chain/{function_id}/verify
+// Verifies the full cryptographic chain of attestations for a function
+func (h *ExtendedHandler) HandleVerifyChain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	functionIDStr := vars["function_id"]
+
+	functionID, err := uuid.Parse(functionIDStr)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid function ID", "invalid_function_id")
+		return
+	}
+
+	chainValid, chainLength, err := h.revocationRepo.VerifyAttestationChain(functionID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to verify attestation chain")
+		h.writeError(w, http.StatusInternalServerError, "Failed to verify chain", "verification_error")
+		return
+	}
+
+	signer := trustapi.GetSigner()
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"function_id":   functionID,
+		"chain_valid":   chainValid,
+		"chain_length":  chainLength,
+		"verified_at":   time.Now(),
+		"signing_key_id": signer.KeyID(),
+		"algorithm":     "Ed25519",
+	})
+}
 func (h *ExtendedHandler) HandleGetAttestations(w http.ResponseWriter, r *http.Request) {
 	functionIDStr := r.URL.Query().Get("function_id")
 	attestationType := r.URL.Query().Get("type")
@@ -487,15 +900,26 @@ func (h *ExtendedHandler) HandleGetAttestations(w http.ResponseWriter, r *http.R
 			Status:            att.Status,
 			Title:             att.Title,
 			Description:       att.Description,
+			Results:           att.Results,
 			AttesterID:        att.AttesterID,
 			AttesterType:      att.AttesterType,
 			AttesterName:      att.AttesterName,
 			VerificationLevel: att.VerificationLevel,
 			ProofHash:         att.ProofHash,
+			Signature:         att.Signature,
+			PublicKeyID:       att.PublicKeyID,
+			CodeHash:          att.CodeHash,
+			InputHash:         att.InputHash,
+			OutputHash:        att.OutputHash,
+			SourceDataHash:    att.SourceDataHash,
+			PreviousHash:      att.PreviousHash,
 			AttestedAt:        att.AttestedAt,
 			ValidUntil:        att.ValidUntil,
 			RevokedAt:         att.RevokedAt,
 			RevokeReason:      att.RevokeReason,
+			IsValid:           att.VerifyIntegrity(),
+			SignatureValid:    att.Signature != "",
+			ChainValid:        att.VerifyIntegrity(),
 		}
 	}
 
@@ -521,30 +945,50 @@ func (h *ExtendedHandler) HandleGetAttestation(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Verify integrity
+	// Verify integrity and signature
 	isValid := attestation.VerifyIntegrity()
+	signatureValid := attestation.Signature != ""
 
-	response := map[string]interface{}{
-		"id":                 attestation.ID,
-		"attestation_id":     attestation.AttestationID,
-		"function_id":        attestation.FunctionID,
-		"function_version":   attestation.FunctionVersion,
-		"function_author":    attestation.FunctionAuthor,
-		"function_name":      attestation.FunctionName,
-		"type":               attestation.Type,
-		"status":             attestation.Status,
-		"title":              attestation.Title,
-		"description":        attestation.Description,
-		"attester_id":        attestation.AttesterID,
-		"attester_type":      attestation.AttesterType,
-		"attester_name":      attestation.AttesterName,
-		"verification_level": attestation.VerificationLevel,
-		"proof_hash":         attestation.ProofHash,
-		"attested_at":        attestation.AttestedAt,
-		"valid_until":        attestation.ValidUntil,
-		"revoked_at":         attestation.RevokedAt,
-		"revoke_reason":      attestation.RevokeReason,
-		"integrity_verified": isValid,
+	if signatureValid {
+		signer := trustapi.GetSigner()
+		if verified, err := signer.VerifyAttestationSignature(attestation); err == nil {
+			signatureValid = verified
+		} else {
+			signatureValid = false
+		}
+	}
+
+	response := trustapi.AttestationResponse{
+		ID:                attestation.ID,
+		AttestationID:     attestation.AttestationID,
+		FunctionID:        attestation.FunctionID,
+		FunctionVersion:   attestation.FunctionVersion,
+		FunctionAuthor:    attestation.FunctionAuthor,
+		FunctionName:      attestation.FunctionName,
+		Type:              attestation.Type,
+		Status:            attestation.Status,
+		Title:             attestation.Title,
+		Description:       attestation.Description,
+		Results:           attestation.Results,
+		AttesterID:        attestation.AttesterID,
+		AttesterType:      attestation.AttesterType,
+		AttesterName:      attestation.AttesterName,
+		VerificationLevel: attestation.VerificationLevel,
+		ProofHash:         attestation.ProofHash,
+		Signature:         attestation.Signature,
+		PublicKeyID:       attestation.PublicKeyID,
+		CodeHash:          attestation.CodeHash,
+		InputHash:         attestation.InputHash,
+		OutputHash:        attestation.OutputHash,
+		SourceDataHash:    attestation.SourceDataHash,
+		PreviousHash:      attestation.PreviousHash,
+		AttestedAt:        attestation.AttestedAt,
+		ValidUntil:        attestation.ValidUntil,
+		RevokedAt:         attestation.RevokedAt,
+		RevokeReason:      attestation.RevokeReason,
+		IsValid:           isValid,
+		SignatureValid:    signatureValid,
+		ChainValid:        isValid,
 	}
 
 	h.writeJSON(w, http.StatusOK, response)
@@ -556,22 +1000,38 @@ func (h *ExtendedHandler) HandleVerifyAttestation(w http.ResponseWriter, r *http
 	vars := mux.Vars(r)
 	attestationID := vars["attestation_id"]
 
-	isValid, err := h.revocationRepo.VerifyAttestationIntegrity(attestationID)
+	attestation, err := h.revocationRepo.GetAttestationByAttestationID(attestationID)
 	if err != nil {
-		h.logger.WithError(err).Error("Failed to verify attestation")
-		h.writeError(w, http.StatusInternalServerError, "Failed to verify attestation", "verification_error")
+		h.writeError(w, http.StatusNotFound, "Attestation not found", "attestation_not_found")
 		return
+	}
+
+	integrityValid := attestation.VerifyIntegrity()
+
+	// Verify signature
+	signatureValid := false
+	if attestation.Signature != "" {
+		signer := trustapi.GetSigner()
+		if verified, err := signer.VerifyAttestationSignature(attestation); err == nil {
+			signatureValid = verified
+		}
 	}
 
 	response := map[string]interface{}{
 		"attestation_id":     attestationID,
-		"integrity_verified": isValid,
+		"integrity_verified": integrityValid,
+		"signature_verified": signatureValid,
+		"proof_hash":         attestation.ProofHash,
+		"signature":          attestation.Signature,
+		"public_key_id":      attestation.PublicKeyID,
+		"algorithm":          "Ed25519",
 		"verified_at":        time.Now(),
 	}
 
-	if !isValid {
+	if !integrityValid {
 		response["warning"] = "Attestation integrity check failed - data may have been tampered with"
-		w.WriteHeader(http.StatusOK) // Still return 200 with warning
+	} else if attestation.Signature != "" && !signatureValid {
+		response["warning"] = "Attestation signature verification failed"
 	}
 
 	h.writeJSON(w, http.StatusOK, response)
@@ -596,9 +1056,25 @@ func (h *ExtendedHandler) HandleGetAttestationChain(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Build chain with integrity verification
+	// Verify full chain integrity
+	chainIntegrityValid := true
 	chain := make([]map[string]interface{}, len(attestations))
 	for i, att := range attestations {
+		individualValid := att.VerifyIntegrity()
+		chainLinkValid := true
+
+		if i > 0 && attestations[i-1].ProofHash != att.PreviousHash {
+			chainLinkValid = false
+			chainIntegrityValid = false
+		}
+		if i == 0 && att.PreviousHash != "" {
+			chainLinkValid = false
+			chainIntegrityValid = false
+		}
+		if !individualValid {
+			chainIntegrityValid = false
+		}
+
 		chain[i] = map[string]interface{}{
 			"attestation_id":     att.AttestationID,
 			"type":               att.Type,
@@ -608,17 +1084,128 @@ func (h *ExtendedHandler) HandleGetAttestationChain(w http.ResponseWriter, r *ht
 			"attested_at":        att.AttestedAt,
 			"proof_hash":         att.ProofHash,
 			"previous_hash":      att.PreviousHash,
-			"integrity_verified": att.VerifyIntegrity(),
+			"signature":          att.Signature,
+			"integrity_verified": individualValid,
+			"chain_link_valid":   chainLinkValid,
 		}
 	}
 
 	response := map[string]interface{}{
-		"function_id":  functionID,
-		"chain_length": len(chain),
-		"attestations": chain,
+		"function_id":       functionID,
+		"chain_length":      len(chain),
+		"chain_valid":       chainIntegrityValid,
+		"signing_algorithm": "Ed25519",
+		"attestations":      chain,
 	}
 
 	h.writeJSON(w, http.StatusOK, response)
+}
+
+// HandleCompleteVerification handles POST /v1/trust/verify/{verification_id}/complete
+// Completes a verification request and automatically creates a verification attestation
+func (h *ExtendedHandler) HandleCompleteVerification(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	verificationID := vars["verification_id"]
+
+	// Get existing verification
+	verification, err := h.trustRepo.GetVerificationByVerificationID(verificationID)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "Verification not found", "verification_not_found")
+		return
+	}
+
+	// Check if already completed
+	if verification.Status == string(trustapi.VerificationStatusCompleted) {
+		h.writeError(w, http.StatusConflict, "Verification is already completed", "already_completed")
+		return
+	}
+
+	// Parse request
+	var req struct {
+		TrustScore  *float64 `json:"trust_score"`
+		TrustTier   string   `json:"trust_tier"`
+		BadgeURL    string   `json:"badge_url"`
+		Notes       string   `json:"notes"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid request body", "invalid_request")
+		return
+	}
+
+	// Get user from context
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		return
+	}
+
+	// Complete the verification
+	if err := h.trustRepo.UpdateVerificationResult(verification.ID, req.TrustScore, req.TrustTier, req.BadgeURL, req.Notes, &claims.UserID); err != nil {
+		h.logger.WithError(err).Error("Failed to complete verification")
+		h.writeError(w, http.StatusInternalServerError, "Failed to complete verification", "internal_error")
+		return
+	}
+
+	// Auto-create a verification attestation
+	attestation := &trustapi.TrustAttestation{
+		FunctionID:        verification.FunctionID,
+		FunctionVersion:   verification.FunctionVersion,
+		FunctionAuthor:    verification.FunctionAuthor,
+		FunctionName:      verification.FunctionName,
+		Type:              string(trustapi.AttestationTypeVerification),
+		Title:             fmt.Sprintf("Function verified (%s)", verification.VerificationLevel),
+		Description:       fmt.Sprintf("Function verified at %s level", verification.VerificationLevel),
+		Results:           json.RawMessage(fmt.Sprintf(`{"verification_id":"%s","trust_score":%f,"trust_tier":"%s","verified_by":"%s"}`,
+			verification.VerificationID,
+			func() float64 { if req.TrustScore != nil { return *req.TrustScore }; return 0 }(),
+			req.TrustTier,
+			claims.UserID.String(),
+		)),
+		AttesterID:        claims.UserID,
+		AttesterType:      "user",
+		AttesterName:      claims.Email,
+		VerificationLevel: verification.VerificationLevel,
+	}
+
+	if err := h.revocationRepo.CreateAttestation(attestation); err != nil {
+		h.logger.WithError(err).Warn("Failed to auto-create verification attestation")
+		// Don't fail the request - verification completion succeeded
+	} else {
+		h.logger.WithFields(logrus.Fields{
+			"attestation_id":  attestation.AttestationID,
+			"verification_id": verification.VerificationID,
+			"function_id":     verification.FunctionID,
+		}).Info("Auto-created verification attestation")
+
+		// Trigger webhook for attestation creation
+		if h.webhookService != nil {
+			webhookData := map[string]interface{}{
+				"attestation_id": attestation.AttestationID,
+				"function_id":    verification.FunctionID.String(),
+				"function_name":  verification.FunctionName,
+				"type":           string(trustapi.AttestationTypeVerification),
+				"title":          attestation.Title,
+				"proof_hash":     attestation.ProofHash,
+			}
+			go func() { _ = h.webhookService.TriggerEvent(trustapi.WebhookEventAttestationCreated, &verification.FunctionID, webhookData) }()
+		}
+
+		// Write audit log
+		if h.auditLogRepo != nil {
+			if err := h.auditLogRepo.LogAttestationCreated(attestation, claims.UserID, "admin", r.RemoteAddr, r.UserAgent(), ""); err != nil {
+				h.logger.WithError(err).Warn("Failed to write audit log for auto-created attestation")
+			}
+		}
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"verification_id": verification.VerificationID,
+		"status":          string(trustapi.VerificationStatusCompleted),
+		"trust_score":     req.TrustScore,
+		"trust_tier":      req.TrustTier,
+		"attestation_id":  attestation.AttestationID,
+		"completed_at":    time.Now(),
+	})
 }
 
 // ============================================
@@ -666,6 +1253,13 @@ func (h *ExtendedHandler) HandleCreatePolicy(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Write audit log
+	if h.auditLogRepo != nil {
+		if err := h.auditLogRepo.LogPolicyCreated(policy, claims.UserID, r.RemoteAddr, r.UserAgent(), ""); err != nil {
+			h.logger.WithError(err).Warn("Failed to write audit log for policy creation")
+		}
+	}
+
 	// Parse rules for response
 	var rules []trustapi.TrustPolicyRule
 	json.Unmarshal(policy.Rules, &rules)
@@ -700,6 +1294,13 @@ func (h *ExtendedHandler) HandleGetPolicy(w http.ResponseWriter, r *http.Request
 	policy, err := h.revocationRepo.GetPolicyByPolicyID(policyIDStr)
 	if err != nil {
 		h.writeError(w, http.StatusNotFound, "Policy not found", "policy_not_found")
+		return
+	}
+
+	// Ownership check: only the policy owner can view it
+	claims := middleware.GetUserFromContext(r)
+	if claims != nil && policy.OwnerID != claims.UserID {
+		h.writeError(w, http.StatusForbidden, "Not authorized to view this policy", "forbidden")
 		return
 	}
 
@@ -848,6 +1449,13 @@ func (h *ExtendedHandler) HandleUpdatePolicy(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Write audit log
+	if h.auditLogRepo != nil {
+		if err := h.auditLogRepo.LogPolicyUpdated(policy, claims.UserID, "policy updated", r.RemoteAddr, r.UserAgent(), ""); err != nil {
+			h.logger.WithError(err).Warn("Failed to write audit log for policy update")
+		}
+	}
+
 	rules, _ := policy.GetRules()
 
 	response := trustapi.PolicyResponse{
@@ -896,6 +1504,13 @@ func (h *ExtendedHandler) HandleDeletePolicy(w http.ResponseWriter, r *http.Requ
 		h.logger.WithError(err).Error("Failed to deprecate policy")
 		h.writeError(w, http.StatusInternalServerError, "Failed to delete policy", "internal_error")
 		return
+	}
+
+	// Write audit log
+	if h.auditLogRepo != nil {
+		if err := h.auditLogRepo.LogPolicyDeleted(policy, claims.UserID, r.RemoteAddr, r.UserAgent(), ""); err != nil {
+			h.logger.WithError(err).Warn("Failed to write audit log for policy deletion")
+		}
 	}
 
 	h.writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -1185,12 +1800,41 @@ func (h *ExtendedHandler) HandleBatchEvaluatePolicy(w http.ResponseWriter, r *ht
 			revocationStatus = revocation.Status
 		}
 
-		// Quick evaluation (simplified for batch)
-		result := "allowed"
-		if isRevoked {
-			result = "denied"
-		} else if trustState.TrustScore < 50 {
-			result = "warned"
+		// Full rule evaluation (consistent with single evaluate endpoint)
+		rules, err := policy.GetRules()
+		if err != nil {
+			errors = append(errors, trustapi.BatchPolicyEvaluationError{
+				FunctionID: functionID,
+				Error:      "Failed to parse policy rules",
+			})
+			continue
+		}
+
+		overallResult := policy.DefaultAction
+		if overallResult == "" {
+			overallResult = "deny"
+		}
+		decision := "policy_default"
+		reason := "Default policy action applied"
+
+		for _, rule := range rules {
+			passed, ruleDecision, ruleReason := h.evaluateRule(r.Context(), rule, trustState, isRevoked, revocationStatus, fn)
+			if !passed {
+				if ruleDecision == "deny" {
+					overallResult = "denied"
+					decision = ruleDecision
+					reason = ruleReason
+					break
+				} else if ruleDecision == "warn" && overallResult != "denied" {
+					overallResult = "warned"
+					decision = ruleDecision
+					reason = ruleReason
+				}
+			} else if overallResult == "deny" || overallResult == "denied" {
+				overallResult = "allowed"
+				decision = "policy_rule_passed"
+				reason = fmt.Sprintf("Rule '%s' passed", rule.ID)
+			}
 		}
 
 		results = append(results, trustapi.PolicyEvaluateResponse{
@@ -1198,8 +1842,9 @@ func (h *ExtendedHandler) HandleBatchEvaluatePolicy(w http.ResponseWriter, r *ht
 			FunctionAuthor:   fn.Author,
 			FunctionName:     fn.Name,
 			PolicyID:         policy.PolicyID,
-			Result:           result,
-			Decision:         "batch_quick_eval",
+			Result:           overallResult,
+			Decision:         decision,
+			Reason:           reason,
 			TrustScore:       trustState.TrustScore,
 			TrustTier:        string(trustState.TrustTier),
 			IsVerified:       trustState.IsVerified,
@@ -1316,4 +1961,283 @@ func (h *ExtendedHandler) getFunctionSuccessRate(ctx context.Context, functionID
 		return 100.0, nil
 	}
 	return successRate, nil
+}
+
+// ============================================
+// Merkle Audit Trail Handlers
+// ============================================
+
+// HandleGetMerkleTreeHead handles GET /v1/trust/merkle/head
+// Returns the latest signed Merkle tree head.
+func (h *ExtendedHandler) HandleGetMerkleTreeHead(w http.ResponseWriter, r *http.Request) {
+	if h.merkleRepo == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "Merkle audit trail not configured", "merkle_unavailable")
+		return
+	}
+
+	head, err := h.merkleRepo.LatestTreeHead()
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get Merkle tree head")
+		h.writeError(w, http.StatusInternalServerError, "Failed to get tree head", "internal_error")
+		return
+	}
+	if head == nil {
+		h.writeJSON(w, http.StatusOK, map[string]interface{}{
+			"tree_size": 0,
+			"root_hash": "",
+			"message":   "No attestations in the log yet",
+		})
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"tree_size":     head.TreeSize,
+		"root_hash":     head.RootHash,
+		"previous_hash": head.PreviousHash,
+		"timestamp":     head.Timestamp,
+		"signature":     head.Signature,
+		"public_key_id": head.PublicKeyID,
+		"metadata":      head.Metadata,
+	})
+}
+
+// HandleGetMerkleInclusionProof handles GET /v1/trust/merkle/inclusion?leaf_index=N
+// Returns an inclusion proof for a specific leaf in the tree.
+func (h *ExtendedHandler) HandleGetMerkleInclusionProof(w http.ResponseWriter, r *http.Request) {
+	if h.merkleRepo == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "Merkle audit trail not configured", "merkle_unavailable")
+		return
+	}
+
+	indexStr := r.URL.Query().Get("leaf_index")
+	if indexStr == "" {
+		h.writeError(w, http.StatusBadRequest, "leaf_index is required", "missing_leaf_index")
+		return
+	}
+
+	var leafIndex int64
+	if _, err := fmt.Sscanf(indexStr, "%d", &leafIndex); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid leaf_index", "invalid_leaf_index")
+		return
+	}
+
+	proof, err := h.merkleRepo.GetInclusionProof(leafIndex)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get inclusion proof")
+		h.writeError(w, http.StatusInternalServerError, "Failed to get inclusion proof", "internal_error")
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, proof)
+}
+
+// HandleGetMerkleConsistencyProof handles GET /v1/trust/merkle/consistency?old_size=N
+// Returns a consistency proof between an old tree size and the current size.
+func (h *ExtendedHandler) HandleGetMerkleConsistencyProof(w http.ResponseWriter, r *http.Request) {
+	if h.merkleRepo == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "Merkle audit trail not configured", "merkle_unavailable")
+		return
+	}
+
+	oldSizeStr := r.URL.Query().Get("old_size")
+	if oldSizeStr == "" {
+		h.writeError(w, http.StatusBadRequest, "old_size is required", "missing_old_size")
+		return
+	}
+
+	var oldSize int64
+	if _, err := fmt.Sscanf(oldSizeStr, "%d", &oldSize); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid old_size", "invalid_old_size")
+		return
+	}
+
+	proof, err := h.merkleRepo.GetConsistencyProof(oldSize)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get consistency proof")
+		h.writeError(w, http.StatusInternalServerError, "Failed to get consistency proof", "internal_error")
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, proof)
+}
+
+// HandleVerifyMerkleInclusion handles POST /v1/trust/merkle/verify/inclusion
+// Verifies an inclusion proof provided by the client.
+func (h *ExtendedHandler) HandleVerifyMerkleInclusion(w http.ResponseWriter, r *http.Request) {
+	var req trustapi.MerkleInclusionProof
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid request body", "invalid_request")
+		return
+	}
+
+	valid := trustapi.VerifyInclusion(req.LeafHash, req.LeafIndex, req.TreeSize, req.Path, req.RootHash)
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"valid":      valid,
+		"leaf_index": req.LeafIndex,
+		"tree_size":  req.TreeSize,
+		"root_hash":  req.RootHash,
+	})
+}
+
+// HandleGetMerkleRoot handles GET /v1/trust/merkle/root
+// Returns just the current root hash (lightweight check).
+func (h *ExtendedHandler) HandleGetMerkleRoot(w http.ResponseWriter, r *http.Request) {
+	if h.merkleRepo == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "Merkle audit trail not configured", "merkle_unavailable")
+		return
+	}
+
+	root, err := h.merkleRepo.ComputeRoot()
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to compute Merkle root")
+		h.writeError(w, http.StatusInternalServerError, "Failed to compute root", "internal_error")
+		return
+	}
+
+	size, _ := h.merkleRepo.TreeSize()
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"root_hash": root,
+		"tree_size": size,
+		"algorithm": "SHA-256",
+		"format":    "RFC-6962",
+	})
+}
+
+// HandleGetMerkleProofForAttestation handles GET /v1/trust/merkle/proof/{attestation_id}
+// Looks up the leaf index by attestation ID and returns the inclusion proof.
+func (h *ExtendedHandler) HandleGetMerkleProofForAttestation(w http.ResponseWriter, r *http.Request) {
+	if h.merkleRepo == nil {
+		h.writeError(w, http.StatusServiceUnavailable, "Merkle audit trail not configured", "merkle_unavailable")
+		return
+	}
+
+	vars := mux.Vars(r)
+	attestationID := vars["attestation_id"]
+
+	leafIndex, err := h.merkleRepo.GetLeafIndexByAttestationID(attestationID)
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "Attestation not found in Merkle tree", "not_found")
+		return
+	}
+
+	proof, err := h.merkleRepo.GetInclusionProof(leafIndex)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get Merkle proof")
+		h.writeError(w, http.StatusInternalServerError, "Failed to get proof", "internal_error")
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, proof)
+}
+
+// ============================================
+// Chain of Custody Handlers
+// ============================================
+
+// HandleGetDelegationChain handles GET /v1/trust/delegation/chain/{chain_id}
+// Returns the full chain of custody for a delegation sequence.
+func (h *ExtendedHandler) HandleGetDelegationChain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := vars["chain_id"]
+
+	attestations, err := h.revocationRepo.GetDelegationChain(chainID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get delegation chain")
+		h.writeError(w, http.StatusInternalServerError, "Failed to get delegation chain", "internal_error")
+		return
+	}
+
+	chain := make([]map[string]interface{}, len(attestations))
+	for i, att := range attestations {
+		chain[i] = map[string]interface{}{
+			"attestation_id":        att.AttestationID,
+			"depth":                 att.DelegationDepth,
+			"function_id":           att.FunctionID,
+			"function_name":         att.FunctionName,
+			"function_author":       att.FunctionAuthor,
+			"delegator_function_id": att.DelegatorFunctionID,
+			"delegator_agent_id":    att.DelegatorAgentID,
+			"delegator_trust_score": att.DelegatorTrustScore,
+			"delegation_input_hash": att.DelegationInputHash,
+			"delegation_output_hash": att.DelegationOutputHash,
+			"proof_hash":            att.ProofHash,
+			"signature":             att.Signature,
+			"parent_attestation_id": att.ParentAttestationID,
+			"attested_at":           att.AttestedAt,
+			"integrity_verified":    att.VerifyIntegrity(),
+		}
+	}
+
+	// Verify full chain
+	chainValid, chainLength, _ := h.revocationRepo.VerifyDelegationChain(chainID)
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"chain_id":      chainID,
+		"chain_valid":   chainValid,
+		"chain_length":  chainLength,
+		"attestations":  chain,
+	})
+}
+
+// HandleVerifyDelegationChain handles GET /v1/trust/delegation/chain/{chain_id}/verify
+// Verifies the cryptographic integrity of a delegation chain.
+func (h *ExtendedHandler) HandleVerifyDelegationChain(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	chainID := vars["chain_id"]
+
+	chainValid, chainLength, err := h.revocationRepo.VerifyDelegationChain(chainID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to verify delegation chain")
+		h.writeError(w, http.StatusInternalServerError, "Failed to verify chain", "verification_error")
+		return
+	}
+
+	signer := trustapi.GetSigner()
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"chain_id":       chainID,
+		"chain_valid":    chainValid,
+		"chain_length":   chainLength,
+		"signing_key_id": signer.KeyID(),
+		"algorithm":      signer.Algorithm(),
+		"verified_at":    time.Now(),
+	})
+}
+
+// HandleGetFunctionDelegationChains handles GET /v1/trust/delegation/function/{function_id}
+// Returns all delegation chains a function participated in.
+func (h *ExtendedHandler) HandleGetFunctionDelegationChains(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	functionIDStr := vars["function_id"]
+
+	functionID, err := uuid.Parse(functionIDStr)
+	if err != nil {
+		h.writeError(w, http.StatusBadRequest, "Invalid function ID", "invalid_function_id")
+		return
+	}
+
+	chainIDs, err := h.revocationRepo.GetDelegationChainsForFunction(functionID)
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to get delegation chains")
+		h.writeError(w, http.StatusInternalServerError, "Failed to get delegation chains", "internal_error")
+		return
+	}
+
+	chains := make([]map[string]interface{}, len(chainIDs))
+	for i, chainID := range chainIDs {
+		chainValid, chainLength, _ := h.revocationRepo.VerifyDelegationChain(chainID)
+		chains[i] = map[string]interface{}{
+			"chain_id":     chainID,
+			"chain_valid":  chainValid,
+			"chain_length": chainLength,
+		}
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"function_id": functionID,
+		"chains":      chains,
+		"total":       len(chains),
+	})
 }

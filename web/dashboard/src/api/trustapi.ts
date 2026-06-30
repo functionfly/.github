@@ -254,3 +254,339 @@ export function getUsagePercentage(current: number, included: number): number {
   if (included === 0) return 0;
   return Math.min((current / included) * 100, 100);
 }
+
+// ==================== Attestation Types ====================
+
+export type AttestationType =
+  | 'verification'
+  | 'security_scan'
+  | 'code_review'
+  | 'execution'
+  | 'compliance'
+  | 'signature'
+  | 'delegation';
+
+export type AttestationStatus = 'valid' | 'revoked' | 'expired';
+
+export interface Attestation {
+  id: string;
+  attestation_id: string;
+  function_id: string;
+  function_version?: string;
+  function_author?: string;
+  function_name?: string;
+  type: AttestationType;
+  status: AttestationStatus;
+  title: string;
+  description?: string;
+  results?: Record<string, unknown>;
+  attester_id: string;
+  attester_type: string;
+  attester_name?: string;
+  verification_level?: string;
+  proof_hash: string;
+  signature?: string;
+  public_key_id?: string;
+  code_hash?: string;
+  input_hash?: string;
+  output_hash?: string;
+  source_data_hash?: string;
+  previous_hash?: string;
+  attested_at: string;
+  valid_until?: string;
+  revoked_at?: string;
+  revoke_reason?: string;
+  is_valid: boolean;
+  signature_valid: boolean;
+  chain_valid: boolean;
+}
+
+export interface AttestationListResponse {
+  attestations: Attestation[];
+  total_count: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AttestationCreateRequest {
+  function_id: string;
+  function_version?: string;
+  type: AttestationType;
+  title: string;
+  description?: string;
+  results?: Record<string, unknown>;
+  attester_type?: string;
+  attester_name?: string;
+  verification_level?: string;
+  code_hash?: string;
+  input_hash?: string;
+  output_hash?: string;
+  source_data_hash?: string;
+  valid_until?: string;
+}
+
+export interface AttestationPublicKey {
+  public_key: string;
+  key_id: string;
+  algorithm: string;
+  key_encoding: string;
+}
+
+export interface ChainVerificationResult {
+  function_id: string;
+  chain_valid: boolean;
+  chain_length: number;
+  verified_at: string;
+  signing_key_id: string;
+  algorithm: string;
+}
+
+export const ATTESTATION_TYPE_LABELS: Record<AttestationType, string> = {
+  verification: 'Verification',
+  security_scan: 'Security Scan',
+  code_review: 'Code Review',
+  execution: 'Execution',
+  compliance: 'Compliance',
+  signature: 'Signature',
+  delegation: 'Delegation',
+};
+
+export const ATTESTATION_TYPE_COLORS: Record<AttestationType, string> = {
+  verification: '#10B981',
+  security_scan: '#EF4444',
+  code_review: '#3B82F6',
+  execution: '#8B5CF6',
+  compliance: '#F59E0B',
+  signature: '#6366F1',
+  delegation: '#14B8A6',
+};
+
+// ==================== Attestation API Functions ====================
+
+/**
+ * List attestations for a function.
+ * GET /v1/trust/attestations?function_id=...
+ */
+export async function listAttestations(
+  functionId: string,
+  params?: { type?: string; status?: string; include_revoked?: boolean; page?: number; page_size?: number }
+): Promise<AttestationListResponse> {
+  const searchParams = new URLSearchParams({ function_id: functionId });
+  if (params?.type) searchParams.set('type', params.type);
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.include_revoked) searchParams.set('include_revoked', 'true');
+  if (params?.page) searchParams.set('page', params.page.toString());
+  if (params?.page_size) searchParams.set('page_size', params.page_size.toString());
+  return apiClient.get<AttestationListResponse>(`/v1/trust/attestations?${searchParams}`);
+}
+
+/**
+ * Get a specific attestation by ID.
+ * GET /v1/trust/attestations/{attestation_id}
+ */
+export async function getAttestation(attestationId: string): Promise<Attestation> {
+  return apiClient.get<Attestation>(`/v1/trust/attestations/${attestationId}`);
+}
+
+/**
+ * Create a new attestation.
+ * POST /v1/trust/attestations
+ */
+export async function createAttestation(
+  data: AttestationCreateRequest
+): Promise<Attestation> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  return apiClient.post<Attestation>('/v1/trust/attestations', data, { headers });
+}
+
+/**
+ * Revoke an attestation.
+ * POST /v1/trust/attestations/{attestation_id}/revoke
+ */
+export async function revokeAttestation(
+  attestationId: string,
+  reason: string
+): Promise<{ attestation_id: string; status: string; revoked_at: string; revoke_reason: string }> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  return apiClient.post(`/v1/trust/attestations/${attestationId}/revoke`, { reason }, { headers });
+}
+
+/**
+ * Verify an attestation's integrity and signature.
+ * GET /v1/trust/attestations/{attestation_id}/verify
+ */
+export async function verifyAttestation(
+  attestationId: string
+): Promise<{ attestation_id: string; integrity_verified: boolean; signature_verified: boolean; verified_at: string }> {
+  return apiClient.get(`/v1/trust/attestations/${attestationId}/verify`);
+}
+
+/**
+ * Get the full attestation chain for a function.
+ * GET /v1/trust/attestations/chain/{function_id}
+ */
+export async function getAttestationChain(
+  functionId: string
+): Promise<{ function_id: string; chain_length: number; chain_valid: boolean; attestations: Attestation[] }> {
+  return apiClient.get(`/v1/trust/attestations/chain/${functionId}`);
+}
+
+/**
+ * Verify the full attestation chain for a function.
+ * GET /v1/trust/attestations/chain/{function_id}/verify
+ */
+export async function verifyAttestationChain(functionId: string): Promise<ChainVerificationResult> {
+  return apiClient.get<ChainVerificationResult>(`/v1/trust/attestations/chain/${functionId}/verify`);
+}
+
+/**
+ * Get the public key for external attestation verification.
+ * GET /v1/trust/attestations/public-key
+ */
+export async function getAttestationPublicKey(): Promise<AttestationPublicKey> {
+  return apiClient.get<AttestationPublicKey>('/v1/trust/attestations/public-key');
+}
+
+// ==================== Merkle Audit Trail Types ====================
+
+export interface MerkleTreeHead {
+  tree_size: number;
+  root_hash: string;
+  previous_hash?: string;
+  timestamp: string;
+  signature?: string;
+  public_key_id?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface MerkleInclusionProof {
+  leaf_index: number;
+  leaf_hash: string;
+  tree_size: number;
+  root_hash: string;
+  path: string[];
+}
+
+export interface MerkleConsistencyProof {
+  old_size: number;
+  new_size: number;
+  old_root: string;
+  new_root: string;
+  path: string[];
+}
+
+export interface MerkleRoot {
+  root_hash: string;
+  tree_size: number;
+  algorithm: string;
+  format: string;
+}
+
+// ==================== Merkle Audit Trail API ====================
+
+/**
+ * Get the latest signed Merkle tree head.
+ * GET /v1/trust/merkle/head
+ */
+export async function getMerkleTreeHead(): Promise<MerkleTreeHead> {
+  return apiClient.get<MerkleTreeHead>('/v1/trust/merkle/head');
+}
+
+/**
+ * Get the current Merkle root hash.
+ * GET /v1/trust/merkle/root
+ */
+export async function getMerkleRoot(): Promise<MerkleRoot> {
+  return apiClient.get<MerkleRoot>('/v1/trust/merkle/root');
+}
+
+/**
+ * Get an inclusion proof for a specific leaf.
+ * GET /v1/trust/merkle/inclusion?leaf_index=N
+ */
+export async function getMerkleInclusionProof(leafIndex: number): Promise<MerkleInclusionProof> {
+  return apiClient.get<MerkleInclusionProof>(`/v1/trust/merkle/inclusion?leaf_index=${leafIndex}`);
+}
+
+/**
+ * Get a consistency proof between an old tree size and current.
+ * GET /v1/trust/merkle/consistency?old_size=N
+ */
+export async function getMerkleConsistencyProof(oldSize: number): Promise<MerkleConsistencyProof> {
+  return apiClient.get<MerkleConsistencyProof>(`/v1/trust/merkle/consistency?old_size=${oldSize}`);
+}
+
+/**
+ * Verify an inclusion proof client-side.
+ * POST /v1/trust/merkle/verify/inclusion
+ */
+export async function verifyMerkleInclusion(
+  proof: MerkleInclusionProof
+): Promise<{ valid: boolean; leaf_index: number; tree_size: number; root_hash: string }> {
+  return apiClient.post('/v1/trust/merkle/verify/inclusion', proof);
+}
+
+// ==================== Delegation Chain of Custody ====================
+
+export interface DelegationChain {
+  chain_id: string;
+  chain_valid: boolean;
+  chain_length: number;
+  attestations: DelegationChainEntry[];
+}
+
+export interface DelegationChainEntry {
+  attestation_id: string;
+  depth: number;
+  function_id: string;
+  function_name?: string;
+  function_author?: string;
+  delegator_function_id?: string;
+  delegator_agent_id?: string;
+  delegator_trust_score?: number;
+  delegation_input_hash?: string;
+  delegation_output_hash?: string;
+  proof_hash: string;
+  signature?: string;
+  parent_attestation_id?: string;
+  attested_at: string;
+  integrity_verified: boolean;
+}
+
+export interface DelegationChainSummary {
+  chain_id: string;
+  chain_valid: boolean;
+  chain_length: number;
+}
+
+/**
+ * Get the full chain of custody for a delegation sequence.
+ * GET /v1/trust/delegation/chain/{chain_id}
+ */
+export async function getDelegationChain(chainId: string): Promise<DelegationChain> {
+  return apiClient.get<DelegationChain>(`/v1/trust/delegation/chain/${chainId}`);
+}
+
+/**
+ * Verify a delegation chain's cryptographic integrity.
+ * GET /v1/trust/delegation/chain/{chain_id}/verify
+ */
+export async function verifyDelegationChain(
+  chainId: string
+): Promise<{ chain_id: string; chain_valid: boolean; chain_length: number; signing_key_id: string; algorithm: string; verified_at: string }> {
+  return apiClient.get(`/v1/trust/delegation/chain/${chainId}/verify`);
+}
+
+/**
+ * Get all delegation chains a function participated in.
+ * GET /v1/trust/delegation/function/{function_id}
+ */
+export async function getFunctionDelegationChains(
+  functionId: string
+): Promise<{ function_id: string; chains: DelegationChainSummary[]; total: number }> {
+  return apiClient.get(`/v1/trust/delegation/function/${functionId}`);
+}

@@ -124,6 +124,7 @@ const (
 	AttestationTypeExecution    AttestationType = "execution"
 	AttestationTypeCompliance   AttestationType = "compliance"
 	AttestationTypeSignature    AttestationType = "signature"
+	AttestationTypeDelegation   AttestationType = "delegation" // Chain-of-custody delegation attestation
 )
 
 // AttestationStatus represents the status of an attestation
@@ -167,11 +168,26 @@ type TrustAttestation struct {
 	// Cryptographic proof
 	ProofHash    string `json:"proof_hash" gorm:"size:64;not null"`      // SHA-256 hash of attestation data
 	PreviousHash string `json:"previous_hash,omitempty" gorm:"size:64"`  // For chain of attestations
-	Signature    string `json:"signature,omitempty" gorm:"size:512"`     // RSA/ECDSA signature
+	Signature    string `json:"signature,omitempty" gorm:"size:512"`     // Ed25519 signature
 	PublicKeyID  string `json:"public_key_id,omitempty" gorm:"size:100"` // Reference to signing key
+
+	// Per-step hashes for execution/function attestation
+	CodeHash   string `json:"code_hash,omitempty" gorm:"size:64"`   // SHA-256 of function source code
+	InputHash  string `json:"input_hash,omitempty" gorm:"size:64"`  // SHA-256 of input parameters
+	OutputHash string `json:"output_hash,omitempty" gorm:"size:64"` // SHA-256 of execution output
 
 	// Source data hash (for verification)
 	SourceDataHash string `json:"source_data_hash,omitempty" gorm:"size:64"` // Hash of function source/manifest
+
+	// Chain of custody (for delegation attestations)
+	DelegationChainID    string  `json:"delegation_chain_id,omitempty" gorm:"size:32;index:idx_delegation_chain"` // Groups all attestations in one delegation chain
+	ParentAttestationID  string  `json:"parent_attestation_id,omitempty" gorm:"size:32;index:idx_parent_attestation"` // Previous attestation in chain (delegator's)
+	DelegationDepth      int     `json:"delegation_depth,omitempty" gorm:"default:0"` // Hops from original caller (0 = originator)
+	DelegatorFunctionID  *uuid.UUID `json:"delegator_function_id,omitempty" gorm:"type:uuid;index:idx_delegator_fn"` // Function that delegated
+	DelegatorAgentID     string  `json:"delegator_agent_id,omitempty" gorm:"size:255"` // Agent/identity that initiated delegation
+	DelegatorTrustScore  float64 `json:"delegator_trust_score,omitempty"` // Trust score of delegator at delegation time
+	DelegationInputHash  string  `json:"delegation_input_hash,omitempty" gorm:"size:64"` // SHA-256 of input passed to delegate
+	DelegationOutputHash string  `json:"delegation_output_hash,omitempty" gorm:"size:64"` // SHA-256 of output from delegate
 
 	// Temporal tracking
 	AttestedAt   time.Time  `json:"attested_at" gorm:"not null"`
@@ -196,7 +212,9 @@ func (TrustAttestation) TableName() string {
 	return "trust_attestations"
 }
 
-// CalculateProofHash calculates the cryptographic hash of attestation data
+// CalculateProofHash calculates the cryptographic hash of attestation data.
+// Includes per-step hashes (code, input, output) when present so that
+// any tampering with execution artifacts invalidates the proof.
 func (a *TrustAttestation) CalculateProofHash() string {
 	// Create deterministic data representation
 	data := struct {
@@ -208,6 +226,9 @@ func (a *TrustAttestation) CalculateProofHash() string {
 		AttesterID      string
 		AttestedAt      int64
 		Results         string
+		CodeHash        string
+		InputHash       string
+		OutputHash      string
 	}{
 		FunctionID:      a.FunctionID.String(),
 		FunctionVersion: a.FunctionVersion,
@@ -217,6 +238,9 @@ func (a *TrustAttestation) CalculateProofHash() string {
 		AttesterID:      a.AttesterID.String(),
 		AttestedAt:      a.AttestedAt.UnixNano(),
 		Results:         string(a.Results),
+		CodeHash:        a.CodeHash,
+		InputHash:       a.InputHash,
+		OutputHash:      a.OutputHash,
 	}
 
 	jsonData, _ := json.Marshal(data)
@@ -419,6 +443,36 @@ type RevocationListResponse struct {
 	PageSize    int                  `json:"page_size"`
 }
 
+// AttestationCreateRequest represents a request to create a new attestation
+type AttestationCreateRequest struct {
+	FunctionID        uuid.UUID              `json:"function_id"`
+	FunctionVersion   string                 `json:"function_version,omitempty"`
+	Type              AttestationType        `json:"type"`
+	Title             string                 `json:"title"`
+	Description       string                 `json:"description,omitempty"`
+	Results           map[string]interface{} `json:"results,omitempty"`
+	AttesterType      string                 `json:"attester_type,omitempty"`
+	AttesterName      string                 `json:"attester_name,omitempty"`
+	VerificationLevel string                 `json:"verification_level,omitempty"`
+	CodeHash          string                 `json:"code_hash,omitempty"`
+	InputHash         string                 `json:"input_hash,omitempty"`
+	OutputHash        string                 `json:"output_hash,omitempty"`
+	SourceDataHash    string                 `json:"source_data_hash,omitempty"`
+	ValidUntil        *time.Time             `json:"valid_until,omitempty"`
+	// Delegation chain-of-custody fields
+	DelegationChainID   string     `json:"delegation_chain_id,omitempty"`
+	ParentAttestationID string     `json:"parent_attestation_id,omitempty"`
+	DelegatorFunctionID *uuid.UUID `json:"delegator_function_id,omitempty"`
+	DelegatorAgentID    string     `json:"delegator_agent_id,omitempty"`
+	DelegationInputHash string     `json:"delegation_input_hash,omitempty"`
+}
+
+// AttestationRevokeRequest represents a request to revoke an attestation
+type AttestationRevokeRequest struct {
+	Reason        string     `json:"reason"`
+	RevocationID  *uuid.UUID `json:"revocation_id,omitempty"`
+}
+
 // AttestationResponse represents an attestation in API responses
 type AttestationResponse struct {
 	ID                uuid.UUID  `json:"id"`
@@ -431,15 +485,35 @@ type AttestationResponse struct {
 	Status            string     `json:"status"`
 	Title             string     `json:"title"`
 	Description       string     `json:"description,omitempty"`
+	Results           json.RawMessage `json:"results,omitempty"`
 	AttesterID        uuid.UUID  `json:"attester_id"`
 	AttesterType      string     `json:"attester_type"`
 	AttesterName      string     `json:"attester_name,omitempty"`
 	VerificationLevel string     `json:"verification_level,omitempty"`
 	ProofHash         string     `json:"proof_hash"`
+	Signature         string     `json:"signature,omitempty"`
+	PublicKeyID       string     `json:"public_key_id,omitempty"`
+	CodeHash          string     `json:"code_hash,omitempty"`
+	InputHash         string     `json:"input_hash,omitempty"`
+	OutputHash        string     `json:"output_hash,omitempty"`
+	SourceDataHash    string     `json:"source_data_hash,omitempty"`
+	PreviousHash      string     `json:"previous_hash,omitempty"`
+	// Chain of custody
+	DelegationChainID    string   `json:"delegation_chain_id,omitempty"`
+	ParentAttestationID  string   `json:"parent_attestation_id,omitempty"`
+	DelegationDepth      int      `json:"delegation_depth,omitempty"`
+	DelegatorFunctionID  *uuid.UUID `json:"delegator_function_id,omitempty"`
+	DelegatorAgentID     string   `json:"delegator_agent_id,omitempty"`
+	DelegatorTrustScore  float64  `json:"delegator_trust_score,omitempty"`
+	DelegationInputHash  string   `json:"delegation_input_hash,omitempty"`
+	DelegationOutputHash string   `json:"delegation_output_hash,omitempty"`
 	AttestedAt        time.Time  `json:"attested_at"`
 	ValidUntil        *time.Time `json:"valid_until,omitempty"`
 	RevokedAt         *time.Time `json:"revoked_at,omitempty"`
 	RevokeReason      string     `json:"revoke_reason,omitempty"`
+	IsValid           bool       `json:"is_valid"`
+	SignatureValid    bool       `json:"signature_valid"`
+	ChainValid        bool       `json:"chain_valid"`
 }
 
 // AttestationListResponse represents a list of attestations

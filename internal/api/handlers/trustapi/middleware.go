@@ -3,6 +3,7 @@ package trustapi
 import (
 	"context"
 	crand "crypto/rand"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -163,33 +164,27 @@ func (m *RateLimitMiddleware) RateLimit() func(http.Handler) http.Handler {
 			// Get rate limit config for partner tier
 			tierConfig := trustapi.GetRateLimitConfig(partner.Tier)
 
-			// Check per-minute limit
-			allowed, remaining, err := m.repo.CheckRateLimit(partner.ID, "minute", tierConfig.PerMinute)
-			if err != nil {
-				m.logger.WithError(err).Error("Failed to check rate limit")
-				// Fail open - allow request but log the error
-				next.ServeHTTP(w, r)
-				return
-			}
+		// Check per-minute limit (atomic check + increment)
+		allowed, remaining, err := m.repo.CheckAndIncrementRateLimit(partner.ID, "minute", tierConfig.PerMinute)
+		if err != nil {
+			m.logger.WithError(err).Error("Failed to check rate limit")
+			writeRateLimitError(w, tierConfig.PerMinute, 0)
+			return
+		}
 
-			if !allowed {
-				m.logger.WithFields(logrus.Fields{
-					"partner_id": partner.ID,
-					"tier":       partner.Tier,
-					"limit":      tierConfig.PerMinute,
-				}).Warn("Rate limit exceeded (per-minute)")
-				writeRateLimitError(w, tierConfig.PerMinute, remaining)
-				return
-			}
-
-		// Increment rate limit counter synchronously so failures are visible
-		if err := m.repo.IncrementRateLimit(partner.ID, "minute"); err != nil {
-			m.logger.WithError(err).Warn("Failed to increment rate limit counter")
+		if !allowed {
+			m.logger.WithFields(logrus.Fields{
+				"partner_id": partner.ID,
+				"tier":       partner.Tier,
+				"limit":      tierConfig.PerMinute,
+			}).Warn("Rate limit exceeded (per-minute)")
+			writeRateLimitError(w, tierConfig.PerMinute, remaining)
+			return
 		}
 
 			// Add rate limit headers
 			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", tierConfig.PerMinute))
-			w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining-1))
+			w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
 			w.Header().Set("X-RateLimit-Reset", fmt.Sprintf("%d", time.Now().Add(time.Minute).Unix()))
 
 			// Check monthly quota
@@ -215,15 +210,27 @@ func (m *RateLimitMiddleware) RateLimit() func(http.Handler) http.Handler {
 
 // UsageTrackingMiddleware tracks API usage for billing
 type UsageTrackingMiddleware struct {
-	repo  *trustapi.Repository
+	repo   *trustapi.Repository
 	logger *logrus.Logger
 }
 
 // NewUsageTrackingMiddleware creates a new usage tracking middleware
 func NewUsageTrackingMiddleware(repo *trustapi.Repository) *UsageTrackingMiddleware {
 	return &UsageTrackingMiddleware{
-		repo:  repo,
+		repo:   repo,
 		logger: logrus.New(),
+	}
+}
+
+// BodySizeLimit returns a middleware that limits request body size
+func BodySizeLimit(maxBytes int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil {
+				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }
 
@@ -345,7 +352,7 @@ func randomString(n int) (string, error) {
 func writeError(w http.ResponseWriter, status int, err string, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	fmt.Fprintf(w, `{"error":"%s","code":"%s"}`, err, code)
+	json.NewEncoder(w).Encode(map[string]string{"error": err, "code": code})
 }
 
 // writeRateLimitError writes a rate limit exceeded error response
@@ -355,12 +362,54 @@ func writeRateLimitError(w http.ResponseWriter, limit int, remaining int) {
 	w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", remaining))
 	w.Header().Set("Retry-After", "60")
 	w.WriteHeader(http.StatusTooManyRequests)
-	fmt.Fprintf(w, `{"error":"Rate limit exceeded","code":"rate_limit_exceeded","retry_after":60}`)
+	json.NewEncoder(w).Encode(map[string]interface{}{"error": "Rate limit exceeded", "code": "rate_limit_exceeded", "retry_after": 60})
 }
 
 // writeAuthError writes a JSON error response for auth middleware
 func (m *APIKeyAuthMiddleware) writeAuthError(w http.ResponseWriter, status int, err string, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	fmt.Fprintf(w, `{"error":"%s","code":"%s"}`, err, code)
+	json.NewEncoder(w).Encode(map[string]string{"error": err, "code": code})
+}
+
+// PartnerTierRank returns a numeric rank for partner tier comparison.
+// Higher rank = more privileged.
+func PartnerTierRank(tier string) int {
+	switch tier {
+	case "developer":
+		return 0
+	case "payg":
+		return 1
+	case "startup":
+		return 2
+	case "business":
+		return 3
+	case "enterprise":
+		return 4
+	default:
+		return 0
+	}
+}
+
+// RequireTier returns middleware that checks the partner's tier meets a minimum level.
+// Use for gating attestation write operations by partner subscription tier.
+func (m *APIKeyAuthMiddleware) RequireTier(minTier string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			partner := getPartnerFromContext(r)
+			if partner == nil {
+				m.writeAuthError(w, http.StatusUnauthorized, "Not authenticated", "unauthenticated")
+				return
+			}
+
+			if PartnerTierRank(partner.Tier) < PartnerTierRank(minTier) {
+				m.writeAuthError(w, http.StatusForbidden,
+					fmt.Sprintf("This feature requires the '%s' tier or higher. Current tier: '%s'", minTier, partner.Tier),
+					"insufficient_tier")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
