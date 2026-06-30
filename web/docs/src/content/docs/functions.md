@@ -3,8 +3,6 @@ title: Writing Functions
 description: How to write and structure functions in FunctionFly
 ---
 
-# Writing Functions
-
 FunctionFly supports multiple languages and runtime environments for your serverless functions.
 
 ## Supported Runtimes

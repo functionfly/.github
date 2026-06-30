@@ -1,8 +1,6 @@
 {
   "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
-    "jsx": "react-jsx",
-    "jsxImportSource": "react",
     "moduleResolution": "bundler",
     "target": "ES2020",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
@@ -10,5 +8,6 @@
     "paths": {
       "@/*": ["src/*"]
     }
-  }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.astro"]
 }

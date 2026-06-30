@@ -5,8 +5,6 @@ sidebar:
   order: 4
 ---
 
-# AI App Bundle
-
 The complete backend for AI-powered applications. Everything you need to build, deploy, and scale AI features.
 
 ## What's Included

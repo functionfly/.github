@@ -5,10 +5,7 @@ hero:
   title: FunctionFly
   tagline: Deploy serverless functions to 35+ edge locations worldwide
   actions:
-    - text: Get Started
-      link: /getting-started/
-      icon: right-arrow
-      variant: primary
+
     - text: View on GitHub
       link: https://github.com/functionfly
       icon: github
@@ -58,6 +55,6 @@ ff deploy
 
 Browse our documentation sections:
 
-- **Getting Started** - Quick start guides and installation
+
 - **Core Concepts** - Functions, CLI, and deployment
 - **Trust & Security** - Trust API and security protocols

@@ -5,8 +5,6 @@ sidebar:
   order: 2
 ---
 
-# SaaS Starter Bundle
-
 The complete backend for SaaS products. Includes everything you need to launch and scale.
 
 ## What's Included

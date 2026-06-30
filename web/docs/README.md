@@ -1,6 +1,6 @@
 # FunctionFly public documentation site (`web/docs`)
 
-Static site (Astro) deployed at `docs.functionfly.com` (or your `PUBLIC_SITE_URL`).
+Static site (Astro + Starlight) deployed at `docs.functionfly.com` (or your `PUBLIC_SITE_URL`).
 
 ## What gets published
 
@@ -13,9 +13,29 @@ Internal material (production/staging runbooks, disaster recovery, monitoring, v
 
 ```bash
 cd web/docs
+bun install
 bun run build   # runs sync-docs.mjs, then astro build
 ```
 
-## Relationship to the dashboard
+## Development
 
-The React app under `src/App.tsx` / `src/legacy-vite/` is legacy; the shipped site is Astro. In-app documentation for logged-in users lives in `web/dashboard`.
+```bash
+bun run dev     # port 4322
+```
+
+## Architecture
+
+- **Framework:** Astro v6 + Starlight (static site generation)
+- **API Reference:** Auto-generated from `src/content/api/openapi.yaml` via starlight-openapi
+- **Custom CSS:** `src/styles/custom.css` (Starlight theme override, self-contained)
+- **Security:** `src/middleware.ts` adds security headers (X-Frame-Options, HSTS, etc.)
+- **Analytics:** Google Analytics and Mixpanel via env vars (`PUBLIC_GOOGLE_ANALYTICS_ID`, `PUBLIC_MIXPANEL_TOKEN`)
+- **Error Tracking:** Sentry (conditional on `SENTRY_DSN` env var)
+
+## Environment Variables
+
+| Variable | Purpose | Required |
+|----------|---------|----------|
+| `PUBLIC_GOOGLE_ANALYTICS_ID` | Google Analytics tracking ID | No |
+| `PUBLIC_MIXPANEL_TOKEN` | Mixpanel project token | No |
+| `SENTRY_DSN` | Sentry error tracking DSN | No |

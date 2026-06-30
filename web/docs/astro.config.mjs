@@ -1,11 +1,12 @@
-import react from "@astrojs/react";
 import sentry from "@sentry/astro";
 import starlight from "@astrojs/starlight";
 import starlightOpenAPI from "starlight-openapi";
-import starlightLlmsTxt from "starlight-llms-txt";
-import expressiveCodeCollapsible from "expressive-code-collapsible";
 import astroMermaid from "astro-mermaid";
 import { defineConfig } from "astro/config";
+
+const gaId = process.env.PUBLIC_GOOGLE_ANALYTICS_ID;
+const mixpanelToken = process.env.PUBLIC_MIXPANEL_TOKEN;
+const sentryDsn = process.env.SENTRY_DSN;
 
 // https://astro.build/config
 export default defineConfig({
@@ -17,7 +18,34 @@ export default defineConfig({
         src: "./public/favicon.svg",
       },
       customCss: ["./src/styles/custom.css"],
-      head: [],
+      head: [
+        ...(gaId
+          ? [
+              {
+                tag: "script",
+                attrs: {
+                  async: true,
+                  src: `https://www.googletagmanager.com/gtag/js?id=${gaId}`,
+                },
+                content: "",
+              },
+              {
+                tag: "script",
+                attrs: {},
+                content: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`,
+              },
+            ]
+          : []),
+        ...(mixpanelToken
+          ? [
+              {
+                tag: "script",
+                attrs: {},
+                content: `(function(){var w=window,mp=w.mixpanel=w.mixpanel||[];function i(a){mp.push(arguments)}i.q=mp.q||[];mp._i=[];mp.init=function(t,c){mp.push(['init',t,c]);return mp};mp.track=function(){return mp.q.push(arguments)};var s=document.createElement('script');s.type='text/javascript';s.async=true;s.src='https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';var x=document.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);mp.init('${mixpanelToken}');})();`,
+              },
+            ]
+          : []),
+      ],
       social: [
         {
           icon: "github",
@@ -105,6 +133,13 @@ export default defineConfig({
             { label: "Functions", link: "/functions/" },
             { label: "CLI", link: "/cli/" },
             { label: "Deployment", link: "/deployment/" },
+            { label: "Registry", link: "/registry/" },
+            { label: "Execution", link: "/execution/" },
+            { label: "Analytics", link: "/analytics/" },
+            { label: "Agents", link: "/agents/" },
+            { label: "Secrets Vault", link: "/secrets-vault/" },
+            { label: "StateFabric", link: "/statefabric/" },
+            { label: "WebAssembly", link: "/wasm/" },
           ],
         },
         {
@@ -282,14 +317,15 @@ export default defineConfig({
         ]),
       ],
     }),
-    sentry({
-      dsn: process.env.SENTRY_DSN,
-      tracesSampleRate: 0.1,
-    }),
+    ...(sentryDsn
+      ? [
+          sentry({
+            dsn: sentryDsn,
+            tracesSampleRate: 0.1,
+          }),
+        ]
+      : []),
     astroMermaid(),
-    react({
-      include: ["**/*.jsx", "**/*.tsx"],
-    }),
   ],
   output: "static",
   server: {
@@ -302,11 +338,10 @@ export default defineConfig({
   },
   vite: {
     ssr: {
-      noExternal: ["starlight-llms-txt", "starlight-package-managers", "expressive-code-collapsible"],
+      noExternal: ["starlight-package-managers"],
     },
     build: {
       cssMinify: true,
-      minify: false,
       target: "es2022",
     },
     esbuild: {

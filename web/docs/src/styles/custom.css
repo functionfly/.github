@@ -1,83 +1,113 @@
-/* FunctionFly Docs - Velocity Brand Custom CSS for Starlight */
+/* FunctionFly Docs — Sealed Containment Theme for Starlight
+   Maps SC design tokens to Starlight's --sl-color-* variable system. */
 
-/* Import dashboard themes - correct relative path from web/docs/src/styles/ */
-@import '../../../dashboard/src/styles/themes.css';
-
-/* Override Starlight's default colors with Velocity Brand */
+/* ═══════════════════════════════════════════════
+   SC Tokens → Starlight Variable Mapping (Dark)
+   ═══════════════════════════════════════════════ */
 :root {
-  /* Velocity Brand Core */
-  --sl-color-accent: #FF6B35;
-  --sl-color-accent-high: #FF8C42;
-  --sl-color-accent-low: #E85A2A;
-  
-  /* Text colors */
-  --sl-color-white: #F0F6FC;
-  --sl-color-gray-1: #8B949E;
-  --sl-color-gray-2: #6E7681;
-  --sl-color-gray-3: #4B5563;
-  --sl-color-gray-4: #21262D;
-  --sl-color-gray-5: #161B22;
-  --sl-color-gray-6: #0D1117;
-  --sl-color-black: #0D1117;
-  
-  /* Velocity Brand Aliases */
-  --ff-flame: #FF6B35;
-  --ff-flame-rgb: 255, 107, 53;
-  --ff-flame-dark: #E85A2A;
-  --ff-flame-light: #FF8C42;
-  --ff-afterburner: #FF4F5E;
-  --ff-cyan: #00D4FF;
-  --ff-cyan-rgb: 0, 212, 255;
-  --ff-cyan-dark: #00B8E0;
-  --ff-tarmac: #0D1117;
-  --ff-cockpit: #161B22;
-  --ff-flightdeck: #21262D;
-  --ff-sky: #FFFFFF;
-  --ff-sky-subtle: #F6F8FA;
-  --ff-primary-text: #F0F6FC;
-  --ff-secondary-text: #8B949E;
-  --ff-muted-text: #6E7681;
-  --ff-dark-text: #0D1117;
-  --ff-dark-secondary: #4B5563;
-  --ff-dark-muted: #6B7280;
-  --ff-taxiway: #00FF9D;
-  --ff-beacon: #FFB800;
-  --ff-stratosphere: #5B7CF5;
+  /* Starlight accent → SC accent */
+  --sl-color-accent: #ff7a3d;
+  --sl-color-accent-high: #ff8f5c;
+  --sl-color-accent-low: rgba(255, 122, 61, 0.35);
+
+  /* Starlight text → SC text */
+  --sl-color-white: #eef2f0;
+  --sl-color-gray-1: #7c8a8a;
+  --sl-color-gray-2: #6a7474;
+  --sl-color-gray-3: #4a5358;
+  --sl-color-gray-4: #1c242b;
+  --sl-color-gray-5: #131922;
+  --sl-color-gray-6: #0e1318;
+  --sl-color-black: #0a0d11;
+
+  /* SC brand aliases */
+  --ff-flame: #ff7a3d;
+  --ff-flame-rgb: 255, 122, 61;
+  --ff-flame-dark: #ff7a3d;
+  --ff-flame-light: #ff8f5c;
+  --ff-afterburner: #ff6b6b;
+  --ff-cyan: #9fd8ff;
+  --ff-cyan-rgb: 159, 216, 255;
+  --ff-cyan-dark: #9fd8ff;
+  --ff-tarmac: #0a0d11;
+  --ff-cockpit: #0e1318;
+  --ff-flightdeck: #131922;
+  --ff-sky: #eef2f0;
+  --ff-sky-subtle: #f8fafc;
+  --ff-primary-text: #eef2f0;
+  --ff-secondary-text: #7c8a8a;
+  --ff-muted-text: #4a5358;
+  --ff-dark-text: #0a0d11;
+  --ff-dark-secondary: #4a5358;
+  --ff-dark-muted: #6a7474;
+  --ff-taxiway: #8fffd0;
+  --ff-beacon: #e8c468;
+  --ff-stratosphere: #d9c4ff;
+
+  /* Starlight sidebar/header background */
+  --sl-color-bg-nav: #0e1318;
 }
 
-/* Light theme overrides */
+/* ═══════════════════════════════════════════════
+   SC Tokens → Starlight Variable Mapping (Light)
+   ═══════════════════════════════════════════════ */
 [data-theme='light'] {
-  --sl-color-accent: #E85A2A;
-  --sl-color-accent-high: #FF6B35;
-  --sl-color-accent-low: #D14A1A;
-  
-  --sl-color-white: #0D1117;
-  --sl-color-gray-1: #4B5563;
-  --sl-color-gray-2: #6B7280;
-  --sl-color-gray-3: #8B949E;
-  --sl-color-gray-4: #EEF1F5;
-  --sl-color-gray-5: #F6F8FA;
-  --sl-color-gray-6: #FFFFFF;
-  --sl-color-black: #FFFFFF;
-  
-  --ff-flame: #E85A2A;
-  --ff-flame-light: #FF6B35;
-  --ff-cyan: #00A8CC;
+  --sl-color-accent: #e85a2a;
+  --sl-color-accent-high: #ff7a3d;
+  --sl-color-accent-low: rgba(232, 90, 42, 0.35);
+
+  --sl-color-white: #0f172a;
+  --sl-color-gray-1: #475569;
+  --sl-color-gray-2: #64748b;
+  --sl-color-gray-3: #94a3b8;
+  --sl-color-gray-4: #e2e8f0;
+  --sl-color-gray-5: #f1f5f9;
+  --sl-color-gray-6: #ffffff;
+  --sl-color-black: #ffffff;
+
+  --ff-flame: #e85a2a;
+  --ff-flame-light: #ff7a3d;
+  --ff-cyan: #3b82f6;
+  --ff-tarmac: #f8fafc;
+  --ff-cockpit: #ffffff;
+  --ff-flightdeck: #f1f5f9;
+  --ff-sky: #0f172a;
+  --ff-sky-subtle: #f1f5f9;
+  --ff-primary-text: #0f172a;
+  --ff-secondary-text: #475569;
+  --ff-muted-text: #64748b;
+  --ff-dark-text: #0f172a;
+  --ff-taxiway: #059669;
+  --ff-beacon: #d97706;
+  --ff-stratosphere: #7c3aed;
+
+  --sl-color-bg-nav: #ffffff;
 }
 
-/* Starlight specific component overrides */
+/* ═══════════════════════════════════════════════
+   Typography — SC font stack
+   ═══════════════════════════════════════════════ */
 
-/* Header/Navbar */
+/* Starlight headings → SC display font */
 .site-title {
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-weight: 700;
 }
 
-/* Links */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Space Grotesk', 'Instrument Sans', system-ui, sans-serif;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════
+   Links — SC accent
+   ═══════════════════════════════════════════════ */
+
 a[href]:not([class]) {
   color: var(--ff-flame);
   text-decoration: underline;
-  text-decoration-color: rgba(255, 107, 53, 0.3);
+  text-decoration-color: var(--sl-color-accent-low);
+  transition: color 120ms cubic-bezier(0.16, 1, 0.3, 1), text-decoration-color 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 a[href]:not([class]):hover {
@@ -85,101 +115,232 @@ a[href]:not([class]):hover {
   text-decoration-color: var(--ff-flame);
 }
 
-/* Sidebar navigation */
+/* ═══════════════════════════════════════════════
+   Sidebar — SC panel styling
+   ═══════════════════════════════════════════════ */
+
 .sidebar-content a {
-  transition: color 0.2s ease, background 0.2s ease;
+  transition: color 120ms cubic-bezier(0.16, 1, 0.3, 1), background 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sidebar-content a:hover {
   color: var(--ff-flame);
-  background: rgba(255, 107, 53, 0.08);
+  background: rgba(255, 122, 61, 0.06);
 }
 
 .sidebar-content a[aria-current="page"] {
   color: var(--ff-flame);
-  background: rgba(255, 107, 53, 0.12);
+  background: rgba(255, 122, 61, 0.08);
   border-left: 3px solid var(--ff-flame);
 }
 
 /* Right sidebar (TOC) */
 .right-sidebar a {
-  transition: color 0.2s ease;
+  transition: color 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .right-sidebar a:hover {
   color: var(--ff-flame);
 }
 
-/* Cards */
+/* ═══════════════════════════════════════════════
+   Cards — SC chamber edge
+   ═══════════════════════════════════════════════ */
+
 .card {
-  border: 1px solid rgba(255, 107, 53, 0.15);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  border: 1px solid rgba(255, 122, 61, 0.12);
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .card:hover {
-  border-color: rgba(255, 107, 53, 0.3);
-  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.1);
+  border-color: rgba(255, 122, 61, 0.25);
+  box-shadow: 0 4px 12px rgba(255, 122, 61, 0.08);
   transform: translateY(-2px);
 }
 
-/* Badges */
+[data-theme='light'] .card {
+  border-color: rgba(232, 90, 42, 0.12);
+}
+
+[data-theme='light'] .card:hover {
+  border-color: rgba(232, 90, 42, 0.25);
+  box-shadow: 0 4px 12px rgba(232, 90, 42, 0.08);
+}
+
+/* ═══════════════════════════════════════════════
+   Badges — SC status colors
+   ═══════════════════════════════════════════════ */
+
 .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--sl-radius-sm, 3px);
+  font-size: 0.7rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: 'IBM Plex Mono', monospace;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .badge--tip {
-  background: rgba(0, 255, 157, 0.15);
-  color: #00FF9D;
-  border: 1px solid rgba(0, 255, 157, 0.3);
+  background: rgba(143, 255, 208, 0.08);
+  color: #8fffd0;
+  border: 1px solid rgba(143, 255, 208, 0.25);
 }
 
 .badge--caution {
-  background: rgba(255, 184, 0, 0.15);
-  color: #FFB800;
-  border: 1px solid rgba(255, 184, 0, 0.3);
+  background: rgba(232, 196, 104, 0.08);
+  color: #e8c468;
+  border: 1px solid rgba(232, 196, 104, 0.25);
 }
 
 .badge--danger {
-  background: rgba(255, 45, 85, 0.15);
-  color: #FF2D55;
-  border: 1px solid rgba(255, 45, 85, 0.3);
+  background: rgba(255, 107, 107, 0.08);
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 107, 107, 0.25);
 }
 
 .badge--success {
-  background: rgba(0, 255, 157, 0.15);
-  color: #00FF9D;
-  border: 1px solid rgba(0, 255, 157, 0.3);
+  background: rgba(143, 255, 208, 0.08);
+  color: #8fffd0;
+  border: 1px solid rgba(143, 255, 208, 0.25);
 }
 
-/* Buttons in hero */
+[data-theme='light'] .badge--tip,
+[data-theme='light'] .badge--success {
+  background: rgba(5, 150, 105, 0.08);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+[data-theme='light'] .badge--caution {
+  background: rgba(217, 119, 6, 0.08);
+  color: #d97706;
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+[data-theme='light'] .badge--danger {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  border-color: rgba(220, 38, 38, 0.25);
+}
+
+/* Roadmap status badges */
+.badge-testing {
+  background: rgba(217, 196, 255, 0.1);
+  color: #d9c4ff;
+  border: 1px solid rgba(217, 196, 255, 0.3);
+}
+
+.badge-beta {
+  background: rgba(159, 216, 255, 0.1);
+  color: #9fd8ff;
+  border: 1px solid rgba(159, 216, 255, 0.3);
+}
+
+.badge-in-progress {
+  background: rgba(143, 255, 208, 0.08);
+  color: #8fffd0;
+  border: 1px solid rgba(143, 255, 208, 0.25);
+}
+
+.badge-planned {
+  background: rgba(232, 196, 104, 0.08);
+  color: #e8c468;
+  border: 1px solid rgba(232, 196, 104, 0.25);
+}
+
+.badge-design {
+  background: rgba(255, 217, 240, 0.1);
+  color: #ffd9f0;
+  border: 1px solid rgba(255, 217, 240, 0.3);
+}
+
+.badge-shipping {
+  background: rgba(143, 255, 208, 0.08);
+  color: #8fffd0;
+  border: 1px solid rgba(143, 255, 208, 0.25);
+}
+
+[data-theme='light'] .badge-testing {
+  background: rgba(124, 58, 237, 0.08);
+  color: #7c3aed;
+  border-color: rgba(124, 58, 237, 0.25);
+}
+
+[data-theme='light'] .badge-beta {
+  background: rgba(59, 130, 246, 0.08);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+[data-theme='light'] .badge-in-progress,
+[data-theme='light'] .badge-shipping {
+  background: rgba(5, 150, 105, 0.08);
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.25);
+}
+
+[data-theme='light'] .badge-planned {
+  background: rgba(217, 119, 6, 0.08);
+  color: #d97706;
+  border-color: rgba(217, 119, 6, 0.25);
+}
+
+[data-theme='light'] .badge-design {
+  background: rgba(236, 72, 153, 0.08);
+  color: #ec4899;
+  border-color: rgba(236, 72, 153, 0.25);
+}
+
+/* ═══════════════════════════════════════════════
+   Hero Buttons — SealedButton / FrameButton
+   ═══════════════════════════════════════════════ */
+
 .hero .action.primary {
-  background: linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  color: #0a0d11;
   border: none;
-  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.4);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 6px 16px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 120ms cubic-bezier(0.16, 1, 0.3, 1), transform 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero .action.primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(255, 107, 53, 0.5);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+.hero .action.primary:active {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.15) inset, 0 2px 6px rgba(0, 0, 0, 0.3);
+  transform: translateY(1px);
 }
 
 .hero .action.secondary {
-  border-color: var(--ff-flame);
-  color: var(--ff-flame);
-  transition: all 0.2s ease;
+  border-color: var(--sl-color-accent);
+  color: var(--sl-color-accent);
+  transition: border-color 120ms cubic-bezier(0.16, 1, 0.3, 1), color 120ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero .action.secondary:hover {
-  background: rgba(255, 107, 53, 0.1);
-  border-color: var(--ff-flame-light);
-  color: var(--ff-flame-light);
+  border-color: var(--sl-color-accent-high);
+  color: var(--sl-color-accent-high);
 }
 
-/* Code blocks */
+[data-theme='light'] .hero .action.primary {
+  color: #0f172a;
+}
+
+/* ═══════════════════════════════════════════════
+   Code — SC syntax colors (spec 8.5)
+   ═══════════════════════════════════════════════ */
+
 code {
   color: var(--ff-cyan);
-  background: rgba(0, 212, 255, 0.1);
+  background: rgba(159, 216, 255, 0.08);
 }
 
 pre code {
@@ -187,42 +348,64 @@ pre code {
   background: transparent;
 }
 
-/* Expressive code blocks (Starlight's code component) */
+/* Expressive code blocks */
 .expressive-code {
-  --ec-frm-frameBoxShadowCss: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --ec-frm-frameBoxShadowCss: 0 20px 40px rgba(0, 0, 0, 0.35);
 }
 
 .expressive-code .frame {
-  border: 1px solid rgba(255, 107, 53, 0.15);
+  border: 1px solid var(--sl-color-gray-4);
 }
 
-/* Typography */
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Space Grotesk', 'Instrument Sans', system-ui, sans-serif;
-  font-weight: 600;
+[data-theme='light'] code {
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
 }
 
-/* Tables */
+/* ═══════════════════════════════════════════════
+   Tables
+   ═══════════════════════════════════════════════ */
+
 table {
-  border-color: rgba(255, 107, 53, 0.15);
+  border-color: var(--sl-color-gray-4);
 }
 
 th {
-  background: rgba(255, 107, 53, 0.08);
+  background: rgba(255, 122, 61, 0.06);
   color: var(--ff-flame);
 }
 
 tr:hover {
-  background: rgba(255, 107, 53, 0.05);
+  background: rgba(255, 122, 61, 0.03);
 }
 
-/* Search */
+[data-theme='light'] th {
+  background: rgba(232, 90, 42, 0.06);
+  color: #e85a2a;
+}
+
+[data-theme='light'] tr:hover {
+  background: rgba(232, 90, 42, 0.03);
+}
+
+/* ═══════════════════════════════════════════════
+   Search
+   ═══════════════════════════════════════════════ */
+
 .search-container input:focus {
   border-color: var(--ff-flame);
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
+  box-shadow: 0 0 0 2px #0a0d11, 0 0 0 4px #8fffd0;
 }
 
-/* Scrollbar styling */
+[data-theme='light'] .search-container input:focus {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #059669;
+}
+
+/* ═══════════════════════════════════════════════
+   Global page details (spec 8.7)
+   ═══════════════════════════════════════════════ */
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -233,100 +416,43 @@ tr:hover {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--ff-flame-dark);
-  border-radius: 5px;
+  background: #2a3138;
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--ff-flame);
+  background: #4a565f;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Selection */
 ::selection {
-  background: rgba(255, 107, 53, 0.3);
+  background: rgba(143, 255, 208, 0.25);
   color: var(--ff-primary-text);
 }
 
-/* Focus styles */
+[data-theme='light'] ::selection {
+  background: rgba(5, 150, 105, 0.2);
+  color: #0f172a;
+}
+
+/* Focus */
 :focus-visible {
-  outline: 2px solid var(--ff-flame);
+  outline: 2px solid #8fffd0;
   outline-offset: 2px;
 }
 
-/* Light theme specific overrides */
-[data-theme='light'] .card {
-  border-color: rgba(232, 90, 42, 0.15);
-}
-
-[data-theme='light'] .card:hover {
-  border-color: rgba(232, 90, 42, 0.3);
-  box-shadow: 0 4px 12px rgba(232, 90, 42, 0.1);
-}
-
-[data-theme='light'] table {
-  border-color: rgba(232, 90, 42, 0.1);
-}
-
-[data-theme='light'] th {
-  background: rgba(232, 90, 42, 0.08);
-}
-
-[data-theme='light'] ::-webkit-scrollbar-track {
-  background: var(--ff-sky-subtle);
-}
-
-[data-theme='light'] ::-webkit-scrollbar-thumb {
-  background: var(--ff-flame);
-}
-
-/* Roadmap Status Badges */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0.15rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  font-family: var(--font-mono, monospace);
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-.badge-testing {
-  background: rgb(168 85 247 / 0.2);
-  color: rgb(192 132 252);
-  border: 1px solid rgb(168 85 247 / 0.4);
-}
-
-.badge-beta {
-  background: rgb(59 130 246 / 0.2);
-  color: rgb(96 165 250);
-  border: 1px solid rgb(59 130 246 / 0.4);
-}
-
-.badge-in-progress {
-  background: rgb(34 197 94 / 0.2);
-  color: rgb(74 222 128);
-  border: 1px solid rgb(34 197 94 / 0.4);
-}
-
-.badge-planned {
-  background: rgb(251 191 36 / 0.2);
-  color: rgb(251 191 36);
-  border: 1px solid rgb(251 191 36 / 0.4);
-}
-
-.badge-design {
-  background: rgb(236 72 153 / 0.2);
-  color: rgb(244 114 182);
-  border: 1px solid rgb(236 72 153 / 0.4);
-}
-
-.badge-shipping {
-  background: rgb(20 184 166 / 0.2);
-  color: rgb(45 212 191);
-  border: 1px solid rgb(20 184 166 / 0.4);
+[data-theme='light'] :focus-visible {
+  outline-color: #059669;
 }

@@ -97,14 +97,17 @@ for (const file of files) {
   count++;
 }
 
-// Remove synced files that are no longer public or stale; never touch hand-written pages.
-for (const f of fs.readdirSync(OUT_DIR)) {
-  if (!f.endsWith(".md")) continue;
-  const slug = f.replace(/\.md$/i, "");
-  if (HAND_WRITTEN_SLUGS.has(slug)) continue;
-  if (allowedSlugs.has(slug)) continue;
-  fs.unlinkSync(path.join(OUT_DIR, f));
-  console.warn("Removed from public docs (not allowlisted):", f);
+// Remove synced files whose source no longer exists in repo docs/.
+// Only touches files that match a currently-allowlisted slug. Unknown files
+// (hand-written pages, subdirectory content) are left untouched.
+for (const slug of allowedSlugs) {
+  const outFile = path.join(OUT_DIR, `${slug}.md`);
+  if (!fs.existsSync(outFile)) continue;
+  const srcFile = [...ALLOWLIST].find((f) => toSlug(f) === slug);
+  if (srcFile && !fs.existsSync(path.join(REPO_DOCS, srcFile))) {
+    fs.unlinkSync(outFile);
+    console.warn("Removed synced file (source deleted):", `${slug}.md`);
+  }
 }
 
 console.log(`Synced ${count} public doc(s) to ${OUT_DIR}`);

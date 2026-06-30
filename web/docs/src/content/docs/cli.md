@@ -3,8 +3,6 @@ title: CLI Reference
 description: The ff CLI has moved to its own repository
 ---
 
-# CLI Reference
-
 The `ff` CLI has moved to its own repository: **[functionfly/ff-cli](https://github.com/functionfly/ff-cli)**
 
 For installation instructions and full CLI documentation, please visit the [ff-cli repository](https://github.com/functionfly/ff-cli).

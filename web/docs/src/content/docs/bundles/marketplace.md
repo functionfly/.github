@@ -5,8 +5,6 @@ sidebar:
   order: 3
 ---
 
-# Marketplace Bundle
-
 The complete backend for multi-vendor marketplaces. Handle sellers, listings, payments, reviews, and moderation—all built in.
 
 ## What's Included
