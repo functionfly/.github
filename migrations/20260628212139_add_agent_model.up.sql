@@ -1,0 +1,1 @@
+ALTER TABLE agent_identities ADD COLUMN IF NOT EXISTS model VARCHAR(255) NOT NULL DEFAULT 'gpt-4o-mini';

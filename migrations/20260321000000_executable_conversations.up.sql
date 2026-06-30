@@ -25,8 +25,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     -- Participants: array of user UUIDs as JSONB array of strings (for DMs typically 2; for org_thread can be more)
     participant_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
 
-    -- Optional link to Flywheel thread (e.g. when "Move to Private Debug Thread")
-    source_thread_id UUID REFERENCES flywheel_threads(id),
+    -- Optional link to source thread (e.g. when "Move to Private Debug Thread")
+    source_thread_id UUID,
     -- Optional org/tenant scope for org_thread
     organization_id UUID,
 

@@ -8,7 +8,6 @@ DELETE FROM blog_posts WHERE slug IN (
     'state-fabric',
     'trust-layer-for-ai-agents',
     'zero-knowledge-secrets-vault',
-    'flywheel-network',
     'building-first-ai-agent'
 );
 
