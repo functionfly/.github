@@ -23,6 +23,12 @@ export interface MCPConnectionsResponse {
   connections: MCPConnection[];
 }
 
+export interface MCPConnectionTestResponse {
+  success: boolean;
+  message: string;
+  latency_ms: number;
+}
+
 export interface MCPSettingsResponse extends MCPSettingsGlobal {}
 
 export const mcpApi = {
@@ -96,5 +102,21 @@ export const mcpApi = {
    */
   updateSettings: async (settings: Partial<MCPSettingsGlobal>): Promise<MCPSettingsResponse> => {
     return apiClient.patch<MCPSettingsResponse>('/v1/mcp/settings', settings);
+  },
+
+  /**
+   * Toggle a client connection enabled/disabled
+   * PATCH /v1/mcp/connections/:clientType
+   */
+  toggleConnection: async (clientType: string, enabled: boolean): Promise<{ enabled: boolean }> => {
+    return apiClient.patch<{ enabled: boolean }>(`/v1/mcp/connections/${clientType}`, { enabled });
+  },
+
+  /**
+   * Test MCP connection health
+   * POST /v1/mcp/connections/:clientType/test
+   */
+  testConnection: async (clientType: string): Promise<MCPConnectionTestResponse> => {
+    return apiClient.post<MCPConnectionTestResponse>(`/v1/mcp/connections/${clientType}/test`);
   },
 };

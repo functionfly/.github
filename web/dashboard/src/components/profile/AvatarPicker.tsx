@@ -10,6 +10,36 @@ const DEFAULT_AVATARS = [
 
 const MAX_FILE_SIZE_MB = 5;
 const ACCEPT_IMAGES = 'image/jpeg,image/png,image/webp,image/gif';
+const AVATAR_MAX_DIM = 512;
+const AVATAR_QUALITY = 0.82;
+
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > AVATAR_MAX_DIM || height > AVATAR_MAX_DIM) {
+          const ratio = Math.min(AVATAR_MAX_DIM / width, AVATAR_MAX_DIM / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { reject(new Error('Canvas not supported')); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', AVATAR_QUALITY));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 export interface AvatarPickerProps {
   open: boolean;
@@ -28,20 +58,20 @@ export function AvatarPicker({
 }: AvatarPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
       toast.error(`File is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
+    try {
+      const dataUrl = await compressImage(file);
       onSelect(dataUrl);
       onOpenChange(false);
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      toast.error('Failed to process image');
+    }
     e.target.value = '';
   };
 

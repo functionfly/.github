@@ -21,8 +21,13 @@ export function SectionCollapsible({
 
   return (
     <Card
-      className="overflow-hidden border-border-subtle/50 transition-all duration-200"
-      style={{ background: 'var(--bg-secondary)' }}
+      className="overflow-hidden transition-all duration-200"
+      style={{
+        background: 'var(--panel)',
+        borderColor: 'var(--panel-edge)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-chamber)',
+      }}
     >
       <CardHeader className="pb-0 pt-3 px-4">
         <button
@@ -32,14 +37,14 @@ export function SectionCollapsible({
           aria-expanded={isOpen}
         >
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-text-primary">{title}</span>
+            <span className="text-sm font-semibold text-[var(--text)]">{title}</span>
             {badge && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[#FF6B35]/10 text-[#FF6B35]">
+              <span className="text-xs px-2 py-0.5 rounded-[var(--radius-sm)] bg-[rgba(255,122,61,0.1)] text-[var(--accent)]">
                 {badge}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-text-muted">
+          <div className="flex items-center gap-2 text-[var(--text-faint)]">
             <span className="text-xs hidden sm:inline">{isOpen ? t('common.hide', { defaultValue: 'Hide' }) : t('common.show', { defaultValue: 'Show' })}</span>
             {isOpen ? (
               <ChevronUp className="w-4 h-4" />

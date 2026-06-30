@@ -428,6 +428,7 @@ export { useSwipeGesture } from './useSwipeGesture';
 export { useDirection } from './useDirection';
 export { useSyncUserLanguage } from './useSyncUserLanguage';
 export { useWebVitals } from './useWebVitals';
+export { useBreadcrumbs } from './useBreadcrumbs';
 
 // Form Hooks
 export { useFormWithDraft } from './useFormWithDraft';

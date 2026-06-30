@@ -158,8 +158,8 @@ export function AgentMarketplaceView({ variant = 'embedded', onAgentSelect }: Ag
             {/* Stats */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)', textAlign: 'center', marginBottom: 'var(--space-3)' }}>
               {[
-                { icon: Star, value: agent.ratingScore.toFixed(1), label: 'Rating', color: 'var(--status-pending)' },
-                { icon: TrendingUp, value: agent.roiScore.toFixed(1), label: 'ROI', color: 'var(--status-ok)' },
+                { icon: Star, value: (agent.ratingScore ?? 0).toFixed(1), label: 'Rating', color: 'var(--status-pending)' },
+                { icon: TrendingUp, value: (agent.roiScore ?? 0).toFixed(1), label: 'ROI', color: 'var(--status-ok)' },
                 { icon: Bot, value: agent.totalCalls.toLocaleString(), label: 'Calls', color: 'var(--foil-a)' },
               ].map(({ icon: Icon, value, label, color }) => (
                 <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--space-2)', background: 'var(--panel)', borderRadius: 'var(--radius)' }}>
@@ -204,7 +204,7 @@ export function AgentMarketplaceView({ variant = 'embedded', onAgentSelect }: Ag
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{formatPrice(hireDialog)}</span>
               <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
                 <Star style={{ width: 11, height: 11, color: 'var(--status-pending)' }} />
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 500 }}>{hireDialog.ratingScore.toFixed(1)}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 500 }}>{(hireDialog.ratingScore ?? 0).toFixed(1)}</span>
               </div>
             </div>
 

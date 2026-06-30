@@ -2,7 +2,8 @@ import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Info, Shield } from 'lucide-react';
+import { type SandboxTier, getTierColor, getTierLabel } from '@/api/sandbox';
 
 export type RuntimeType = 'nodejs18' | 'nodejs20' | 'python3.11' | 'python3.12' | 'deno';
 
@@ -58,6 +59,7 @@ interface RuntimeSelectorProps {
   disabled?: boolean;
   showDescription?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  sandboxTier?: SandboxTier;
 }
 
 export function RuntimeSelector({
@@ -66,6 +68,7 @@ export function RuntimeSelector({
   disabled = false,
   showDescription = true,
   size = 'md',
+  sandboxTier,
 }: RuntimeSelectorProps) {
   const selectedRuntime = RUNTIME_OPTIONS.find((r) => r.id === value);
 
@@ -111,6 +114,12 @@ export function RuntimeSelector({
                   size="sm" 
                   showLabel={true}
                 />
+                {sandboxTier && (
+                  <Badge className={`${getTierColor(sandboxTier)} text-[10px] px-1.5 py-0 border`}>
+                    <Shield className="w-2.5 h-2.5 mr-0.5" />
+                    {getTierLabel(sandboxTier)}
+                  </Badge>
+                )}
               </div>
             )}
           </SelectValue>

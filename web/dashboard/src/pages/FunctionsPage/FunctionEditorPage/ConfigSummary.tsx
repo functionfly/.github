@@ -164,15 +164,19 @@ export function ConfigSummary({ editor }: Props) {
     <div className="space-y-4">
       {/* Configuration Summary */}
       <Card
-        className="card border-border-subtle/50"
+        className="overflow-hidden"
         style={{
-          background: 'var(--bg-secondary)',
+          background: 'var(--panel)',
+          backgroundImage: 'radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%)',
+          borderColor: 'var(--panel-edge)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-chamber)',
         }}
       >
         <CardHeader className="pb-3 pt-4 px-5">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#FF6B35]" />
-            <CardTitle className="text-sm font-semibold text-text-primary font-display">
+            <Sparkles className="w-4 h-4 text-[var(--status-ok)]" />
+            <CardTitle className="text-sm font-semibold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)' }}>
               {t('funcEditor.configSummary')}
             </CardTitle>
           </div>
@@ -180,8 +184,8 @@ export function ConfigSummary({ editor }: Props) {
         <CardContent className="px-5 pb-5 space-y-2.5">
           {summaryRows.map(({ label, value, mono }) => (
             <div key={label} className="flex items-start justify-between gap-3 text-xs">
-              <span className="text-text-muted shrink-0">{label}</span>
-              <span className={`text-text-secondary text-right ${mono ? 'font-mono' : ''}`}>
+              <span className="text-[var(--text-faint)] shrink-0">{label}</span>
+              <span className={`text-[var(--text-dim)] text-right ${mono ? 'font-[var(--font-mono)]' : ''}`}>
                 {value}
               </span>
             </div>
@@ -191,20 +195,23 @@ export function ConfigSummary({ editor }: Props) {
 
       {/* Enhanced Cost Estimator */}
       <Card
-        className="card border-border-subtle/50"
+        className="overflow-hidden"
         style={{
-          background: 'var(--bg-secondary)',
+          background: 'var(--panel)',
+          borderColor: 'var(--panel-edge)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-chamber)',
         }}
       >
         <CardHeader className="pb-2 pt-4 px-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <CardTitle className="text-sm font-semibold text-text-primary font-display">
+              <DollarSign className="w-4 h-4 text-[var(--status-ok)]" />
+              <CardTitle className="text-sm font-semibold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)' }}>
                 {t('funcEditor.estimatedCost')}
               </CardTitle>
             </div>
-            <span className="text-xs text-text-muted">
+            <span className="text-xs text-[var(--text-faint)]">
               {t('funcEditor.invocationsPerMonth', { count: monthlyInvocations.toLocaleString() })}
             </span>
           </div>
@@ -225,10 +232,10 @@ export function ConfigSummary({ editor }: Props) {
                 <button
                   key={preset.value}
                   onClick={() => setMonthlyInvocations(preset.value)}
-                  className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                  className={`text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)] transition-colors ${
                     monthlyInvocations === preset.value
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'text-text-muted hover:text-text-secondary'
+                      ? 'bg-[rgba(143,255,208,0.1)] text-[var(--status-ok)]'
+                      : 'text-[var(--text-faint)] hover:text-[var(--text-dim)]'
                   }`}
                   title={t(preset.descriptionKey)}
                 >
@@ -240,16 +247,16 @@ export function ConfigSummary({ editor }: Props) {
 
           {/* Total cost */}
           <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-semibold font-mono text-emerald-400">
+            <p className="text-2xl font-semibold font-[var(--font-mono)] text-[var(--status-ok)]">
               {formatCurrency(cost.total)}
             </p>
-            <span className="text-xs text-text-muted">{t('funcEditor.perMonth')}</span>
+            <span className="text-xs text-[var(--text-faint)]">{t('funcEditor.perMonth')}</span>
           </div>
 
           {/* Cost breakdown toggle */}
           <button
             onClick={() => setShowDetails(!showDetails)}
-            className="flex items-center gap-1 text-xs text-text-muted hover:text-text-secondary transition-colors mt-2"
+            className="flex items-center gap-1 text-xs text-[var(--text-faint)] hover:text-[var(--text-dim)] transition-colors mt-2"
           >
             <Info className="w-3 h-3" />
             {showDetails ? t('funcEditor.hideBreakdown') : t('funcEditor.viewBreakdown')}
@@ -257,45 +264,45 @@ export function ConfigSummary({ editor }: Props) {
 
           {/* Cost breakdown */}
           {showDetails && (
-            <div className="mt-3 p-3 rounded-lg bg-bg-tertiary/50 space-y-2">
+            <div className="mt-3 p-3 rounded-[var(--radius)] bg-[var(--panel-raised)] space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-text-muted">{t('funcEditor.computeGBSeconds')}</span>
-                <span className="text-text-secondary font-mono">
+                <span className="text-[var(--text-faint)]">{t('funcEditor.computeGBSeconds')}</span>
+                <span className="text-[var(--text-dim)] font-[var(--font-mono)]">
                   {formatCurrency(cost.computeCost)}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-text-muted">{t('funcEditor.requests')}</span>
-                <span className="text-text-secondary font-mono">
+                <span className="text-[var(--text-faint)]">{t('funcEditor.requests')}</span>
+                <span className="text-[var(--text-dim)] font-[var(--font-mono)]">
                   {formatCurrency(cost.requestCost)}
                 </span>
               </div>
               {warmInstances > 0 && (
                 <div className="flex justify-between text-xs">
-                  <span className="text-text-muted">{t('funcEditor.warmInstancesLabel', { count: warmInstances })}</span>
-                  <span className="text-text-secondary font-mono">
+                  <span className="text-[var(--text-faint)]">{t('funcEditor.warmInstancesLabel', { count: warmInstances })}</span>
+                  <span className="text-[var(--text-dim)] font-[var(--font-mono)]">
                     {formatCurrency(cost.warmInstanceCost)}
                   </span>
                 </div>
               )}
-              <div className="pt-2 border-t border-border-subtle/30 flex justify-between text-xs font-medium">
-                <span className="text-text-primary">{t('funcEditor.total')}</span>
-                <span className="text-emerald-400 font-mono">{formatCurrency(cost.total)}</span>
+              <div className="pt-2 border-t border-[var(--panel-edge)] flex justify-between text-xs font-medium">
+                <span className="text-[var(--text)]">{t('funcEditor.total')}</span>
+                <span className="text-[var(--status-ok)] font-[var(--font-mono)]">{formatCurrency(cost.total)}</span>
               </div>
             </div>
           )}
 
           {/* Free tier notice */}
           {cost.total < 5 && (
-            <p className="text-xs text-emerald-500/80 mt-3 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            <p className="text-xs text-[var(--status-ok)] mt-3 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-ok)]" />
               {t('funcEditor.freeTierNotice')}
             </p>
           )}
 
           {cost.total > 100 && (
-            <p className="text-xs text-amber-400 mt-3 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+            <p className="text-xs text-[var(--status-pending)] mt-3 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-pending)]" />
               {t('funcEditor.optimizeNotice')}
             </p>
           )}
@@ -304,33 +311,35 @@ export function ConfigSummary({ editor }: Props) {
 
       {/* Deployment Checklist */}
       <Card
-        className="card border-border-subtle/50"
+        className="overflow-hidden"
         style={{
-          background: 'var(--bg-secondary)',
+          background: 'var(--panel)',
+          borderColor: 'var(--panel-edge)',
+          borderRadius: 'var(--radius-lg)',
+          boxShadow: 'var(--shadow-chamber)',
         }}
       >
         <CardHeader className="pb-2 pt-4 px-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#FF6B35]" />
-              <CardTitle className="text-sm font-semibold text-text-primary font-display">
+              <CheckCircle2 className="w-4 h-4 text-[var(--status-ok)]" />
+              <CardTitle className="text-sm font-semibold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)' }}>
                 {t('funcEditor.deploymentChecklist')}
               </CardTitle>
             </div>
-            <span className="text-xs font-mono text-text-muted">
+            <span className="text-xs font-[var(--font-mono)] text-[var(--text-faint)]">
               {completedCount}/{checklist.length}
             </span>
           </div>
           {/* Progress bar */}
-          <div className="mt-2.5 h-1.5 rounded-full bg-bg-tertiary overflow-hidden">
+          <div className="mt-2.5 h-1.5 rounded-full bg-[var(--panel-raised)] overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${completionPct}%`,
-                  background:
-                    completionPct === 100
-                      ? 'linear-gradient(90deg, #10b981, #34d399)'
-                      : 'linear-gradient(90deg, #FF6B35, #FF8C42)',
+                  background: completionPct === 100
+                    ? 'var(--status-ok)'
+                    : 'var(--accent)',
                 }}
             />
           </div>
@@ -339,11 +348,11 @@ export function ConfigSummary({ editor }: Props) {
           {checklist.map((item) => (
             <div key={item.label} className="flex items-center gap-2.5 text-xs">
               {item.done ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#FF6B35] shrink-0" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--status-ok)] shrink-0" />
               ) : (
-                <Circle className="w-3.5 h-3.5 text-text-muted shrink-0" />
+                <Circle className="w-3.5 h-3.5 text-[var(--text-faint)] shrink-0" />
               )}
-              <span className={item.done ? 'text-text-secondary' : 'text-text-muted'}>
+              <span className={item.done ? 'text-[var(--text-dim)]' : 'text-[var(--text-faint)]'}>
                 {item.label}
               </span>
             </div>

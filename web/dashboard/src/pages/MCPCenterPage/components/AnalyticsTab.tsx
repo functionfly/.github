@@ -22,7 +22,7 @@ export function AnalyticsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-brand-500" />
+            <BarChart3 className="h-5 w-5 text-[var(--status-ok)]" />
             MCP Analytics
           </h2>
           <p className="text-sm text-text-secondary mt-1">
@@ -72,7 +72,7 @@ export function AnalyticsTab() {
             change={kpis.totalCalls.change}
             subtitle="vs previous period"
             icon={<BarChart3 className="h-5 w-5" />}
-            iconColor="text-brand-500"
+            iconColor="text-[var(--status-ok)]"
           />
           <MCPMetricsCard
             title="Unique Clients"
@@ -80,7 +80,7 @@ export function AnalyticsTab() {
             change={kpis.uniqueClients.change}
             subtitle="vs previous period"
             icon={<BarChart3 className="h-5 w-5" />}
-            iconColor="text-purple-500"
+            iconColor="text-[var(--foil-b)]"
           />
           <MCPMetricsCard
             title="Avg Latency"
@@ -88,7 +88,7 @@ export function AnalyticsTab() {
             change={kpis.avgLatency.change}
             subtitle="vs previous period"
             icon={<BarChart3 className="h-5 w-5" />}
-            iconColor="text-amber-500"
+            iconColor="text-[var(--status-pending)]"
             lowerIsBetter
           />
           <MCPMetricsCard
@@ -97,7 +97,7 @@ export function AnalyticsTab() {
             change={kpis.successRate.change}
             subtitle="vs previous period"
             icon={<BarChart3 className="h-5 w-5" />}
-            iconColor="text-emerald-500"
+            iconColor="text-[var(--status-ok)]"
             higherIsBetter
           />
         </div>

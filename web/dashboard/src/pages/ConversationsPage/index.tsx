@@ -31,9 +31,12 @@ import { Coins, Play, MessageSquare, Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { PageGrid } from '@/components/containment';
+import { usePageTitle } from '@/hooks';
 import '@/styles/conversations-aviation.css';
 
 export default function ConversationsPage() {
+  usePageTitle('Conversations');
   const { username, id: conversationId } = useParams<{ username?: string; id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -287,9 +290,10 @@ export default function ConversationsPage() {
   };
 
   return (
-    <div className="conv-aviation-page conv-aviation-grid-bg flex h-full">
+    <div className="conv-aviation-page flex h-full" style={{ background: 'var(--bg)' }}>
+      <PageGrid />
       {/* Conversations sidebar */}
-      <div className="conv-aviation-sidebar w-72 shrink-0 border-r border-border flex flex-col">
+      <div className="conv-aviation-sidebar w-72 shrink-0 flex flex-col" style={{ borderRight: '1px solid var(--panel-edge)' }}>
         <ConversationSidebar
           conversations={conversations}
           loading={listLoading}
@@ -387,7 +391,7 @@ export default function ConversationsPage() {
             )}
             <ScrollArea className="conv-aviation-message-list flex-1 p-4">
               {convData?.type === 'fix_mode' && (
-                <div className="conv-aviation-fix-timeline mb-4 p-3 rounded-lg border border-border bg-card">
+                <div className="conv-aviation-fix-timeline mb-4 p-3 rounded-[var(--radius)]" style={{ border: '1px solid var(--panel-edge)', background: 'var(--panel-raised)' }}>
                   <FixModeLayout
                     conversation={convData}
                     isResolved={Boolean(convData.resolved_at)}
@@ -416,7 +420,7 @@ export default function ConversationsPage() {
                         {b.amount_cents ? ` · $${(b.amount_cents / 100).toFixed(2)}` : ''}
                       </span>
                       {b.claimed_by ? (
-                        <span className="text-xs text-muted-foreground">Claimed</span>
+                        <span className="text-xs" style={{ color: 'var(--text-faint)' }}>Claimed</span>
                       ) : (
                         <Button
                           size="sm"
@@ -456,7 +460,7 @@ export default function ConversationsPage() {
               displayForParticipantId={displayForParticipantId}
             />
             {showRunPanel && conversationId && currentUsername && (
-              <div className="conv-aviation-run-panel border-t border-border p-3 bg-muted/20">
+              <div className="conv-aviation-run-panel p-3" style={{ borderTop: '1px solid var(--panel-edge)', background: 'var(--panel-raised)' }}>
                 <RunInThreadPanel
                   username={currentUsername}
                   conversationId={conversationId}
@@ -464,7 +468,7 @@ export default function ConversationsPage() {
                 />
               </div>
             )}
-            <div className="conv-aviation-composer flex items-center gap-1 border-t border-border px-2 py-1">
+            <div className="conv-aviation-composer flex items-center gap-1 px-2 py-1" style={{ borderTop: '1px solid var(--panel-edge)' }}>
               <Button
                 variant="ghost"
                 size="sm"

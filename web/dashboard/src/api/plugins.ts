@@ -30,7 +30,7 @@ export interface Plugin {
 
 export type PluginType = 'ui' | 'graph' | 'ai_tool' | 'runtime' | 'infrastructure' | 'marketplace';
 export type PluginStatus = 'enabled' | 'disabled' | 'error' | 'paused';
-export type SandboxTier = 'wasm' | 'worker' | 'microvm' | 'enterprise';
+export type SandboxTier = 'wasm' | 'worker' | 'gvisor' | 'microvm' | 'enterprise';
 
 export interface PluginSandbox {
   id: string;

@@ -1,37 +1,52 @@
-import { agentApi, type AgentIdentity, type BehavioralPolicy } from '@/api/agent';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
+import { agentApi } from '@/api/agent';
 import { useAgent, useAgentPolicy, useAgentUsage, useUpdateAgent, useUpdateAgentPolicy } from '@/hooks/useAgent';
 import { useAgentChildren } from '@/hooks/useAgentSwarm';
 import { useAgentMemories } from '@/hooks/useAgentMemory';
 import { ROUTES } from '@/lib/constants';
+import { usePageTitle } from '@/hooks';
 import {
-  ArrowLeft,
-  Bot,
-  Brain,
-  GitBranch,
-  Loader2,
-  MemoryStick,
-  Save,
-  Settings,
-  Trash2,
-  Wallet,
-  Zap,
-  BarChart3,
+  ArrowLeft, Bot, Brain, Copy, Check, GitBranch, Loader2, MemoryStick, Save, Settings, Trash2, Wallet, BarChart3, Plus, X, Terminal, MessageSquare,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AgentMemoryGraph } from './AgentDetailPage/components/AgentMemoryGraph';
 import { SwarmTopologyView } from '@/components/topology';
 import AgentAnalyticsComponent from '@/components/analytics';
+import {
+  PageGrid, Chamber, SealedButton, FrameButton, StatusPill, Card,
+} from '@/components/containment';
+import './AgentDetailPage.css';
+
+const PRESET_CAPABILITIES = [
+  {
+    category: 'Data & Search',
+    items: [
+      { key: 'web_search', label: 'Web Search', description: 'Search the internet for real-time information' },
+      { key: 'database_query', label: 'Database', description: 'Read and write to databases' },
+      { key: 'file_read', label: 'File Read', description: 'Read files from storage' },
+      { key: 'file_write', label: 'File Write', description: 'Write and modify files' },
+    ],
+  },
+  {
+    category: 'Communication',
+    items: [
+      { key: 'http_request', label: 'HTTP Requests', description: 'Make outbound HTTP calls to external APIs' },
+      { key: 'email', label: 'Email', description: 'Send and receive emails' },
+      { key: 'notification', label: 'Notifications', description: 'Send push or in-app notifications' },
+    ],
+  },
+  {
+    category: 'AI & Processing',
+    items: [
+      { key: 'code_execution', label: 'Code Execution', description: 'Run code in a sandboxed environment' },
+      { key: 'image_generation', label: 'Image Generation', description: 'Generate images from text prompts' },
+      { key: 'text_to_speech', label: 'Text to Speech', description: 'Convert text to spoken audio' },
+      { key: 'speech_to_text', label: 'Speech to Text', description: 'Transcribe audio to text' },
+    ],
+  },
+];
 
 function sanitizeAgentIdParam(raw: string | undefined): string | null {
   const trimmed = raw?.trim();
@@ -39,7 +54,14 @@ function sanitizeAgentIdParam(raw: string | undefined): string | null {
   return trimmed;
 }
 
+const statusToPill = (status: string): 'live' | 'pending' | 'revoked' => {
+  if (status === 'active') return 'live';
+  if (status === 'suspended') return 'revoked';
+  return 'pending';
+};
+
 export function AgentDetailPage() {
+  usePageTitle('Agent Detail');
   const { t } = useTranslation();
   const { id: pathAgentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -47,8 +69,6 @@ export function AgentDetailPage() {
 
   const [activeTab, setActiveTab] = useState('overview');
   const [deleting, setDeleting] = useState(false);
-
-  // Form states for settings
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [autonomousEnabled, setAutonomousEnabled] = useState(false);
@@ -58,6 +78,12 @@ export function AgentDetailPage() {
   const [maxWallTimeMs, setMaxWallTimeMs] = useState(30000);
   const [maxMemoryGrowthMB, setMaxMemoryGrowthMB] = useState(512);
   const [saving, setSaving] = useState(false);
+  const [capabilities, setCapabilities] = useState<Record<string, unknown>>({});
+  const [newCapKey, setNewCapKey] = useState('');
+  const [newCapValue, setNewCapValue] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [model, setModel] = useState('gpt-4o-mini');
+  const [models, setModels] = useState<Array<{ id: string; name: string; provider: string; tier: string; cost: string }>>([]);
 
   const { data: agentData, isLoading: loading, error } = useAgent(agentId ?? '');
   const { data: policyData } = useAgentPolicy(agentId ?? '');
@@ -73,17 +99,21 @@ export function AgentDetailPage() {
   const children = childrenData?.children ?? [];
   const memories = memoriesData?.memories ?? [];
 
-  // Initialize form states from agent data
   useEffect(() => {
     if (agent) {
       setName(agent.name || '');
       setDescription(agent.description || '');
       setAutonomousEnabled(agent.autonomousEnabled ?? false);
       setEvolutionEnabled(agent.evolutionEnabled ?? false);
+      setCapabilities(agent.capabilities ?? {});
+      setModel(agent.model || 'gpt-4o-mini');
     }
   }, [agent]);
 
-  // Initialize policy form states
+  useEffect(() => {
+    agentApi.getModels().then((res) => setModels(res.models)).catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (policy) {
       setMaxExecutionDepth(policy.maxExecutionDepth ?? 5);
@@ -93,16 +123,42 @@ export function AgentDetailPage() {
     }
   }, [policy]);
 
-  const handleDelete = async () => {
-    if (!agentId || !confirm(t('agentDetail.confirmDelete', { name: agent?.name ?? agentId }))) {
-      return;
+  const isDirty = useMemo(() => {
+    if (!agent) return false;
+    if (name !== (agent.name || '')) return true;
+    if (description !== (agent.description || '')) return true;
+    if (autonomousEnabled !== (agent.autonomousEnabled ?? false)) return true;
+    if (evolutionEnabled !== (agent.evolutionEnabled ?? false)) return true;
+    if (JSON.stringify(capabilities) !== JSON.stringify(agent.capabilities ?? {})) return true;
+    if (model !== (agent.model || 'gpt-4o-mini')) return true;
+    if (policy) {
+      if (maxExecutionDepth !== (policy.maxExecutionDepth ?? 5)) return true;
+      if (maxRecursionDepth !== (policy.maxRecursionDepth ?? 3)) return true;
+      if (maxWallTimeMs !== (policy.maxWallTimeMs ?? 30000)) return true;
+      if (maxMemoryGrowthMB !== (policy.maxMemoryGrowthMB ?? 512)) return true;
     }
+    return false;
+  }, [agent, policy, name, description, autonomousEnabled, evolutionEnabled, capabilities, model, maxExecutionDepth, maxRecursionDepth, maxWallTimeMs, maxMemoryGrowthMB]);
+
+  const blocker = null;
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) { e.preventDefault(); }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  const handleDelete = async () => {
+    if (!agentId || !confirm(t('agentDetail.confirmDelete', { name: agent?.name ?? agentId }))) return;
     setDeleting(true);
     try {
       await agentApi.deleteAgent(agentId);
       toast.success(t('agentDetail.agentDeleted'));
       navigate(ROUTES.AGENT_LIST);
-    } catch {
+    } catch (err) {
+      console.error('Failed to delete agent:', err);
       toast.error(t('agentDetail.failedToDelete'));
     } finally {
       setDeleting(false);
@@ -113,446 +169,462 @@ export function AgentDetailPage() {
     if (!agentId) return;
     setSaving(true);
     try {
-      await updateAgent.mutateAsync({
-        name,
-        description,
-      });
-
-      await updatePolicy.mutateAsync({
-        agentId,
-        maxExecutionDepth,
-        maxRecursionDepth,
-        maxWallTimeMs,
-        maxMemoryGrowthMB,
-      });
-
+      await updateAgent.mutateAsync({ name, description, capabilities, autonomous_enabled: autonomousEnabled, evolution_enabled: evolutionEnabled, model });
+      await updatePolicy.mutateAsync({ agentId, maxExecutionDepth, maxRecursionDepth, maxWallTimeMs, maxMemoryGrowthMB });
       toast.success(t('agentDetail.settingsSaved'));
-    } catch {
+    } catch (err) {
+      console.error('Failed to save agent settings:', err);
       toast.error(t('agentDetail.failedToSave'));
     } finally {
       setSaving(false);
     }
   };
 
+  const handleAddCapability = () => {
+    const key = newCapKey.trim();
+    if (!key) return;
+    setCapabilities((prev) => ({ ...prev, [key]: newCapValue || true }));
+    setNewCapKey('');
+    setNewCapValue('');
+  };
+
+  const handleRemoveCapability = (key: string) => {
+    setCapabilities((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const handleCopyAgentName = async () => {
+    const value = agent?.name || agentId;
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(t('agentDetail.agentNameCopied'));
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(t('agentDetail.copyFailed'));
+    }
+  };
+
   if (!agentId) {
     return (
-      <div className="space-y-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to={ROUTES.AGENT_LIST}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('agentDetail.backToAgents')}
-          </Link>
-        </Button>
-        <p className="text-sm text-muted-foreground">{t('agentDetail.invalidAgentLink')}</p>
+      <div className="adp-page">
+        <PageGrid />
+        <FrameButton size="sm" onClick={() => navigate(ROUTES.AGENT_LIST)} iconLeft={<ArrowLeft className="adp-icon-sm" />}>
+          {t('agentDetail.backToAgents')}
+        </FrameButton>
+        <p className="adp-hint">{t('agentDetail.invalidAgentLink')}</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">{t('agentDetail.loadingAgent')}</p>
+      <div className="adp-page">
+        <PageGrid />
+        <div className="adp-loading"><Loader2 className="adp-loading__spinner" /><p className="adp-loading__text">{t('agentDetail.loadingAgent')}</p></div>
       </div>
     );
   }
 
   if (error || !agent) {
     return (
-      <div className="space-y-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to={ROUTES.AGENT_LIST}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('agentDetail.backToAgents')}
-          </Link>
-        </Button>
-        <Card className="border-destructive/40">
-          <CardHeader>
-            <CardTitle>{t('agentDetail.agentNotFound')}</CardTitle>
-            <CardDescription>
-              {error instanceof Error ? error.message : t('agentDetail.agentNotFoundDescription')}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+      <div className="adp-page">
+        <PageGrid />
+        <FrameButton size="sm" onClick={() => navigate(ROUTES.AGENT_LIST)} iconLeft={<ArrowLeft className="adp-icon-sm" />}>
+          {t('agentDetail.backToAgents')}
+        </FrameButton>
+        <Chamber className="adp-error">
+          <h2 className="adp-error__title">{t('agentDetail.agentNotFound')}</h2>
+          <p className="adp-error__desc">{error instanceof Error ? error.message : t('agentDetail.agentNotFoundDescription')}</p>
+        </Chamber>
       </div>
     );
   }
 
   const caps = agent.capabilities ? Object.keys(agent.capabilities) : [];
 
+  const tabs = [
+    { value: 'overview', label: t('agentDetail.overview'), icon: Brain },
+    { value: 'settings', label: t('agentDetail.settings'), icon: Settings },
+    { value: 'console', label: 'Console', icon: Terminal },
+    { value: 'topology', label: t('agentDetail.topology'), icon: GitBranch },
+    { value: 'analytics', label: t('agentDetail.analytics'), icon: BarChart3 },
+    { value: 'memory', label: t('agentDetail.memoryGraph'), icon: MemoryStick },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="adp-page">
+      <PageGrid />
+
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
-            <Link to={ROUTES.AGENT_LIST}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {t('agentDetail.backToAgents')}
-            </Link>
-          </Button>
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-500/15 text-brand-500">
-              <Bot className="h-5 w-5" />
-            </div>
+      <div className="adp-header">
+        <div className="adp-header__left">
+          <FrameButton size="sm" onClick={() => navigate(ROUTES.AGENT_LIST)} iconLeft={<ArrowLeft className="adp-icon-sm" />}>
+            {t('agentDetail.backToAgents')}
+          </FrameButton>
+          <div className="adp-header__identity">
+            <div className="adp-header__icon-wrap"><Bot className="adp-header__icon" /></div>
             <div>
-              <h1 className="text-2xl font-bold">{agent.name || agent.agentId}</h1>
-              <p className="font-mono text-xs text-muted-foreground">{agent.agentId}</p>
+              <h1 className="adp-header__title">{agent.name || agent.agentId}</h1>
+              <button className="adp-header__meta-btn" onClick={handleCopyAgentName} title={t('agentDetail.copyAgentName')}>
+                <span className="adp-header__meta">{agent.name || agent.agentId}</span>
+                {copied ? <Check className="adp-icon-xs adp-copy-ok" /> : <Copy className="adp-icon-xs adp-copy-icon" />}
+              </button>
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.AGENT_ANALYTICS.replace(':id', agentId ?? '')}>
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Analytics
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.AGENT_WALLET.replace(':id', agentId ?? '')}>
-              <Wallet className="h-4 w-4 mr-2" />
-              {t('agentDetail.wallet')}
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.AGENT_EDIT.replace(':id', agentId ?? '')}>
-              <Settings className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-destructive hover:text-destructive gap-2"
-            onClick={() => void handleDelete()}
-            disabled={deleting}
-          >
-            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-            {t('agentDetail.delete')}
-          </Button>
+        <div className="adp-header__actions">
+          <FrameButton size="sm" onClick={() => navigate(ROUTES.agentAnalyticsPath(agent?.agentId ?? agentId ?? ''))} iconLeft={<BarChart3 className="adp-icon-sm" />}>{t('agentDetail.analytics')}</FrameButton>
+          <FrameButton size="sm" onClick={() => navigate(ROUTES.agentWalletPath(agent?.agentId ?? agentId ?? ''))} iconLeft={<Wallet className="adp-icon-sm" />}>{t('agentDetail.wallet')}</FrameButton>
         </div>
       </div>
 
       {/* Status Badges */}
-      <div className="flex flex-wrap gap-2">
-        <Badge className={agent.status === 'active' ? 'bg-green-600' : ''}>{agent.status}</Badge>
-        {agent.swarmRole && <Badge variant="secondary">{agent.swarmRole}</Badge>}
+      <div className="adp-badges">
+        <StatusPill status={statusToPill(agent.status)} label={agent.status} />
+        {agent.swarmRole && <span className="adp-role-badge">{agent.swarmRole}</span>}
         {agent.parentAgentId && (
-          <Badge variant="outline" className="text-amber-600 border-amber-500/40">
+          <span className="adp-parent-badge">
             {t('agentDetail.childOf')}{' '}
-            <Link
-              className="ml-1 underline font-mono text-xs"
-              to={`/agents/${encodeURIComponent(agent.parentAgentId)}`}
-            >
-              {agent.parentAgentId}
-            </Link>
-          </Badge>
+            <Link className="adp-parent-link" to={`/agents/${encodeURIComponent(agent.parentAgentId)}`}>{agent.parentAgentId}</Link>
+          </span>
         )}
-        {agent.autonomousEnabled && <Badge variant="outline">{t('agentDetail.autonomous')}</Badge>}
-        {agent.evolutionEnabled && <Badge variant="outline">{t('agentDetail.evolutionBadge')}</Badge>}
+        {agent.autonomousEnabled && <span className="adp-feature-badge">{t('agentDetail.autonomous')}</span>}
+        {agent.evolutionEnabled && <span className="adp-feature-badge">{t('agentDetail.evolutionBadge')}</span>}
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full max-w-lg grid-cols-5">
-          <TabsTrigger value="overview">
-            <Brain className="h-4 w-4 mr-2" />
-            {t('agentDetail.overview')}
-          </TabsTrigger>
-          <TabsTrigger value="settings">
-            <Settings className="h-4 w-4 mr-2" />
-            {t('agentDetail.settings')}
-          </TabsTrigger>
-          <TabsTrigger value="topology">
-            <GitBranch className="h-4 w-4 mr-2" />
-            {t('agentDetail.topology')}
-          </TabsTrigger>
-          <TabsTrigger value="analytics">
-            <BarChart3 className="h-4 w-4 mr-2" />
-            {t('agentDetail.analytics')}
-          </TabsTrigger>
-          <TabsTrigger value="memory">
-            <MemoryStick className="h-4 w-4 mr-2" />
-            {t('agentDetail.memoryGraph')}
-          </TabsTrigger>
-        </TabsList>
+      <div className="adp-tabs">
+        {tabs.map((tab) => (
+          <button key={tab.value} className={`adp-tab ${activeTab === tab.value ? 'adp-tab--active' : ''}`}
+            onClick={() => setActiveTab(tab.value)}>
+            <tab.icon className="adp-icon-sm" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Agent Info Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('agentDetail.overview')}</CardTitle>
-                <CardDescription>{t('agentDetail.overviewDescription')}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {agent.description ? (
-                  <p className="text-sm text-muted-foreground">{agent.description}</p>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">{t('agentDetail.noDescription')}</p>
-                )}
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="adp-tab-content">
+          <div className="adp-grid-2">
+            <Card className="adp-card">
+              <div className="adp-card__header">
+                <h3 className="adp-card__title">{t('agentDetail.overview')}</h3>
+                <p className="adp-card__desc">{t('agentDetail.overviewDescription')}</p>
+              </div>
+              <div className="adp-card__body">
+                {agent.description ? <p className="adp-text">{agent.description}</p> : <p className="adp-text adp-text--muted">{t('agentDetail.noDescription')}</p>}
                 {caps.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
-                      {t('agentDetail.capabilities')}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {caps.map((c) => (
-                        <Badge key={c} variant="secondary" className="text-xs">
-                          {c.replace(/_/g, ' ')}
-                        </Badge>
-                      ))}
-                    </div>
+                  <div className="adp-caps">
+                    <p className="adp-caps__label">{t('agentDetail.capabilities')}</p>
+                    <div className="adp-caps__list">{caps.map((c) => <span key={c} className="adp-cap-tag">{c.replace(/_/g, ' ')}</span>)}</div>
                   </div>
                 )}
-              </CardContent>
+              </div>
             </Card>
 
-            {/* Usage Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('agentDetail.currentUsage')}</CardTitle>
-                <CardDescription>{t('agentDetail.realtimeAgentMetrics')}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <Card className="adp-card">
+              <div className="adp-card__header">
+                <h3 className="adp-card__title">{t('agentDetail.currentUsage')}</h3>
+                <p className="adp-card__desc">{t('agentDetail.realtimeAgentMetrics')}</p>
+              </div>
+              <div className="adp-card__body">
                 {usage ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('agentDetail.callsThisMinute')}</p>
-                      <p className="text-lg font-semibold">{usage.callsThisMinute}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('agentDetail.concurrentExecutions')}</p>
-                      <p className="text-lg font-semibold">{usage.concurrentExecutions}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('agentDetail.memoryUsage')}</p>
-                      <p className="text-lg font-semibold">{usage.memoryUsageMB} MB</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('agentDetail.avgExecutionTime')}</p>
-                      <p className="text-lg font-semibold">{usage.executionTimeMs} ms</p>
-                    </div>
-                    <div className="col-span-2 space-y-1">
-                      <p className="text-xs text-muted-foreground">{t('agentDetail.spendToday')}</p>
-                      <p className="text-lg font-semibold">${usage.spendToday.toFixed(4)}</p>
-                    </div>
+                  <div className="adp-stats-grid">
+                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.callsThisMinute')}</p><p className="adp-stat__value">{usage.callsThisMinute}</p></div>
+                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.concurrentExecutions')}</p><p className="adp-stat__value">{usage.concurrentExecutions}</p></div>
+                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.memoryUsage')}</p><p className="adp-stat__value">{usage.memoryUsageMB} MB</p></div>
+                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.avgExecutionTime')}</p><p className="adp-stat__value">{usage.executionTimeMs} ms</p></div>
+                    <div className="adp-stat adp-stat--full"><p className="adp-stat__label">{t('agentDetail.spendToday')}</p><p className="adp-stat__value">${(usage.spendToday ?? 0).toFixed(4)}</p></div>
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground italic">{t('agentDetail.noUsageData')}</p>
-                )}
-              </CardContent>
+                ) : <p className="adp-text adp-text--muted">{t('agentDetail.noUsageData')}</p>}
+              </div>
             </Card>
           </div>
 
-          {/* Policy Card */}
           {policy && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('agentDetail.behavioralPolicy')}</CardTitle>
-                <CardDescription>{t('agentDetail.safetyLimits')}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxExecutionDepth')}</p>
-                    <p className="text-lg font-semibold">{policy.maxExecutionDepth}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxRecursionDepth')}</p>
-                    <p className="text-lg font-semibold">{policy.maxRecursionDepth}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxWallTime')}</p>
-                    <p className="text-lg font-semibold">{policy.maxWallTimeMs}ms</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground">{t('agentDetail.maxMemoryGrowth')}</p>
-                    <p className="text-lg font-semibold">{policy.maxMemoryGrowthMB}MB</p>
-                  </div>
+            <Card className="adp-card">
+              <div className="adp-card__header">
+                <h3 className="adp-card__title">{t('agentDetail.behavioralPolicy')}</h3>
+                <p className="adp-card__desc">{t('agentDetail.safetyLimits')}</p>
+              </div>
+              <div className="adp-card__body">
+                <div className="adp-stats-grid adp-stats-grid--4">
+                  <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.maxExecutionDepth')}</p><p className="adp-stat__value">{policy.maxExecutionDepth}</p></div>
+                  <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.maxRecursionDepth')}</p><p className="adp-stat__value">{policy.maxRecursionDepth}</p></div>
+                  <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.maxWallTime')}</p><p className="adp-stat__value">{policy.maxWallTimeMs}ms</p></div>
+                  <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.maxMemoryGrowth')}</p><p className="adp-stat__value">{policy.maxMemoryGrowthMB}MB</p></div>
                 </div>
-              </CardContent>
+              </div>
             </Card>
           )}
-        </TabsContent>
+        </div>
+      )}
 
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('agentDetail.agentSettings')}</CardTitle>
-              <CardDescription>{t('agentDetail.configureIdentity')}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Basic Info */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">{t('agentDetail.name')}</Label>
-                  <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t('agentDetail.namePlaceholder')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">{t('agentDetail.description')}</Label>
-                  <Textarea
-                    id="description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder={t('agentDetail.descriptionPlaceholder')}
-                    rows={3}
-                  />
-                </div>
+      {activeTab === 'settings' && (
+        <Card className="adp-card">
+          <div className="adp-card__header">
+            <h3 className="adp-card__title">{t('agentDetail.agentSettings')}</h3>
+            <p className="adp-card__desc">{t('agentDetail.configureIdentity')}</p>
+          </div>
+          <div className="adp-card__body adp-card__body--form">
+            <div className="adp-field">
+              <label className="adp-label">{t('agentDetail.name')}</label>
+              <input className="adp-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('agentDetail.namePlaceholder')} />
+            </div>
+            <div className="adp-field">
+              <label className="adp-label">{t('agentDetail.description')}</label>
+              <textarea className="adp-textarea" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('agentDetail.descriptionPlaceholder')} rows={3} />
+            </div>
+            <div className="adp-field">
+              <label className="adp-label">AI Model</label>
+              <p className="adp-field__hint">Select the model this agent uses for reasoning and chat.</p>
+              <select className="adp-input" value={model} onChange={(e) => setModel(e.target.value)}>
+                {models.length === 0 && <option value="gpt-4o-mini">GPT-4o Mini (default)</option>}
+                {(() => {
+                  const grouped: Record<string, typeof models> = {};
+                  models.forEach((m) => {
+                    const key = m.tier;
+                    if (!grouped[key]) grouped[key] = [];
+                    grouped[key].push(m);
+                  });
+                  const tierLabels: Record<string, string> = { frontier: 'Frontier', fast: 'Fast', reasoning: 'Reasoning', code: 'Code', free: 'Free' };
+                  return Object.entries(grouped).map(([tier, items]) => (
+                    <optgroup key={tier} label={tierLabels[tier] || tier}>
+                      {items.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} — {m.provider} ({m.cost})
+                        </option>
+                      ))}
+                    </optgroup>
+                  ));
+                })()}
+              </select>
+            </div>
+            <div className="adp-toggles">
+              <label className="adp-toggle-label">
+                <input type="checkbox" checked={autonomousEnabled} onChange={(e) => setAutonomousEnabled(e.target.checked)} className="adp-checkbox" />
+                {t('agentDetail.autonomousMode')}
+              </label>
+              <label className="adp-toggle-label">
+                <input type="checkbox" checked={evolutionEnabled} onChange={(e) => setEvolutionEnabled(e.target.checked)} className="adp-checkbox" />
+                {t('agentDetail.evolutionEnabled')}
+              </label>
+            </div>
+            <div className="adp-fields-section">
+              <h4 className="adp-fields-section__title">{t('agentDetail.capabilities')}</h4>
+              <p className="adp-fields-section__desc">{t('agentDetail.capabilitiesDescription')}</p>
+
+              <div className="adp-presets-grid">
+                {PRESET_CAPABILITIES.map((group) => (
+                  <div key={group.category} className="adp-presets-group">
+                    <p className="adp-presets-group__label">{group.category}</p>
+                    <div className="adp-presets-chips">
+                      {group.items.map((cap) => {
+                        const active = capabilities[cap.key] !== undefined;
+                        return (
+                          <button
+                            key={cap.key}
+                            type="button"
+                            className={`adp-preset-chip ${active ? 'adp-preset-chip--active' : ''}`}
+                            onClick={() => {
+                              if (active) handleRemoveCapability(cap.key);
+                              else setCapabilities((prev) => ({ ...prev, [cap.key]: true }));
+                            }}
+                            title={cap.description}
+                          >
+                            {active && <span className="adp-preset-chip__check">&#10003;</span>}
+                            {cap.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
-              {/* Toggles */}
-              <div className="flex flex-wrap gap-6">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="autonomous"
-                    checked={autonomousEnabled}
-                    onCheckedChange={setAutonomousEnabled}
-                  />
-                  <Label htmlFor="autonomous">{t('agentDetail.autonomousMode')}</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="evolution"
-                    checked={evolutionEnabled}
-                    onCheckedChange={setEvolutionEnabled}
-                  />
-                  <Label htmlFor="evolution">{t('agentDetail.evolutionEnabled')}</Label>
-                </div>
-              </div>
-
-              {/* Policy Settings */}
-              <div className="space-y-4 border-t pt-4">
-                <h4 className="text-sm font-medium">{t('agentDetail.behavioralLimits')}</h4>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="maxExecutionDepth">{t('agentDetail.maxExecutionDepth')}</Label>
-                    <Input
-                      id="maxExecutionDepth"
-                      type="number"
-                      value={maxExecutionDepth}
-                      onChange={(e) => setMaxExecutionDepth(parseInt(e.target.value) || 0)}
-                      min={1}
-                      max={20}
-                    />
+              {Object.keys(capabilities).some((k) => !PRESET_CAPABILITIES.flatMap((g) => g.items).some((p) => p.key === k)) && (
+                <div className="adp-custom-caps">
+                  <p className="adp-presets-group__label">{t('agentDetail.customCapabilities')}</p>
+                  <div className="adp-custom-caps-list">
+                    {Object.entries(capabilities)
+                      .filter(([k]) => !PRESET_CAPABILITIES.flatMap((g) => g.items).some((p) => p.key === k))
+                      .map(([key, val]) => (
+                        <div key={key} className="adp-cap-entry">
+                          <span className="adp-cap-key">{key}</span>
+                          <span className="adp-cap-val">{String(val)}</span>
+                          <button type="button" className="adp-cap-remove" onClick={() => handleRemoveCapability(key)} aria-label={t('agentDetail.removeCapability')}>
+                            <X className="adp-icon-xs" />
+                          </button>
+                        </div>
+                      ))}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxRecursionDepth">{t('agentDetail.maxRecursionDepth')}</Label>
-                    <Input
-                      id="maxRecursionDepth"
-                      type="number"
-                      value={maxRecursionDepth}
-                      onChange={(e) => setMaxRecursionDepth(parseInt(e.target.value) || 0)}
-                      min={0}
-                      max={10}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxWallTimeMs">{t('agentDetail.maxWallTimeMs')}</Label>
-                    <Input
-                      id="maxWallTimeMs"
-                      type="number"
-                      value={maxWallTimeMs}
-                      onChange={(e) => setMaxWallTimeMs(parseInt(e.target.value) || 0)}
-                      min={1000}
-                      step={1000}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="maxMemoryGrowthMB">{t('agentDetail.maxMemoryGrowthMB')}</Label>
-                    <Input
-                      id="maxMemoryGrowthMB"
-                      type="number"
-                      value={maxMemoryGrowthMB}
-                      onChange={(e) => setMaxMemoryGrowthMB(parseInt(e.target.value) || 0)}
-                      min={64}
-                      step={64}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Button onClick={handleSaveSettings} disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {t('agentDetail.saving')}
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    {t('agentDetail.saveSettings')}
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Topology Tab */}
-        <TabsContent value="topology" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('agentDetail.swarmTopology')}</CardTitle>
-              <CardDescription>{t('agentDetail.swarmTopologyDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {children.length > 0 ? (
-                <SwarmTopologyView agentId={agentId ?? ''} />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <GitBranch className="h-12 w-12 mb-4 opacity-50" />
-                  <p>{t('agentDetail.noChildAgents')}</p>
-                  <p className="text-sm">{t('agentDetail.childAgentsWillAppear')}</p>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('agentDetail.agentAnalytics')}</CardTitle>
-              <CardDescription>{t('agentDetail.analyticsDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AgentAnalyticsComponent agentId={agentId ?? ''} />
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <div className="adp-cap-add-row">
+                <input className="adp-input adp-input--sm" value={newCapKey} onChange={(e) => setNewCapKey(e.target.value)} placeholder={t('agentDetail.capKeyPlaceholder')} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCapability())} />
+                <input className="adp-input adp-input--sm" value={newCapValue} onChange={(e) => setNewCapValue(e.target.value)} placeholder={t('agentDetail.capValuePlaceholder')} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCapability())} />
+                <button type="button" className="adp-cap-add-btn" onClick={handleAddCapability} disabled={!newCapKey.trim()}>
+                  <Plus className="adp-icon-xs" /> {t('agentDetail.addCapability')}
+                </button>
+              </div>
+            </div>
+            <div className="adp-fields-section">
+              <h4 className="adp-fields-section__title">{t('agentDetail.behavioralLimits')}</h4>
+              <div className="adp-fields-grid">
+                <div className="adp-field"><label className="adp-label">{t('agentDetail.maxExecutionDepth')}</label><input className="adp-input" type="number" value={maxExecutionDepth} onChange={(e) => setMaxExecutionDepth(parseInt(e.target.value) || 0)} min={1} max={20} /></div>
+                <div className="adp-field"><label className="adp-label">{t('agentDetail.maxRecursionDepth')}</label><input className="adp-input" type="number" value={maxRecursionDepth} onChange={(e) => setMaxRecursionDepth(parseInt(e.target.value) || 0)} min={0} max={10} /></div>
+                <div className="adp-field"><label className="adp-label">{t('agentDetail.maxWallTimeMs')}</label><input className="adp-input" type="number" value={maxWallTimeMs} onChange={(e) => setMaxWallTimeMs(parseInt(e.target.value) || 0)} min={1000} step={1000} /></div>
+                <div className="adp-field"><label className="adp-label">{t('agentDetail.maxMemoryGrowthMB')}</label><input className="adp-input" type="number" value={maxMemoryGrowthMB} onChange={(e) => setMaxMemoryGrowthMB(parseInt(e.target.value) || 0)} min={64} step={64} /></div>
+              </div>
+            </div>
+            <SealedButton onClick={handleSaveSettings} disabled={saving || !isDirty} loading={saving} iconLeft={<Save className="adp-icon-sm" />}>
+              {saving ? t('agentDetail.saving') : isDirty ? t('agentDetail.saveSettings') : t('agentDetail.noChanges')}
+            </SealedButton>
+            <div className="adp-danger-zone">
+              <h4 className="adp-danger-zone__title">{t('agentDetail.dangerZone')}</h4>
+              <p className="adp-danger-zone__desc">{t('agentDetail.dangerZoneDescription')}</p>
+              <button className="adp-delete-btn" onClick={() => void handleDelete()} disabled={deleting}>
+                {deleting ? <Loader2 className="adp-icon-sm adp-spin" /> : <Trash2 className="adp-icon-sm" />}
+                {t('agentDetail.delete')}
+              </button>
+            </div>
+          </div>
+        </Card>
+      )}
 
-        {/* Memory Graph Tab */}
-        <TabsContent value="memory" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('agentDetail.memoryVisualization')}</CardTitle>
-              <CardDescription>{t('agentDetail.memoryGraphDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {memories.length > 0 ? (
-                <AgentMemoryGraph memories={memories} agentId={agentId} />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                  <Brain className="h-12 w-12 mb-4 opacity-50" />
-                  <p>{t('agentDetail.noMemoriesFound')}</p>
-                  <p className="text-sm">{t('agentDetail.memoriesWillAppear')}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {activeTab === 'console' && (
+        <Card className="adp-card">
+          <div className="adp-card__header">
+            <h3 className="adp-card__title">Agent Console</h3>
+            <p className="adp-card__desc">Chat with {agent?.name || agentId} using {model}</p>
+          </div>
+          <div className="adp-card__body">
+            <AgentConsole agentId={agentId ?? ''} agentName={agent?.name || (agentId ?? '')} model={model} />
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'topology' && (
+        <Card className="adp-card">
+          <div className="adp-card__header">
+            <h3 className="adp-card__title">{t('agentDetail.swarmTopology')}</h3>
+            <p className="adp-card__desc">{t('agentDetail.swarmTopologyDescription')}</p>
+          </div>
+          <div className="adp-card__body">
+            {children.length > 0 ? <SwarmTopologyView agentId={agentId ?? ''} /> : (
+              <div className="adp-empty"><GitBranch className="adp-empty__icon" /><p className="adp-empty__title">{t('agentDetail.noChildAgents')}</p><p className="adp-empty__desc">{t('agentDetail.childAgentsWillAppear')}</p></div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {activeTab === 'analytics' && (
+        <Card className="adp-card">
+          <div className="adp-card__header">
+            <h3 className="adp-card__title">{t('agentDetail.agentAnalytics')}</h3>
+            <p className="adp-card__desc">{t('agentDetail.analyticsDescription')}</p>
+          </div>
+          <div className="adp-card__body"><AgentAnalyticsComponent agentId={agentId ?? ''} /></div>
+        </Card>
+      )}
+
+      {activeTab === 'memory' && (
+        <Card className="adp-card">
+          <div className="adp-card__header">
+            <h3 className="adp-card__title">{t('agentDetail.memoryVisualization')}</h3>
+            <p className="adp-card__desc">{t('agentDetail.memoryGraphDescription')}</p>
+          </div>
+          <div className="adp-card__body">
+            {memories.length > 0 ? <AgentMemoryGraph memories={memories} agentId={agentId} /> : (
+              <div className="adp-empty"><Brain className="adp-empty__icon" /><p className="adp-empty__title">{t('agentDetail.noMemoriesFound')}</p><p className="adp-empty__desc">{t('agentDetail.memoriesWillAppear')}</p></div>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
 
 export default AgentDetailPage;
+
+function AgentConsole({ agentId, agentName, model }: { agentId: string; agentName: string; model: string }) {
+  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    const text = input.trim();
+    if (!text || sending) return;
+    setInput('');
+    setMessages((prev) => [...prev, { role: 'user', content: text }]);
+    setSending(true);
+    try {
+      const res = await agentApi.agentChat(agentId, text);
+      setMessages((prev) => [...prev, { role: 'assistant', content: res.message || '(no response)' }]);
+    } catch (err) {
+      setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${err instanceof Error ? err.message : 'Failed to reach agent'}` }]);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div style={{
+        minHeight: 320, maxHeight: 480, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem',
+        padding: '0.75rem', borderRadius: 8, border: '1px solid var(--border-color, #2a2a3a)', background: 'var(--bg-secondary, #0f0f1a)',
+      }}>
+        {messages.length === 0 && (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted, #666)', padding: '3rem 1rem' }}>
+            <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
+            <p>Start a conversation with {agentName}</p>
+            <p style={{ fontSize: '0.8rem', marginTop: 4 }}>Model: {model}</p>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} style={{
+            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+            maxWidth: '80%', padding: '0.5rem 0.75rem', borderRadius: 12,
+            background: msg.role === 'user' ? 'var(--accent, #6366f1)' : 'var(--bg-tertiary, #1a1a2e)',
+            color: msg.role === 'user' ? '#fff' : 'var(--text-primary, #e0e0e0)',
+            fontSize: '0.9rem', lineHeight: 1.5, whiteSpace: 'pre-wrap',
+          }}>
+            {msg.content}
+          </div>
+        ))}
+        {sending && (
+          <div style={{ alignSelf: 'flex-start', padding: '0.5rem 0.75rem', borderRadius: 12, background: 'var(--bg-tertiary, #1a1a2e)', color: 'var(--text-muted, #666)' }}>
+            <Loader2 size={16} className="adp-spin" />
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <input
+          className="adp-input"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
+          placeholder={`Message ${agentName}...`}
+          disabled={sending}
+          style={{ flex: 1 }}
+        />
+        <SealedButton onClick={handleSend} disabled={sending || !input.trim()} loading={sending} iconLeft={<MessageSquare className="adp-icon-sm" />}>
+          Send
+        </SealedButton>
+      </div>
+    </div>
+  );
+}

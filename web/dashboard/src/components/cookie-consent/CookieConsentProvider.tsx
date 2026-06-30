@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, ReactNode } from 'react';
+import { useEffect, useRef, ReactNode } from 'react';
 import 'vanilla-cookieconsent/dist/cookieconsent.css';
 import '@/styles/cookie-consent.css';
 import * as CookieConsent from 'vanilla-cookieconsent';
@@ -14,8 +14,12 @@ interface CookieConsentProviderProps {
 
 export function CookieConsentProvider({ children }: CookieConsentProviderProps) {
   const { setConsent } = useCookieConsentStore();
+  const initialized = useRef(false);
 
   useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
     CookieConsent.run(cookieConsentConfig).then(() => {
       document.documentElement.classList.remove('cc--darkmode');
 

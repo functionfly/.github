@@ -22,6 +22,7 @@ export interface TenantAIPreferences {
   use_same_model_everywhere: boolean;
   defaults: Record<string, ModelSelection>;
   enabled_models: ModelSelection[];
+  enabled_providers: string[];
   allow_user_overrides: boolean;
   routing_strategy: 'quality_first' | 'balanced' | 'cost_optimized' | 'cost_first';
 }

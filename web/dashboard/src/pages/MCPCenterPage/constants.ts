@@ -78,3 +78,102 @@ export const MCP_CLIENT_TYPES = [
     icon: '🔌',
   },
 ] as const;
+
+export const MCP_CLIENT_SETUP: Record<string, {
+  configPath: string;
+  configLabel: string;
+  docsUrl: string;
+  deepLink?: string;
+  getConfig: (apiKey: string) => string;
+  getConfigHttp: (apiKey: string) => string;
+}> = {
+  'claude-desktop': {
+    configPath: '~/Library/Application Support/Claude/claude_desktop_config.json',
+    configLabel: 'claude_desktop_config.json',
+    docsUrl: 'https://modelcontextprotocol.io/docs',
+    getConfig: (apiKey: string) => JSON.stringify({
+      mcpServers: {
+        functionfly: {
+          command: 'npx',
+          args: ['-y', '@functionfly/mcp-server'],
+          env: { FUNCTIONFLY_API_KEY: apiKey || 'ffp_...' },
+        },
+      },
+    }, null, 2),
+    getConfigHttp: (apiKey: string) => JSON.stringify({
+      mcpServers: {
+        functionfly: {
+          url: 'https://api.functionfly.dev/v1/mcp',
+          headers: { Authorization: `Bearer ${apiKey || 'ffp_...'}` },
+        },
+      },
+    }, null, 2),
+  },
+  cursor: {
+    configPath: '~/.cursor/mcp.json',
+    configLabel: 'mcp.json',
+    docsUrl: 'https://docs.cursor.com/context/model-context-protocol',
+    getConfig: (apiKey: string) => JSON.stringify({
+      mcpServers: {
+        functionfly: {
+          command: 'npx',
+          args: ['-y', '@functionfly/mcp-server'],
+          env: { FUNCTIONFLY_API_KEY: apiKey || 'ffp_...' },
+        },
+      },
+    }, null, 2),
+    getConfigHttp: (apiKey: string) => JSON.stringify({
+      mcpServers: {
+        functionfly: {
+          url: 'https://api.functionfly.dev/v1/mcp',
+          headers: { Authorization: `Bearer ${apiKey || 'ffp_...'}` },
+        },
+      },
+    }, null, 2),
+  },
+  vscode: {
+    configPath: '~/.config/Code/User/mcp.json',
+    configLabel: 'mcp.json',
+    docsUrl: 'https://code.visualstudio.com/docs/copilot/chat/mcp-servers',
+    deepLink: 'vscode://settings/mcp',
+    getConfig: (apiKey: string) => JSON.stringify({
+      servers: {
+        functionfly: {
+          command: 'npx',
+          args: ['-y', '@functionfly/mcp-server'],
+          env: { FUNCTIONFLY_API_KEY: apiKey || 'ffp_...' },
+        },
+      },
+    }, null, 2),
+    getConfigHttp: (apiKey: string) => JSON.stringify({
+      servers: {
+        functionfly: {
+          url: 'https://api.functionfly.dev/v1/mcp',
+          headers: { Authorization: `Bearer ${apiKey || 'ffp_...'}` },
+        },
+      },
+    }, null, 2),
+  },
+  windsurf: {
+    configPath: '~/.codeium/windsurf/mcp_config.json',
+    configLabel: 'mcp_config.json',
+    docsUrl: 'https://docs.windsurf.com/windsurf/mcp',
+    getConfig: (apiKey: string) => JSON.stringify({
+      mcpServers: {
+        functionfly: {
+          command: 'npx',
+          args: ['-y', '@functionfly/mcp-server'],
+          env: { FUNCTIONFLY_API_KEY: apiKey || 'ffp_...' },
+        },
+      },
+    }, null, 2),
+    getConfigHttp: (apiKey: string) => JSON.stringify({
+      mcpServers: {
+        functionfly: {
+          url: 'https://api.functionfly.dev/v1/mcp',
+          headers: { Authorization: `Bearer ${apiKey || 'ffp_...'}` },
+        },
+      },
+    }, null, 2),
+  },
+};

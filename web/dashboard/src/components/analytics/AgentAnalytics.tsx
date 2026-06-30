@@ -96,7 +96,7 @@ function StatsGrid({ analytics, usage, isLoading }: StatsGridProps) {
     );
   }
 
-  const successRate = analytics.successRate;
+  const successRate = analytics.successRate ?? 0;
   const successRateTrend = successRate >= 95 ? 'up' : successRate < 90 ? 'down' : 'neutral';
 
   return (
@@ -116,12 +116,12 @@ function StatsGrid({ analytics, usage, isLoading }: StatsGridProps) {
       />
       <StatCard
         title="Avg Latency"
-        value={`${(analytics.avgLatencyMs / 1000).toFixed(2)}s`}
+        value={`${((analytics.avgLatencyMs ?? 0) / 1000).toFixed(2)}s`}
         icon={Clock}
       />
       <StatCard
         title="Avg Cost"
-        value={`$${analytics.avgCostUsd.toFixed(4)}`}
+        value={`$${(analytics.avgCostUsd ?? 0).toFixed(4)}`}
         icon={DollarSign}
       />
     </div>
@@ -306,9 +306,9 @@ function RecentExecutions({ executions, isLoading }: RecentExecutionsProps) {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-sm font-medium">${execution.costUsd.toFixed(4)}</p>
+                  <p className="text-sm font-medium">${(execution.costUsd ?? 0).toFixed(4)}</p>
                   <p className="text-xs text-text-muted">
-                    {(execution.latencyMs / 1000).toFixed(2)}s
+                    {((execution.latencyMs ?? 0) / 1000).toFixed(2)}s
                   </p>
                 </div>
                 <Badge

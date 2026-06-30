@@ -63,22 +63,39 @@ export function AgentMarketplaceDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const response = await agentApi.searchMarketplaceAgents({ limit: 100 });
-      const found = response.agents.find((a) => a.id === id || a.agentId === id);
+      const response = await agentApi.searchMarketplaceAgents({ agent_id: id, limit: 1 });
+      const found = response.agents.find((a) => a.id === id || a.agentId === id) ?? response.agents[0];
       if (found) {
         setAgent(found);
-      } else {
-        setError('Agent not found in marketplace');
+        return;
       }
     } catch {
-      setError('Failed to load agent');
-    } finally {
-      setLoading(false);
+      // marketplace search failed, fall through to agent API
+    }
+
+    try {
+      const res = await agentApi.getAgent(id);
+      const a = res.agent as Record<string, unknown>;
+      setAgent({
+        id: (a.id as string) ?? id,
+        agentId: (a.agentId as string) ?? id,
+        name: (a.name as string) ?? 'Unknown Agent',
+        description: (a.description as string) ?? '',
+        listingType: 'worker',
+        pricingModel: 'free',
+        ratingScore: 0,
+        totalCalls: 0,
+        roiScore: 0,
+        rankScore: 0,
+        walletBalanceUsd: 0,
+      });
+    } catch {
+      setError('Agent not found');
     }
   };
 
   useEffect(() => {
-    loadAgent();
+    loadAgent().finally(() => setLoading(false));
   }, [id]);
 
   const handleHire = async () => {
@@ -197,7 +214,7 @@ export function AgentMarketplaceDetailPage() {
               <Star className="h-4 w-4 text-warning" />
               <span className="text-sm text-muted-foreground">Rating</span>
             </div>
-            <p className="text-2xl font-bold">{agent.ratingScore.toFixed(1)}</p>
+            <p className="text-2xl font-bold">{(agent.ratingScore ?? 0).toFixed(1)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -206,7 +223,7 @@ export function AgentMarketplaceDetailPage() {
               <TrendingUp className="h-4 w-4 text-success" />
               <span className="text-sm text-muted-foreground">ROI Score</span>
             </div>
-            <p className="text-2xl font-bold">{agent.roiScore.toFixed(1)}</p>
+            <p className="text-2xl font-bold">{(agent.roiScore ?? 0).toFixed(1)}</p>
           </CardContent>
         </Card>
         <Card>

@@ -393,6 +393,9 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
     return 'User';
   }, [user]);
 
+  const [avatarError, setAvatarError] = useState(false);
+  const showAvatar = user?.avatar && !avatarError;
+
   // =======================================================================
   // Sub-components
   // =======================================================================
@@ -1092,20 +1095,17 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             {/* User Profile — avatar alt text is always safe fallback */}
             <div className={cn('aviation-profile mb-3', isCollapsed && 'justify-center')}>
               <div className="aviation-profile-avatar">
-                {user?.avatar ? (
+                {showAvatar ? (
                   <img
                     src={user.avatar}
                     alt={userDisplayName}
-                    onError={(e) => {
-                      // Fallback to initials if avatar fails to load
-                      (e.target as HTMLImageElement).style.display = 'none';
-                      (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-                    }}
+                    onError={() => setAvatarError(true)}
                   />
-                ) : null}
-                <div className="aviation-profile-initials">
-                  {userDisplayName.charAt(0).toUpperCase()}
-                </div>
+                ) : (
+                  <div className="aviation-profile-initials">
+                    {userDisplayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <span className="aviation-profile-status" />
               </div>
               {!isCollapsed && (

@@ -165,9 +165,11 @@ export default function FunctionPage() {
     queryKey: ['function-trust-history', functionInfo?.id],
     queryFn: async () => {
       if (!functionInfo?.id) return null;
-      const response = await fetch(`/v1/functions/${functionInfo.id}/trust/history?page_size=30`);
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        return await apiClient.get(`/v1/functions/${functionInfo.id}/trust/history`, { params: { page_size: 30 } });
+      } catch {
+        return null;
+      }
     },
     enabled: !!functionInfo?.id,
     staleTime: 5 * 60 * 1000,
@@ -177,9 +179,11 @@ export default function FunctionPage() {
     queryKey: ['function-executions', author, name],
     queryFn: async () => {
       if (!author || !name) return null;
-      const response = await fetch(`/functions/${author}/${name}/executions?limit=10`);
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        return await apiClient.get(`/functions/${author}/${name}/executions`, { params: { limit: 10 } });
+      } catch {
+        return null;
+      }
     },
     enabled: !!author && !!name,
     staleTime: 30 * 1000,
@@ -189,9 +193,11 @@ export default function FunctionPage() {
     queryKey: ['function-versions', author, name],
     queryFn: async () => {
       if (!author || !name) return null;
-      const response = await fetch(`/functions/${author}/${name}/versions`);
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        return await apiClient.get(`/functions/${author}/${name}/versions`);
+      } catch {
+        return null;
+      }
     },
     enabled: !!author && !!name,
     staleTime: 5 * 60 * 1000,
@@ -201,9 +207,11 @@ export default function FunctionPage() {
     queryKey: ['function-stats', author, name],
     queryFn: async () => {
       if (!author || !name) return null;
-      const response = await fetch(`/functions/${author}/${name}/stats`);
-      if (!response.ok) return null;
-      return response.json();
+      try {
+        return await apiClient.get(`/functions/${author}/${name}/stats`);
+      } catch {
+        return null;
+      }
     },
     enabled: !!author && !!name,
     staleTime: 30 * 1000,
@@ -523,7 +531,7 @@ export default function FunctionPage() {
                     <CardContent className="p-4 text-center">
                       <Shield className="h-8 w-8 text-violet-500 mx-auto mb-2" />
                       <p className="text-2xl font-bold text-text-primary">
-                        {functionInfo.trust_score ? `${functionInfo.trust_score}%` : '95%'}
+                        {functionInfo.trust_score ? `${functionInfo.trust_score}%` : 'N/A'}
                       </p>
                       <p className="text-xs text-text-muted">Trust Score</p>
                     </CardContent>

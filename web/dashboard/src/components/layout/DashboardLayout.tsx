@@ -112,8 +112,12 @@ export function DashboardLayout() {
             <Footer showScrollToTop={false} />
 
             {/* Unified AI + support chat - bottom right */}
-            <SupportBubble />
-            <UnifiedChatWindow />
+            {import.meta.env.VITE_CHAT_ENABLED !== 'false' && (
+              <>
+                <SupportBubble />
+                <UnifiedChatWindow />
+              </>
+            )}
           </div>
         </div>
       </div>

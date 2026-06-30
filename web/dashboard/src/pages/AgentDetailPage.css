@@ -1,0 +1,785 @@
+/**
+ * FunctionFly Agent Detail Page — Sealed Containment
+ *
+ * All design tokens come from sc-tokens.css.
+ */
+
+@import '@/styles/sc-tokens.css';
+
+/* ==========================================================================
+   Page Container
+   ========================================================================== */
+
+.adp-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding-bottom: var(--space-9);
+}
+
+@media (max-width: 480px) {
+  .adp-page { padding: 0 var(--space-4); gap: var(--space-5); }
+}
+
+/* ==========================================================================
+   Icon Sizes
+   ========================================================================== */
+
+.adp-icon-sm { width: 16px; height: 16px; }
+.adp-spin { animation: adp-spin 1s linear infinite; }
+@keyframes adp-spin { to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.adp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .adp-header { flex-direction: column; }
+}
+
+.adp-header__left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.adp-header__identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.adp-header__icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: rgba(255, 122, 61, 0.08);
+  border: 1px solid rgba(255, 122, 61, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.adp-header__icon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+
+.adp-header__title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--text);
+  margin: 0;
+}
+
+.adp-header__meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+.adp-header__meta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) var(--space-2);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.adp-header__meta-btn:hover {
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+}
+
+.adp-header__meta-btn:hover .adp-header__meta { color: var(--text-dim); }
+
+.adp-copy-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--text-faint);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.adp-header__meta-btn:hover .adp-copy-icon { color: var(--text-dim); }
+
+.adp-copy-ok {
+  width: 12px;
+  height: 12px;
+  color: var(--status-ok);
+}
+
+.adp-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.adp-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--status-revoked);
+  background: transparent;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.adp-delete-btn:hover:not(:disabled) { background: rgba(255, 107, 107, 0.06); }
+.adp-delete-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.adp-danger-zone {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--panel-edge);
+}
+
+.adp-danger-zone__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--status-revoked);
+  margin: 0 0 var(--space-1);
+}
+
+.adp-danger-zone__desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: 0 0 var(--space-3);
+}
+
+/* ==========================================================================
+   Badges
+   ========================================================================== */
+
+.adp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.adp-role-badge {
+  display: inline-flex;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+}
+
+.adp-parent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--status-pending);
+  background: rgba(232, 196, 104, 0.06);
+  border: 1px solid rgba(232, 196, 104, 0.3);
+  border-radius: var(--radius-sm);
+}
+
+.adp-parent-link {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--status-pending);
+  text-decoration: underline;
+}
+
+.adp-feature-badge {
+  display: inline-flex;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(159, 216, 255, 0.06);
+  border: 1px solid rgba(159, 216, 255, 0.3);
+  border-radius: var(--radius-sm);
+  color: var(--foil-a);
+}
+
+/* ==========================================================================
+   Tabs
+   ========================================================================== */
+
+.adp-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+.adp-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.adp-tab:hover { color: var(--text); }
+
+.adp-tab--active {
+  color: var(--text);
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+}
+
+.adp-tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* ==========================================================================
+   Grid
+   ========================================================================== */
+
+.adp-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .adp-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   Card (SC override)
+   ========================================================================== */
+
+.adp-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.adp-card__header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.adp-card__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.25;
+  color: var(--text);
+  margin: 0;
+}
+
+.adp-card__desc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: var(--space-1) 0 0;
+}
+
+.adp-card__body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.adp-card__body--form {
+  gap: var(--space-5);
+}
+
+/* ==========================================================================
+   Text
+   ========================================================================== */
+
+.adp-text {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.adp-text--muted {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.adp-hint {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: var(--space-4) 0 0;
+}
+
+/* ==========================================================================
+   Stats Grid
+   ========================================================================== */
+
+.adp-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.adp-stats-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 640px) {
+  .adp-stats-grid--4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+.adp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.adp-stat--full { grid-column: 1 / -1; }
+
+.adp-stat__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.adp-stat__value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Capabilities
+   ========================================================================== */
+
+.adp-caps__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 var(--space-2);
+}
+
+.adp-caps__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.adp-cap-tag {
+  display: inline-flex;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-sm);
+  color: var(--text-dim);
+}
+
+/* ==========================================================================
+   Capabilities Editor
+   ========================================================================== */
+
+.adp-caps-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.adp-cap-entry {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-sm);
+}
+
+.adp-cap-key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.adp-cap-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  flex: 1;
+}
+
+.adp-cap-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+
+.adp-cap-remove:hover {
+  color: var(--status-revoked);
+  background: rgba(255, 107, 107, 0.08);
+}
+
+.adp-icon-xs {
+  width: 12px;
+  height: 12px;
+}
+
+.adp-cap-add-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.adp-input--sm {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  font-size: 12px;
+}
+
+.adp-cap-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid rgba(255, 122, 61, 0.3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.adp-cap-add-btn:hover:not(:disabled) {
+  background: rgba(255, 122, 61, 0.06);
+}
+
+.adp-cap-add-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.adp-fields-section__desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+}
+
+/* ==========================================================================
+   Preset Capabilities
+   ========================================================================== */
+
+.adp-presets-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.adp-presets-group__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 var(--space-2);
+}
+
+.adp-presets-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.adp-preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  user-select: none;
+}
+
+.adp-preset-chip:hover {
+  color: var(--text);
+  border-color: var(--steel-light);
+  background: var(--panel-raised);
+}
+
+.adp-preset-chip--active {
+  color: var(--accent);
+  background: rgba(255, 122, 61, 0.08);
+  border-color: rgba(255, 122, 61, 0.4);
+}
+
+.adp-preset-chip--active:hover {
+  color: var(--accent);
+  background: rgba(255, 122, 61, 0.12);
+  border-color: rgba(255, 122, 61, 0.5);
+}
+
+.adp-preset-chip__check {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.adp-custom-caps {
+  margin-top: var(--space-3);
+}
+
+.adp-custom-caps-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ==========================================================================
+   Form Elements
+   ========================================================================== */
+
+.adp-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.adp-label {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.adp-input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.adp-input:focus { outline: none; border-color: var(--steel-light); box-shadow: var(--shadow-input-focus); }
+.adp-input::placeholder { color: var(--text-faint); }
+
+.adp-textarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  resize: vertical;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.adp-textarea:focus { outline: none; border-color: var(--steel-light); box-shadow: var(--shadow-input-focus); }
+
+.adp-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.adp-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.adp-checkbox { accent-color: var(--status-ok); }
+
+.adp-fields-section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--panel-edge);
+}
+
+.adp-fields-section__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--space-4);
+}
+
+.adp-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .adp-fields-grid { grid-template-columns: 1fr; }
+}
+
+/* ==========================================================================
+   Empty State
+   ========================================================================== */
+
+.adp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.adp-empty__icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-faint);
+  margin-bottom: var(--space-4);
+  opacity: 0.5;
+}
+
+.adp-empty__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.adp-empty__desc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Loading / Error
+   ========================================================================== */
+
+.adp-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-9);
+}
+
+.adp-loading__spinner {
+  width: 32px;
+  height: 32px;
+  color: var(--status-ok);
+  animation: adp-spin 1s linear infinite;
+}
+
+.adp-loading__text {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.adp-error {
+  border-color: rgba(255, 107, 107, 0.3);
+}
+
+.adp-error__title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.adp-error__desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0;
+}

@@ -77,14 +77,19 @@ export function useRegisterAgent() {
   });
 }
 
-// Update agent (general update via policy/behavioral changes)
+// Update agent (general update via direct agent endpoint)
 export function useUpdateAgent(agentId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { name?: string; description?: string; status?: string }) =>
-      // Note: Using updatePolicy as a workaround since there's no direct update endpoint
-      agentApi.updatePolicy(agentId, { agentId, ...data } as Partial<BehavioralPolicy>),
+    mutationFn: (data: {
+      name?: string;
+      description?: string;
+      capabilities?: Record<string, unknown>;
+      autonomous_enabled?: boolean;
+      evolution_enabled?: boolean;
+      model?: string;
+    }) => agentApi.updateAgent(agentId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) });
       toast.success("Agent updated successfully");

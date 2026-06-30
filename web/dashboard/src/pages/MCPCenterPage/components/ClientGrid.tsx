@@ -177,12 +177,16 @@ interface ConnectionDetailsPanelProps {
   clientType: string;
   connection: MCPConnection | null;
   onClose: () => void;
+  onTest?: (clientType: string) => void;
+  isTesting?: boolean;
 }
 
 export function ConnectionDetailsPanel({
   clientType,
   connection,
   onClose,
+  onTest,
+  isTesting,
 }: ConnectionDetailsPanelProps) {
   const clientInfo = getClientInfo(clientType);
 
@@ -213,18 +217,35 @@ export function ConnectionDetailsPanel({
               <CardDescription>{clientInfo.description}</CardDescription>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            className="mcp-connection-panel-close"
-          >
-            Close
-          </Button>
+          <div className="flex items-center gap-2">
+            {onTest && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onTest(clientType)}
+                disabled={isTesting}
+              >
+                {isTesting ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Activity className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                Test Connection
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onClose}
+              className="mcp-connection-panel-close"
+            >
+              Close
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="mcp-instrument">
             <p className="text-sm text-muted-foreground">Connected Functions</p>
             <p className="mcp-metric-card-value">{connection.connected_functions}</p>
@@ -233,30 +254,52 @@ export function ConnectionDetailsPanel({
             <p className="text-sm text-muted-foreground">Total Invocations</p>
             <p className="mcp-metric-card-value">{connection.total_invocations.toLocaleString()}</p>
           </div>
+          <div className="mcp-instrument">
+            <p className="text-sm text-muted-foreground">Avg Latency</p>
+            <p className="mcp-metric-card-value">
+              {connection.avg_latency_ms > 0 ? `${connection.avg_latency_ms}ms` : '—'}
+            </p>
+          </div>
         </div>
 
-        <div className="mcp-instrument">
-          <p className="text-sm text-muted-foreground">Last Connected</p>
-          <p className="text-sm font-medium mt-1">
-            {connection.last_connected_at
-              ? new Date(connection.last_connected_at).toLocaleString()
-              : 'Never'}
-          </p>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="mcp-instrument">
+            <p className="text-sm text-muted-foreground">Last Connected</p>
+            <p className="text-sm font-medium mt-1">
+              {connection.last_connected_at
+                ? new Date(connection.last_connected_at).toLocaleString()
+                : 'Never'}
+            </p>
+          </div>
+          <div className="mcp-instrument">
+            <p className="text-sm text-muted-foreground">Connection Status</p>
+            <div className="mt-1">
+              <Badge
+                variant="secondary"
+                className={`mcp-status-indicator ${connection.status === 'active' ? 'active' : connection.status === 'stale' ? 'stale' : 'inactive'}`}
+              >
+                {connection.status === 'active'
+                  ? 'Currently active'
+                  : connection.status === 'stale'
+                    ? 'Connection stale'
+                    : 'Never connected'}
+              </Badge>
+            </div>
+          </div>
         </div>
 
-        <div className="pt-4 border-t">
-          <h4 className="text-sm font-medium mb-2">Connection Status</h4>
-          <Badge
-            variant="secondary"
-            className={`mcp-status-indicator ${connection.status === 'active' ? 'active' : connection.status === 'stale' ? 'stale' : 'inactive'}`}
-          >
-            {connection.status === 'active'
-              ? 'Currently active'
-              : connection.status === 'stale'
-                ? 'Connection stale'
-                : 'Never connected'}
-          </Badge>
-        </div>
+        {connection.connected_function_names.length > 0 && (
+          <div className="mcp-instrument">
+            <p className="text-sm text-muted-foreground mb-2">Connected Functions</p>
+            <div className="flex flex-wrap gap-1.5">
+              {connection.connected_function_names.map((name) => (
+                <Badge key={name} variant="outline" className="text-xs font-mono">
+                  {name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

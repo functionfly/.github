@@ -51,6 +51,7 @@ export const VALID_TABS = [
   'integrations',
   'github',
   'trust-api',
+  'ai-keys',
 ] as const;
 export type SettingsTabValue = (typeof VALID_TABS)[number];
 

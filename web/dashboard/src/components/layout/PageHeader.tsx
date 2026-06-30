@@ -1,14 +1,16 @@
 import { Button } from '@/components/ui/button';
-import { ROUTES } from '@/lib/constants';
+import { generateBreadcrumbs } from '@/lib/breadcrumbs';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { AlertCircle, ChevronRight, Home, LayoutDashboard, Shield, Sparkles } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { AlertCircle, ChevronRight, Shield, Sparkles } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import React, { useMemo } from 'react';
 
 interface BreadcrumbItem {
   label: string;
   path?: string;
   icon?: React.ComponentType<{ className?: string }>;
+  isActive?: boolean;
 }
 
 interface ActionButton {
@@ -59,8 +61,17 @@ export function PageHeader({
   const location = useLocation();
 
   // Auto-generate breadcrumbs if not provided
-  const defaultBreadcrumbs = generateDefaultBreadcrumbs(location.pathname);
-  const displayBreadcrumbs = breadcrumbs || defaultBreadcrumbs;
+  const autoBreadcrumbs = useMemo(() => {
+    const crumbs = generateBreadcrumbs(location.pathname);
+    return crumbs.map((c) => ({
+      label: c.label,
+      path: c.path,
+      icon: c.icon,
+      isActive: c.isActive,
+    }));
+  }, [location.pathname]);
+
+  const displayBreadcrumbs = breadcrumbs || autoBreadcrumbs;
 
   const Header = animate ? motion.div : 'div';
   const headerProps = animate
@@ -111,34 +122,23 @@ export function PageHeader({
 
   return (
     <Header {...headerProps} className={cn('space-y-4', className)}>
-      {/* Breadcrumbs */}
+      {/* Breadcrumbs — uses sc-breadcrumb CSS classes from sc-navbar.css */}
       {displayBreadcrumbs && displayBreadcrumbs.length > 1 && (
-        <nav className="flex items-center gap-2 text-sm text-aviation-text-muted">
+        <nav className="sc-breadcrumb__nav">
           {displayBreadcrumbs.map((crumb, index) => {
-            const isLast = index === displayBreadcrumbs.length - 1;
             const Icon = crumb.icon;
 
             return (
-              <div key={index} className="flex items-center gap-2">
-                {index > 0 && <ChevronRight className="w-4 h-4 text-aviation-text-dim" />}
-                {crumb.path && !isLast ? (
-                  <Link
-                    to={crumb.path}
-                    className="flex items-center gap-2 hover:text-aviation-text-primary transition-colors"
-                  >
-                    {Icon && <Icon className="w-4 h-4" />}
+              <div key={crumb.path ?? crumb.label} className="sc-breadcrumb__item">
+                {index > 0 && <ChevronRight className="sc-breadcrumb__sep" />}
+                {crumb.path && !crumb.isActive ? (
+                  <Link to={crumb.path} className="sc-breadcrumb__link">
+                    {Icon && <Icon className="sc-breadcrumb__icon" />}
                     <span>{crumb.label}</span>
                   </Link>
                 ) : (
-                  <span
-                    className={cn(
-                      'flex items-center gap-2',
-                      isLast
-                        ? 'text-aviation-text-primary font-medium'
-                        : 'text-aviation-text-secondary'
-                    )}
-                  >
-                    {Icon && <Icon className="w-4 h-4" />}
+                  <span className={cn('sc-breadcrumb__text', crumb.isActive && 'sc-breadcrumb__text--active')}>
+                    {Icon && <Icon className="sc-breadcrumb__icon" />}
                     <span>{crumb.label}</span>
                   </span>
                 )}
@@ -200,64 +200,4 @@ export function PageHeader({
       </div>
     </Header>
   );
-}
-
-// Helper function to generate default breadcrumbs based on current path
-function generateDefaultBreadcrumbs(pathname: string): BreadcrumbItem[] {
-  const segments = pathname.split('/').filter(Boolean);
-  const breadcrumbs: BreadcrumbItem[] = [{ label: 'Home', path: ROUTES.DASHBOARD, icon: Home }];
-
-  if (segments.length === 0 || (segments[0] === 'dashboard' && segments.length === 1)) {
-    return breadcrumbs;
-  }
-
-  if (segments[0] === 'overview' && segments.length === 1) {
-    return [
-      { label: 'Home', path: ROUTES.DASHBOARD, icon: Home },
-      { label: 'Overview', path: ROUTES.OVERVIEW, icon: LayoutDashboard },
-    ];
-  }
-
-  // Add section breadcrumb
-  const section = segments[0];
-  switch (section) {
-    case 'functions':
-      breadcrumbs.push({ label: 'Functions', path: ROUTES.FUNCTIONS });
-      break;
-    case 'providers':
-      breadcrumbs.push({ label: 'Providers', path: ROUTES.PROVIDERS });
-      break;
-    case 'analytics':
-      breadcrumbs.push({ label: 'Analytics', path: ROUTES.ANALYTICS });
-      break;
-    case 'settings':
-      breadcrumbs.push({ label: 'Settings', path: ROUTES.SETTINGS });
-      break;
-    case 'agents':
-      breadcrumbs.push({ label: 'Agents', path: ROUTES.AGENT_LIST });
-      break;
-    case 'evolution':
-      breadcrumbs.push({ label: 'Evolution', path: ROUTES.EVOLUTION });
-      break;
-    case 'state-fabric':
-      breadcrumbs.push({ label: 'State Fabric', path: ROUTES.STATE_FABRIC });
-      break;
-    case 'wallet':
-      breadcrumbs.push({ label: 'Wallet', path: '/wallet' });
-      break;
-    default:
-      breadcrumbs.push({ label: section.charAt(0).toUpperCase() + section.slice(1) });
-  }
-
-  // Add subsection breadcrumb if applicable
-  if (segments.length > 1) {
-    const subsection = segments[1];
-    if (subsection && subsection !== 'new') {
-      breadcrumbs.push({ label: subsection.charAt(0).toUpperCase() + subsection.slice(1) });
-    } else if (subsection === 'new') {
-      breadcrumbs.push({ label: 'New' });
-    }
-  }
-
-  return breadcrumbs;
 }

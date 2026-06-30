@@ -87,6 +87,12 @@ export const ROUTES = {
   AGENT_EDIT: '/agents/:id/edit',
   AGENT_WALLET: '/agents/:id/wallet',
   AGENT_ANALYTICS: '/agents/:id/analytics',
+
+  AGENT_CONSOLE: '/agents/:id/console',
+  agentPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}`,
+  agentEditPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/edit`,
+  agentWalletPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/wallet`,
+  agentAnalyticsPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/analytics`,
   SDK_INTEGRATIONS: '/sdk-integrations',
   MARKETPLACE: '/marketplace',
   // Alias for the agent-specific marketplace (distinct semantic purpose from generic MARKETPLACE)
@@ -111,6 +117,7 @@ export const ROUTES = {
   AGENT_MEMORIES: '/agent-memories',
   AGENT_OBSERVABILITY: '/agent-observability',
   CONVERSATIONS: '/conversations',
+  MCP: '/mcp',
   FOUNDERS: '/founders',
   STATE: '/state',
   // Time Machine routes
@@ -1124,7 +1131,7 @@ export const COMING_SOON_ONLY =
  * Canonical API base URL (no trailing slash). Use for all API and WebSocket calls.
  * - Production: set VITE_API_URL (e.g. https://api.functionfly.com).
  * - Local dev: set VITE_API_URL=http://localhost:8080 to hit the API directly (recommended), or VITE_API_URL=/api to use the Vite proxy (backend must be running on 8080). If you see 404 on /api/v1/api-keys, use http://localhost:8080 or start the backend.
- * - Flywheel production: http://localhost:3000/flywheel
+
  */
 export function getApiBaseUrl(): string {
   const env = (import.meta.env.VITE_API_URL ?? '').trim();

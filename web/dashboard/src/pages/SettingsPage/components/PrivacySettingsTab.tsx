@@ -19,6 +19,7 @@ import type { UserProfile } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
+  Award,
   Bell,
   Check,
   CircleDot,
@@ -47,6 +48,7 @@ interface ProfileSettings {
   showCompany: boolean;
   showActivity: boolean;
   showAnalytics: boolean;
+  showFounderBadge: boolean;
 
   // Notification settings
   emailNotifications: boolean;
@@ -70,6 +72,7 @@ const defaultSettings: ProfileSettings = {
   showCompany: true,
   showActivity: true,
   showAnalytics: true,
+  showFounderBadge: true,
   emailNotifications: true,
   pushNotifications: false,
   notifyOnFollow: true,
@@ -130,6 +133,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
     mutationFn: (data: Partial<ProfileSettings>) => usersApi.updateMyVisibilitySettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['enhanced-profile', username] });
       toast.success('Visibility settings saved');
     },
     onError: () => toast.error('Failed to save visibility settings'),
@@ -196,6 +200,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
       showCompany: settings.showCompany,
       showActivity: settings.showActivity,
       showAnalytics: settings.showAnalytics,
+      showFounderBadge: settings.showFounderBadge,
     });
   };
 
@@ -224,31 +229,30 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
   };
 
   const handleSaveAll = async () => {
-    await Promise.all([
-      updateVisibilityMutation.mutateAsync({
-        profileVisibility: settings.profileVisibility,
-        showEmail: settings.showEmail,
-        showLocation: settings.showLocation,
-        showCompany: settings.showCompany,
-        showActivity: settings.showActivity,
-        showAnalytics: settings.showAnalytics,
-      }),
-      updateNotificationsMutation.mutateAsync({
-        emailNotifications: settings.emailNotifications,
-        pushNotifications: settings.pushNotifications,
-        notifyOnFollow: settings.notifyOnFollow,
-        notifyOnMention: settings.notifyOnMention,
-        notifyOnFunctionUsage: settings.notifyOnFunctionUsage,
-        notifyOnReviews: settings.notifyOnReviews,
-        weeklyDigest: settings.weeklyDigest,
-      }),
-      updatePrivacyMutation.mutateAsync({
-        allowTagging: settings.allowTagging,
-        allowIndexing: settings.allowIndexing,
-        showLastActive: settings.showLastActive,
-      }),
-      updateSocialLinksMutation.mutateAsync(),
-    ]);
+    await updateVisibilityMutation.mutateAsync({
+      profileVisibility: settings.profileVisibility,
+      showEmail: settings.showEmail,
+      showLocation: settings.showLocation,
+      showCompany: settings.showCompany,
+      showActivity: settings.showActivity,
+      showAnalytics: settings.showAnalytics,
+      showFounderBadge: settings.showFounderBadge,
+    });
+    await updateNotificationsMutation.mutateAsync({
+      emailNotifications: settings.emailNotifications,
+      pushNotifications: settings.pushNotifications,
+      notifyOnFollow: settings.notifyOnFollow,
+      notifyOnMention: settings.notifyOnMention,
+      notifyOnFunctionUsage: settings.notifyOnFunctionUsage,
+      notifyOnReviews: settings.notifyOnReviews,
+      weeklyDigest: settings.weeklyDigest,
+    });
+    await updatePrivacyMutation.mutateAsync({
+      allowTagging: settings.allowTagging,
+      allowIndexing: settings.allowIndexing,
+      showLastActive: settings.showLastActive,
+    });
+    await updateSocialLinksMutation.mutateAsync();
     toast.success('All settings saved successfully');
   };
 
@@ -454,7 +458,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 />
               </div>
 
-              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-md bg-bg-tertiary">
                     <Shield className="w-4 h-4 text-text-secondary" />
@@ -467,6 +471,22 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 <Switch
                   checked={settings.showAnalytics}
                   onCheckedChange={(checked) => updateSetting('showAnalytics', checked)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-md bg-bg-tertiary">
+                    <Award className="w-4 h-4 text-text-secondary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-text-primary">Founders Badge</p>
+                    <p className="text-sm text-text-muted">Show your founders badge on your profile</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={settings.showFounderBadge}
+                  onCheckedChange={(checked) => updateSetting('showFounderBadge', checked)}
                 />
               </div>
             </div>

@@ -67,17 +67,17 @@ export function ActionBar({ editor }: Props) {
         <div
           className="sticky top-0 z-30 border-b"
           style={{
-            background: 'rgba(249, 115, 22, 0.12)',
+            background: 'rgba(255, 122, 61, 0.08)',
             backdropFilter: 'blur(12px)',
-            borderColor: 'rgba(249, 115, 22, 0.3)',
+            borderColor: 'var(--accent-dim)',
           }}
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 h-11 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2 text-sm">
-              <Clock className="w-4 h-4 text-[#FF6B35] shrink-0" />
-              <span className="text-text-secondary">
+              <Clock className="w-4 h-4 text-[var(--accent)] shrink-0" />
+              <span className="text-[var(--text-dim)]">
                 {t('funcEditor.unsavedDraft')}{draftTimestamp && (
-                  <span className="text-text-muted ml-1">
+                  <span className="text-[var(--text-faint)] ml-1">
                     {t('funcEditor.unsavedDraftFrom', { time: formatRelativeTime(draftTimestamp, t) })}
                   </span>
                 )}. {t('funcEditor.restoreItQuestion')}
@@ -88,7 +88,7 @@ export function ActionBar({ editor }: Props) {
                 size="sm"
                 variant="ghost"
                 onClick={handleDiscardDraft}
-                className="text-text-muted hover:text-text-primary h-7 gap-1"
+                className="h-7 gap-1"
               >
                 <X className="w-3.5 h-3.5" />
                 {t('funcEditor.discard')}
@@ -97,11 +97,6 @@ export function ActionBar({ editor }: Props) {
                 size="sm"
                 onClick={handleRestoreDraft}
                 className="h-7 gap-1"
-                style={{
-                  background: 'linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%)',
-                  color: '#fff',
-                  border: 'none',
-                }}
               >
                 {t('funcEditor.restoreDraft')}
               </Button>
@@ -110,9 +105,14 @@ export function ActionBar({ editor }: Props) {
         </div>
       )}
 
-      {/* Main action bar — theme-aware (light: surface + semantic text; dark: frosted chrome) */}
+      {/* Main action bar */}
       <div
-        className="sticky top-0 z-20 border-b border-border-subtle bg-bg-secondary/95 backdrop-blur-xl"
+        className="sticky top-0 z-20 border-b"
+        style={{
+          background: 'rgba(14, 19, 24, 0.85)',
+          backdropFilter: 'blur(12px)',
+          borderColor: 'var(--panel-edge)',
+        }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           {/* Left: breadcrumb */}
@@ -121,7 +121,7 @@ export function ActionBar({ editor }: Props) {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate('/functions')}
-                className="shrink-0 text-text-secondary hover:text-[#FF6B35]"
+                className="shrink-0"
                 aria-label={t('funcEditor.backToFunctions')}
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -129,29 +129,29 @@ export function ActionBar({ editor }: Props) {
             <nav className="flex items-center gap-1 text-sm min-w-0" aria-label="Breadcrumb">
               <Link
                 to="/functions/my"
-                className="text-text-muted hover:text-text-primary transition-colors truncate"
+                className="text-[var(--text-faint)] hover:text-[var(--text)] transition-colors truncate"
               >
                 {t('funcEditor.breadcrumbFunctions')}
               </Link>
-              <ChevronRight className="w-3.5 h-3.5 text-text-muted shrink-0" />
-              <span className="text-[#FF6B35] font-medium truncate font-display">
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--text-faint)] shrink-0" />
+              <span className="text-[var(--accent)] font-medium truncate" style={{ fontFamily: 'var(--font-display)' }}>
                 {isEditing ? functionName || t('funcEditor.breadcrumbEditFunction') : functionName || t('funcEditor.breadcrumbNewFunction')}
               </span>
             </nav>
           </div>
 
           {/* Center: save status */}
-          <div className="hidden sm:flex items-center gap-2 text-xs text-text-muted">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-[var(--text-faint)]">
             {isLoading ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FF6B35]" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--accent)]" />
             ) : isDirty ? (
               <span className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-pending)] animate-pulse" />
                 {t('funcEditor.unsavedChanges')}
               </span>
             ) : lastSaved ? (
               <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-[var(--status-ok)]" />
                 {t('funcEditor.draftSavedTime', { time: relativeTime })}
               </span>
             ) : null}
@@ -161,11 +161,11 @@ export function ActionBar({ editor }: Props) {
           <div className="flex items-center gap-2 shrink-0">
             <KeyboardShortcutsDialog>
               <button
-                className="hidden md:flex items-center gap-1.5 text-xs text-text-muted hover:text-text-primary transition-colors px-2 py-1 rounded-md hover:bg-bg-tertiary"
+                className="hidden md:flex items-center gap-1.5 text-xs text-[var(--text-faint)] hover:text-[var(--text)] transition-colors px-2 py-1 rounded-[var(--radius-sm)] hover:bg-[rgba(255,255,255,0.04)]"
                 aria-label={t('funcEditor.keyboardShortcuts')}
               >
                 <Keyboard className="w-3.5 h-3.5" />
-                <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded bg-bg-tertiary border border-border-subtle text-[10px] font-mono">
+                <kbd className="hidden lg:inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-sm)] bg-[var(--panel-raised)] border border-[var(--panel-edge)] text-[10px] font-[var(--font-mono)]">
                   ?
                 </kbd>
               </button>
@@ -174,7 +174,7 @@ export function ActionBar({ editor }: Props) {
               variant="ghost"
               size="sm"
               onClick={() => navigate('/functions')}
-              className="text-text-secondary hover:text-[#FF6B35] hidden sm:flex"
+              className="hidden sm:flex"
             >
               {t('funcEditor.cancelAction')}
             </Button>
@@ -183,7 +183,7 @@ export function ActionBar({ editor }: Props) {
               size="sm"
               onClick={handleTest}
               disabled={isLoading}
-              className="gap-1.5 border-border-default text-text-secondary hover:text-[#FF6B35] hover:border-[#FF6B35]/50 hidden md:flex"
+              className="gap-1.5 hidden md:flex"
             >
               {isTesting ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -197,7 +197,7 @@ export function ActionBar({ editor }: Props) {
               size="sm"
               onClick={handleSaveDraft}
               disabled={isLoading}
-              className="gap-1.5 border-border-default text-text-secondary hover:text-[#FF6B35] hover:border-[#FF6B35]/50"
+              className="gap-1.5"
             >
               {isSaving ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -210,12 +210,7 @@ export function ActionBar({ editor }: Props) {
               size="sm"
               onClick={handleDeploy}
               disabled={isLoading}
-              className="gap-1.5 font-semibold"
-              style={{
-                background: 'linear-gradient(135deg, #FF6B35 0%, #FF4F5E 100%)',
-                color: '#fff',
-                border: 'none',
-              }}
+              className="gap-1.5"
             >
               {isDeploying ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

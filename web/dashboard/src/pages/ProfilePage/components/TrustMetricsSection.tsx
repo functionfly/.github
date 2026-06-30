@@ -121,14 +121,14 @@ export function TrustMetricsSection({
   const metrics = [
     {
       name: 'Reliability',
-      score: Math.min(100, trustScore + Math.random() * 10 - 5),
+      score: normalizedTrust,
       icon: Shield,
     },
-    { name: 'Performance', score: Math.min(100, trustScore + Math.random() * 10 - 5), icon: Zap },
-    { name: 'Community', score: Math.min(100, trustScore + Math.random() * 15 - 7), icon: Users },
+    { name: 'Performance', score: normalizedTrust, icon: Zap },
+    { name: 'Community', score: normalizedTrust, icon: Users },
     {
       name: 'Documentation',
-      score: Math.min(100, trustScore + Math.random() * 20 - 10),
+      score: normalizedTrust,
       icon: BookOpen,
     },
   ];

@@ -67,7 +67,7 @@ export function SettingsTab() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-            <Settings className="h-5 w-5 text-brand-500" />
+            <Settings className="h-5 w-5 text-[var(--status-ok)]" />
             MCP Settings
           </h2>
           <p className="text-sm text-text-secondary mt-1">

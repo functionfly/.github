@@ -380,6 +380,29 @@ export const FEATURES: Record<string, readonly PlanTier[]> = {
     'enterprise_sla',
     'agent_enterprise',
   ],
+  /** Attestation: view attestations and verify chains (all plans) */
+  ATTESTATION_READ: [
+    'free',
+    'starter',
+    'professional',
+    'enterprise',
+    'enterprise_sla',
+    'agent_enterprise',
+  ],
+  /** Attestation: create new attestations (Pro+) */
+  ATTESTATION_CREATE: ['professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
+  /** Attestation: revoke attestations (Enterprise+) */
+  ATTESTATION_REVOKE: ['enterprise', 'enterprise_sla', 'agent_enterprise'],
+  /** Attestation: full lifecycle management (Pro+) */
+  ATTESTATION_MANAGE: ['professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
+  /** Trust: submit verification requests (Starter+) */
+  TRUST_VERIFICATION: ['starter', 'professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
+  /** Trust: submit trust reports (Starter+) */
+  TRUST_REPORTS: ['starter', 'professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
+  /** Trust: evaluate functions against trust policies (Pro+) */
+  TRUST_POLICY_EVALUATE: ['professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
+  /** Trust: create/update/delete trust policies (Pro+) */
+  TRUST_POLICY_MANAGE: ['professional', 'enterprise', 'enterprise_sla', 'agent_enterprise'],
 } as const;
 
 export type FeatureKey = keyof typeof FEATURES;
@@ -529,4 +552,60 @@ export const getConsciousnessLookbackDays = (plan?: string): number => {
   if (hasAdvancedConsciousness(plan)) return 30;
   if (hasConsciousness(plan)) return 7;
   return 0;
+};
+
+/**
+ * Check if the plan can view attestations (all plans)
+ */
+export const canViewAttestations = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'ATTESTATION_READ');
+};
+
+/**
+ * Check if the plan can create attestations (Pro+)
+ */
+export const canCreateAttestations = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'ATTESTATION_CREATE');
+};
+
+/**
+ * Check if the plan can revoke attestations (Enterprise+)
+ */
+export const canRevokeAttestations = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'ATTESTATION_REVOKE');
+};
+
+/**
+ * Check if the plan can manage attestation lifecycle (Pro+)
+ */
+export const canManageAttestations = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'ATTESTATION_MANAGE');
+};
+
+/**
+ * Check if the plan can submit trust verification requests (Starter+)
+ */
+export const canSubmitVerification = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'TRUST_VERIFICATION');
+};
+
+/**
+ * Check if the plan can submit trust reports (Starter+)
+ */
+export const canSubmitTrustReports = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'TRUST_REPORTS');
+};
+
+/**
+ * Check if the plan can evaluate trust policies (Pro+)
+ */
+export const canEvaluateTrustPolicies = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'TRUST_POLICY_EVALUATE');
+};
+
+/**
+ * Check if the plan can manage trust policies (Pro+)
+ */
+export const canManageTrustPolicies = (plan?: string): boolean => {
+  return hasFeature(plan as PlanTier, 'TRUST_POLICY_MANAGE');
 };

@@ -10,6 +10,7 @@ import {
   Settings,
   Zap,
 } from 'lucide-react';
+import { SandboxStatusPanel } from '@/components/sandbox';
 
 const VIEW_TABS = [
   { id: 'overview', label: 'Overview', icon: Activity },
@@ -41,11 +42,62 @@ const RuntimePlaceholder = ({ view }: { view: string }) => (
   </div>
 );
 
+function OverviewPanel() {
+  return <SandboxStatusPanel />;
+}
+
+function ServerlessPanel() {
+  const { runtimes } = useUniversalRuntimeStore();
+
+  return (
+    <div className="space-y-4">
+      <SandboxStatusPanel />
+      {runtimes.length > 0 && (
+        <div className="aviation-panel p-4">
+          <h3 className="text-sm font-semibold text-aviation-text-secondary mb-3">
+            Active Runtimes ({runtimes.length})
+          </h3>
+          <div className="space-y-2">
+            {runtimes.map((runtime) => (
+              <div
+                key={runtime.id}
+                className="flex items-center justify-between p-2 rounded-md bg-muted/20"
+              >
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    'w-2 h-2 rounded-full',
+                    runtime.status === 'ready' ? 'bg-green-500' :
+                    runtime.status === 'active' ? 'bg-blue-500' :
+                    runtime.status === 'error' ? 'bg-red-500' : 'bg-gray-400'
+                  )} />
+                  <span className="text-xs font-medium">{runtime.name}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground capitalize">{runtime.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function UniversalRuntimePage() {
   const { activeView, setActiveView, executionMode, setExecutionMode, runtimes, metrics } =
     useUniversalRuntimeStore();
 
   const activeTab = VIEW_TABS.find((t) => t.id === activeView) || VIEW_TABS[0];
+
+  const renderContent = () => {
+    switch (activeView) {
+      case 'overview':
+        return <OverviewPanel />;
+      case 'serverless':
+        return <ServerlessPanel />;
+      default:
+        return <RuntimePlaceholder view={activeTab.label} />;
+    }
+  };
 
   return (
     <div className="aviation-layout-container p-6 space-y-6">
@@ -145,7 +197,7 @@ export function UniversalRuntimePage() {
           </div>
         </div>
         <div className="p-4">
-          <RuntimePlaceholder view={activeTab.label} />
+          {renderContent()}
         </div>
       </div>
     </div>

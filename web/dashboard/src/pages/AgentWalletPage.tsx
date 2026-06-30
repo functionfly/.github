@@ -78,7 +78,7 @@ export function AgentWalletPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <Button variant="ghost" size="sm" asChild>
-        <Link to={ROUTES.AGENT_DETAIL.replace(':id', id)}>
+        <Link to={ROUTES.agentPath(id ?? '')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Agent
         </Link>

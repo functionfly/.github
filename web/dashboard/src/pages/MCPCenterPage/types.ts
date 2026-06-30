@@ -38,9 +38,26 @@ export interface MCPConnection {
   client_type: string;
   client_icon?: string;
   status: 'active' | 'stale' | 'never';
+  enabled: boolean;
   connected_functions: number;
   total_invocations: number;
   last_connected_at: string | null;
+  avg_latency_ms: number;
+  connected_function_names: string[];
+}
+
+export type ClientSetupStatus = 'not_installed' | 'installed' | 'enabled' | 'disabled';
+
+export interface ClientSetupInfo {
+  type: string;
+  name: string;
+  description: string;
+  icon: string;
+  configPath: string;
+  setupCommand: string;
+  docsUrl: string;
+  deepLink?: string;
+  configSnippet: string;
 }
 
 export interface MCPSettingsGlobal {
@@ -58,6 +75,7 @@ export interface MCPSettingsGlobal {
 export type MCPFunctionFilter = 'all' | 'enabled' | 'disabled' | 'verified';
 export type MCPFunctionSort = 'name' | 'invocations' | 'lastInvoked';
 export type TimeRange = '24h' | '7d' | '30d' | '90d';
+export type TransportMode = 'stdio' | 'http';
 
 export interface MCPFunctionRow {
   id: string;

@@ -978,7 +978,8 @@ export async function getMyAffiliateCodes(): Promise<AffiliateCode[]> {
 }
 
 export async function getMyAffiliateCommissions(): Promise<AffiliateCommission[]> {
-  return apiClient.get<AffiliateCommission[]>('/v1/affiliate/my-commissions');
+  const res = await apiClient.get<{ commissions: AffiliateCommission[] }>('/v1/affiliate/my-commissions');
+  return res?.commissions ?? [];
 }
 
 export async function getMyAffiliateReferrals(): Promise<AffiliateReferral[]> {

@@ -94,6 +94,7 @@ const ForbiddenPage = lazyPage(() => import('@/pages/ForbiddenPage'), 'Forbidden
 const FRGEditorPage = lazyPage(() => import('@/pages/FRGEditorPage'), 'FRGEditorPage');
 const FRGGraphsPage = lazyPage(() => import('@/pages/FRGGraphsPage'), 'FRGGraphsPage');
 const FRGShowcasePage = lazyPage(() => import('@/pages/FRGShowcasePage'), 'FRGShowcasePage');
+const FoundersPage = lazyPage(() => import('@/pages/FoundersPage'), 'FoundersPage');
 const FunctionDNAPage = lazyPage(() => import('@/pages/FunctionDNAPage'), 'FunctionDNAPage');
 const FunctionMarketplacePage = lazyPage(() => import('@/pages/FunctionMarketplacePage'), 'FunctionMarketplacePage');
 const FunctionPage = lazyPage(() => import('@/pages/FunctionPage'), 'FunctionPage');
@@ -535,10 +536,6 @@ function AppContent() {
           <Route path="/registry" element={<BrowseFunctionsPage />} />
           <Route path="/registry/:author/:name" element={<RegistryFunctionRedirect />} />
 
-          {/* Agent Marketplace Routes (Public) - temporarily inside DashboardLayout for auth */}
-          <Route path="/marketplace/agents/:id" element={<AgentMarketplaceDetailPage />} />
-          <Route path="/agents/:id" element={<AgentMarketplaceDetailPage />} />
-
           {/* Public user profile pages */}
           <Route path="/u/:username" element={<ProfilePage />} />
           <Route path="/profile/:username" element={<ProfilePage />} />
@@ -645,6 +642,7 @@ function AppContent() {
             <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
             <Route path="bundles" element={<BundlePricingPage />} />
             <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
+            <Route path="founders" element={<FoundersPage />} />
 
             {/* Time Machine Routes */}
             <Route path="time-machine" element={<TimeMachinePage />} />
@@ -703,7 +701,9 @@ function AppContent() {
             <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
             <Route path="marketplace" element={<AgentsMarketplacePage />} />
             <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />
+            <Route path="marketplace/agents/:id" element={<AgentMarketplaceDetailPage />} />
             <Route path="wallet" element={<WalletPage />} />
+            <Route path="wallet/agents/:id" element={<WalletPage />} />
             <Route path="wallet/:slug" element={<WalletPage />} />
             <Route path="evolution" element={<EvolutionPage />} />
             <Route path="evolution/:slug" element={<EvolutionPage />} />

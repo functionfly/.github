@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { useAuthStore } from '@/stores/authStore';
 import type { TenantMembership } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, Brain, CheckCircle2, Loader2, Lock, Save, Shield } from 'lucide-react';
+import { AlertTriangle, Brain, CheckCircle2, Globe, Loader2, Lock, Save, Shield } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { GlobalDefaultSection } from './GlobalDefaultSection';
@@ -21,12 +21,16 @@ import { ModelProfileSelector } from './ModelProfileSelector';
 import { UserOverridesSection } from './UserOverridesSection';
 import {
   clearAllowlist,
+  clearProviderAllowlist,
   enableAllModels,
+  enableAllProviders,
   expandProfileDefaults,
   FEATURE_DEFAULTS,
   formatModelLabel,
+  isProviderEnabled,
   preferencesEqual,
   toggleModelAllowlist,
+  toggleProviderAllowlist,
 } from './utils';
 
 const emptyPreferences: TenantAIPreferences = {
@@ -34,6 +38,7 @@ const emptyPreferences: TenantAIPreferences = {
   use_same_model_everywhere: false,
   defaults: {},
   enabled_models: [],
+  enabled_providers: [],
   allow_user_overrides: true,
   routing_strategy: 'quality_first',
 };
@@ -160,6 +165,28 @@ export default function AIModelsPage() {
     });
   };
 
+  const handleToggleProvider = (provider: string, enabled: boolean) => {
+    updateDraft({
+      enabled_providers: toggleProviderAllowlist(
+        value.enabled_providers,
+        catalog,
+        provider,
+        enabled
+      ),
+    });
+  };
+
+  const providers = useMemo(() => {
+    const map = new Map<string, { count: number; available: number }>();
+    for (const m of catalog) {
+      const entry = map.get(m.provider) ?? { count: 0, available: 0 };
+      entry.count++;
+      if (m.provider_available !== false) entry.available++;
+      map.set(m.provider, entry);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [catalog]);
+
   const handleSaveOverrides = () => {
     const payload: Record<string, ModelSelection> = {};
     for (const [feature, selection] of Object.entries(userOverrides)) {
@@ -196,6 +223,66 @@ export default function AIModelsPage() {
             change organization defaults.
           </p>
         </div>
+      )}
+
+      {/* Provider toggles — visible to admins */}
+      {canManageOrg && providers.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-brand-500" />
+              Providers
+            </CardTitle>
+            <CardDescription>
+              Enable or disable AI providers. Disabled providers hide all their models from selectors. Empty means all providers are allowed.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => updateDraft({ enabled_providers: clearProviderAllowlist() })}
+              >
+                Allow all
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => updateDraft({ enabled_providers: enableAllProviders(catalog) })}
+              >
+                Restrict to listed
+              </Button>
+              {value.enabled_providers.length > 0 && (
+                <Badge variant="outline" className="gap-1">
+                  {value.enabled_providers.length} of {providers.length} enabled
+                </Badge>
+              )}
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {providers.map(([name, stats]) => (
+                <div
+                  key={name}
+                  className="flex items-center justify-between rounded-lg border border-border-subtle px-4 py-3"
+                >
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium capitalize">{name}</p>
+                    <p className="text-xs text-text-muted">
+                      {stats.count} model{stats.count !== 1 ? 's' : ''}
+                      {stats.available < stats.count && (
+                        <span className="ml-1 text-warning">({stats.available} available)</span>
+                      )}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={isProviderEnabled(value.enabled_providers, name)}
+                    onCheckedChange={(checked) => handleToggleProvider(name, checked)}
+                  />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Model catalog — visible to everyone */}

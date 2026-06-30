@@ -229,7 +229,7 @@ export function FunctionTable({
                   <TableCell>
                     <Link
                       to={`/functions/${fn.author}/${fn.name}`}
-                      className="font-medium text-text-primary hover:text-brand-500"
+                      className="font-medium text-text-primary hover:text-[var(--accent)]"
                     >
                       {fn.author}/{fn.name}
                     </Link>

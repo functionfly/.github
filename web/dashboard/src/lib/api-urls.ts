@@ -179,6 +179,18 @@ export const API_URLS = {
     status: `${API}/founders/status`,
     votes: `${API}/founders/votes`,
     earlyAccess: `${API}/founders/early-access`,
+    myRank: `${API}/founders/my-rank`,
+    leaderboard: `${API}/founders/public-leaderboard`,
+  },
+
+  // ========================================================================
+  // Platform State Endpoints (Public — used by Founders Console)
+  // ========================================================================
+  platform: {
+    metricsGlobal: `${API}/metrics/global`,
+    metricsStream: `${API}/metrics/stream`,
+    statusComponents: `${API}/status/components`,
+    statusEdge: `${API}/status/edge`,
   },
 
   // ========================================================================

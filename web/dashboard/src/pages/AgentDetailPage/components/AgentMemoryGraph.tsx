@@ -203,7 +203,7 @@ export function AgentMemoryGraph({ memories, agentId }: AgentMemoryGraphProps) {
           ))}
         </div>
         <div className="flex gap-4 text-sm text-muted-foreground">
-          <span>Avg Importance: {stats.avgImportance.toFixed(2)}</span>
+          <span>Avg Importance: {(stats.avgImportance ?? 0).toFixed(2)}</span>
           <span>Total Access: {stats.totalAccess}</span>
         </div>
       </div>
@@ -332,7 +332,7 @@ export function AgentMemoryGraph({ memories, agentId }: AgentMemoryGraphProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Importance</p>
-                    <p className="font-semibold">{selectedMemory.importance_score.toFixed(2)}</p>
+                    <p className="font-semibold">{(selectedMemory.importance_score ?? 0).toFixed(2)}</p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Access Count</p>

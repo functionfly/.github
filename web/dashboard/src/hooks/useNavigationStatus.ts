@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNotificationStore } from '@/stores/notificationStore';
 import { getAppsLimit } from '@/lib/plan-utils';
 import { useAuthStore } from '@/stores/authStore';
+import { apiClient } from '@/api/client';
+import { API_URLS } from '@/lib/api-urls';
 
 interface NavigationStatus {
   functions: {
@@ -114,6 +116,23 @@ export function useNavigationStatus(): NavigationStatus {
 // Helper hook for getting specific status badge content
 export function useStatusBadge(path: string): { content: string | number | null; type: 'info' | 'warning' | 'error' | 'success' | null } {
   const status = useNavigationStatus();
+  const [unvotedCount, setUnvotedCount] = useState(0);
+
+  useEffect(() => {
+    if (path !== '/founders') return;
+    let cancelled = false;
+    apiClient
+      .get<{ votes: { has_voted: boolean }[] }>(API_URLS.founders.votes)
+      .then((res) => {
+        if (!cancelled && res?.votes) {
+          setUnvotedCount(res.votes.filter((v) => !v.has_voted).length);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
 
   return useMemo(() => {
     switch (path) {
@@ -155,8 +174,13 @@ export function useStatusBadge(path: string): { content: string | number | null;
           return { content: '!', type: 'error' };
         }
         return { content: status.providers.totalCount, type: 'success' };
+      case '/founders':
+        if (unvotedCount > 0) {
+          return { content: unvotedCount, type: 'warning' };
+        }
+        return { content: null, type: null };
       default:
         return { content: null, type: null };
     }
-  }, [status, path]);
+  }, [status, path, unvotedCount]);
 }

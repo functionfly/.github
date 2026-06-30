@@ -22,13 +22,14 @@ import { useApiReachableStore } from '@/stores/apiReachableStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserProfile } from '@/types';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Code, CreditCard, Dna, Link2, Shield, ShieldCheck, User } from 'lucide-react';
+import { Bell, Brain, Code, CreditCard, Dna, Link2, Shield, ShieldCheck, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   AccountSettingsTab,
+  AIKeysSettingsTab,
   AuthSettingsTab,
   BillingSettingsTab,
   DeveloperSettingsTab,
@@ -69,6 +70,7 @@ const TABS: { id: SettingsTabValue; label: string; icon: typeof User }[] = [
   { id: 'account', label: 'Account', icon: User },
   { id: 'billing', label: 'Billing', icon: CreditCard },
   { id: 'developer', label: 'Developer', icon: Code },
+  { id: 'ai-keys', label: 'AI Keys', icon: Brain },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'security', label: 'Security', icon: ShieldCheck },
   { id: 'privacy', label: 'Privacy', icon: Shield },
@@ -215,6 +217,7 @@ export function SettingsContent({
         {activeTab === 'security' && <SecuritySettingsTab />}
         {activeTab === 'privacy' && <PrivacySettingsTab profile={profile ?? undefined} />}
         {activeTab === 'platform' && <PlatformSettingsTab />}
+        {activeTab === 'ai-keys' && <AIKeysSettingsTab />}
         {activeTab === 'integrations' && <IntegrationsSettingsTab />}
         {activeTab === 'github' && <GitHubSettingsPage />}
         {activeTab === 'trust-api' && <TrustAPISettingsTab returnUrl={returnUrl} />}

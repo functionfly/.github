@@ -1,217 +1,81 @@
 /* ==========================================================================
-   FunctionFly Conversations Page - Aviation Theme
-   Aircraft cockpit aesthetic with full light/dark mode support
-   Jet Stream brand palette: Flame (#FF6B35), Cyan (#00D4FF), Afterburner (#FF4F5E)
-
-   Aviation-inspired styling for the conversations dashboard
+   FunctionFly Conversations Page — Sealed Containment
+   All aviation variables replaced with SC tokens.
    ========================================================================== */
 
-/* ----------------------------------------
-   CSS Variables - Conversations Aviation Theme
-   ---------------------------------------- */
+/* Conversation-specific SC aliases */
 :root {
-  /* Conversation-specific colors */
-  --conv-aviation-primary: var(--ff-flame);
-  --conv-aviation-primary-hover: var(--ff-flame-dark);
-  --conv-aviation-primary-light: rgba(255, 107, 53, 0.1);
-  --conv-aviation-primary-border: rgba(255, 107, 53, 0.2);
-
-  /* Conversation Status Colors */
-  --conv-aviation-online-bg: rgba(16, 185, 129, 0.15);
-  --conv-aviation-online-text: #10b981;
-  --conv-aviation-online-border: rgba(16, 185, 129, 0.3);
-
-  --conv-aviation-unread-bg: rgba(245, 158, 11, 0.15);
-  --conv-aviation-unread-text: #f59e0b;
-  --conv-aviation-unread-border: rgba(245, 158, 11, 0.3);
-
-  --conv-aviation-resolved-bg: rgba(6, 182, 212, 0.15);
-  --conv-aviation-resolved-text: #06b6d4;
-  --conv-aviation-resolved-border: rgba(6, 182, 212, 0.3);
-
-  --conv-aviation-pending-bg: rgba(107, 114, 128, 0.15);
-  --conv-aviation-pending-text: #6b7280;
-  --conv-aviation-pending-border: rgba(107, 114, 128, 0.3);
-
-  /* Conversation Card Styles - Aviation Panel */
-  --conv-aviation-card-bg: var(--color-aviation-bg-panel);
-  --conv-aviation-card-border: var(--color-aviation-border-panel);
-  --conv-aviation-card-hover-border: var(--color-aviation-amber-dim);
-  --conv-aviation-card-text: var(--color-aviation-text-primary);
-  --conv-aviation-card-text-secondary: var(--color-aviation-text-secondary);
-
-  /* Sidebar Styles */
-  --conv-aviation-sidebar-bg: var(--color-aviation-bg-secondary);
-  --conv-aviation-sidebar-border: var(--color-aviation-border-panel);
-
-  /* Message Styles */
-  --conv-aviation-message-bg: var(--color-aviation-bg-instrument);
-  --conv-aviation-message-border: var(--color-aviation-border-instrument);
-  --conv-aviation-message-own-bg: rgba(255, 107, 53, 0.08);
-  --conv-aviation-message-own-border: rgba(255, 107, 53, 0.2);
-
-  /* Input/Select - Aviation Instrument */
-  --conv-aviation-input-bg: var(--color-aviation-bg-instrument);
-  --conv-aviation-input-border: var(--color-aviation-border-instrument);
-  --conv-aviation-input-text: var(--color-aviation-text-primary);
-  --conv-aviation-input-placeholder: var(--color-aviation-text-dim);
-
-  /* Animation Durations */
-  --conv-aviation-transition-fast: 150ms ease;
-  --conv-aviation-transition-normal: 250ms ease;
-  --conv-aviation-transition-slow: 350ms ease;
-
-  /* Shadows - Aviation Glow */
-  --conv-aviation-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --conv-aviation-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --conv-aviation-shadow-glow: 0 0 20px rgba(255, 107, 53, 0.15);
+  --conv-bg: var(--panel);
+  --conv-bg-raised: var(--panel-raised);
+  --conv-border: var(--panel-edge);
+  --conv-border-hover: var(--steel-light);
+  --conv-text: var(--text);
+  --conv-text-dim: var(--text-dim);
+  --conv-text-faint: var(--text-faint);
+  --conv-accent: var(--accent);
+  --conv-accent-hover: var(--accent-hover);
+  --conv-accent-dim: var(--accent-dim);
+  --conv-ok: var(--status-ok);
+  --conv-pending: var(--status-pending);
+  --conv-revoked: var(--status-revoked);
+  --conv-foil: var(--foil-a);
+  --conv-fast: var(--duration-fast);
+  --conv-base: var(--duration-base);
+  --conv-ease: var(--ease-out);
 }
 
-/* Light Mode Overrides */
-[data-theme='light'] {
-  --conv-aviation-card-bg: var(--color-aviation-bg-panel-light);
-  --conv-aviation-card-border: var(--color-aviation-border-panel-light);
-  --conv-aviation-card-hover-border: var(--color-aviation-amber-dim-light);
-  --conv-aviation-card-text: var(--color-aviation-text-primary-light);
-  --conv-aviation-card-text-secondary: var(--color-aviation-text-secondary-light);
-
-  --conv-aviation-sidebar-bg: var(--color-aviation-bg-secondary-light);
-  --conv-aviation-sidebar-border: var(--color-aviation-border-panel-light);
-
-  --conv-aviation-message-bg: var(--color-aviation-bg-instrument-light);
-  --conv-aviation-message-border: var(--color-aviation-border-instrument-light);
-  --conv-aviation-message-own-bg: rgba(232, 90, 42, 0.08);
-  --conv-aviation-message-own-border: rgba(232, 90, 42, 0.2);
-
-  --conv-aviation-input-bg: var(--color-aviation-bg-instrument-light);
-  --conv-aviation-input-border: var(--color-aviation-border-instrument-light);
-  --conv-aviation-input-text: var(--color-aviation-text-primary-light);
-  --conv-aviation-input-placeholder: var(--color-aviation-text-dim-light);
-
-  --conv-aviation-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --conv-aviation-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
-  --conv-aviation-shadow-glow: 0 0 20px rgba(232, 90, 42, 0.1);
-}
-
-/* ----------------------------------------
-   Aviation Grid Background - Subtle
-   ---------------------------------------- */
+/* ── Grid Background ── */
 .conv-aviation-grid-bg {
-  background-color: var(--color-aviation-bg-primary);
-  background-image:
-    radial-gradient(at 20% 30%, rgba(255, 107, 53, 0.04) 0px, transparent 50%),
-    radial-gradient(at 80% 70%, rgba(0, 212, 255, 0.03) 0px, transparent 50%);
+  background-color: var(--bg);
 }
 
-[data-theme='light'] .conv-aviation-grid-bg {
-  background-color: var(--color-aviation-bg-primary-light);
-  background-image:
-    radial-gradient(at 20% 30%, rgba(255, 107, 53, 0.03) 0px, transparent 50%),
-    radial-gradient(at 80% 70%, rgba(0, 212, 255, 0.02) 0px, transparent 50%);
-}
-
-/* ----------------------------------------
-   Conversations Page Container
-   ---------------------------------------- */
+/* ── Page Container ── */
 .conv-aviation-page {
   display: flex;
   height: 100%;
   max-height: 100%;
-  border-top: 1px solid var(--conv-aviation-card-border);
+  border-top: 1px solid var(--conv-border);
   position: relative;
 }
 
-.conv-aviation-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--gradient-mesh-1);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ----------------------------------------
-   Aviation Sidebar
-   ---------------------------------------- */
+/* ── Sidebar ── */
 .conv-aviation-sidebar {
   width: 18rem;
-  border-right: 1px solid var(--conv-aviation-sidebar-border);
-  background: linear-gradient(
-    180deg,
-    var(--conv-aviation-sidebar-bg) 0%,
-    var(--color-aviation-bg-primary) 100%
-  );
+  border-right: 1px solid var(--conv-border);
+  background: var(--conv-bg);
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 1;
 }
 
-.conv-aviation-sidebar::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 1px;
-  height: 100%;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    var(--color-aviation-amber-dim) 20%,
-    var(--color-aviation-amber-dim) 80%,
-    transparent 100%
-  );
-  opacity: 0.5;
-}
-
 .conv-aviation-sidebar-header {
-  padding: 0.75rem;
-  border-bottom: 1px solid var(--conv-aviation-sidebar-border);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--conv-border);
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
-  position: relative;
-}
-
-.conv-aviation-sidebar-header::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-aviation-amber-dim) 30%,
-    var(--color-aviation-amber-dim) 70%,
-    transparent 100%
-  );
-  opacity: 0.3;
+  gap: var(--space-2);
 }
 
 .conv-aviation-sidebar-title {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--conv-aviation-card-text);
+  color: var(--conv-text);
   letter-spacing: -0.01em;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .conv-aviation-sidebar-title svg {
-  color: var(--color-aviation-amber);
-  filter: drop-shadow(0 0 4px var(--color-aviation-amber-glow));
+  color: var(--conv-accent);
 }
 
-/* ----------------------------------------
-   Filter Tabs - Aviation Style
-   ---------------------------------------- */
+/* ── Filter Tabs ── */
 .conv-aviation-filter-tabs {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--space-1);
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -222,67 +86,60 @@
 
 .conv-aviation-filter-tab {
   flex-shrink: 0;
-  padding: 0.25rem 0.5rem;
+  padding: var(--space-1) var(--space-2);
   border-radius: 9999px;
-  font-size: 0.6875rem;
+  font-size: 11px;
   font-weight: 600;
   font-family: var(--font-mono);
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--conv-aviation-card-text-secondary);
+  color: var(--conv-text-dim);
   background: transparent;
   border: 1px solid transparent;
-  transition: all var(--conv-aviation-transition-fast);
+  transition: all var(--conv-fast) var(--conv-ease);
 }
 
 .conv-aviation-filter-tab:hover {
-  background: var(--color-aviation-bg-instrument);
-  color: var(--conv-aviation-card-text);
+  background: var(--conv-bg-raised);
+  color: var(--conv-text);
 }
 
 .conv-aviation-filter-tab.active {
-  background: var(--color-aviation-amber-subtle);
-  border-color: var(--color-aviation-amber-dim);
-  color: var(--color-aviation-amber);
-  box-shadow: 0 0 10px var(--color-aviation-amber-dim);
+  background: rgba(255, 122, 61, 0.08);
+  border-color: var(--conv-accent-dim);
+  color: var(--conv-accent);
 }
 
-/* ----------------------------------------
-   Search Input - Aviation Instrument Style
-   ---------------------------------------- */
+/* ── Search Input ── */
 .conv-aviation-search-input {
   height: 2rem;
-  font-size: 0.8125rem;
-  background: var(--conv-aviation-input-bg);
-  border: 1px solid var(--conv-aviation-input-border);
-  border-radius: 6px;
-  padding: 0 0.875rem;
-  color: var(--conv-aviation-input-text);
+  font-size: 13px;
+  background: var(--conv-bg-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius-lg);
+  padding: 0 var(--space-4);
+  color: var(--conv-text);
   font-family: var(--font-mono);
-  transition: all var(--conv-aviation-transition-fast);
+  transition: all var(--conv-fast) var(--conv-ease);
 }
 
 .conv-aviation-search-input:focus {
   outline: none;
-  border-color: var(--color-aviation-amber);
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim),
-    inset 0 0 10px var(--color-aviation-amber-subtle);
+  border-color: var(--conv-accent);
+  box-shadow: var(--shadow-input-focus);
 }
 
 .conv-aviation-search-input::placeholder {
-  color: var(--conv-aviation-input-placeholder);
+  color: var(--conv-text-faint);
 }
 
-/* ----------------------------------------
-   Thread Row - Aviation Instrument Style
-   ---------------------------------------- */
+/* ── Thread Row ── */
 .conv-aviation-thread-row {
   display: flex;
-  gap: 0.625rem;
-  padding: 0.625rem 0.75rem;
-  border-radius: 8px;
-  transition: all var(--conv-aviation-transition-fast);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  transition: all var(--conv-fast) var(--conv-ease);
   position: relative;
   border: 1px solid transparent;
 }
@@ -295,18 +152,14 @@
   transform: translateY(-50%);
   width: 0;
   height: 0;
-  background: linear-gradient(
-    180deg,
-    var(--color-aviation-amber) 0%,
-    var(--color-aviation-cyan) 100%
-  );
+  background: var(--conv-accent);
   border-radius: 0 2px 2px 0;
-  transition: width var(--conv-aviation-transition-fast);
+  transition: width var(--conv-fast) var(--conv-ease);
   opacity: 0;
 }
 
 .conv-aviation-thread-row:hover {
-  background: var(--color-aviation-bg-instrument);
+  background: var(--conv-bg-raised);
   transform: translateX(4px);
 }
 
@@ -316,61 +169,54 @@
 }
 
 .conv-aviation-thread-row.active {
-  background: var(--color-aviation-amber-subtle);
-  border: 1px solid var(--color-aviation-amber-dim);
+  background: rgba(255, 122, 61, 0.06);
+  border: 1px solid var(--conv-accent-dim);
 }
 
 .conv-aviation-thread-row.active::before {
   width: 3px;
   opacity: 1;
-  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
 }
 
 .conv-aviation-thread-row.resolved {
   opacity: 0.65;
 }
 
-/* ----------------------------------------
-   Thread Body
-   ---------------------------------------- */
+/* ── Thread Body ── */
 .conv-aviation-thread-body {
   min-width: 0;
   flex: 1;
 }
 
 .conv-aviation-thread-title {
-  font-size: 0.8125rem;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--conv-aviation-card-text);
-  
+  color: var(--conv-text);
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
 }
 
 .conv-aviation-thread-row:hover .conv-aviation-thread-title {
-  color: var(--color-aviation-amber);
+  color: var(--conv-accent);
 }
 
 .conv-aviation-thread-preview {
-  font-size: 0.75rem;
-  color: var(--conv-aviation-card-text-secondary);
-  
+  font-size: 12px;
+  color: var(--conv-text-dim);
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: 0.125rem;
+  margin-top: 2px;
   font-style: italic;
 }
 
-/* ----------------------------------------
-   Conversation Badges - Aviation Style
-   ---------------------------------------- */
+/* ── Badges ── */
 .conv-aviation-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.0625rem 0.375rem;
-  border-radius: 0.25rem;
-  font-size: 0.625rem;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
   font-weight: 600;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
@@ -379,92 +225,75 @@
 }
 
 .conv-aviation-badge-dm {
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--color-aviation-cyan);
-  border-color: rgba(6, 182, 212, 0.3);
+  background: rgba(159, 216, 255, 0.1);
+  color: var(--conv-foil);
+  border-color: rgba(159, 216, 255, 0.3);
 }
 
 .conv-aviation-badge-function {
-  background: rgba(139, 92, 246, 0.15);
-  color: #a78bfa;
-  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(217, 196, 255, 0.1);
+  color: var(--foil-b);
+  border-color: rgba(217, 196, 255, 0.3);
 }
 
 .conv-aviation-badge-issue {
-  background: rgba(249, 115, 22, 0.15);
-  color: #fb923c;
-  border-color: rgba(249, 115, 22, 0.3);
+  background: rgba(255, 122, 61, 0.1);
+  color: var(--conv-accent);
+  border-color: rgba(255, 122, 61, 0.3);
 }
 
 .conv-aviation-badge-fix {
-  background: rgba(234, 179, 8, 0.15);
-  color: #facc15;
-  border-color: rgba(234, 179, 8, 0.3);
+  background: rgba(232, 196, 104, 0.1);
+  color: var(--conv-pending);
+  border-color: rgba(232, 196, 104, 0.3);
 }
 
 .conv-aviation-badge-bounty {
-  background: var(--conv-aviation-online-bg);
-  color: var(--conv-aviation-online-text);
-  border-color: var(--conv-aviation-online-border);
+  background: rgba(143, 255, 208, 0.06);
+  color: var(--conv-ok);
+  border-color: rgba(143, 255, 208, 0.3);
 }
 
 .conv-aviation-badge-org {
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--color-aviation-cyan);
-  border-color: rgba(6, 182, 212, 0.3);
+  background: rgba(159, 216, 255, 0.1);
+  color: var(--conv-foil);
+  border-color: rgba(159, 216, 255, 0.3);
 }
 
 .conv-aviation-badge-security {
-  background: rgba(239, 68, 68, 0.15);
-  color: var(--color-aviation-red);
-  border-color: rgba(239, 68, 68, 0.3);
+  background: rgba(255, 107, 107, 0.1);
+  color: var(--conv-revoked);
+  border-color: rgba(255, 107, 107, 0.3);
 }
 
-/* ----------------------------------------
-   Unread Badge - Aviation Beacon Style
-   ---------------------------------------- */
+/* ── Unread Badge ── */
 .conv-aviation-unread-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   min-width: 1.25rem;
   height: 1.25rem;
-  padding: 0 0.375rem;
+  padding: 0 6px;
   border-radius: 9999px;
-  background: linear-gradient(
-    145deg,
-    var(--color-aviation-amber) 0%,
-    var(--color-aviation-amber-light) 100%
-  );
-  color: var(--color-aviation-bg-primary);
-  font-size: 0.625rem;
+  background: var(--conv-accent);
+  color: var(--bg);
+  font-size: 10px;
   font-weight: 700;
   font-family: var(--font-mono);
-  box-shadow:
-    0 0 10px var(--color-aviation-amber-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  animation: conv-aviation-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 10px var(--conv-accent-dim);
+  animation: conv-pulse 2s ease-in-out infinite;
 }
 
-@keyframes conv-aviation-pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
+@keyframes conv-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
 }
 
-/* ----------------------------------------
-   Main Content Area
-   ---------------------------------------- */
+/* ── Main Content ── */
 .conv-aviation-main {
   flex: 1;
   display: flex;
   min-width: 0;
-  
   z-index: 1;
 }
 
@@ -475,122 +304,80 @@
   min-width: 0;
 }
 
-/* ----------------------------------------
-   Header - Aviation Instrument Style
-   ---------------------------------------- */
+/* ── Header ── */
 .conv-aviation-header {
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--conv-aviation-card-border);
-  background: linear-gradient(
-    90deg,
-    var(--conv-aviation-card-bg) 0%,
-    var(--color-aviation-bg-secondary) 100%
-  );
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--conv-border);
+  background: var(--conv-bg);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  position: relative;
-}
-
-.conv-aviation-header::before {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-aviation-amber-dim) 30%,
-    var(--color-aviation-amber-dim) 70%,
-    transparent 100%
-  );
-  opacity: 0.5;
+  gap: var(--space-4);
 }
 
 .conv-aviation-header-title {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--conv-aviation-card-text);
+  color: var(--conv-text);
   letter-spacing: -0.01em;
 }
 
 .conv-aviation-header-subtitle {
-  font-size: 0.75rem;
-  color: var(--conv-aviation-card-text-secondary);
+  font-size: 12px;
+  color: var(--conv-text-dim);
   text-transform: capitalize;
   font-family: var(--font-mono);
 }
 
-/* ----------------------------------------
-   Header Actions - Aviation Button Style
-   ---------------------------------------- */
+/* ── Header Actions ── */
 .conv-aviation-header-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .conv-aviation-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  border: 1px solid var(--conv-aviation-card-border);
-  background: var(--color-aviation-bg-instrument);
-  color: var(--conv-aviation-card-text-secondary);
-  transition: all var(--conv-aviation-transition-fast);
-  position: relative;
-  overflow: hidden;
-}
-
-.conv-aviation-btn::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, var(--color-aviation-amber-subtle), transparent);
-  transition: left 0.5s ease;
+  border: 1px solid var(--steel);
+  background: transparent;
+  color: var(--conv-text-dim);
+  transition: all var(--conv-fast) var(--conv-ease);
 }
 
 .conv-aviation-btn:hover {
-  border-color: var(--color-aviation-amber);
-  color: var(--color-aviation-amber);
-  box-shadow: 0 0 15px var(--color-aviation-amber-dim);
-  transform: translateY(-1px);
-}
-
-.conv-aviation-btn:hover::before {
-  left: 100%;
+  border-color: var(--conv-accent-dim);
+  color: var(--conv-accent);
 }
 
 .conv-aviation-btn:active {
-  transform: translateY(0);
+  transform: translateY(1px);
 }
 
 .conv-aviation-btn-primary {
-  background: linear-gradient(
-    145deg,
-    var(--color-aviation-amber-subtle) 0%,
-    rgba(245, 158, 11, 0.05) 100%
-  );
-  border-color: var(--color-aviation-amber);
-  color: var(--color-aviation-amber);
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  border: none;
+  color: var(--text-on-light);
+  font-weight: 600;
+  box-shadow: var(--shadow-btn-primary-rest);
 }
 
 .conv-aviation-btn-primary:hover {
-  background: linear-gradient(145deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%);
-  box-shadow: 0 0 25px var(--color-aviation-amber-glow);
+  box-shadow: var(--shadow-btn-primary-hover);
+  color: var(--text-on-light);
+}
+
+.conv-aviation-btn-primary:active {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
 }
 
 .conv-aviation-btn svg {
@@ -598,39 +385,29 @@
   height: 14px;
 }
 
-/* ----------------------------------------
-   Message List
-   ---------------------------------------- */
+/* ── Message List ── */
 .conv-aviation-message-list {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem;
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
-/* ----------------------------------------
-   Message Bubble - Aviation Instrument Style
-   ---------------------------------------- */
+/* ── Message Bubble ── */
 .conv-aviation-message {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
   max-width: 80%;
-  animation: conv-aviation-fade-in-up 0.3s ease-out;
+  animation: conv-fade-in-up 0.3s var(--conv-ease);
 }
 
-@keyframes conv-aviation-fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes conv-fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .conv-aviation-message.own {
@@ -642,9 +419,9 @@
 }
 
 .conv-aviation-message-bubble {
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border-radius: 12px;
-  font-size: 0.875rem;
+  font-size: 14px;
   line-height: 1.5;
   position: relative;
   overflow: hidden;
@@ -652,14 +429,14 @@
 }
 
 .conv-aviation-message.own .conv-aviation-message-bubble {
-  background: var(--conv-aviation-message-own-bg);
-  border-color: var(--conv-aviation-message-own-border);
+  background: rgba(255, 122, 61, 0.04);
+  border-color: rgba(255, 122, 61, 0.15);
   border-radius: 12px 12px 4px 12px;
 }
 
 .conv-aviation-message.other .conv-aviation-message-bubble {
-  background: var(--conv-aviation-message-bg);
-  border-color: var(--conv-aviation-message-border);
+  background: var(--conv-bg-raised);
+  border-color: var(--conv-border);
   border-radius: 12px 12px 12px 4px;
 }
 
@@ -670,313 +447,214 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 30%,
-    rgba(255, 255, 255, 0.1) 70%,
-    transparent 100%
-  );
-  opacity: 0.5;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 30%, rgba(255, 255, 255, 0.05) 70%, transparent 100%);
 }
 
 .conv-aviation-message.own .conv-aviation-message-bubble::before {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 107, 53, 0.2) 30%,
-    rgba(255, 107, 53, 0.2) 70%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 122, 61, 0.1) 30%, rgba(255, 122, 61, 0.1) 70%, transparent 100%);
 }
 
 .conv-aviation-message-meta {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.6875rem;
-  color: var(--conv-aviation-card-text-secondary);
+  gap: var(--space-2);
+  font-size: 11px;
+  color: var(--conv-text-dim);
   font-family: var(--font-mono);
-  padding: 0 0.25rem;
+  padding: 0 var(--space-1);
 }
 
 .conv-aviation-message.own .conv-aviation-message-meta {
   justify-content: flex-end;
 }
 
-/* ----------------------------------------
-   Typing Indicator - Aviation Style
-   ---------------------------------------- */
+/* ── Typing Indicator ── */
 .conv-aviation-typing-indicator {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.75rem;
-  color: var(--conv-aviation-card-text-secondary);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: 12px;
+  color: var(--conv-text-dim);
   font-family: var(--font-mono);
 }
 
 .conv-aviation-typing-dots {
   display: flex;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .conv-aviation-typing-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-aviation-amber);
-  animation: conv-aviation-typing-bounce 1.4s ease-in-out infinite;
+  background: var(--conv-accent);
+  animation: conv-typing-bounce 1.4s ease-in-out infinite;
 }
 
-.conv-aviation-typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
+.conv-aviation-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.conv-aviation-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes conv-typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
 }
 
-.conv-aviation-typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes conv-aviation-typing-bounce {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.4;
-  }
-  30% {
-    transform: translateY(-4px);
-    opacity: 1;
-  }
-}
-
-/* ----------------------------------------
-   Composer Bar - Aviation Instrument Style
-   ---------------------------------------- */
+/* ── Composer ── */
 .conv-aviation-composer {
-  border-top: 1px solid var(--conv-aviation-card-border);
-  padding: 0.75rem 1rem;
-  background: var(--color-aviation-bg-secondary);
-  position: relative;
-}
-
-.conv-aviation-composer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-aviation-amber-dim) 50%,
-    transparent 100%
-  );
-  opacity: 0.3;
+  border-top: 1px solid var(--conv-border);
+  padding: var(--space-3) var(--space-4);
+  background: var(--conv-bg);
 }
 
 .conv-aviation-composer-input {
   width: 100%;
-  padding: 0.625rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border-radius: 9999px;
-  background: var(--conv-aviation-input-bg);
-  border: 1px solid var(--conv-aviation-input-border);
-  color: var(--conv-aviation-input-text);
+  background: var(--conv-bg-raised);
+  border: 1px solid var(--steel);
+  color: var(--conv-text);
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 14px;
   resize: none;
   min-height: 2.5rem;
   max-height: 6rem;
-  transition: all var(--conv-aviation-transition-fast);
+  transition: all var(--conv-fast) var(--conv-ease);
 }
 
 .conv-aviation-composer-input:focus {
   outline: none;
-  border-color: var(--color-aviation-amber);
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim),
-    0 0 20px var(--color-aviation-amber-dim);
+  border-color: var(--conv-accent);
+  box-shadow: var(--shadow-input-focus);
 }
 
 .conv-aviation-composer-input::placeholder {
-  color: var(--conv-aviation-input-placeholder);
+  color: var(--conv-text-faint);
 }
 
-/* ----------------------------------------
-   Empty State - Aviation Style
-   ---------------------------------------- */
+/* ── Empty State ── */
 .conv-aviation-empty-state {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem 2rem;
+  padding: var(--space-7) var(--space-5);
   text-align: center;
-  gap: 1.5rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.conv-aviation-empty-state::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, var(--color-aviation-amber-dim) 0%, transparent 70%);
-  opacity: 0.4;
-  pointer-events: none;
-  animation: conv-aviation-pulse-slow 4s ease-in-out infinite;
-}
-
-@keyframes conv-aviation-pulse-slow {
-  0%, 100% { opacity: 0.3; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.5; transform: translate(-50%, -50%) scale(1.05); }
+  gap: var(--space-6);
 }
 
 .conv-aviation-empty-icon-wrap {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 5rem;
   height: 5rem;
-  border-radius: 1.25rem;
-  background: linear-gradient(135deg, var(--color-aviation-amber-subtle) 0%, rgba(0, 212, 255, 0.08) 100%);
-  border: 1px solid var(--color-aviation-amber-dim);
-  box-shadow: 0 0 30px var(--color-aviation-amber-dim);
-  z-index: 1;
+  border-radius: var(--radius-lg);
+  background: rgba(255, 122, 61, 0.06);
+  border: 1px solid var(--conv-accent-dim);
 }
 
 .conv-aviation-empty-icon-wrap svg {
   width: 2.25rem;
   height: 2.25rem;
-  color: var(--color-aviation-amber);
-  filter: drop-shadow(0 0 8px var(--color-aviation-amber-glow));
+  color: var(--conv-accent);
 }
 
 .conv-aviation-empty-title {
-  font-size: 1.5rem;
+  font-size: 24px;
   font-weight: 700;
-  font-family: var(--font-mono);
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--color-aviation-text-primary) 0%, var(--color-aviation-amber) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  z-index: 1;
+  font-family: var(--font-display);
+  color: var(--conv-text);
 }
 
 .conv-aviation-empty-description {
-  color: var(--conv-aviation-card-text-secondary);
+  color: var(--conv-text-dim);
   max-width: 24rem;
-  font-size: 0.9375rem;
+  font-size: 15px;
   line-height: 1.6;
-  z-index: 1;
 }
 
 .conv-aviation-empty-cta {
-  z-index: 1;
+  /* CTA wrapper */
 }
 
-/* ----------------------------------------
-   Run in Thread Panel
-   ---------------------------------------- */
+/* ── Run Panel ── */
 .conv-aviation-run-panel {
-  border-top: 1px solid var(--conv-aviation-card-border);
-  padding: 0.75rem 1rem;
-  background: linear-gradient(
-    135deg,
-    var(--color-aviation-bg-instrument) 0%,
-    rgba(245, 158, 11, 0.03) 100%
-  );
-  border-radius: 8px;
-  margin: 0 1rem;
+  border-top: 1px solid var(--conv-border);
+  padding: var(--space-3) var(--space-4);
+  background: var(--conv-bg-raised);
+  border-radius: var(--radius);
+  margin: 0 var(--space-4);
 }
 
 .conv-aviation-run-panel-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
+  gap: var(--space-2);
+  font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
-  color: var(--color-aviation-amber);
+  color: var(--conv-accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .conv-aviation-run-panel-header svg {
   width: 14px;
   height: 14px;
-  filter: drop-shadow(0 0 4px var(--color-aviation-amber-glow));
 }
 
-/* ----------------------------------------
-   Bounty Badge - Aviation Style
-   ---------------------------------------- */
+/* ── Bounty Badge ── */
 .conv-aviation-bounty-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius);
+  font-size: 12px;
   font-weight: 600;
   font-family: var(--font-mono);
-  background: linear-gradient(
-    135deg,
-    rgba(234, 179, 8, 0.15) 0%,
-    rgba(245, 158, 11, 0.1) 100%
-  );
-  border: 1px solid rgba(234, 179, 8, 0.3);
-  color: #facc15;
+  background: rgba(232, 196, 104, 0.08);
+  border: 1px solid rgba(232, 196, 104, 0.3);
+  color: var(--conv-pending);
 }
 
 .conv-aviation-bounty-badge svg {
   width: 14px;
   height: 14px;
-  color: #facc15;
-  filter: drop-shadow(0 0 4px rgba(234, 179, 8, 0.5));
+  color: var(--conv-pending);
 }
 
-/* ----------------------------------------
-   Resolution Banner - Aviation Style
-   ---------------------------------------- */
+/* ── Resolution Banner ── */
 .conv-aviation-resolution-banner {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-size: 0.75rem;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  font-size: 12px;
   font-weight: 500;
   font-family: var(--font-mono);
-  background: var(--conv-aviation-resolved-bg);
-  border: 1px solid var(--conv-aviation-resolved-border);
-  color: var(--conv-aviation-resolved-text);
+  background: rgba(159, 216, 255, 0.06);
+  border: 1px solid rgba(159, 216, 255, 0.3);
+  color: var(--conv-foil);
 }
 
 .conv-aviation-resolution-banner svg {
   width: 14px;
   height: 14px;
-  filter: drop-shadow(0 0 4px var(--conv-aviation-resolved-border));
 }
 
-/* ----------------------------------------
-   Date Separator - Aviation Style
-   ---------------------------------------- */
+/* ── Date Separator ── */
 .conv-aviation-date-separator {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin: 1.5rem 0;
-  color: var(--color-aviation-text-muted);
-  font-size: 0.6875rem;
+  gap: var(--space-3);
+  margin: var(--space-6) 0;
+  color: var(--conv-text-faint);
+  font-size: 11px;
   font-weight: 600;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -988,83 +666,301 @@
   content: '';
   flex: 1;
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--conv-aviation-card-border) 50%,
-    transparent 100%
-  );
+  background: linear-gradient(90deg, transparent 0%, var(--conv-border) 50%, transparent 100%);
 }
 
-/* ----------------------------------------
-   Fix Mode Timeline - Aviation Style
-   ---------------------------------------- */
+/* ── Fix Timeline ── */
 .conv-aviation-fix-timeline {
   position: relative;
-  padding-left: 1.5rem;
-  margin: 1rem 0;
+  padding-left: var(--space-6);
+  margin: var(--space-4) 0;
 }
 
 .conv-aviation-fix-timeline::before {
   content: '';
   position: absolute;
-  left: 0.375rem;
-  top: 0.25rem;
-  bottom: 0.25rem;
+  left: 6px;
+  top: var(--space-1);
+  bottom: var(--space-1);
   width: 2px;
-  background: linear-gradient(
-    180deg,
-    var(--color-aviation-amber) 0%,
-    var(--color-aviation-cyan) 100%
-  );
+  background: var(--conv-accent);
   border-radius: 1px;
-  box-shadow: 0 0 8px var(--color-aviation-amber-dim);
 }
 
 .conv-aviation-fix-step {
   position: relative;
-  padding-bottom: 1.25rem;
+  padding-bottom: var(--space-5);
 }
 
 .conv-aviation-fix-step::before {
   content: '';
   position: absolute;
-  left: -1.25rem;
-  top: 0.35rem;
-  width: 0.75rem;
-  height: 0.75rem;
+  left: calc(var(--space-5) * -1);
+  top: 6px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--color-aviation-bg-instrument);
-  border: 2px solid var(--color-aviation-amber);
-  box-shadow: 0 0 8px var(--color-aviation-amber-glow);
+  background: var(--conv-bg-raised);
+  border: 2px solid var(--conv-accent);
 }
 
 .conv-aviation-fix-step:last-child {
   padding-bottom: 0;
 }
 
-/* ----------------------------------------
-   Context Banner - Aviation Style
-   ---------------------------------------- */
+/* ── Context Banner ── */
 .conv-aviation-context-banner {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1rem;
-  border-bottom: 1px solid var(--conv-aviation-card-border);
-  background: linear-gradient(
-    90deg,
-    rgba(245, 158, 11, 0.05) 0%,
-    transparent 100%
-  );
-  font-size: 0.8125rem;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--conv-border);
+  background: rgba(255, 122, 61, 0.03);
+  font-size: 13px;
   font-family: var(--font-mono);
-  color: var(--conv-aviation-card-text-secondary);
+  color: var(--conv-text-dim);
 }
 
-/* ----------------------------------------
-   Mobile Responsive Adjustments
-   ---------------------------------------- */
+/* ── Dialog ── */
+.conv-aviation-dialog-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--conv-accent) 30%, var(--conv-foil) 50%, var(--conv-accent) 70%, transparent 100%);
+  pointer-events: none;
+  border-radius: 12px 12px 0 0;
+}
+
+.conv-aviation-dialog {
+  background: var(--panel) !important;
+  border: 1px solid var(--panel-edge) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-chamber) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.conv-aviation-dialog-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--conv-border);
+}
+
+.conv-aviation-dialog-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--conv-accent);
+  box-shadow: 0 4px 12px var(--conv-accent-dim);
+}
+
+.conv-aviation-dialog-icon svg {
+  width: 24px;
+  height: 24px;
+  color: var(--bg);
+}
+
+.conv-aviation-dialog-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--conv-text);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.conv-aviation-dialog-description {
+  font-size: 14px;
+  color: var(--conv-text-dim);
+  line-height: 1.5;
+  max-width: 320px;
+  margin: 0;
+}
+
+.conv-aviation-dialog-body {
+  padding: var(--space-4) 0;
+}
+
+/* ── Form Elements ── */
+.conv-aviation-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.conv-aviation-form-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--conv-text-faint);
+}
+
+.conv-aviation-select-trigger {
+  background: var(--conv-bg-raised) !important;
+  border: 1px solid var(--steel) !important;
+  border-radius: var(--radius) !important;
+  color: var(--conv-text) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 14px !important;
+  transition: all var(--conv-fast) var(--conv-ease);
+}
+
+.conv-aviation-select-trigger:hover {
+  border-color: var(--conv-accent-dim) !important;
+}
+
+.conv-aviation-select-trigger:focus {
+  outline: none;
+  border-color: var(--conv-accent) !important;
+  box-shadow: var(--shadow-focus) !important;
+}
+
+.conv-aviation-select-trigger[data-state="open"] {
+  border-color: var(--conv-accent) !important;
+  box-shadow: var(--shadow-focus) !important;
+}
+
+.conv-aviation-select-content {
+  background: var(--panel) !important;
+  border: 1px solid var(--panel-edge) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-chamber) !important;
+  padding: var(--space-1) !important;
+}
+
+.conv-aviation-select-item {
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  color: var(--conv-text) !important;
+  border-radius: var(--radius) !important;
+  padding: var(--space-2) var(--space-3) !important;
+  transition: all var(--conv-fast) var(--conv-ease);
+}
+
+.conv-aviation-select-item:hover,
+.conv-aviation-select-item[data-highlighted] {
+  background: rgba(255, 122, 61, 0.08) !important;
+  color: var(--conv-accent) !important;
+  outline: none !important;
+}
+
+.conv-aviation-select-item[data-state="checked"] {
+  background: rgba(255, 122, 61, 0.08) !important;
+  color: var(--conv-accent) !important;
+}
+
+.conv-aviation-input {
+  background: var(--conv-bg-raised) !important;
+  border: 1px solid var(--steel) !important;
+  border-radius: var(--radius) !important;
+  padding: var(--space-2) var(--space-4) !important;
+  color: var(--conv-text) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 14px !important;
+  transition: all var(--conv-fast) var(--conv-ease);
+  height: 2.75rem;
+}
+
+.conv-aviation-input:focus {
+  outline: none;
+  border-color: var(--conv-accent) !important;
+  box-shadow: var(--shadow-focus) !important;
+}
+
+.conv-aviation-input::placeholder {
+  color: var(--conv-text-faint) !important;
+}
+
+/* ── Suggestions ── */
+.conv-aviation-suggestions {
+  background: var(--panel) !important;
+  border: 1px solid var(--panel-edge) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-chamber) !important;
+}
+
+.conv-aviation-suggestions-loading,
+.conv-aviation-suggestions-empty {
+  color: var(--conv-text-faint) !important;
+}
+
+.conv-aviation-suggestions-list {
+  color: var(--conv-text) !important;
+}
+
+.conv-aviation-suggestions-item {
+  color: var(--conv-text) !important;
+  transition: all var(--conv-fast) var(--conv-ease);
+}
+
+.conv-aviation-suggestions-item:hover,
+.conv-aviation-suggestions-item:focus {
+  background: rgba(255, 122, 61, 0.08) !important;
+  color: var(--conv-accent) !important;
+}
+
+.conv-aviation-suggestions-username {
+  color: inherit !important;
+}
+
+.conv-aviation-suggestions-name {
+  color: var(--conv-text-faint) !important;
+}
+
+.conv-aviation-suggestions-item:hover .conv-aviation-suggestions-name,
+.conv-aviation-suggestions-item:focus .conv-aviation-suggestions-name {
+  color: var(--conv-accent-dim) !important;
+}
+
+/* ── Dialog Actions ── */
+.conv-aviation-dialog-actions {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--conv-border);
+  margin-top: var(--space-2);
+}
+
+.conv-aviation-btn-outline {
+  background: transparent !important;
+  border: 1px solid var(--steel) !important;
+  color: var(--conv-text-dim) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  transition: all var(--conv-fast) var(--conv-ease);
+  border-radius: var(--radius) !important;
+  padding: var(--space-2) var(--space-4) !important;
+}
+
+.conv-aviation-btn-outline:hover {
+  border-color: var(--conv-accent-dim) !important;
+  color: var(--conv-accent) !important;
+}
+
+.conv-aviation-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.conv-aviation-btn-primary:disabled::before {
+  display: none;
+}
+
+/* ── Responsive ── */
 @media (max-width: 768px) {
   .conv-aviation-sidebar {
     position: fixed;
@@ -1095,531 +991,36 @@
   }
 }
 
-/* ----------------------------------------
-   Animation Classes
-   ---------------------------------------- */
+/* ── Animations ── */
 .conv-aviation-animate-fade-in {
-  animation: conv-aviation-fade-in 0.3s ease-out forwards;
+  animation: conv-fade-in 0.3s var(--conv-ease) forwards;
 }
 
-@keyframes conv-aviation-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+@keyframes conv-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .conv-aviation-animate-slide-in-top {
-  animation: conv-aviation-slide-in-from-top 0.3s ease-out;
+  animation: conv-slide-in-from-top 0.3s var(--conv-ease);
 }
 
-@keyframes conv-aviation-slide-in-from-top {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
+@keyframes conv-slide-in-from-top {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Reduced Motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .conv-aviation-unread-badge {
+    animation: none;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .conv-aviation-typing-dot {
+    animation: none;
   }
-}
 
-/* ----------------------------------------
-   Utility Classes
-   ---------------------------------------- */
-.conv-aviation-container {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-/* ----------------------------------------
-   Aviation Glow Effects
-   ---------------------------------------- */
-.conv-aviation-glow-amber {
-  box-shadow:
-    0 0 20px var(--color-aviation-amber-dim),
-    0 0 40px var(--color-aviation-amber-glow);
-}
-
-.conv-aviation-glow-cyan {
-  box-shadow:
-    0 0 20px var(--color-aviation-cyan-dim),
-    0 0 40px var(--color-aviation-cyan-glow);
-}
-
-.conv-aviation-glow-green {
-  box-shadow:
-    0 0 20px rgba(16, 185, 129, 0.3),
-    0 0 40px var(--color-aviation-green-glow);
-}
-
-/* Light mode glows */
-[data-theme='light'] .conv-aviation-glow-amber {
-  box-shadow:
-    0 0 20px var(--color-aviation-amber-dim-light),
-    0 0 40px var(--color-aviation-amber-glow-light);
-}
-
-[data-theme='light'] .conv-aviation-glow-cyan {
-  box-shadow:
-    0 0 20px var(--color-aviation-cyan-dim-light),
-    0 0 40px var(--color-aviation-cyan-glow-light);
-}
-
-[data-theme='light'] .conv-aviation-glow-green {
-  box-shadow:
-    0 0 20px rgba(5, 150, 105, 0.2),
-    0 0 40px var(--color-aviation-green-glow-light);
-}
-
-/* ==========================================================================
-   Aviation Dialog - New Conversation Modal
-   ========================================================================== */
-
-/* ----------------------------------------
-   Dialog Accent (top border gradient)
-   ---------------------------------------- */
-.conv-aviation-dialog-accent {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-aviation-amber) 30%,
-    var(--color-aviation-cyan) 50%,
-    var(--color-aviation-amber) 70%,
-    transparent 100%
-  );
-  box-shadow: 0 0 10px var(--color-aviation-amber-glow);
-  pointer-events: none;
-  border-radius: 12px 12px 0 0;
-}
-
-/* ----------------------------------------
-   Dialog Container
-   ---------------------------------------- */
-.conv-aviation-dialog {
-  background: var(--color-aviation-bg-panel) !important;
-  border: 1px solid var(--color-aviation-border-panel) !important;
-  border-radius: 12px !important;
-  box-shadow:
-    0 0 0 1px rgba(245, 158, 11, 0.1),
-    0 20px 40px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Light mode dialog */
-[data-theme='light'] .conv-aviation-dialog {
-  background: var(--color-aviation-bg-panel-light) !important;
-  border-color: var(--color-aviation-border-panel-light) !important;
-  box-shadow:
-    0 0 0 1px rgba(217, 119, 6, 0.15),
-    0 20px 40px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
-}
-
-/* ----------------------------------------
-   Dialog Header
-   ---------------------------------------- */
-.conv-aviation-dialog-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.75rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-aviation-border-panel);
-  position: relative;
-}
-
-.conv-aviation-dialog-header::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    var(--color-aviation-amber-dim) 50%,
-    transparent 100%
-  );
-  opacity: 0.5;
-}
-
-/* ----------------------------------------
-   Dialog Icon
-   ---------------------------------------- */
-.conv-aviation-dialog-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(
-    145deg,
-    var(--color-aviation-amber) 0%,
-    var(--color-aviation-cyan) 100%
-  );
-  box-shadow:
-    0 4px 12px var(--color-aviation-amber-dim),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-.conv-aviation-dialog-icon::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
-}
-
-.conv-aviation-dialog-icon svg {
-  width: 24px;
-  height: 24px;
-  color: var(--color-aviation-bg-primary);
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
-  
-  z-index: 1;
-}
-
-/* ----------------------------------------
-   Dialog Title
-   ---------------------------------------- */
-.conv-aviation-dialog-title {
-  font-family: var(--font-mono);
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: var(--color-aviation-text-primary);
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-/* ----------------------------------------
-   Dialog Description
-   ---------------------------------------- */
-.conv-aviation-dialog-description {
-  font-size: 0.875rem;
-  color: var(--color-aviation-text-secondary);
-  line-height: 1.5;
-  max-width: 320px;
-  margin: 0;
-}
-
-/* ----------------------------------------
-   Dialog Body
-   ---------------------------------------- */
-.conv-aviation-dialog-body {
-  padding: 1rem 0;
-}
-
-/* ----------------------------------------
-   Form Group
-   ---------------------------------------- */
-.conv-aviation-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-/* ----------------------------------------
-   Form Label
-   ---------------------------------------- */
-.conv-aviation-form-label {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-aviation-text-muted);
-}
-
-/* ----------------------------------------
-   Select Trigger - Aviation Style
-   ---------------------------------------- */
-.conv-aviation-select-trigger {
-  background: var(--color-aviation-bg-instrument) !important;
-  border: 1px solid var(--color-aviation-border-instrument) !important;
-  border-radius: 8px !important;
-  color: var(--color-aviation-text-primary) !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.875rem !important;
-  transition: all 150ms ease;
-}
-
-.conv-aviation-select-trigger:hover {
-  border-color: var(--color-aviation-amber-dim) !important;
-}
-
-.conv-aviation-select-trigger:focus {
-  outline: none;
-  border-color: var(--color-aviation-amber) !important;
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim),
-    0 0 20px var(--color-aviation-amber-dim) !important;
-}
-
-.conv-aviation-select-trigger[data-state="open"] {
-  border-color: var(--color-aviation-amber) !important;
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim),
-    0 0 20px var(--color-aviation-amber-dim) !important;
-}
-
-/* ----------------------------------------
-   Select Content - Aviation Style
-   ---------------------------------------- */
-.conv-aviation-select-content {
-  background: var(--color-aviation-bg-panel) !important;
-  border: 1px solid var(--color-aviation-border-panel) !important;
-  border-radius: 8px !important;
-  box-shadow:
-    0 0 0 1px rgba(245, 158, 11, 0.1),
-    0 8px 24px rgba(0, 0, 0, 0.4) !important;
-  padding: 0.25rem !important;
-}
-
-/* ----------------------------------------
-   Select Item - Aviation Style
-   ---------------------------------------- */
-.conv-aviation-select-item {
-  font-family: var(--font-mono) !important;
-  font-size: 0.8125rem !important;
-  color: var(--color-aviation-text-primary) !important;
-  border-radius: 6px !important;
-  padding: 0.5rem 0.75rem !important;
-  transition: all 150ms ease;
-}
-
-.conv-aviation-select-item:hover,
-.conv-aviation-select-item[data-highlighted] {
-  background: var(--color-aviation-amber-subtle) !important;
-  color: var(--color-aviation-amber) !important;
-  outline: none !important;
-}
-
-.conv-aviation-select-item[data-state="checked"] {
-  background: var(--color-aviation-amber-subtle) !important;
-  color: var(--color-aviation-amber) !important;
-}
-
-/* ----------------------------------------
-   Input - Aviation Style
-   ---------------------------------------- */
-.conv-aviation-input {
-  background: var(--color-aviation-bg-instrument) !important;
-  border: 1px solid var(--color-aviation-border-instrument) !important;
-  border-radius: 8px !important;
-  padding: 0.5rem 0.875rem !important;
-  color: var(--color-aviation-text-primary) !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.875rem !important;
-  transition: all 150ms ease;
-  height: 2.75rem;
-}
-
-.conv-aviation-input:focus {
-  outline: none;
-  border-color: var(--color-aviation-amber) !important;
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim),
-    0 0 20px var(--color-aviation-amber-dim) !important;
-}
-
-.conv-aviation-input::placeholder {
-  color: var(--color-aviation-text-dim) !important;
-}
-
-/* Light mode input */
-[data-theme='light'] .conv-aviation-input {
-  background: var(--color-aviation-bg-instrument-light) !important;
-  border-color: var(--color-aviation-border-instrument-light) !important;
-  color: var(--color-aviation-text-primary-light) !important;
-}
-
-[data-theme='light'] .conv-aviation-input:focus {
-  border-color: var(--color-aviation-amber-light) !important;
-  box-shadow:
-    0 0 0 3px var(--color-aviation-amber-dim-light),
-    0 0 20px var(--color-aviation-amber-dim-light) !important;
-}
-
-/* ----------------------------------------
-   Suggestions Dropdown
-   ---------------------------------------- */
-.conv-aviation-suggestions {
-  background: var(--color-aviation-bg-panel) !important;
-  border: 1px solid var(--color-aviation-border-panel) !important;
-  border-radius: 8px !important;
-  box-shadow:
-    0 0 0 1px rgba(245, 158, 11, 0.1),
-    0 8px 24px rgba(0, 0, 0, 0.4) !important;
-}
-
-.conv-aviation-suggestions-loading {
-  color: var(--color-aviation-text-muted) !important;
-}
-
-.conv-aviation-suggestions-empty {
-  color: var(--color-aviation-text-muted) !important;
-}
-
-.conv-aviation-suggestions-list {
-  color: var(--color-aviation-text-primary) !important;
-}
-
-/* ----------------------------------------
-   Suggestions Item
-   ---------------------------------------- */
-.conv-aviation-suggestions-item {
-  color: var(--color-aviation-text-primary) !important;
-  transition: all 150ms ease;
-}
-
-.conv-aviation-suggestions-item:hover,
-.conv-aviation-suggestions-item:focus {
-  background: var(--color-aviation-amber-subtle) !important;
-  color: var(--color-aviation-amber) !important;
-}
-
-.conv-aviation-suggestions-username {
-  color: inherit !important;
-}
-
-.conv-aviation-suggestions-name {
-  color: var(--color-aviation-text-muted) !important;
-}
-
-.conv-aviation-suggestions-item:hover .conv-aviation-suggestions-name,
-.conv-aviation-suggestions-item:focus .conv-aviation-suggestions-name {
-  color: var(--color-aviation-amber-dim) !important;
-}
-
-/* ----------------------------------------
-   Dialog Actions
-   ---------------------------------------- */
-.conv-aviation-dialog-actions {
-  padding-top: 1rem;
-  border-top: 1px solid var(--color-aviation-border-panel);
-  margin-top: 0.5rem;
-}
-
-/* ----------------------------------------
-   Dialog Buttons - Aviation Style
-   ---------------------------------------- */
-.conv-aviation-btn-outline {
-  background: transparent !important;
-  border: 1px solid var(--color-aviation-border-instrument) !important;
-  color: var(--color-aviation-text-secondary) !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.75rem !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  transition: all 150ms ease;
-  border-radius: 6px !important;
-  padding: 0.5rem 1rem !important;
-}
-
-.conv-aviation-btn-outline:hover {
-  background: var(--color-aviation-bg-instrument) !important;
-  border-color: var(--color-aviation-amber-dim) !important;
-  color: var(--color-aviation-amber) !important;
-  box-shadow: 0 0 15px var(--color-aviation-amber-dim) !important;
-}
-
-.conv-aviation-btn-primary {
-  background: linear-gradient(
-    145deg,
-    var(--color-aviation-amber-subtle) 0%,
-    rgba(245, 158, 11, 0.05) 100%
-  ) !important;
-  border: 1px solid var(--color-aviation-amber) !important;
-  color: var(--color-aviation-amber) !important;
-  font-family: var(--font-mono) !important;
-  font-size: 0.75rem !important;
-  font-weight: 600 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.05em !important;
-  transition: all 150ms ease;
-  border-radius: 6px !important;
-  padding: 0.5rem 1rem !important;
-  position: relative;
-  overflow: hidden;
-
-}
-
-.conv-aviation-btn-primary::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, var(--color-aviation-amber-subtle), transparent);
-  transition: left 0.5s ease;
-}
-
-.conv-aviation-btn-primary:hover {
-  background: linear-gradient(145deg, rgba(245, 158, 11, 0.25) 0%, rgba(245, 158, 11, 0.1) 100%) !important;
-  box-shadow: 0 0 25px var(--color-aviation-amber-glow) !important;
-  transform: translateY(-1px);
-}
-
-.conv-aviation-btn-primary:hover::before {
-  left: 100%;
-}
-
-.conv-aviation-btn-primary:active {
-  transform: translateY(0);
-}
-
-.conv-aviation-btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.conv-aviation-btn-primary:disabled::before {
-  display: none;
-}
-
-/* Light mode buttons */
-[data-theme='light'] .conv-aviation-btn-outline {
-  border-color: var(--color-aviation-border-instrument-light) !important;
-  color: var(--color-aviation-text-secondary-light) !important;
-}
-
-[data-theme='light'] .conv-aviation-btn-outline:hover {
-  background: var(--color-aviation-bg-instrument-light) !important;
-  border-color: var(--color-aviation-amber-light) !important;
-  color: var(--color-aviation-amber-light) !important;
-}
-
-[data-theme='light'] .conv-aviation-btn-primary {
-  background: linear-gradient(
-    145deg,
-    var(--color-aviation-amber-subtle-light) 0%,
-    rgba(217, 119, 6, 0.05) 100%
-  ) !important;
-  border-color: var(--color-aviation-amber-light) !important;
-  color: var(--color-aviation-amber-light) !important;
-}
-
-[data-theme='light'] .conv-aviation-btn-primary:hover {
-  background: linear-gradient(145deg, rgba(217, 119, 6, 0.2) 0%, rgba(217, 119, 6, 0.08) 100%) !important;
-  box-shadow: 0 0 25px var(--color-aviation-amber-glow-light) !important;
+  .conv-aviation-message {
+    animation: none;
+  }
 }

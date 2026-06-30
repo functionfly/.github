@@ -26,7 +26,7 @@ export function SummaryCards({ stats, isLoading }: SummaryCardsProps) {
       subtitle: `${stats.enabled} enabled`,
       icon: Zap,
       href: '/mcp?filter=enabled',
-      color: 'text-brand-500',
+      color: 'text-[var(--status-ok)]',
     },
     {
       title: 'Verified MCP',
@@ -34,7 +34,7 @@ export function SummaryCards({ stats, isLoading }: SummaryCardsProps) {
       subtitle: 'trusted by clients',
       icon: Shield,
       href: '/mcp?filter=verified',
-      color: 'text-emerald-500',
+      color: 'text-[var(--status-ok)]',
     },
     {
       title: 'Total Invocations',
@@ -42,7 +42,7 @@ export function SummaryCards({ stats, isLoading }: SummaryCardsProps) {
       subtitle: 'last 30 days',
       icon: Activity,
       href: '/mcp?tab=analytics',
-      color: 'text-amber-500',
+      color: 'text-[var(--status-pending)]',
     },
     {
       title: 'Active Transports',
@@ -50,7 +50,7 @@ export function SummaryCards({ stats, isLoading }: SummaryCardsProps) {
       subtitle: 'protocols',
       icon: Globe,
       href: '/mcp?tab=settings',
-      color: 'text-blue-500',
+      color: 'text-[var(--foil-a)]',
     },
   ];
 
@@ -115,7 +115,7 @@ export function MCPMetricsCard({
   change,
   subtitle,
   icon,
-  iconColor = 'text-brand-500',
+  iconColor = 'text-[var(--status-ok)]',
   lowerIsBetter,
   higherIsBetter,
   isLoading,
@@ -135,8 +135,8 @@ export function MCPMetricsCard({
 
   const getChangeColor = () => {
     if (change === undefined || change === 0) return 'text-text-secondary';
-    if (lowerIsBetter) return change < 0 ? 'text-emerald-500' : 'text-amber-500';
-    if (higherIsBetter) return change > 0 ? 'text-emerald-500' : 'text-amber-500';
+    if (lowerIsBetter) return change < 0 ? 'text-[var(--status-ok)]' : 'text-[var(--status-pending)]';
+    if (higherIsBetter) return change > 0 ? 'text-[var(--status-ok)]' : 'text-[var(--status-pending)]';
     return 'text-text-secondary';
   };
 

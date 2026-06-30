@@ -80,12 +80,14 @@ export function CodeEditorSection({ editor }: Props) {
 
   return (
     <Card
-      className={`card overflow-hidden transition-all duration-300 ${
-        isFullscreen ? 'fixed inset-4 z-50 shadow-2xl' : ''
+      className={`overflow-hidden transition-all duration-300 ${
+        isFullscreen ? 'fixed inset-4 z-50' : ''
       }`}
       style={{
-        background: 'var(--bg-secondary)',
-        border: '1px solid var(--border-subtle)',
+        background: 'var(--panel)',
+        border: '1px solid var(--panel-edge)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: isFullscreen ? 'var(--shadow-chamber)' : 'var(--shadow-chamber)',
         ...(isFullscreen ? {} : { maxHeight: '520px' }),
         display: 'flex',
         flexDirection: 'column',
@@ -94,8 +96,8 @@ export function CodeEditorSection({ editor }: Props) {
       <CardHeader className="pb-0 pt-4 px-5 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Code2 className="w-4 h-4 text-[#FF6B35]" />
-            <CardTitle className="text-sm font-semibold text-text-primary font-display">{t('funcEditor.codeEditor')}</CardTitle>
+            <Code2 className="w-4 h-4 text-[var(--status-ok)]" />
+            <CardTitle className="text-sm font-semibold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)' }}>{t('funcEditor.codeEditor')}</CardTitle>
             <Badge
               variant="outline"
               className="text-xs font-mono"
@@ -109,14 +111,14 @@ export function CodeEditorSection({ editor }: Props) {
           </div>
           <div className="flex items-center gap-1">
             {activeTab === 'editor' && (
-              <span className="text-xs text-text-muted font-mono mr-2 hidden sm:inline">
+              <span className="text-xs text-[var(--text-faint)] font-mono mr-2 hidden sm:inline">
                 {lineCount}L · {charCount}C
               </span>
             )}
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-text-muted hover:text-text-primary"
+              className="h-7 w-7 p-0 text-[var(--text-faint)] hover:text-[var(--text)]"
               onClick={handleCopy}
               aria-label={t('funcEditor.copyCode')}
             >
@@ -125,7 +127,7 @@ export function CodeEditorSection({ editor }: Props) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-text-muted hover:text-text-primary"
+              className="h-7 w-7 p-0 text-[var(--text-faint)] hover:text-[var(--text)]"
               onClick={handleReset}
               aria-label={t('funcEditor.resetToTemplate')}
             >
@@ -134,7 +136,7 @@ export function CodeEditorSection({ editor }: Props) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 text-text-muted hover:text-text-primary"
+              className="h-7 w-7 p-0 text-[var(--text-faint)] hover:text-[var(--text)]"
               onClick={() => setIsFullscreen((f) => !f)}
               aria-label={isFullscreen ? t('funcEditor.exitFullscreen') : t('funcEditor.enterFullscreen')}
             >
@@ -153,7 +155,7 @@ export function CodeEditorSection({ editor }: Props) {
           onValueChange={setActiveTab}
           className="flex-1 flex flex-col min-h-0"
         >
-          <TabsList className="grid h-9 w-full grid-cols-4 shrink-0 rounded-none border-b border-border-subtle">
+          <TabsList className="grid h-9 w-full grid-cols-4 shrink-0 rounded-none border-b border-[var(--panel-edge)]">
             <TabsTrigger value="editor" className="rounded-none text-xs">
               <Code2 className="w-3 h-3 mr-1.5 hidden sm:inline" />
               {t('funcEditor.editor')}
@@ -168,7 +170,7 @@ export function CodeEditorSection({ editor }: Props) {
               {testResult && (
                 <span
                   className={`ml-1.5 w-1.5 h-1.5 rounded-full inline-block ${
-                    testResult.success ? 'bg-emerald-400' : 'bg-red-400'
+                    testResult.success ? 'bg-[var(--status-ok)]' : 'bg-[var(--status-revoked)]'
                   }`}
                 />
               )}
@@ -177,7 +179,7 @@ export function CodeEditorSection({ editor }: Props) {
               <Terminal className="w-3 h-3 mr-1.5 hidden sm:inline" />
               {t('funcEditor.logs')}
               {logs.some((l) => l.level === 'error') && (
-                <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />
+                <span className="ml-1.5 w-1.5 h-1.5 rounded-full bg-[var(--status-revoked)] inline-block" />
               )}
             </TabsTrigger>
           </TabsList>
@@ -197,9 +199,9 @@ export function CodeEditorSection({ editor }: Props) {
                   theme={monacoTheme}
                   loading={
                     <div
-                      className="flex h-full w-full items-center justify-center text-text-secondary"
+                        className="flex h-full w-full items-center justify-center text-[var(--text-dim)]"
                       style={{
-                        backgroundColor: 'var(--bg-tertiary)',
+                        backgroundColor: 'var(--panel-raised)',
                       }}
                     >
                       <Loader2 className="h-6 w-6 animate-spin" />
@@ -224,8 +226,8 @@ export function CodeEditorSection({ editor }: Props) {
 
           <TabsContent value="test-input" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
             <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border-subtle bg-bg-tertiary/50">
-                <span className="text-xs text-text-muted">{t('funcEditor.jsonPayloadSent')}</span>
+              <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--panel-edge)] bg-[var(--panel-raised)]/50">
+                <span className="text-xs text-[var(--text-faint)]">{t('funcEditor.jsonPayloadSent')}</span>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
@@ -251,11 +253,6 @@ export function CodeEditorSection({ editor }: Props) {
                   <Button
                     size="sm"
                     className="h-7 text-xs gap-1.5"
-                    style={{
-                      background: 'linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%)',
-                      color: '#fff',
-                      border: 'none',
-                    }}
                     onClick={handleTest}
                     disabled={isTesting}
                   >
@@ -291,9 +288,9 @@ export function CodeEditorSection({ editor }: Props) {
 
           <TabsContent value="test-output" className="mt-0 flex-1 min-h-0 data-[state=inactive]:hidden">
             <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border-subtle bg-bg-tertiary/50">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--panel-edge)] bg-[var(--panel-raised)]/50">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-text-muted">{t('funcEditor.testResults')}</span>
+                  <span className="text-xs text-[var(--text-faint)]">{t('funcEditor.testResults')}</span>
                   {testResult?.executionTimeMs && (
                     <Badge variant="outline" className="text-xs h-5">
                       <Clock className="w-3 h-3 mr-1" />
@@ -309,12 +306,12 @@ export function CodeEditorSection({ editor }: Props) {
                 </div>
                 <div className="flex items-center gap-2">
                   {testResult?.success ? (
-                    <span className="text-xs text-emerald-400 flex items-center gap-1">
+                    <span className="text-xs text-[var(--status-ok)] flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       {t('funcEditor.success')}
                     </span>
                   ) : testResult ? (
-                    <span className="text-xs text-red-400 flex items-center gap-1">
+                    <span className="text-xs text-[var(--status-revoked)] flex items-center gap-1">
                       <AlertCircle className="w-3.5 h-3.5" />
                       {t('funcEditor.failed')}
                     </span>
@@ -332,7 +329,7 @@ export function CodeEditorSection({ editor }: Props) {
               </div>
               <div className="flex-1 min-h-0 p-4">
                 {!testResult ? (
-                  <div className="flex flex-col items-center justify-center h-full text-text-muted">
+                  <div className="flex flex-col items-center justify-center h-full text-[var(--text-faint)]">
                     <Play className="w-8 h-8 mb-3 opacity-30" />
                     <p className="text-sm">{t('funcEditor.runTestToSeeResults')}</p>
                     <p className="text-xs mt-1">{t('funcEditor.clickRunTest')}</p>
@@ -340,45 +337,45 @@ export function CodeEditorSection({ editor }: Props) {
                 ) : (
                   <div className="space-y-4">
                     {testResult.error && (
-                      <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                        <p className="text-sm text-red-400 flex items-center gap-2">
+                      <div className="p-3 rounded-[var(--radius)]" style={{ background: 'rgba(255, 107, 107, 0.06)', border: '1px solid rgba(255, 107, 107, 0.2)' }}>
+                        <p className="text-sm text-[var(--status-revoked)] flex items-center gap-2">
                           <AlertCircle className="w-4 h-4" />
                           {t('funcEditor.error')}
                         </p>
-                        <pre className="mt-2 text-xs text-red-300 font-mono whitespace-pre-wrap">
+                        <pre className="mt-2 text-xs text-[var(--status-revoked)] font-mono whitespace-pre-wrap">
                           {testResult.error}
                         </pre>
                       </div>
                     )}
                     {testResult.output && (
                       <div>
-                        <p className="text-xs text-text-muted mb-2 flex items-center gap-2">
+                        <p className="text-xs text-[var(--text-faint)] mb-2 flex items-center gap-2">
                           <ChevronRight className="w-3 h-3" />
                           Output
                         </p>
-                        <pre className="p-3 rounded-lg bg-bg-tertiary text-xs font-mono text-text-secondary overflow-auto">
+                        <pre className="p-3 rounded-lg bg-[var(--panel-raised)] text-xs font-mono text-[var(--text-dim)] overflow-auto">
                           {JSON.stringify(testResult.output, null, 2)}
                         </pre>
                       </div>
                     )}
                     {testResult.logs && testResult.logs.length > 0 && (
                       <div>
-                        <p className="text-xs text-text-muted mb-2">{t('funcEditor.executionLogs')}</p>
+                        <p className="text-xs text-[var(--text-faint)] mb-2">{t('funcEditor.executionLogs')}</p>
                         <div className="space-y-1">
                           {testResult.logs.map((log, idx) => (
                             <div key={idx} className="text-xs font-mono flex items-start gap-2">
                               <span
                                 className={`w-2 h-2 rounded-full mt-1 shrink-0 ${
                                   log.level === 'error'
-                                    ? 'bg-red-400'
+                                    ? 'bg-[var(--status-revoked)]'
                                     : log.level === 'warn'
-                                      ? 'bg-amber-400'
+                                      ? 'bg-[var(--status-pending)]'
                                       : log.level === 'success'
-                                        ? 'bg-emerald-400'
+                                        ? 'bg-[var(--status-ok)]'
                                         : 'bg-blue-400'
                                 }`}
                               />
-                              <span className="text-text-secondary">{log.message}</span>
+                              <span className="text-[var(--text-dim)]">{log.message}</span>
                             </div>
                           ))}
                         </div>
@@ -395,30 +392,30 @@ export function CodeEditorSection({ editor }: Props) {
               <div className="space-y-1.5">
                 {logs.map((log) => (
                   <div key={log.id} className="flex items-start gap-2.5 text-xs font-mono">
-                    <span className="text-text-muted w-[72px] shrink-0 pt-0.5">
+                    <span className="text-[var(--text-faint)] w-[72px] shrink-0 pt-0.5">
                       {log.timestamp.split(' ')[1] ?? log.timestamp.slice(-8)}
                     </span>
                     <span className="shrink-0 pt-0.5">
                       {log.level === 'success' && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[var(--status-ok)]" />
                       )}
                       {log.level === 'error' && (
-                        <AlertCircle className="w-3.5 h-3.5 text-red-400" />
+                        <AlertCircle className="w-3.5 h-3.5 text-[var(--status-revoked)]" />
                       )}
                       {log.level === 'warn' && (
-                        <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                        <AlertCircle className="w-3.5 h-3.5 text-[var(--status-pending)]" />
                       )}
-                      {log.level === 'info' && <Terminal className="w-3.5 h-3.5 text-blue-400" />}
+                      {log.level === 'info' && <Terminal className="w-3.5 h-3.5 text-[var(--foil-a)]" />}
                     </span>
                     <span
                       className={`flex-1 ${
                         log.level === 'error'
-                          ? 'text-red-300'
+                          ? 'text-[var(--status-revoked)]'
                           : log.level === 'success'
-                            ? 'text-emerald-300'
+                            ? 'text-[var(--status-ok)]'
                             : log.level === 'warn'
-                              ? 'text-amber-300'
-                              : 'text-text-secondary'
+                              ? 'text-[var(--status-pending)]'
+                              : 'text-[var(--text-dim)]'
                       }`}
                     >
                       {log.message}

@@ -27,6 +27,7 @@ const tierInfo: Record<SandboxTier, { label: string; description: string; color:
   wasm: { label: "WASM", description: "Fastest and safest - UI plugins and utilities", color: "bg-green-500/20 text-green-400" },
   worker: { label: "Worker", description: "Isolated worker - AI tools and graph nodes", color: "bg-blue-500/20 text-blue-400" },
   microvm: { label: "MicroVM", description: "Full isolation - untrusted third-party code", color: "bg-yellow-500/20 text-yellow-400" },
+  gvisor: { label: "gVisor", description: "User-space kernel sandbox - strong isolation without shared kernel", color: "bg-cyan-500/20 text-cyan-400" },
   enterprise: { label: "Enterprise", description: "Maximum isolation - regulated workloads", color: "bg-red-500/20 text-red-400" },
 };
 
@@ -82,6 +83,7 @@ export function PluginSandboxInspector({ plugins }: PluginSandboxInspectorProps)
     const baseCost: Record<SandboxTier, number> = {
       wasm: 0,
       worker: 5,
+      gvisor: 15,
       microvm: 25,
       enterprise: 50,
     };

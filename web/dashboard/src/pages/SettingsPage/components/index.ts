@@ -1,4 +1,5 @@
 export { AccountSettingsTab } from './AccountSettingsTab';
+export { AIKeysSettingsTab } from './AIKeysSettingsTab/AIKeysSettingsTab';
 export { AuthSettingsTab } from './AuthSettingsTab';
 export { BillingSettingsTab } from './BillingSettingsTab';
 export { DeveloperSettingsTab } from './DeveloperSettingsTab';

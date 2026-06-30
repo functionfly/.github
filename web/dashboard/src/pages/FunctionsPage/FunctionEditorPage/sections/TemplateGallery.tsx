@@ -1561,25 +1561,29 @@ export function TemplateGallery({ editor }: Props) {
 
   return (
     <Card
-      className="overflow-hidden border-border-subtle/50"
-      style={{ background: 'var(--bg-secondary)' }}
+      className="overflow-hidden"
+      style={{
+        background: 'var(--panel)',
+        backgroundImage: 'radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%)',
+        borderColor: 'var(--panel-edge)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-chamber)',
+      }}
     >
       <CardHeader className="pb-3 pt-4 px-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="flex items-center justify-center w-8 h-8 rounded-lg"
-              style={{
-                background: 'linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%)',
-              }}
+              className="flex items-center justify-center w-8 h-8 rounded-[var(--radius)]"
+              style={{ background: 'var(--status-ok)', color: 'var(--bg)' }}
             >
-              <Sparkles className="w-4 h-4 text-white" />
+              <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <CardTitle className="text-sm font-semibold text-text-primary font-display">
+              <CardTitle className="text-sm font-semibold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)' }}>
                 {t('funcEditor.quickStartTemplates')}
               </CardTitle>
-              <p className="text-xs text-text-muted mt-0.5">
+              <p className="text-xs text-[var(--text-faint)] mt-0.5">
                 {t('funcEditor.chooseStarterTemplate')}
               </p>
             </div>
@@ -1593,11 +1597,11 @@ export function TemplateGallery({ editor }: Props) {
             </DialogTrigger>
             <DialogContent
               className="sm:max-w-3xl max-h-[80vh]"
-              style={{ background: 'var(--bg-secondary)' }}
+              style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)' }}
             >
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-base font-display">
-                  <LayoutGrid className="w-5 h-5 text-[#FF6B35]" />
+                <DialogTitle className="flex items-center gap-2 text-base" style={{ fontFamily: 'var(--font-display)' }}>
+                  <LayoutGrid className="w-5 h-5 text-[var(--status-ok)]" />
                   {t('funcEditor.functionTemplates')}
                 </DialogTitle>
               </DialogHeader>
@@ -1608,11 +1612,15 @@ export function TemplateGallery({ editor }: Props) {
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-sm)] text-xs transition-colors ${
                       selectedCategory === cat.id
-                        ? 'bg-[#FF6B35] text-white'
-                        : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover'
-                    }`}
+                        ? ''
+                        : ''
+                    }`} style={{
+                      background: selectedCategory === cat.id ? 'var(--status-ok)' : 'var(--panel-raised)',
+                      color: selectedCategory === cat.id ? 'var(--bg)' : 'var(--text-dim)',
+                      border: selectedCategory === cat.id ? 'none' : '1px solid var(--panel-edge)',
+                    }}
                   >
                     {cat.icon}
                     {t(cat.labelKey)}
@@ -1629,36 +1637,38 @@ export function TemplateGallery({ editor }: Props) {
                     <button
                       key={template.id}
                       onClick={() => handleSelectTemplate(template)}
-                      className={`flex items-start gap-3 p-4 rounded-lg border-2 text-left transition-all ${
-                        selectedTemplate === template.id
-                          ? 'border-[#FF6B35] bg-[#FFF1EB] dark:bg-[#FF6B35]/20'
-                          : 'border-border-subtle/30 bg-bg-tertiary hover:border-border-default'
-                      }`}
+                      className="flex items-start gap-3 p-4 rounded-[var(--radius)] text-left transition-all"
+                      style={{
+                        background: selectedTemplate === template.id ? 'rgba(143, 255, 208, 0.03)' : 'var(--panel-raised)',
+                        border: selectedTemplate === template.id ? '2px solid var(--status-ok)' : '2px solid var(--panel-edge)',
+                      }}
                     >
-                      <div className="p-2 rounded-lg bg-bg-secondary">{template.icon}</div>
+                      <div className="p-2 rounded-[var(--radius)]" style={{ background: 'var(--panel)', border: '1px solid var(--panel-edge)' }}>{template.icon}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm text-text-primary">
+                          <span className="font-medium text-sm text-[var(--text)]">
                             {template.name}
                           </span>
                           <Badge variant="outline" className="text-[10px] h-5">
                             {template.runtimes.length} {t('funcEditor.runtimes')}
                           </Badge>
                         </div>
-                        <p className="text-xs text-text-muted mt-1 leading-relaxed">
+                        <p className="text-xs text-[var(--text-faint)] mt-1 leading-relaxed">
                           {template.description}
                         </p>
                         <div className="flex flex-wrap gap-1 mt-2">
                           {template.runtimes.slice(0, 4).map((r) => (
                             <span
                               key={r}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-bg-secondary text-text-muted"
+                              className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
+                              style={{ background: 'var(--panel)', color: 'var(--text-faint)', border: '1px solid var(--panel-edge)' }}
                             >
                               {r}
                             </span>
                           ))}
                           {template.runtimes.length > 4 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-bg-secondary text-text-muted">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-sm)]"
+                              style={{ background: 'var(--panel)', color: 'var(--text-faint)', border: '1px solid var(--panel-edge)' }}>
                               +{template.runtimes.length - 4}
                             </span>
                           )}
@@ -1681,20 +1691,20 @@ export function TemplateGallery({ editor }: Props) {
               <button
                 key={template.id}
                 onClick={() => handleSelectTemplate(template)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all flex-shrink-0 ${
-                  selectedTemplate === template.id
-                    ? 'border-[#FF6B35] bg-[#FF6B35]/10'
-                    : 'border-border-subtle/30 bg-bg-tertiary hover:border-border-default'
-                }`}
+                className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius)] transition-all flex-shrink-0"
+                style={{
+                  background: selectedTemplate === template.id ? 'rgba(143, 255, 208, 0.06)' : 'var(--panel-raised)',
+                  border: selectedTemplate === template.id ? '1px solid var(--status-ok)' : '1px solid var(--panel-edge)',
+                }}
               >
-                <span className="text-text-muted">{template.icon}</span>
-                <span className="text-xs font-medium text-text-primary whitespace-nowrap">
+                <span className="text-[var(--text-faint)]">{template.icon}</span>
+                <span className="text-xs font-medium text-[var(--text)] whitespace-nowrap">
                   {template.name}
                 </span>
               </button>
             ))}
             {filteredTemplates.length === 0 && (
-              <span className="text-xs text-text-muted py-2">
+              <span className="text-xs text-[var(--text-faint)] py-2">
                 {t('funcEditor.noTemplatesAvailable', { runtime })}
               </span>
             )}
@@ -1703,8 +1713,8 @@ export function TemplateGallery({ editor }: Props) {
         </ScrollArea>
 
         {/* Info hint */}
-        <p className="text-xs text-text-muted mt-3 flex items-center gap-1.5">
-          <Sparkles className="w-3 h-3 text-[#FF6B35]" />
+        <p className="text-xs text-[var(--text-faint)] mt-3 flex items-center gap-1.5">
+          <Sparkles className="w-3 h-3 text-[var(--status-ok)]" />
           {t('funcEditor.templatesInfoHint', { runtime })}
         </p>
       </CardContent>

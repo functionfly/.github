@@ -129,7 +129,6 @@ import { PublicAnalytics } from '@/components/common/PublicAnalytics';
 - [x] Blog post SEO integration
 - [x] Agent marketplace SEO integration
 - [x] Function marketplace SEO integration
-- [x] Flywheel network SEO integration
 - [x] Google Analytics integration for Web Vitals
 - [x] Open Graph image setup
 - [x] Hotjar implementation for public pages

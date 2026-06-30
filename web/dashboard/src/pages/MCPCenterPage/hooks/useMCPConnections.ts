@@ -1,6 +1,6 @@
 /**
  * MCP Center - useMCPConnections Hook
- * Fetches MCP client connection data
+ * Fetches MCP client connection data with toggle and test mutations
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -32,6 +32,42 @@ export function useRefreshMCPConnections() {
     },
     onError: (error: Error) => {
       toast.error(`Failed to refresh connections: ${error.message}`);
+    },
+  });
+}
+
+export function useToggleMCPClient() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ clientType, enabled }: { clientType: string; enabled: boolean }) =>
+      mcpApi.toggleConnection(clientType, enabled),
+    onSuccess: (_, { clientType, enabled }) => {
+      queryClient.invalidateQueries({ queryKey: ['mcp', 'connections'] });
+      toast.success(
+        enabled
+          ? `${clientType} MCP connection enabled`
+          : `${clientType} MCP connection disabled`
+      );
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update connection: ${error.message}`);
+    },
+  });
+}
+
+export function useTestMCPConnection() {
+  return useMutation({
+    mutationFn: (clientType: string) => mcpApi.testConnection(clientType),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(`${data.message} (${data.latency_ms}ms)`);
+      } else {
+        toast.error(data.message || 'Connection test failed');
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(`Connection test failed: ${error.message}`);
     },
   });
 }

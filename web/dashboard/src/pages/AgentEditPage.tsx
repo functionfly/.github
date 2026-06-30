@@ -73,7 +73,7 @@ export function AgentEditPage() {
         maxMemoryGrowthMB,
       });
       toast.success(t('agentDetail.settingsSaved'));
-      navigate(ROUTES.AGENT_DETAIL.replace(':id', id));
+      navigate(ROUTES.agentPath(id ?? ''));
     } catch {
       toast.error(t('agentDetail.failedToSave'));
     } finally {
@@ -129,7 +129,7 @@ export function AgentEditPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <Button variant="ghost" size="sm" asChild>
-        <Link to={ROUTES.AGENT_DETAIL.replace(':id', id)}>
+        <Link to={ROUTES.agentPath(id ?? '')}>
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Agent
         </Link>
@@ -197,7 +197,7 @@ export function AgentEditPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate(ROUTES.AGENT_DETAIL.replace(':id', id))} className="flex-1">
+            <Button variant="outline" onClick={() => navigate(ROUTES.agentPath(id ?? ''))} className="flex-1">
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving} className="flex-1">

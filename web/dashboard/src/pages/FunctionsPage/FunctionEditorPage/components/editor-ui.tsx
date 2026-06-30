@@ -18,29 +18,33 @@ export function SectionCard({
 }) {
   return (
     <Card
-      className="card overflow-hidden border-border-subtle/50"
+      className="overflow-hidden"
       style={{
-        background: 'var(--bg-secondary)',
+        background: 'var(--panel)',
+        backgroundImage: 'radial-gradient(140% 100% at 15% 0%, var(--glass-tint), transparent 55%)',
+        borderColor: 'var(--panel-edge)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-chamber)',
       }}
     >
       <CardHeader className="pb-3 pt-4 px-5">
         <div className="flex items-center gap-3">
           {step !== undefined && (
             <div
-              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shadow-sm"
+              className="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
               style={{
-                background: 'linear-gradient(135deg, #FF6B35 0%, #FF8C42 100%)',
-                color: '#fff',
+                background: 'var(--status-ok)',
+                color: 'var(--bg)',
               }}
             >
               {step}
             </div>
           )}
-          <span className="text-[#FF6B35] flex-shrink-0">{icon}</span>
+          <span className="text-[var(--status-ok)] flex-shrink-0">{icon}</span>
           <div className="min-w-0">
-            <CardTitle className="text-sm font-semibold text-text-primary font-display">{title}</CardTitle>
+            <CardTitle className="text-sm font-semibold text-[var(--text)]" style={{ fontFamily: 'var(--font-display)' }}>{title}</CardTitle>
             {description && (
-              <p className="text-xs text-text-muted mt-0.5 leading-relaxed">{description}</p>
+              <p className="text-xs text-[var(--text-faint)] mt-0.5 leading-relaxed">{description}</p>
             )}
           </div>
         </div>
@@ -53,7 +57,7 @@ export function SectionCard({
 export function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p className="flex items-center gap-1.5 text-xs text-red-400 mt-1.5">
+    <p className="flex items-center gap-1.5 text-xs text-[var(--status-revoked)] mt-1.5">
       <AlertCircle className="w-3 h-3 flex-shrink-0" />
       {message}
     </p>

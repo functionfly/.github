@@ -144,7 +144,7 @@ function NodeCircle({
         fontSize={9}
         fill="#64748b"
       >
-        {node.trustScore.toFixed(2)}
+        {(node.trustScore ?? 0).toFixed(2)}
       </Text>
     </Group>
   );
@@ -211,7 +211,7 @@ export function SwarmTopologyView({ agentId, className }: SwarmTopologyViewProps
           name: child.name,
           status: child.status,
           swarmRole: child.swarmRole,
-          trustScore: child.trustScore,
+          trustScore: child.trustScore ?? 0,
           agentId: child.id,
           x: width / 2 + radius * Math.cos(angle - Math.PI / 2),
           y: 80 + level,
@@ -460,7 +460,7 @@ export function SwarmTopologyView({ agentId, className }: SwarmTopologyViewProps
                         <Shield className="h-3 w-3" />
                         Trust Score
                       </span>
-                      <span className="font-medium">{(selectedNode.trustScore * 100).toFixed(0)}%</span>
+                      <span className="font-medium">{((selectedNode.trustScore ?? 0) * 100).toFixed(0)}%</span>
                     </div>
 
                     <div className="flex items-center justify-between text-sm">

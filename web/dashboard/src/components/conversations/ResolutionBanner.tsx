@@ -7,7 +7,7 @@ import ReactConfetti from "react-confetti";
 export interface ResolutionBannerProps {
   /** Short message, e.g. "This solution improved error rate by 12%" */
   message?: string;
-  /** Reputation points awarded (optional; when integrated with flywheel) */
+  /** Reputation points awarded (optional) */
   reputationAwarded?: number;
   resolvedAt: string;
   /** Set to true to show the confetti celebration on mount */

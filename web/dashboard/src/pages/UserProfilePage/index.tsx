@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import { Calendar, ExternalLink, Flag, Package, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { usePageTitle } from '@/hooks';
 
 function ProfileSkeleton() {
   return (
@@ -101,6 +102,9 @@ export function UserProfilePage() {
 
   // Get follow status
   const { data: followStatus } = useUserFollowStatus(username ?? '');
+
+  const pageTitle = profile ? profile.username : 'Profile';
+  usePageTitle(pageTitle);
 
   const joinedDate = profile?.createdAt
     ? new Date(profile.createdAt).toLocaleDateString('en-US', {

@@ -28,6 +28,7 @@ import { Activity, BarChart3, BookOpen, Package, Settings, User } from 'lucide-r
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { usePageTitle } from '@/hooks';
 
 import { registryApi } from '@/api/registry';
 import { usePlan } from '@/hooks/usePlan';
@@ -138,6 +139,7 @@ export function ProfilePage({
           isOnline: meResponse.isOnline ?? true,
           lastActive: meResponse.lastActive,
           role: meResponse.role,
+          founderNumber: meResponse.founderNumber,
         };
       } else {
         profileData = profileResponse;
@@ -320,6 +322,9 @@ export function ProfilePage({
       level: s.level,
       category: (s.category as Skill['category']) || 'concept',
     })) || [];
+
+  const pageTitle = profile ? profile.username : 'Profile';
+  usePageTitle(pageTitle);
 
   const mergedProfile: UserProfile | undefined = profile
     ? {

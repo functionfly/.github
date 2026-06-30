@@ -1,6 +1,8 @@
 /**
- * MCP Center Aviation Theme
- * Aviation-inspired styling for the MCP Center dashboard
+ * MCP Center — Sealed Containment Theme
+ * FunctionFly Dashboard
+ *
+ * Uses SC design tokens from sc-dashboard.css / sc-tokens.css
  */
 
 /* MCP Page Container */
@@ -8,151 +10,23 @@
   position: relative;
 }
 
-/* Aviation Grid Background for MCP */
+/* Blueprint Grid Background */
 .mcp-aviation-grid-bg {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
   pointer-events: none;
   z-index: 0;
 }
 
-/* MCP Panel Styling */
-.mcp-panel {
-  position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.mcp-panel::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-brand-500), transparent);
-  opacity: 0.5;
-}
-
-.mcp-panel-glow {
-  box-shadow:
-    0 0 20px rgba(6, 182, 212, 0.1),
-    inset 0 1px 0 rgba(6, 182, 212, 0.1);
-}
-
-/* MCP Instrument Card */
-.mcp-instrument {
-  position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 16px;
-  transition: all 0.2s ease;
-}
-
-.mcp-instrument::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 8px;
-  padding: 1px;
-  background: linear-gradient(135deg, transparent 40%, var(--color-brand-500) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.mcp-instrument:hover {
-  border-color: var(--color-brand-500);
-}
-
-.mcp-instrument:hover::before {
-  opacity: 0.5;
-}
-
-.mcp-instrument.active {
-  border-color: var(--color-brand-500);
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(6, 182, 212, 0.05) 100%);
-}
-
-.mcp-instrument.active::before {
-  opacity: 1;
-}
-
-/* MCP Status Indicator */
-.mcp-status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.mcp-status-indicator::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  animation: mcp-status-pulse 2s infinite;
-}
-
-.mcp-status-indicator.active {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--color-success);
-}
-
-.mcp-status-indicator.active::before {
-  background: var(--color-success);
-  box-shadow: 0 0 8px var(--color-success);
-}
-
-.mcp-status-indicator.stale {
-  background: rgba(245, 158, 11, 0.1);
-  color: var(--color-warning);
-}
-
-.mcp-status-indicator.stale::before {
-  background: var(--color-warning);
-  animation: mcp-status-pulse-warning 2s infinite;
-}
-
-.mcp-status-indicator.inactive {
-  background: rgba(107, 114, 128, 0.1);
-  color: var(--text-muted);
-}
-
-.mcp-status-indicator.inactive::before {
-  background: var(--text-muted);
-  animation: none;
-}
-
-@keyframes mcp-status-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
-
-@keyframes mcp-status-pulse-warning {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--color-warning); }
-  50% { opacity: 0.6; box-shadow: 0 0 4px var(--color-warning); }
-}
-
-/* MCP Header */
+/* ── MCP Header ── */
 .mcp-header {
   position: relative;
-  padding-bottom: 16px;
-  margin-bottom: 24px;
+  padding-bottom: var(--space-4, 16px);
+  margin-bottom: var(--space-6, 24px);
 }
 
 .mcp-header::after {
@@ -162,31 +36,137 @@
   left: 0;
   right: 0;
   height: 1px;
-  background: linear-gradient(90deg, var(--color-brand-500), transparent 80%);
+  background: var(--panel-edge, #1c242b);
 }
 
 .mcp-header-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 24px;
+  gap: var(--space-3, 12px);
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 36px;
   font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -0.5px;
+  line-height: 1.15;
+  letter-spacing: -0.005em;
+  color: var(--text, #eef2f0);
 }
 
 .mcp-header-title svg {
-  color: var(--color-brand-500);
-  filter: drop-shadow(0 0 8px var(--color-brand-500));
+  color: var(--status-ok, #8fffd0);
 }
 
 .mcp-header-subtitle {
-  margin-top: 4px;
-  font-size: 14px;
-  color: var(--text-secondary);
+  margin-top: var(--space-1, 4px);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 15px;
+  color: var(--text-dim, #7c8a8a);
+  line-height: 1.6;
 }
 
-/* MCP Tab Navigation */
+/* ── MCP Panel (Chamber) ── */
+.mcp-panel {
+  position: relative;
+  background: var(--panel, #0e1318);
+  background-image: radial-gradient(140% 100% at 15% 0%, var(--glass-tint, rgba(110, 190, 170, 0.05)), transparent 55%);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius-lg, 6px);
+  box-shadow: var(--shadow-chamber, 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.35));
+  overflow: hidden;
+}
+
+.mcp-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.mcp-panel-glow {
+  box-shadow:
+    var(--shadow-chamber, 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.35)),
+    0 0 20px rgba(143, 255, 208, 0.05);
+}
+
+/* ── MCP Instrument Card ── */
+.mcp-instrument {
+  position: relative;
+  background: var(--panel-raised, #131922);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
+  padding: var(--space-4, 16px);
+  transition: border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.mcp-instrument:hover {
+  border-color: var(--steel-light, #4a565f);
+}
+
+.mcp-instrument.active {
+  border-color: var(--status-ok, #8fffd0);
+  background: rgba(143, 255, 208, 0.03);
+}
+
+/* ── MCP Status Indicator ── */
+.mcp-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  padding: 3px var(--space-3, 12px);
+  border-radius: var(--radius-sm, 3px);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid;
+}
+
+.mcp-status-indicator::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.mcp-status-indicator.active {
+  color: var(--status-ok, #8fffd0);
+  border-color: rgba(143, 255, 208, 0.3);
+  background: rgba(143, 255, 208, 0.06);
+}
+
+.mcp-status-indicator.active::before {
+  background: var(--status-ok, #8fffd0);
+  box-shadow: 0 0 8px rgba(143, 255, 208, 0.6);
+  animation: mcp-status-pulse 2s infinite;
+}
+
+.mcp-status-indicator.stale {
+  color: var(--status-pending, #e8c468);
+  border-color: rgba(232, 196, 104, 0.3);
+  background: rgba(232, 196, 104, 0.06);
+}
+
+.mcp-status-indicator.stale::before {
+  background: var(--status-pending, #e8c468);
+  animation: mcp-status-pulse 2s infinite;
+}
+
+.mcp-status-indicator.inactive {
+  color: var(--text-faint, #4a5358);
+  border-color: var(--panel-edge, #1c242b);
+  background: var(--panel-raised, #131922);
+}
+
+.mcp-status-indicator.inactive::before {
+  background: var(--text-faint, #4a5358);
+  animation: none;
+}
+
+@keyframes mcp-status-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── MCP Tab Navigation ── */
 .mcp-tabs {
   position: relative;
 }
@@ -194,36 +174,39 @@
 .mcp-tabs-list {
   display: flex;
   justify-content: center;
-  gap: 4px;
-  padding: 4px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
+  gap: var(--space-1, 4px);
+  padding: var(--space-1, 4px);
+  background: var(--panel, #0e1318);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
 }
 
 .mcp-tab-trigger {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-5, 24px);
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-secondary);
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  color: var(--text-dim, #7c8a8a);
+  border-radius: var(--radius-sm, 3px);
+  transition:
+    color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    background var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .mcp-tab-trigger:hover {
-  color: var(--text-primary);
-  background: var(--bg-hover);
+  color: var(--text, #eef2f0);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .mcp-tab-trigger[data-state="active"] {
-  color: var(--text-primary);
-  background: var(--bg-card);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: var(--text, #eef2f0);
+  font-weight: 600;
+  background: var(--panel-raised, #131922);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .mcp-tab-trigger svg {
@@ -231,11 +214,11 @@
   height: 16px;
 }
 
-/* MCP Summary Cards Grid */
+/* ── MCP Summary Cards Grid ── */
 .mcp-cards-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: var(--space-4, 16px);
 }
 
 @media (max-width: 1024px) {
@@ -250,14 +233,16 @@
   }
 }
 
-/* MCP Metric Card */
+/* ── MCP Metric Card ── */
 .mcp-metric-card {
   position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 16px;
-  transition: all 0.2s ease;
+  background: var(--panel-raised, #131922);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
+  padding: var(--space-4, 16px);
+  transition:
+    border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
   overflow: hidden;
 }
 
@@ -266,17 +251,16 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 4px;
+  width: 3px;
   height: 100%;
-  background: var(--color-brand-500);
+  background: var(--status-ok, #8fffd0);
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .mcp-metric-card:hover {
-  border-color: var(--color-brand-500);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15);
+  border-color: var(--steel-light, #4a565f);
+  box-shadow: var(--shadow-chamber, 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.35));
 }
 
 .mcp-metric-card:hover::before {
@@ -286,8 +270,8 @@
 .mcp-metric-card-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-2, 8px);
+  margin-bottom: var(--space-2, 8px);
 }
 
 .mcp-metric-card-icon {
@@ -296,51 +280,55 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  background: var(--bg-secondary);
+  border-radius: var(--radius, 4px);
+  background: var(--panel, #0e1318);
+  border: 1px solid var(--panel-edge, #1c242b);
 }
 
 .mcp-metric-card-title {
-  font-size: 13px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
   font-weight: 500;
-  color: var(--text-secondary);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-faint, #4a5358);
 }
 
 .mcp-metric-card-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-primary);
-  letter-spacing: -1px;
-  line-height: 1;
+  font-family: var(--font-mono, monospace);
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--text, #eef2f0);
+  line-height: 1.2;
 }
 
 .mcp-metric-card-subtitle {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-top: 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  color: var(--text-faint, #4a5358);
+  margin-top: var(--space-1, 4px);
 }
 
 .mcp-metric-card-change {
-  font-size: 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
   font-weight: 500;
-  margin-top: 8px;
+  margin-top: var(--space-2, 8px);
 }
 
 .mcp-metric-card-change.positive {
-  color: var(--color-success);
+  color: var(--status-ok, #8fffd0);
 }
 
 .mcp-metric-card-change.negative {
-  color: var(--color-error);
+  color: var(--status-revoked, #ff6b6b);
 }
 
-/* MCP Function Table */
+/* ── MCP Table ── */
 .mcp-table-container {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  background: var(--panel-raised, #131922);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
   overflow: hidden;
 }
 
@@ -348,21 +336,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-4, 16px) var(--space-5, 24px);
+  border-bottom: 1px solid var(--panel-edge, #1c242b);
 }
 
 .mcp-table-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  gap: var(--space-2, 8px);
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 17px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text, #eef2f0);
 }
 
 .mcp-table-title svg {
-  color: var(--color-brand-500);
+  color: var(--status-ok, #8fffd0);
 }
 
 .mcp-table {
@@ -371,22 +360,24 @@
 }
 
 .mcp-table th {
-  padding: 12px 16px;
+  padding: var(--space-3, 12px) var(--space-4, 16px);
   text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-faint, #4a5358);
+  background: var(--panel, #0e1318);
+  border-bottom: 1px solid var(--panel-edge, #1c242b);
 }
 
 .mcp-table td {
-  padding: 12px 16px;
-  font-size: 14px;
-  color: var(--text-primary);
-  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-3, 12px) var(--space-4, 16px);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 13px;
+  color: var(--text, #eef2f0);
+  border-bottom: 1px solid var(--panel-edge, #1c242b);
 }
 
 .mcp-table tr:last-child td {
@@ -394,49 +385,51 @@
 }
 
 .mcp-table tr:hover td {
-  background: var(--bg-secondary);
+  background: var(--panel-raised, #131922);
 }
 
-/* MCP Client Card */
+/* ── MCP Client Card ── */
 .mcp-client-card {
   position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--panel-raised, #131922);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
+  padding: var(--space-4, 16px);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition:
+    border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .mcp-client-card:hover {
-  border-color: var(--color-brand-500);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.15);
+  border-color: var(--steel-light, #4a565f);
+  box-shadow: var(--shadow-chamber, 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.35));
 }
 
 .mcp-client-card.selected {
-  border-color: var(--color-brand-500);
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(6, 182, 212, 0.05) 100%);
+  border-color: var(--status-ok, #8fffd0);
+  background: rgba(143, 255, 208, 0.03);
 }
 
 .mcp-client-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: var(--space-3, 12px);
 }
 
 .mcp-client-card-name {
-  font-size: 16px;
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 17px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text, #eef2f0);
   text-transform: capitalize;
 }
 
 .mcp-client-card-stats {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  gap: var(--space-2, 8px);
 }
 
 .mcp-client-card-stat {
@@ -446,102 +439,152 @@
 }
 
 .mcp-client-card-stat-label {
+  font-family: var(--font-mono, monospace);
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-faint, #4a5358);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
 }
 
 .mcp-client-card-stat-value {
+  font-family: var(--font-mono, monospace);
   font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-weight: 500;
+  color: var(--text, #eef2f0);
 }
 
-/* MCP Info Banner */
+/* ── MCP Info Banner ── */
 .mcp-info-banner {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 16px;
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.05) 0%, rgba(6, 182, 212, 0.02) 100%);
-  border: 1px solid rgba(6, 182, 212, 0.2);
-  border-radius: 12px;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+  background: rgba(143, 255, 208, 0.03);
+  border: 1px solid rgba(143, 255, 208, 0.15);
+  border-radius: var(--radius, 4px);
 }
 
 .mcp-info-banner svg {
-  color: var(--color-brand-500);
+  color: var(--status-ok, #8fffd0);
   flex-shrink: 0;
   margin-top: 2px;
 }
 
 .mcp-info-banner-title {
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 4px;
+  color: var(--text, #eef2f0);
+  margin-bottom: var(--space-1, 4px);
 }
 
 .mcp-info-banner-text {
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--text-dim, #7c8a8a);
   line-height: 1.5;
 }
 
-/* MCP Empty State */
+/* ── MCP Onboarding Card ── */
+.mcp-onboarding-card {
+  background: linear-gradient(135deg, rgba(143, 255, 208, 0.04) 0%, rgba(143, 255, 208, 0.01) 100%);
+  border: 1px solid rgba(143, 255, 208, 0.2);
+  border-radius: var(--radius-lg, 6px);
+  box-shadow: 0 0 30px rgba(143, 255, 208, 0.05);
+}
+
+[data-theme='light'] .mcp-onboarding-card {
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.04) 0%, rgba(5, 150, 105, 0.01) 100%);
+  border-color: rgba(5, 150, 105, 0.2);
+  box-shadow: 0 0 30px rgba(5, 150, 105, 0.05);
+}
+
+/* ── MCP Transport Toggle ── */
+.mcp-transport-toggle {
+  display: inline-flex;
+  border-radius: var(--radius-sm, 3px);
+  border: 1px solid var(--panel-edge, #1c242b);
+  overflow: hidden;
+}
+
+.mcp-transport-toggle button {
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim, #7c8a8a);
+  transition:
+    color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    background var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.mcp-transport-toggle button:hover {
+  color: var(--text, #eef2f0);
+}
+
+.mcp-transport-toggle button.active {
+  background: var(--panel-raised, #131922);
+  color: var(--text, #eef2f0);
+}
+
+/* ── MCP Empty State ── */
 .mcp-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
+  padding: var(--space-7, 48px) var(--space-5, 24px);
   text-align: center;
 }
 
 .mcp-empty-state svg {
   width: 48px;
   height: 48px;
-  color: var(--text-muted);
-  margin-bottom: 16px;
+  color: var(--text-faint, #4a5358);
+  margin-bottom: var(--space-4, 16px);
 }
 
 .mcp-empty-state-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 8px;
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text, #eef2f0);
+  margin-bottom: var(--space-2, 8px);
 }
 
 .mcp-empty-state-text {
-  font-size: 14px;
-  color: var(--text-secondary);
+  font-family: var(--font-body, 'Inter', sans-serif);
+  font-size: 13px;
+  color: var(--text-dim, #7c8a8a);
   max-width: 400px;
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6, 24px);
+  line-height: 1.5;
 }
 
-/* MCP Connection Details Panel */
+/* ── MCP Connection Details Panel ── */
 .mcp-connection-panel {
   position: relative;
-  background: var(--bg-card);
-  border: 1px solid var(--color-brand-500);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
+  background: var(--panel, #0e1318);
+  border: 1px solid var(--status-ok, #8fffd0);
+  border-radius: var(--radius-lg, 6px);
+  padding: var(--space-5, 24px);
+  box-shadow: 0 0 20px rgba(143, 255, 208, 0.08);
 }
 
 .mcp-connection-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-4, 16px);
+  padding-bottom: var(--space-4, 16px);
+  border-bottom: 1px solid var(--panel-edge, #1c242b);
 }
 
 .mcp-connection-panel-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-family: var(--font-display, 'Space Grotesk', sans-serif);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text, #eef2f0);
 }
 
 .mcp-connection-panel-close {
@@ -550,21 +593,20 @@
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
-  color: var(--text-muted);
-  transition: all 0.2s ease;
+  border-radius: var(--radius, 4px);
+  color: var(--text-faint, #4a5358);
+  transition: color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .mcp-connection-panel-close:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+  color: var(--text, #eef2f0);
 }
 
-/* MCP Analytics Charts */
+/* ── MCP Analytics Charts ── */
 .mcp-charts-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  gap: var(--space-4, 16px);
 }
 
 @media (max-width: 1024px) {
@@ -574,23 +616,24 @@
 }
 
 .mcp-chart-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 20px;
+  background: var(--panel-raised, #131922);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
+  padding: var(--space-5, 24px);
 }
 
 .mcp-chart-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4, 16px);
 }
 
 .mcp-chart-title {
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text, #eef2f0);
 }
 
 .mcp-chart-container {
@@ -598,86 +641,178 @@
   position: relative;
 }
 
-/* MCP Time Range Selector */
+/* ── MCP Time Range Selector ── */
 .mcp-time-selector {
   display: flex;
-  gap: 4px;
-  padding: 4px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
+  gap: var(--space-1, 4px);
+  padding: var(--space-1, 4px);
+  background: var(--panel, #0e1318);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
 }
 
 .mcp-time-selector-btn {
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: var(--space-1, 4px) var(--space-3, 12px);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
   font-weight: 500;
-  color: var(--text-secondary);
-  border-radius: 6px;
-  transition: all 0.2s ease;
+  color: var(--text-dim, #7c8a8a);
+  border-radius: var(--radius-sm, 3px);
+  transition:
+    color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    background var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .mcp-time-selector-btn:hover {
-  color: var(--text-primary);
+  color: var(--text, #eef2f0);
 }
 
 .mcp-time-selector-btn.active {
-  background: var(--bg-card);
-  color: var(--text-primary);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  background: var(--panel-raised, #131922);
+  color: var(--text, #eef2f0);
 }
 
-/* MCP Export Section */
+/* ── MCP Export Section ── */
 .mcp-export-section {
   display: flex;
-  gap: 12px;
-  padding: 16px 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px) var(--space-5, 24px);
+  background: var(--panel-raised, #131922);
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
 }
 
 .mcp-export-btn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+  font-family: var(--font-body, 'Inter', sans-serif);
   font-size: 14px;
   font-weight: 500;
-  color: var(--text-primary);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  color: var(--text, #eef2f0);
+  background: transparent;
+  border: 1px solid var(--steel, #2a3138);
+  border-radius: var(--radius, 4px);
+  transition:
+    border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .mcp-export-btn:hover {
-  border-color: var(--color-brand-500);
-  background: var(--bg-card);
+  border-color: var(--steel-light, #4a565f);
+  color: var(--text, #eef2f0);
 }
 
-/* Light Theme Adjustments */
-[data-theme='light'] .mcp-panel::before {
-  background: linear-gradient(90deg, transparent, var(--color-brand-500), transparent);
-  opacity: 0.3;
+/* ── Light Mode ── */
+[data-theme='light'] .mcp-aviation-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
 }
 
-[data-theme='light'] .mcp-instrument::before {
-  background: linear-gradient(135deg, transparent 40%, var(--color-brand-500) 100%);
+[data-theme='light'] .mcp-panel {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+[data-theme='light'] .mcp-instrument {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .mcp-instrument.active {
+  border-color: #059669;
+  background: rgba(5, 150, 105, 0.03);
+}
+
+[data-theme='light'] .mcp-metric-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
 }
 
 [data-theme='light'] .mcp-metric-card:hover {
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.1);
+  border-color: #94a3b8;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-[data-theme='light'] .mcp-client-card:hover {
-  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.1);
+[data-theme='light'] .mcp-metric-card::before {
+  background: #059669;
+}
+
+[data-theme='light'] .mcp-table-container,
+[data-theme='light'] .mcp-chart-card,
+[data-theme='light'] .mcp-export-section {
+  background: #ffffff;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .mcp-client-card {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .mcp-client-card.selected {
+  border-color: #059669;
+  background: rgba(5, 150, 105, 0.03);
+}
+
+[data-theme='light'] .mcp-tabs-list {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .mcp-tab-trigger[data-state="active"] {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='light'] .mcp-info-banner {
+  background: rgba(5, 150, 105, 0.03);
+  border-color: rgba(5, 150, 105, 0.15);
+}
+
+[data-theme='light'] .mcp-info-banner svg {
+  color: #059669;
 }
 
 [data-theme='light'] .mcp-connection-panel {
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.08);
+  background: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 0 20px rgba(5, 150, 105, 0.08);
 }
 
-/* Reduced Motion */
+[data-theme='light'] .mcp-time-selector {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .mcp-time-selector-btn.active {
+  background: #ffffff;
+}
+
+[data-theme='light'] .mcp-status-indicator.active {
+  color: #059669;
+  border-color: rgba(5, 150, 105, 0.3);
+  background: rgba(5, 150, 105, 0.06);
+}
+
+[data-theme='light'] .mcp-status-indicator.active::before {
+  background: #059669;
+  box-shadow: 0 0 8px #059669;
+}
+
+[data-theme='light'] .mcp-export-btn {
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme='light'] .mcp-export-btn:hover {
+  border-color: #94a3b8;
+}
+
+/* ── Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
   .mcp-status-indicator::before {
     animation: none;
@@ -688,4 +823,186 @@
   .mcp-instrument {
     transition: none;
   }
+}
+
+/* ═══════════════════════════════════════════════
+   SC Button System (SealedButton / FrameButton)
+   Spec 3.6 / 3.7 — exact shadow values per state
+   ═══════════════════════════════════════════════ */
+
+/* ── SealedButton (Primary) ── */
+.sealed-btn-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%);
+  color: var(--text-on-light, #0a0d11);
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius, 4px);
+  box-shadow: var(--shadow-btn-primary-rest);
+  transition:
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  cursor: pointer;
+}
+
+.sealed-btn-primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover);
+}
+
+.sealed-btn-primary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+.sealed-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.sealed-btn-primary:focus-visible {
+  box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus);
+}
+
+/* ── FrameButton (Outline / Secondary) ── */
+.sealed-btn-outline {
+  background: transparent;
+  color: var(--text, #eef2f0);
+  font-weight: 500;
+  border: 1px solid var(--steel, #2a3138);
+  border-radius: var(--radius, 4px);
+  box-shadow: none;
+  transition:
+    border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  cursor: pointer;
+}
+
+.sealed-btn-outline:hover:not(:disabled) {
+  border-color: var(--steel-light, #4a565f);
+}
+
+.sealed-btn-outline:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-secondary-active);
+}
+
+.sealed-btn-outline:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Destructive Button ── */
+.sealed-btn-destructive {
+  background: linear-gradient(180deg, #ff6b6b 0%, #e05555 100%);
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius, 4px);
+  box-shadow: var(--shadow-btn-primary-rest);
+  transition:
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  cursor: pointer;
+}
+
+.sealed-btn-destructive:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover);
+}
+
+.sealed-btn-destructive:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+.sealed-btn-destructive:focus-visible {
+  box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus);
+}
+
+/* ── Secondary Button ── */
+.sealed-btn-secondary {
+  background: var(--panel-raised, #131922);
+  color: var(--text, #eef2f0);
+  font-weight: 500;
+  border: 1px solid var(--panel-edge, #1c242b);
+  border-radius: var(--radius, 4px);
+  transition:
+    border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  cursor: pointer;
+}
+
+.sealed-btn-secondary:hover:not(:disabled) {
+  border-color: var(--steel-light, #4a565f);
+}
+
+.sealed-btn-secondary:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Ghost Button ── */
+.sealed-btn-ghost {
+  background: transparent;
+  color: var(--text-dim, #7c8a8a);
+  border: none;
+  border-radius: var(--radius-sm, 3px);
+  transition:
+    color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    background var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1));
+  cursor: pointer;
+}
+
+.sealed-btn-ghost:hover:not(:disabled) {
+  color: var(--text, #eef2f0);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sealed-btn-ghost:focus-visible {
+  box-shadow: var(--shadow-focus);
+}
+
+/* ── Link Button ── */
+.sealed-btn-link {
+  background: transparent;
+  color: var(--accent, #ff7a3d);
+  border: none;
+  text-decoration: none;
+  underline-offset: 4px;
+  cursor: pointer;
+}
+
+.sealed-btn-link:hover {
+  text-decoration: underline;
+  color: var(--accent-hover, #ff8f5c);
+}
+
+/* ── Light Mode Buttons ── */
+[data-theme='light'] .sealed-btn-primary {
+  color: #0f172a;
+}
+
+[data-theme='light'] .sealed-btn-outline {
+  color: #0f172a;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .sealed-btn-outline:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+[data-theme='light'] .sealed-btn-secondary {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme='light'] .sealed-btn-secondary:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+[data-theme='light'] .sealed-btn-ghost {
+  color: #64748b;
+}
+
+[data-theme='light'] .sealed-btn-ghost:hover:not(:disabled) {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.04);
 }

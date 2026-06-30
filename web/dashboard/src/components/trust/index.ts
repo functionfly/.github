@@ -36,6 +36,9 @@ export {
   type VerificationStatusProps,
   type VerificationStatusType,
 } from './VerificationStatus';
+export {
+  AttestationPanel,
+} from './AttestationPanel';
 
 // Re-export utility functions from existing trust components
 export { getTrustColorConfig, getTrustScoreBand } from '@/components/functions/TrustScoreBadge';

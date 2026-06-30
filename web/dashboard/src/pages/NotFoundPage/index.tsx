@@ -25,6 +25,7 @@ import {
 import { SpotlightCard } from "@/components/ui/SpotlightCard";
 import { ParticleBackground } from "@/components/ui/ParticleBackground";
 import { cn } from "@/lib/utils";
+import { usePageTitle } from "@/hooks";
 import "./styles.css";
 
 // Animated glitch text component
@@ -231,6 +232,7 @@ const QUICK_ACTIONS = [
 ];
 
 export function NotFoundPage() {
+  usePageTitle('Not Found');
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");

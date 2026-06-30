@@ -1,5 +1,5 @@
 /**
- * Unified chat: Support API (persistence, AI, escalation) + Flywheel-style UI
+ * Unified chat: Support API (persistence, AI, escalation)
  * (minimize, suggestions, quick actions).
  */
 

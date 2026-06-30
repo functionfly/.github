@@ -11,7 +11,6 @@ export const cookieConsentConfig: CookieConsentConfig = {
   // Cookie settings
   cookie: {
     name: 'functionfly_cookie_consent',
-    domain: window.location.hostname,
     path: '/',
     secure: window.location.protocol === 'https:',
     expiresAfterDays: 365,

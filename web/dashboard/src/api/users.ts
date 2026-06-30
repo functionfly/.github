@@ -52,6 +52,8 @@ export interface MeResponse {
   profileNumber?: number;
   // Platform admin role (super_admin, admin, support, etc.)
   role?: string;
+  // Founder badge number for permanent founder members
+  founderNumber?: number;
 }
 
 export interface UpdateProfileResponse {

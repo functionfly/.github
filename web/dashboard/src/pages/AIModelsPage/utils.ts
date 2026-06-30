@@ -53,6 +53,39 @@ export function clearAllowlist(): ModelSelection[] {
   return [];
 }
 
+export function isProviderEnabled(enabledProviders: string[], provider: string): boolean {
+  if (enabledProviders.length === 0) return true;
+  return enabledProviders.includes(provider);
+}
+
+export function toggleProviderAllowlist(
+  enabledProviders: string[],
+  catalog: ModelCatalogItem[],
+  provider: string,
+  enabled: boolean
+): string[] {
+  const allProviders = [...new Set(catalog.map((m) => m.provider))];
+  if (enabledProviders.length === 0) {
+    if (!enabled) {
+      return allProviders.filter((p) => p !== provider);
+    }
+    return [];
+  }
+  if (enabled) {
+    if (enabledProviders.includes(provider)) return enabledProviders;
+    return [...enabledProviders, provider];
+  }
+  return enabledProviders.filter((p) => p !== provider);
+}
+
+export function enableAllProviders(catalog: ModelCatalogItem[]): string[] {
+  return [...new Set(catalog.map((m) => m.provider))];
+}
+
+export function clearProviderAllowlist(): string[] {
+  return [];
+}
+
 export type CatalogSortField = 'name' | 'provider' | 'tier' | 'cost' | 'enabled' | 'availability';
 
 export type CatalogSortOrder = 'asc' | 'desc';

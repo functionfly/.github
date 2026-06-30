@@ -233,7 +233,7 @@ export function AgentsPage() {
                 </div>
                 {agent.description && <p className="ag-agent-card__desc">{agent.description}</p>}
                 <div className="ag-agent-card__actions">
-                  <FrameButton size="sm" onClick={() => navigate(`/agents/${agent.id}`)} iconLeft={<Settings className="ag-icon-xs" />}>{t('agents.manage')}</FrameButton>
+                  <FrameButton size="sm" onClick={() => navigate(ROUTES.agentPath(agent.agentId))} iconLeft={<Settings className="ag-icon-xs" />}>{t('agents.manage')}</FrameButton>
                   <button className="ag-delete-btn" onClick={() => handleDelete(agent)} aria-label="Delete agent"><Trash2 className="ag-icon-xs" /></button>
                 </div>
               </div>
@@ -254,8 +254,8 @@ export function AgentsPage() {
                   <p className="ag-list-id">{agent.agentId ?? '—'}</p>
                 </div>
                 <div className="ag-list-actions">
-                  <button className="ag-icon-btn" onClick={() => navigate(`/agents/${agent.id}`)}><Eye className="ag-icon-sm" /></button>
-                  <button className="ag-icon-btn" onClick={() => navigate(`/agents/${agent.id}/edit`)}><Edit3 className="ag-icon-sm" /></button>
+                  <button className="ag-icon-btn" onClick={() => navigate(ROUTES.agentPath(agent.agentId))}><Eye className="ag-icon-sm" /></button>
+                  <button className="ag-icon-btn" onClick={() => navigate(ROUTES.agentEditPath(agent.agentId))}><Edit3 className="ag-icon-sm" /></button>
                   <button className="ag-icon-btn ag-icon-btn--danger" onClick={() => handleDelete(agent)}><Trash2 className="ag-icon-sm" /></button>
                 </div>
               </div>

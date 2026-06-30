@@ -31,7 +31,7 @@ export function FunctionEditorPage() {
   const { isEditing } = editor;
 
   return (
-    <div className="min-h-screen bg-bg-primary" style={{ backgroundColor: 'var(--bg-primary)' }}>
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)' }}>
       <ActionBar editor={editor} />
 
       {/* Mobile Preview Toggle - only visible on small screens */}

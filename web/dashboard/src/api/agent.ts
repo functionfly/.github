@@ -11,6 +11,7 @@ export interface AgentIdentity {
   description?: string;
   tenantId: string;
   status: string;
+  model?: string;
   createdAt: string;
   updatedAt: string;
   parentAgentId?: string;
@@ -287,6 +288,7 @@ export interface MarketplaceAgent {
 }
 
 export interface MarketplaceAgentSearchParams {
+  agent_id?: string;
   pricing_model?: string;
   min_rating?: number;
   max_price_per_call?: number;
@@ -369,6 +371,23 @@ export const agentApi = {
    */
   deleteAgent: (agentId: string) =>
     apiClient.delete<{ ok: boolean; message: string }>(`/v1/agent/${agentId}`),
+
+  /**
+   * Update an agent's mutable fields (name, description, capabilities, etc.).
+   * PUT /v1/agent/{agent_id}
+   */
+  updateAgent: (
+    agentId: string,
+    data: {
+      name?: string;
+      description?: string;
+      capabilities?: Record<string, unknown>;
+      autonomous_enabled?: boolean;
+      evolution_enabled?: boolean;
+      model?: string;
+    }
+  ) =>
+    apiClient.put<{ ok: boolean; agent: AgentIdentity }>(`/v1/agent/${agentId}`, data),
 
   // ---------------------------------------------------------------------------
   // Quota Management
@@ -1208,4 +1227,26 @@ export const agentApi = {
         revenue_lift_cents: number;
       };
     }>(`/v1/agent/${agentId}/sebg/roi`),
+
+  // ---------------------------------------------------------------------------
+  // AI Models
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Get the curated list of AI models available for agents.
+   * GET /v1/agent/models
+   */
+  getModels: () =>
+    apiClient.get<{ ok: boolean; models: Array<{ id: string; name: string; provider: string; tier: string; cost: string }> }>('/v1/ai/models'),
+
+  // ---------------------------------------------------------------------------
+  // Agent Console (Chat)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Send a message to an agent via FlyMind using the agent's configured model.
+   * POST /v1/agent/{agent_id}/chat
+   */
+  agentChat: (agentId: string, message: string) =>
+    apiClient.post<{ ok: boolean; message: string; model: string }>(`/v1/agent/${agentId}/chat`, { message }),
 };

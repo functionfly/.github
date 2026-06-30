@@ -4,6 +4,7 @@ import { ProvidersDropdown } from '@/components/common/ProvidersDropdown';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
 import { UserMenu } from '@/components/layout/UserMenu';
 import { NotificationBell } from '@/components/notifications';
+import { FrameButton, SealedButton } from '@/components/sc';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DOCS_SITE_URL, getMarketingRedirectOrigin, PROVIDERS } from '@/lib/constants';
@@ -410,15 +411,12 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
 
                   {/* Auth Buttons */}
                   <Link to="/login">
-                    <Button
-                      variant="ghost"
-                      className="text-text-secondary hover:text-text-primary hidden sm:inline-flex"
-                    >
+                    <FrameButton size="sm" className="hidden sm:inline-flex">
                       Sign In
-                    </Button>
+                    </FrameButton>
                   </Link>
                   <Link to="/signup">
-                    <Button className="button-primary">Get Started</Button>
+                    <SealedButton size="sm">Get Started</SealedButton>
                   </Link>
                 </>
               )}
@@ -616,12 +614,12 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                   {!isAuthenticated && (
                     <div className="pt-4 border-t border-border-default space-y-2">
                       <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">
+                        <FrameButton size="sm" className="w-full justify-start">
                           Sign In
-                        </Button>
+                        </FrameButton>
                       </Link>
                       <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                        <Button className="w-full button-primary">Get Started</Button>
+                        <SealedButton size="sm" className="w-full">Get Started</SealedButton>
                       </Link>
                     </div>
                   )}
