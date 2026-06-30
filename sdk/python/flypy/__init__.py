@@ -76,6 +76,10 @@ from .edge_state import (
     snapshot as edge_snapshot,
 )
 from . import _functionfly
+from ._functionfly import (
+    get_attestation,
+    delegate,
+)
 from .agent_types import (
     TrustPolicy,
     TrustedFunction,
@@ -134,6 +138,8 @@ __all__ = [
     "edge_delete",
     "edge_snapshot",
     "_functionfly",
+    "get_attestation",
+    "delegate",
     "TrustPolicy",
     "TrustedFunction",
     "ToolExecutionMetadata",

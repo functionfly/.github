@@ -44,6 +44,8 @@ _FN_GET_ENV = 6
 _FN_KV_GET = 7
 _FN_KV_SET = 8
 _FN_LOG = 9
+_FN_GET_ATTESTATION = 10
+_FN_DELEGATE = 11
 
 
 def _is_wasm_environment():
@@ -289,6 +291,50 @@ def state_create_snapshot(path, label=''):
         JSON string with snapshot metadata, or None on error
     """
     status, result = _invoke_host_fn(_FN_STATE_CREATE_SNAPSHOT, path, label)
+    if status == 0:
+        return result
+    return None
+
+
+def get_attestation(attestation_id):
+    """Retrieve an attestation by ID.
+
+    Args:
+        attestation_id: The attestation ID (e.g. "att_a1b2c3...")
+
+    Returns:
+        JSON string with attestation data including proof_hash, signature, etc.,
+        or None if not found
+    """
+    status, result = _invoke_host_fn(_FN_GET_ATTESTATION, attestation_id)
+    if status == 0:
+        return result
+    return None
+
+
+def delegate(function_id, input_data, options=None):
+    """Delegate execution to another function with trust-aware routing.
+
+    Args:
+        function_id: The target function ID to delegate to
+        input_data: JSON string or dict of input to pass to the target
+        options: Optional JSON string or dict with delegation options:
+            - min_trust_score: Minimum trust score (0-100)
+            - min_trust_tier: Minimum trust tier
+            - timeout_ms: Timeout in milliseconds
+            - retry: Whether to retry on failure
+            - max_retries: Maximum retries
+
+    Returns:
+        JSON string with execution result, or None on error
+    """
+    if isinstance(input_data, dict):
+        input_data = json.dumps(input_data)
+    if options is None:
+        options = ''
+    elif isinstance(options, dict):
+        options = json.dumps(options)
+    status, result = _invoke_host_fn(_FN_DELEGATE, function_id, input_data, options)
     if status == 0:
         return result
     return None
