@@ -1,0 +1,76 @@
+---
+interface Props {
+  label?: string;
+  model?: string;
+  context?: string;
+  lineNumbers?: boolean;
+}
+
+const {
+  label = 'PROMPT',
+  model,
+  context,
+  lineNumbers = false,
+} = Astro.props;
+
+const content = await Astro.slots.render('default');
+const textContent = content.replace(/<[^>]*>/g, '').trim();
+const lines = textContent.split('\n');
+---
+
+<div class="prompt-box">
+  <div class="prompt-box__header">
+    <div class="prompt-box__header-left">
+      <span class="prompt-box__label">{label}</span>
+      {model && <span class="prompt-box__model">{model}</span>}
+    </div>
+    <button
+      class="prompt-box__copy"
+      data-code={textContent}
+      aria-label="Copy prompt"
+      type="button"
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+      </svg>
+      <span>Copy</span>
+    </button>
+  </div>
+
+  {context && (
+    <div class="prompt-box__context">
+      <span class="prompt-box__context-label">SYSTEM</span>
+      <span class="prompt-box__context-text">{context}</span>
+    </div>
+  )}
+
+  <div class="prompt-box__body">
+    {lineNumbers && (
+      <div class="prompt-box__lines" aria-hidden="true">
+        {lines.map((_: string, i: number) => (
+          <span class="prompt-box__line-number">{i + 1}</span>
+        ))}
+      </div>
+    )}
+    <pre class="prompt-box__pre"><code class="prompt-box__code"><slot /></code></pre>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.prompt-box__copy').forEach(btn => {
+    btn.addEventListener('click', async function(this: HTMLElement) {
+      const code = this.getAttribute('data-code') || '';
+      try {
+        await navigator.clipboard.writeText(code);
+        this.classList.add('prompt-box__copy--copied');
+        const span = this.querySelector('span');
+        if (span) span.textContent = 'Copied';
+        setTimeout(() => {
+          this.classList.remove('prompt-box__copy--copied');
+          if (span) span.textContent = 'Copy';
+        }, 2000);
+      } catch {}
+    });
+  });
+</script>

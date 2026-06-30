@@ -4,7 +4,7 @@ import ReadingProgress from '../components/ReadingProgress.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { getLocaleFromUrl, loadTranslations, createT } from '../i18n/index';
-import '../styles/main.css';
+import '../styles/global.css';
 import '../styles/sc-main.css';
 
 interface Props {
@@ -27,14 +27,12 @@ const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
 const canonicalURL = canonical || new URL(Astro.url.pathname, BLOG_SITE_URL).toString();
 const ogUrl = ogImage?.startsWith('http') ? ogImage : new URL(ogImage || '/og-default.svg', BLOG_SITE_URL).toString();
 
-function navClass(href: string): string {
-  if (href === '/') return pathname === '/' ? 'nav-active' : '';
-  return pathname.startsWith(href) ? 'nav-active' : '';
-}
-
 const locale = getLocaleFromUrl(Astro.url);
 const translations = await loadTranslations(locale);
 const t = createT(translations);
+
+const gaId = import.meta.env.PUBLIC_GOOGLE_ANALYTICS_ID as string | undefined;
+const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefined;
 ---
 
 <!doctype html>
@@ -65,8 +63,8 @@ const t = createT(translations);
     <!-- Preconnect to external resources -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <!-- Font Stack - using JetBrains Mono (CommitMono CDN was broken) -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+    <!-- Font Stack matching site -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
 
     <!-- Blocking theme script to prevent FOUC -->
     <script is:inline>
@@ -111,12 +109,51 @@ const t = createT(translations);
     </script>
 
     <!-- Additional SEO -->
-    <meta name="theme-color" content="#FF6B35" />
-    <meta name="msapplication-TileColor" content="#FF6B35" />
+    <meta name="theme-color" content="#0a0d11" />
+    <meta name="msapplication-TileColor" content="#0a0d11" />
+    <meta name="color-scheme" content="dark light" />
     <meta name="robots" content="index, follow" />
     <meta name="author" content="FunctionFly" />
+
+    {/* Google Analytics */}
+    {gaId && (
+      <script define:vars={{ gaId }}>
+        (function() {
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId);
+        })();
+      </script>
+    )}
+
+    {/* Mixpanel Analytics */}
+    {mixpanelToken && (
+      <script define:vars={{ mixpanelToken }}>
+        (function() {
+          var w = window, mp = w.mixpanel = w.mixpanel || [];
+          function i() { mp.push(arguments); }
+          i.q = mp.q || []; mp._i = [];
+          mp.init = function(token) { mp.push(['init', token]); return mp; };
+          mp.track = function() { return mp.q.push(arguments); };
+          mp.people = { track_charge: function() { mp.q.push(['people.track_charge', arguments]); } };
+          var s = document.createElement('script');
+          s.type = 'text/javascript'; s.async = true;
+          s.src = 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
+          var x = document.getElementsByTagName('script')[0];
+          x.parentNode.insertBefore(s, x);
+          window.mixpanel.init(mixpanelToken);
+        })();
+      </script>
+    )}
   </head>
-  <body class="ff-grid-bg">
+  <body>
+    <div class="page-grid" aria-hidden="true"></div>
+
     {showProgress && <ReadingProgress />}
 
     <Header />
@@ -155,9 +192,9 @@ const t = createT(translations);
   }
 
   html {
-    font-family: var(--font-sans);
-    background: var(--color-bg);
-    color: var(--color-text);
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
     scroll-behavior: smooth;
     overflow-x: hidden;
   }
@@ -182,14 +219,14 @@ const t = createT(translations);
 
   .back-to-top {
     position: fixed;
-    bottom: 2rem;
-    right: 2rem;
-    width: 3rem;
-    height: 3rem;
-    border-radius: 10px;
-    background: var(--color-bg-light);
-    border: 1px solid var(--color-border);
-    color: var(--color-text);
+    bottom: var(--space-6);
+    right: var(--space-6);
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius);
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    color: var(--text-dim);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -197,9 +234,14 @@ const t = createT(translations);
     opacity: 0;
     visibility: hidden;
     transform: translateY(10px);
-    transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease;
+    transition:
+      opacity var(--duration-base) var(--ease-out),
+      visibility var(--duration-base) var(--ease-out),
+      transform var(--duration-base) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out);
     z-index: 99;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.3);
+    box-shadow: var(--shadow-chamber);
   }
 
   .back-to-top.visible {
@@ -209,42 +251,12 @@ const t = createT(translations);
   }
 
   .back-to-top:hover {
-    background: var(--color-primary);
-    border-color: var(--color-primary);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 107, 53, 0.3);
+    color: var(--text);
+    border-color: var(--steel-light);
   }
 
-  ::selection {
-    background: rgba(var(--ff-flame-rgb, 255, 107, 53), 0.4);
-    color: white;
-  }
-
-  [data-theme='light'] ::selection {
-    background: rgba(var(--ff-flame-rgb, 232, 90, 42), 0.3);
-    color: var(--color-text);
-  }
-
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background: var(--ff-tarmac, #0D1117);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--ff-flightdeck, #21262D);
-    border-radius: 4px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: var(--slate-4, #475569);
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
+  .back-to-top:focus-visible {
+    box-shadow: var(--shadow-focus);
+    outline: none;
   }
 </style>

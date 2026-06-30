@@ -33,7 +33,7 @@ export default defineConfig({
     defaultLocale: DEFAULT_LOCALE,
     locales: LOCALES,
     routing: {
-      prefixDefaultLocale: true,
+      prefixDefaultLocale: false,
     },
   },
   output: "server",

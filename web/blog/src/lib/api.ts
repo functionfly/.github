@@ -1,12 +1,10 @@
 /**
- * Blog API Client for public blog consumption
- * Uses the Go backend at /v1/blog/*
+ * Blog API Client — reads from Sanity CMS via GROQ
  */
 
-const BLOG_API_URL = import.meta.env.PUBLIC_MAIN_API_URL ||
-  (() => { throw new Error('PUBLIC_MAIN_API_URL environment variable is required'); })();
+import { getClient } from "./sanity";
 
-// Types matching the Go backend API response
+// Types matching what the frontend components expect
 export interface BlogPost {
   id: string;
   title: string;
@@ -29,7 +27,6 @@ export interface BlogPost {
   ownerId?: string;
   createdAt: string;
   updatedAt: string;
-  // Relations (from Go backend)
   author?: {
     name: string;
     slug: string;
@@ -92,160 +89,289 @@ export interface PostsQuery {
   status?: string;
 }
 
-/**
- * Fetch blog posts with pagination and filtering
- */
-export async function getPosts(query?: PostsQuery): Promise<PaginatedResponse<BlogPost>> {
-  const params = new URLSearchParams();
-  
-  if (query?.page) params.set('page', query.page.toString());
-  if (query?.limit) params.set('limit', query.limit.toString());
-  if (query?.category) params.set('category', query.category);
-  if (query?.author) params.set('author', query.author);
-  if (query?.tag) params.set('tag', query.tag);
-  if (query?.search) params.set('search', query.search);
-  if (query?.status) params.set('status', query.status);
+const PUBLISHED_FILTER = "defined(publishedAt) && publishedAt <= now()";
 
-  const url = `${BLOG_API_URL}/blog/posts?${params.toString()}`;
-  
+const POST_FIELDS = `
+  _id,
+  title,
+  "slug": slug.current,
+  description,
+  body,
+  tags,
+  "heroImage": heroImage {
+    "url": asset->url,
+    "alt": coalesce(alt, title)
+  },
+  publishedAt,
+  seoTitle,
+  seoDescription,
+  _createdAt,
+  _updatedAt,
+  "author": author-> {
+    name,
+    "slug": slug.current,
+    bio,
+    role,
+    "photo": { "url": photo.asset->url }
+  },
+  "category": category-> {
+    title,
+    "slug": slug.current
+  }
+`;
+
+function mapPost(raw: any): BlogPost {
+  return {
+    id: raw._id,
+    title: raw.title ?? "",
+    slug: raw.slug ?? "",
+    description: raw.description ?? "",
+    body: raw.body ?? null,
+    tags: raw.tags ?? [],
+    heroImage: raw.heroImage ?? null,
+    status: raw.publishedAt ? "published" : "draft",
+    publishedAt: raw.publishedAt ?? null,
+    seoTitle: raw.seoTitle ?? null,
+    seoDescription: raw.seoDescription ?? null,
+    createdAt: raw._createdAt ?? "",
+    updatedAt: raw._updatedAt ?? "",
+    author: raw.author
+      ? {
+          name: raw.author.name ?? "",
+          slug: raw.author.slug ?? "",
+          bio: raw.author.bio ?? undefined,
+          role: raw.author.role ?? undefined,
+          photo: raw.author.photo ?? null,
+        }
+      : null,
+    category: raw.category
+      ? {
+          title: raw.category.title ?? "",
+          slug: raw.category.slug ?? "",
+        }
+      : null,
+  };
+}
+
+export async function getPosts(
+  query?: PostsQuery,
+): Promise<PaginatedResponse<BlogPost>> {
+  const client = getClient();
+  if (!client) {
+    return { data: [], meta: { total: 0, page: 1, limit: 10, totalPages: 0 } };
+  }
+
+  const page = query?.page && query.page > 0 ? query.page : 1;
+  const limit =
+    query?.limit && query.limit > 0 && query.limit <= 50 ? query.limit : 10;
+  const offset = (page - 1) * limit;
+
+  const conditions: string[] = [`_type == "blogPost"`];
+
+  if (query?.status === "published" || !query?.status) {
+    conditions.push(PUBLISHED_FILTER);
+  }
+
+  if (query?.category) {
+    conditions.push(`category->slug.current == "${query.category}"`);
+  }
+
+  if (query?.author) {
+    conditions.push(`author->slug.current == "${query.author}"`);
+  }
+
+  if (query?.tag) {
+    conditions.push(`"${query.tag}" in tags`);
+  }
+
+  const where = conditions.join(" && ");
+
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch posts: ${response.status}`);
+    if (query?.search) {
+      const searchFilter = `${where} && (title match $search || description match $search || body match $search)`;
+      const [total, data] = await Promise.all([
+        client.fetch<number>(
+          `count(*[${searchFilter}])`,
+          { search: `${query.search}*` },
+        ),
+        client.fetch<any[]>(
+          `*[${searchFilter}] | order(publishedAt desc) [${offset}...${offset + limit}] {${POST_FIELDS}}`,
+          { search: `${query.search}*` },
+        ),
+      ]);
+      const totalPages = Math.ceil(total / limit);
+      return { data: (data ?? []).map(mapPost), meta: { total, page, limit, totalPages } };
     }
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to fetch blog posts:', error);
+
+    const [total, data] = await Promise.all([
+      client.fetch<number>(`count(*[${where}])`),
+      client.fetch<any[]>(
+        `*[${where}] | order(publishedAt desc) [${offset}...${offset + limit}] {${POST_FIELDS}}`,
+      ),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
     return {
-      data: [],
-      meta: { total: 0, page: 1, limit: 10, totalPages: 0 }
+      data: (data ?? []).map(mapPost),
+      meta: { total, page, limit, totalPages },
     };
+  } catch (error) {
+    console.error("Failed to fetch blog posts from Sanity:", error);
+    return { data: [], meta: { total: 0, page: 1, limit, totalPages: 0 } };
   }
 }
 
-/**
- * Fetch a single blog post by slug
- */
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
+  const client = getClient();
+  if (!client) return null;
+
   try {
-    const response = await fetch(`${BLOG_API_URL}/blog/posts/${encodeURIComponent(slug)}`);
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      throw new Error(`Failed to fetch post: ${response.status}`);
-    }
-    return await response.json();
+    const raw = await client.fetch<any>(
+      `*[_type == "blogPost" && slug.current == $slug && ${PUBLISHED_FILTER}][0] {${POST_FIELDS}}`,
+      { slug },
+    );
+    return raw ? mapPost(raw) : null;
   } catch (error) {
-    console.error('Failed to fetch blog post:', error);
+    console.error("Failed to fetch blog post by slug:", error);
     return null;
   }
 }
 
-/**
- * Fetch all categories from Go backend
- */
 export async function getCategories(): Promise<Category[]> {
+  const client = getClient();
+  if (!client) return [];
+
   try {
-    const response = await fetch(`${BLOG_API_URL}/content/categories`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch categories: ${response.status}`);
-    }
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data = await client.fetch<any[]>(
+      `*[_type == "category"] | order(title asc) {
+        _id,
+        title,
+        "slug": slug.current,
+        description,
+        color,
+        _createdAt,
+        _updatedAt,
+        "postCount": count(*[_type == "blogPost" && references(^._id) && ${PUBLISHED_FILTER}])
+      }`,
+    );
+
+    return (data ?? []).map((c: any) => ({
+      id: c._id,
+      title: c.title ?? "",
+      slug: c.slug ?? "",
+      description: c.description ?? "",
+      color: c.color ?? "",
+      icon: "",
+      order: 0,
+      postCount: c.postCount ?? 0,
+      createdAt: c._createdAt ?? "",
+      updatedAt: c._updatedAt ?? "",
+    }));
   } catch (error) {
-    console.error('Failed to fetch categories:', error);
+    console.error("Failed to fetch categories from Sanity:", error);
     return [];
   }
 }
 
-/**
- * Fetch all authors from Go backend
- */
 export async function getAuthors(): Promise<Author[]> {
+  const client = getClient();
+  if (!client) return [];
+
   try {
-    const response = await fetch(`${BLOG_API_URL}/blog/authors`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch authors: ${response.status}`);
-    }
-    const data = await response.json();
-    return Array.isArray(data) ? data : [];
+    const data = await client.fetch<any[]>(
+      `*[_type == "author"] | order(name asc) {
+        _id,
+        name,
+        "slug": slug.current,
+        bio,
+        role,
+        twitter,
+        github,
+        "photo": { "url": photo.asset->url },
+        _createdAt,
+        _updatedAt
+      }`,
+    );
+
+    return (data ?? []).map((a: any) => ({
+      id: a._id,
+      name: a.name ?? "",
+      slug: a.slug ?? "",
+      bio: a.bio ?? undefined,
+      role: a.role ?? undefined,
+      photo: a.photo ?? undefined,
+      active: true,
+      createdAt: a._createdAt ?? "",
+      updatedAt: a._updatedAt ?? "",
+    }));
   } catch (error) {
-    console.error('Failed to fetch authors:', error);
+    console.error("Failed to fetch authors from Sanity:", error);
     return [];
   }
 }
 
-/**
- * Fetch posts by category slug
- */
 export async function getPostsByCategory(
-  categorySlug: string, 
-  params?: Omit<PostsQuery, 'category'>
+  categorySlug: string,
+  params?: Omit<PostsQuery, "category">,
 ): Promise<PaginatedResponse<BlogPost>> {
   return getPosts({ ...params, category: categorySlug });
 }
 
-/**
- * Fetch posts by author slug
- */
 export async function getPostsByAuthor(
   authorSlug: string,
-  params?: Omit<PostsQuery, 'author'>
+  params?: Omit<PostsQuery, "author">,
 ): Promise<PaginatedResponse<BlogPost>> {
   return getPosts({ ...params, author: authorSlug });
 }
 
-/**
- * Search posts by query string
- */
 export async function searchPosts(
   query: string,
-  params?: Omit<PostsQuery, 'search'>
+  params?: Omit<PostsQuery, "search">,
 ): Promise<PaginatedResponse<BlogPost>> {
   return getPosts({ ...params, search: query });
 }
 
-/**
- * Fetch related posts (posts in the same category, excluding current post)
- */
 export async function getRelatedPosts(
   currentPostId: string,
   categorySlug?: string | null,
-  limit: number = 3
+  limit: number = 3,
 ): Promise<BlogPost[]> {
+  const client = getClient();
+  if (!client) return [];
+
   try {
-    // First try to get posts from the same category
     if (categorySlug) {
-      const response = await getPostsByCategory(categorySlug, { limit: limit + 1 });
-      const filtered = response.data.filter(p => p.id !== currentPostId);
-      if (filtered.length >= limit) {
-        return filtered.slice(0, limit);
+      const data = await client.fetch<any[]>(
+        `*[_type == "blogPost" && _id != $id && category->slug.current == $catSlug && ${PUBLISHED_FILTER}] | order(publishedAt desc) [0...${limit}] {${POST_FIELDS}}`,
+        { id: currentPostId, catSlug: categorySlug },
+      );
+      if (data && data.length >= limit) {
+        return data.map(mapPost);
       }
     }
-    
-    // Fallback to latest posts
-    const response = await getPosts({ limit: limit + 5 });
-    return response.data
-      .filter(p => p.id !== currentPostId)
-      .slice(0, limit);
+
+    const data = await client.fetch<any[]>(
+      `*[_type == "blogPost" && _id != $id && ${PUBLISHED_FILTER}] | order(publishedAt desc) [0...${limit + 5}] {${POST_FIELDS}}`,
+      { id: currentPostId },
+    );
+    return (data ?? []).slice(0, limit).map(mapPost);
   } catch (error) {
-    console.error('Failed to fetch related posts:', error);
+    console.error("Failed to fetch related posts:", error);
     return [];
   }
 }
 
-/**
- * Fetch all posts for static path generation (RSS, sitemap)
- */
 export async function getAllPosts(limit: number = 1000): Promise<BlogPost[]> {
+  const client = getClient();
+  if (!client) return [];
+
   try {
-    const response = await fetch(`${BLOG_API_URL}/blog/posts?limit=${limit}`);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch all posts: ${response.status}`);
-    }
-    const data: PaginatedResponse<BlogPost> = await response.json();
-    return data.data || [];
+    const data = await client.fetch<any[]>(
+      `*[_type == "blogPost" && ${PUBLISHED_FILTER}] | order(publishedAt desc) [0...${limit}] {${POST_FIELDS}}`,
+    );
+    return (data ?? []).map(mapPost);
   } catch (error) {
-    console.error('Failed to fetch all posts:', error);
+    console.error("Failed to fetch all posts:", error);
     return [];
   }
 }

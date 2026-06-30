@@ -16,7 +16,7 @@ const socialLinks = author.socialLinks && typeof author.socialLinks === 'object'
 
 <div class="author-card">
   <div class="author-visual">
-    {author.photo && typeof author.photo === 'object' && 'url' in author.photo ? (
+    {author.photo && typeof author.photo === 'object' && 'url' in author.photo && (author.photo as { url: string }).url ? (
       <img
         src={(author.photo as { url: string }).url}
         alt={author.name}
@@ -24,9 +24,12 @@ const socialLinks = author.socialLinks && typeof author.socialLinks === 'object'
         loading="lazy"
       />
     ) : (
-      <div class="author-avatar-fallback">
-        {(author.name || '?').charAt(0).toUpperCase()}
-      </div>
+      <img
+        src="/functionfly.png"
+        alt="FunctionFly"
+        class="author-photo"
+        loading="lazy"
+      />
     )}
     <div class="author-accent"></div>
   </div>

@@ -1,89 +1,88 @@
 /**
  * Sealed Containment Design Tokens
- * FunctionFly Marketing Site
+ * FunctionFly Blog
  *
  * Design direction: containment glass, security foil, instrumentation
+ * Source: Sealed Containment Master Design System Spec
+ *
+ * This file is the single source of truth for all design tokens.
+ * Components must reference these tokens - no hardcoded hex values allowed.
  */
 
-:root {
-  /* Background */
-  --bg: #0a0d11;
+@import './tokens.css';
 
-  /* Chamber / Containment */
-  --chamber-bg: #0e1318;
-  --chamber-edge: #1c242b;
-  --chamber-glass: rgba(110, 190, 170, 0.05);
+/* Light mode overrides - applied on top of tokens.css */
+[data-theme="light"] {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --panel-raised: #f1f5f9;
+  --panel-edge: #e2e8f0;
+  --steel: #e2e8f0;
+  --steel-light: #cbd5e1;
 
-  /* Steel / Frame */
-  --steel: #2a3138;
-  --steel-light: #4a565f;
+  --glass-tint: rgba(5, 150, 105, 0.05);
 
-  /* Typography */
-  --text-primary: #eef2f0;
-  --text-dim: #7c8a8a;
-  --text-faint: #4a5358;
+  --text: #0f172a;
+  --text-primary: #0f172a;
+  --text-dim: #475569;
+  --text-faint: #64748b;
+  --text-on-light: #0f172a;
 
-  /* Accent — used sparingly for active/execute states only */
-  --accent: #ff7a3d;
-  --accent-hover: #ff9a5c;
+  --foil-a: #3b82f6;
+  --foil-b: #7c3aed;
 
-  /* Status colors */
-  --status-ok: #8fffd0;
-  --status-live: #8fffd0;
-  --status-pending: #4a5358;
-  --status-revoked: #ff7a3d;
+  --accent: #e85a2a;
+  --accent-hover: #ff7a3d;
+  --accent-dim: rgba(232, 90, 42, 0.35);
 
-  /* Security Foil Gradient */
-  --foil-a: #9fd8ff;
-  --foil-b: #d9c4ff;
-  --foil-c: #8fffd0;
+  --status-ok: #059669;
+  --status-pending: #e8c468;
+  --status-revoked: #dc2626;
 
-  /* Radius — mechanical precision, not soft */
-  --radius: 4px;
+  --shadow-chamber: 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.08);
+  --shadow-btn-primary-rest: 0 1px 0 rgba(255,255,255,0.4) inset, 0 6px 16px rgba(0,0,0,0.1);
+  --shadow-btn-primary-hover: 0 1px 0 rgba(255,255,255,0.5) inset, 0 8px 20px rgba(0,0,0,0.12);
+  --shadow-btn-primary-active: 0 1px 0 rgba(255,255,255,0.15) inset, 0 2px 6px rgba(0,0,0,0.08);
+  --shadow-seal: 0 0 12px rgba(5, 150, 105, 0.2);
+  --shadow-input-focus: 0 0 0 1px var(--steel-light) inset;
+  --shadow-input-error: 0 0 0 1px var(--status-revoked) inset;
+}
 
-  /* Spacing scale */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-  --space-24: 6rem;
+/* System preference detection for light mode */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f8fafc;
+    --panel: #ffffff;
+    --panel-raised: #f1f5f9;
+    --panel-edge: #e2e8f0;
+    --steel: #e2e8f0;
+    --steel-light: #cbd5e1;
 
-  /* Font stacks */
-  --font-sans: "Instrument Sans", "Inter", system-ui, -apple-system, sans-serif;
-  --font-display: "Space Grotesk", "Instrument Sans", system-ui, sans-serif;
-  --font-mono:
-    "Commit Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+    --glass-tint: rgba(5, 150, 105, 0.05);
 
-  /* chamber box shadow */
-  --chamber-shadow:
-    0 0 0 1px var(--chamber-edge), inset 0 1px 0 rgba(110, 190, 170, 0.05);
-  --chamber-shadow-hover:
-    0 0 0 1px var(--steel-light), inset 0 1px 0 rgba(110, 190, 170, 0.08);
+    --text: #0f172a;
+    --text-primary: #0f172a;
+    --text-dim: #475569;
+    --text-faint: #64748b;
+    --text-on-light: #0f172a;
 
-  /* Brace shadow */
-  --brace-shadow: 2px 2px 0 var(--steel-light);
+    --foil-a: #3b82f6;
+    --foil-b: #7c3aed;
 
-  /* Foil shimmer shadow */
-  --foil-shadow: 0 0 20px rgba(159, 216, 255, 0.3);
+    --accent: #e85a2a;
+    --accent-hover: #ff7a3d;
+    --accent-dim: rgba(232, 90, 42, 0.35);
 
-  /* Seal / Foil colors */
-  --seal-a: #9fd8ff;
-  --seal-b: #d9c4ff;
-  --seal-c: #8fffd0;
+    --status-ok: #059669;
+    --status-pending: #e8c468;
+    --status-revoked: #dc2626;
 
-  /* Button shadows */
-  --btn-primary-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 6px 16px rgba(0, 0, 0, 0.35);
-  --btn-primary-shadow-hover:
-    inset 0 1px 0 rgba(255, 255, 255, 0.5),
-    0 8px 20px rgba(0, 0, 0, 0.4);
-  --btn-primary-shadow-pressed:
-    inset 0 2px 4px rgba(0, 0, 0, 0.2),
-    0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-chamber: 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px rgba(0,0,0,0.08);
+    --shadow-btn-primary-rest: 0 1px 0 rgba(255,255,255,0.4) inset, 0 6px 16px rgba(0,0,0,0.1);
+    --shadow-btn-primary-hover: 0 1px 0 rgba(255,255,255,0.5) inset, 0 8px 20px rgba(0,0,0,0.12);
+    --shadow-btn-primary-active: 0 1px 0 rgba(255,255,255,0.15) inset, 0 2px 6px rgba(0,0,0,0.08);
+    --shadow-seal: 0 0 12px rgba(5, 150, 105, 0.2);
+    --shadow-input-focus: 0 0 0 1px var(--steel-light) inset;
+    --shadow-input-error: 0 0 0 1px var(--status-revoked) inset;
+  }
 }

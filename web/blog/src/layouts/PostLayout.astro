@@ -16,7 +16,7 @@ const bodyHtml = slateBodyToHtml(post.body);
 const readingMinutes = calculateReadingTime(post.body);
 const metaTitle = post.seoTitle || post.title;
 const metaDesc = post.seoDescription || post.description;
-const canonicalUrl = post.canonicalUrl || new URL(`/blog/${post.slug}`, Astro.site).toString();
+const canonicalUrl = post.canonicalUrl || new URL(`/${post.slug}`, Astro.site).toString();
 const ogImageUrl = post.ogImage?.url || post.heroImage?.url;
 
 const locale = getLocaleFromUrl(Astro.url);
@@ -113,16 +113,18 @@ const t = createT(translations);
               <div class="meta-author">
                 {post.author?.name && (
                   <a href={`/author/${post.author.slug}`} class="author-link">
-                    {post.author.photo && typeof post.author.photo === 'object' && 'url' in post.author.photo ? (
+                    {post.author.photo && typeof post.author.photo === 'object' && 'url' in post.author.photo && (post.author.photo as { url: string }).url ? (
                       <img 
                         src={(post.author.photo as { url: string }).url} 
                         alt={post.author.name}
                         class="author-avatar"
                       />
                     ) : (
-                      <span class="author-avatar author-avatar--initial">
-                        {post.author.name.charAt(0).toUpperCase()}
-                      </span>
+                      <img
+                        src="/functionfly.png"
+                        alt="FunctionFly"
+                        class="author-avatar"
+                      />
                     )}
                     <span class="author-name">{post.author.name}</span>
                   </a>
@@ -196,7 +198,7 @@ const t = createT(translations);
   <!-- Copy Code Script -->
   <script is:inline>
     document.addEventListener('DOMContentLoaded', function() {
-      const codeBlocks = document.querySelectorAll('.copy-code-btn');
+      const codeBlocks = document.querySelectorAll('.code-box__copy, .copy-code-btn');
 
       // Create aria-live region for announcements
       const liveRegion = document.createElement('div');
@@ -215,11 +217,14 @@ const t = createT(translations);
             await navigator.clipboard.writeText(code);
 
             // Show copied state
-            this.classList.add('copied');
+            this.classList.add('code-box__copy--copied');
+            const span = this.querySelector('span');
+            if (span) span.textContent = 'Copied';
             liveRegion.textContent = 'Code copied to clipboard';
 
             setTimeout(() => {
-              this.classList.remove('copied');
+              this.classList.remove('code-box__copy--copied');
+              if (span) span.textContent = 'Copy';
             }, 2000);
           } catch (err) {
             console.error('Failed to copy:', err);
@@ -260,8 +265,8 @@ const t = createT(translations);
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in srgb, var(--color-primary) 8%, transparent), transparent 55%),
-      radial-gradient(ellipse 40% 20% at 100% 0%, color-mix(in srgb, var(--color-secondary) 3%, transparent), transparent 40%);
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(143, 255, 208, 0.06), transparent 55%),
+      radial-gradient(ellipse 40% 20% at 100% 0%, rgba(159, 216, 255, 0.04), transparent 40%);
   }
 
   .blog-post {
@@ -666,26 +671,43 @@ const t = createT(translations);
   }
 
   /* Lists */
-  .post-content .content-list {
+  .post-content .content-list,
+  .post-content ul,
+  .post-content ol {
     margin-bottom: 1.5rem;
     padding-left: 1.5rem;
   }
 
-  .post-content .content-list li {
+  .post-content .content-list li,
+  .post-content ul li,
+  .post-content ol li {
     margin-bottom: 0.5rem;
     color: var(--color-text);
+    line-height: 1.7;
   }
 
-  [data-theme='light'] .post-content .content-list li {
+  [data-theme='light'] .post-content .content-list li,
+  [data-theme='light'] .post-content ul li,
+  [data-theme='light'] .post-content ol li {
     color: #1e293b;
   }
 
-  .post-content .content-list--bullet {
+  .post-content .content-list--bullet,
+  .post-content ul {
     list-style-type: disc;
   }
 
-  .post-content .content-list--numbered {
+  .post-content .content-list--numbered,
+  .post-content ol {
     list-style-type: decimal;
+  }
+
+  .post-content ul ul,
+  .post-content ol ol,
+  .post-content ul ol,
+  .post-content ol ul {
+    margin-bottom: 0;
+    margin-top: 0.4rem;
   }
 
   /* Blockquote */

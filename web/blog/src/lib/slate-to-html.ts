@@ -1,7 +1,64 @@
 /**
- * Enhanced Slate/TipTap to HTML converter with syntax highlighting support
- * Handles paragraphs, headings, inline marks, code blocks with language detection
+ * Enhanced Slate/TipTap/Markdown to HTML converter with syntax highlighting support
+ * Handles paragraphs, headings, inline marks, code blocks with language detection,
+ * and Markdown text from Sanity CMS.
  */
+
+import { marked } from "marked";
+
+// Configure marked with custom renderer for CodeBox-style code blocks
+const renderer = new marked.Renderer();
+renderer.code = function({ text, lang }: { text: string; lang?: string }) {
+  const normalizedLang = languageAliases[lang || ''] || lang || 'text';
+  const lines = text.split('\n');
+  const langColor = getLanguageColor(normalizedLang);
+  const lineNumbers = lines
+    .map((_: string, i: number) => `<span class="code-box__line-number">${i + 1}</span>`)
+    .join('\n');
+  const escapedCode = escapeHtml(text);
+
+  return `
+    <div class="code-box" data-language="${normalizedLang}">
+      <div class="code-box__header">
+        <div class="code-box__header-left">
+          <span class="code-box__lang"${langColor ? ` style="color:${langColor}"` : ''}>${normalizedLang}</span>
+        </div>
+        <button class="code-box__copy" data-code="${escapeHtml(text)}" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          <span>Copy</span>
+        </button>
+      </div>
+      <div class="code-box__body">
+        <div class="code-box__lines" aria-hidden="true">
+          ${lineNumbers}
+        </div>
+        <pre class="code-box__pre"><code class="code-box__code language-${normalizedLang}">${escapedCode}</code></pre>
+      </div>
+    </div>
+  `;
+};
+
+marked.use({ renderer });
+
+/**
+ * Post-process HTML to fix CLI command references.
+ * The ff-cli binary is `ff`, not `fly`.
+ * Matches: fly init, fly deploy, fly auth, etc. in visible content AND data-code attributes.
+ */
+function fixCliCommands(html: string): string {
+  // Replace standalone `fly` CLI commands (preceded by whitespace/start/>/$, followed by known subcommand)
+  const flyPattern = /(^|[\s>$])fly(\s+(?:init|deploy|auth|logs|status|run|publish|test|config|whoami|version|--help|--version|secret|env|domains|scale|restart|ssh|proxy|dashboard|secrets|tokens|org|apps|regions|machines|volumes|certs|wireguard|turboku|launch|doctor|image|builder|pg|redis|consul|ip|check|releases|rollback|suspend|resume|move|destroy|open))(?=[\s<"'\n])/gm;
+
+  // Also fix inside data-code attributes (HTML-encoded quotes)
+  return html
+    .replace(flyPattern, '$1ff$2')
+    .replace(/data-code="([^"]*?)fly(\s+(?:init|deploy|auth|logs|status|run|publish|test|config|whoami|version|--help|--version|secret|env|domains|scale|restart|ssh|proxy|dashboard|secrets|tokens|org|apps|regions|machines|volumes|certs|wireguard|turboku|launch|doctor|image|builder|pg|redis|consul|ip|check|releases|rollback|suspend|resume|move|destroy|open))/g, (match, prefix, cmd) => {
+      return `data-code="${prefix}ff${cmd}`;
+    });
+}
 
 // Language aliases for syntax highlighting
 const languageAliases: Record<string, string> = {
@@ -105,40 +162,71 @@ function detectLanguage(text: string): { lang: string; cleanCode: string } {
 
 /**
  * Create enhanced code block HTML with copy button and line numbers
+ * Uses the CodeBox component class structure
  */
 function createCodeBlockHtml(code: string, lang: string): string {
   const normalizedLang = languageAliases[lang] || lang || 'text';
   const lines = code.split('\n').filter((_, i, arr) => i < arr.length - 1 || code.endsWith('\n') || code.split('\n').pop());
   
   const lineNumbers = lines
-    .map((_, i) => `<span class="line-number">${i + 1}</span>`)
+    .map((_, i) => `<span class="code-box__line-number">${i + 1}</span>`)
     .join('\n');
   
   const escapedCode = escapeHtml(code);
+  const langColor = getLanguageColor(normalizedLang);
   
   return `
-    <div class="code-block-wrapper" data-language="${normalizedLang}">
-      <div class="code-block-header">
-        <div class="code-block-meta">
-          <span class="code-language-badge">${normalizedLang}</span>
+    <div class="code-box" data-language="${normalizedLang}">
+      <div class="code-box__header">
+        <div class="code-box__header-left">
+          <span class="code-box__lang"${langColor ? ` style="color:${langColor}"` : ''}>${normalizedLang}</span>
         </div>
-        <button class="copy-code-btn" data-code="${escapeHtml(code)}" type="button">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button class="code-box__copy" data-code="${escapeHtml(code)}" type="button">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
           </svg>
-          <span class="copy-text">Copy</span>
-          <span class="copied-text">Copied!</span>
+          <span>Copy</span>
         </button>
       </div>
-      <div class="code-block-content">
-        <div class="line-numbers" aria-hidden="true">
+      <div class="code-box__body">
+        <div class="code-box__lines" aria-hidden="true">
           ${lineNumbers}
         </div>
-        <pre class="code-block"><code class="language-${normalizedLang}">${escapedCode}</code></pre>
+        <pre class="code-box__pre"><code class="code-box__code language-${normalizedLang}">${escapedCode}</code></pre>
       </div>
     </div>
   `;
+}
+
+function getLanguageColor(lang: string): string | undefined {
+  const colors: Record<string, string> = {
+    typescript: '#3178c6', ts: '#3178c6',
+    javascript: '#f7df1e', js: '#f7df1e',
+    tsx: '#3178c6', jsx: '#f7df1e',
+    go: '#00add8',
+    python: '#3776ab', py: '#3776ab',
+    rust: '#dea584',
+    bash: '#4eaa25', sh: '#4eaa25',
+    json: '#f7df1e',
+    yaml: '#cb171e', yml: '#cb171e',
+    sql: '#f29111',
+    html: '#e34c26',
+    css: '#264de4',
+    ruby: '#cc342d',
+    java: '#b07219',
+    kotlin: '#A97BFF',
+    swift: '#F05138',
+    php: '#4F5D95',
+    c: '#555555',
+    cpp: '#f34b7d',
+    csharp: '#178600',
+    toml: '#9c4221',
+    markdown: '#083fa1', md: '#083fa1',
+    dockerfile: '#384d54',
+    terraform: '#5C4EE5', hcl: '#5C4EE5',
+  };
+  return colors[lang];
 }
 
 /**
@@ -160,12 +248,13 @@ export function slateBodyToHtml(body: unknown): string {
   }
 
   if (typeof processedBody === 'string') {
+    const str = processedBody;
     try {
-      const decoded = atob(processedBody);
+      const decoded = atob(str);
       const parsed = JSON.parse(decoded);
       processedBody = parsed;
     } catch {
-      return `<p>${escapeHtml(String(processedBody))}</p>`;
+      return fixCliCommands(marked.parse(str, { async: false }) as string);
     }
   }
 

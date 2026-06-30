@@ -10,7 +10,7 @@ interface Props {
 
 const { posts, columns = 3, featuredFirst = false } = Astro.props;
 
-const gridClass = `blog-grid--${columns}`;
+const gridStyle = `grid-template-columns: repeat(${columns}, 1fr);`;
 
 // Split posts for featured layout
 const featuredPost = featuredFirst && posts.length > 0 ? posts[0] : null;
@@ -24,7 +24,7 @@ const remainingPosts = featuredFirst && posts.length > 1 ? posts.slice(1) : post
     </div>
   )}
   
-  <div class:list={['blog-grid', gridClass]}>
+  <div class="blog-grid" style={gridStyle}>
     {remainingPosts.map((post) => (
       <BlogCard post={post} variant="default" />
     ))}
@@ -35,52 +35,27 @@ const remainingPosts = featuredFirst && posts.length > 1 ? posts.slice(1) : post
   .blog-grid-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--space-6);
   }
 
   .blog-grid__featured {
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
   }
 
   .blog-grid {
     display: grid;
-    gap: 1.5rem;
-  }
-
-  .blog-grid--1 {
-    grid-template-columns: 1fr;
-  }
-
-  .blog-grid--2 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .blog-grid--3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .blog-grid--4 {
-    grid-template-columns: repeat(4, 1fr);
-  }
-
-  @media (max-width: 1200px) {
-    .blog-grid--4 {
-      grid-template-columns: repeat(3, 1fr);
-    }
+    gap: var(--space-5);
   }
 
   @media (max-width: 992px) {
-    .blog-grid--3,
-    .blog-grid--4 {
-      grid-template-columns: repeat(2, 1fr);
+    .blog-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
     }
   }
 
   @media (max-width: 640px) {
-    .blog-grid--2,
-    .blog-grid--3,
-    .blog-grid--4 {
-      grid-template-columns: 1fr;
+    .blog-grid {
+      grid-template-columns: 1fr !important;
     }
   }
 </style>
