@@ -141,9 +141,9 @@ async fn main() -> anyhow::Result<()> {
 
     if args.api_token.is_none() {
         if args.is_production {
-            tracing::error!(
-                "RUNTIME_API_TOKEN is not set in production. \
-                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            anyhow::bail!(
+                "RUNTIME_API_TOKEN is required in production (ENVIRONMENT=production). \
+                 Set the token and restart."
             );
         } else {
             warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
@@ -276,7 +276,7 @@ async fn run_server_with_state(
             let auth = headers.get("authorization")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("");
-            if auth != format!("Bearer {}", token) {
+            if !constant_time_eq::constant_time_eq(auth.as_bytes(), format!("Bearer {}", token).as_bytes()) {
                 return Err((axum::http::StatusCode::UNAUTHORIZED, Json(serde_json::json!({"error": "unauthorized"}))));
             }
         }
@@ -332,7 +332,7 @@ async fn run_server_with_state(
         .route("/execute", post(execute_handler))
         .with_state(app_state);
 
-    let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
+    let addr: SocketAddr = format!("127.0.0.1:{}", port).parse()?;
     let listener = tokio::net::TcpListener::bind(addr).await?;
 
     info!(port = port, "Deno Runtime HTTP server started");

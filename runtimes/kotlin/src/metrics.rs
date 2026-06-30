@@ -40,6 +40,12 @@ pub struct RuntimeMetrics {
     pub uptime_secs: f64,
     /// Timestamp of last execution
     pub last_execution_ts: Option<i64>,
+    /// Average code size in bytes
+    pub avg_code_size_bytes: u64,
+    /// Maximum code size in bytes
+    pub max_code_size_bytes: u64,
+    /// Total code size samples
+    pub code_size_samples: u64,
 }
 
 impl Default for RuntimeMetrics {
@@ -60,6 +66,9 @@ impl Default for RuntimeMetrics {
             peak_concurrent: 0,
             uptime_secs: 0.0,
             last_execution_ts: None,
+            avg_code_size_bytes: 0,
+            max_code_size_bytes: 0,
+            code_size_samples: 0,
         }
     }
 }
@@ -78,6 +87,9 @@ struct MetricsState {
     peak_concurrent: u64,
     min_execution_time_ms: u64,
     max_execution_time_ms: u64,
+    total_code_size_bytes: u64,
+    max_code_size_bytes: u64,
+    code_size_samples: u64,
 }
 
 /// Metrics collector for tracking runtime performance
@@ -178,9 +190,14 @@ impl MetricsCollector {
         }
     }
 
-    /// Record code size (placeholder)
-    pub async fn record_code_size(&self, _size_bytes: usize) {
-        // Histogram support would go here
+    /// Record code size for histogram tracking
+    pub async fn record_code_size(&self, size_bytes: usize) {
+        let mut state = self.metrics.write().await;
+        state.total_code_size_bytes += size_bytes as u64;
+        state.code_size_samples += 1;
+        if size_bytes as u64 > state.max_code_size_bytes {
+            state.max_code_size_bytes = size_bytes as u64;
+        }
     }
 
     /// Get current metrics snapshot
@@ -205,6 +222,13 @@ impl MetricsCollector {
             peak_concurrent: state.peak_concurrent,
             uptime_secs: uptime,
             last_execution_ts: None,
+            avg_code_size_bytes: if state.code_size_samples > 0 {
+                state.total_code_size_bytes / state.code_size_samples
+            } else {
+                0
+            },
+            max_code_size_bytes: state.max_code_size_bytes,
+            code_size_samples: state.code_size_samples,
         }
     }
 

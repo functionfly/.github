@@ -273,41 +273,61 @@ impl WasmComposer {
             }
         }
 
-        // Build a merged module
-        // For this simplified implementation, we create a new module with
-        // all exports aliased from the source modules
+        // Build a merged module.
+        //
+        // Walrus cannot copy functions across module boundaries (types, locals,
+        // and bodies are tied to the originating module's type section). For
+        // single-module compositions we re-export from the source. For
+        // multi-module compositions we fall through to the wasm-tools CLI
+        // path which handles cross-module linking correctly.
 
-        // Create new module
-        let mut new_module = Module::default();
-
-        // Add all functions from all modules
         let mut export_aliases: HashMap<String, String> = HashMap::new();
-        let mut used_stubs = false;
+        let used_stubs;
 
-        for (mod_id, module) in &modules {
-            for func in module.functions() {
-                let name = format!("{}_{}", mod_id.replace("-", "_"), func.name().unwrap_or("anon"));
-                export_aliases.insert(name.clone(), format!("{}.{}", mod_id, func.name().unwrap_or("anon")));
+        if modules.len() == 1 {
+            // Single module: re-export its functions under prefixed names.
+            let (mod_id, source_module) = modules.into_iter().next().unwrap();
+            let mut new_module = Module::default();
 
-                // Copy the function (simplified - actual implementation would need careful handling)
-                // For now, we track that this module was composed
+            // Parse the source bytes into a standalone module and re-export
+            // all its exports under namespaced names.
+            let source_bytes = cache.get(&mod_id)
+                .ok_or_else(|| PrismError::WasmModuleError(format!("Module not found: {}", mod_id)))?;
+            let source = Module::parse(source_bytes)
+                .map_err(|e| PrismError::WasmModuleError(format!("Failed to re-parse {}: {}", mod_id, e)))?;
+
+            // Copy all exports from source by re-serializing it directly.
+            // For a single-module composition the output IS the source module.
+            new_module = source;
+            used_stubs = false;
+
+            for export in new_module.exports() {
+                let namespaced = format!("{}_{}", mod_id.replace("-", "_"), export.name());
+                export_aliases.insert(namespaced, format!("{}.{}", mod_id, export.name()));
             }
+
+            info!(source_modules = ?module_ids, used_stubs = used_stubs, "Single-module composition (passthrough)");
+
+            let wasm_bytes = new_module.emit_wasm();
+
+            return Ok(CompositionResult {
+                wasm_bytes,
+                source_modules: module_ids.iter().map(|s| s.to_string()).collect(),
+                export_mapping: export_aliases,
+                used_stubs,
+                composed_at: chrono::Utc::now().timestamp(),
+            });
         }
 
-        info!(source_modules = ?module_ids, used_stubs = used_stubs, "Module composition complete (walrus)");
+        // Multi-module: delegate to wasm-tools CLI which handles cross-module
+        // linking, type canonicalization, and import/export merging.
+        used_stubs = false;
+        drop(modules); // Release borrow on module_cache
 
-        // Serialize the merged module back to bytes via walrus's emit_wasm.
-        // Without this, callers that try to instantiate the composed module
-        // would get a zero-length WASM payload.
-        let wasm_bytes = new_module.emit_wasm();
+        info!(source_modules = ?module_ids, "Multi-module composition via wasm-tools");
 
-        Ok(CompositionResult {
-            wasm_bytes,
-            source_modules: module_ids.iter().map(|s| s.to_string()).collect(),
-            export_mapping: export_aliases,
-            used_stubs,
-            composed_at: chrono::Utc::now().timestamp(),
-        })
+        // Fall through to wasm-tools CLI path below
+        return self.compose_with_wasm_tools_cli(module_ids);
     }
 
     /// Compose modules using wasm-tools CLI

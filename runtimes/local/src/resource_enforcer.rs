@@ -277,13 +277,29 @@ impl ResourceEnforcer {
 
             // Add usage based on quota type
             match quota.quota_type {
-                QuotaType::CpuTimePerMinute | QuotaType::ExecutionsPerHour => {
-                    quota.current_usage += 1.0; // Count executions
+                QuotaType::CpuTimePerMinute => {
+                    quota.current_usage += metrics.execution_time_ms as f64;
+                }
+                QuotaType::ExecutionsPerHour => {
+                    quota.current_usage += 1.0;
                 }
                 QuotaType::MemoryUsage => {
                     quota.current_usage = quota.current_usage.max(metrics.memory_used_mb);
                 }
-                _ => {} // Other quota types not implemented yet
+                QuotaType::ConcurrentExecutions => {
+                    // Track execution count within the window as a proxy for
+                    // concurrent load. True instantaneous concurrency is enforced
+                    // globally via check_global_limits() using the ResourceMonitor.
+                    quota.current_usage += 1.0;
+                }
+                QuotaType::BandwidthPerMinute => {
+                    // Track execution time as a proxy for bandwidth consumption.
+                    // Per-execution bandwidth is not yet measured at the WASM layer;
+                    // this ensures the quota window resets correctly and usage
+                    // accumulates proportionally to wall-clock time (which correlates
+                    // with sustained I/O).
+                    quota.current_usage += metrics.execution_time_ms as f64 / 1000.0;
+                }
             }
         }
     }

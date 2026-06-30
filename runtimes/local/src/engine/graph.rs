@@ -1406,22 +1406,42 @@ impl DefaultNodeExecutor {
     ) -> Result<serde_json::Value, NodeExecutionError> {
         info!(node_id = %node.id, tool = %name, "Executing tool node");
 
-        let mut tool_input = serde_json::Map::new();
-        tool_input.insert("tool_name".to_string(), serde_json::Value::String(name.clone()));
-        tool_input.insert("params".to_string(), params.clone());
-        tool_input.insert("input".to_string(), serde_json::Value::Object(input.into_iter().collect()));
+        // If an HTTP connector is available, forward the tool call to the
+        // orchestrator or an external tool service.
+        if let Some(ref http) = self.http_connector {
+            let tool_input = serde_json::json!({
+                "tool": name,
+                "params": params,
+                "input": serde_json::Value::Object(input.into_iter().collect()),
+            });
+            let tool_input_json = serde_json::to_string(&tool_input)
+                .map_err(|e| NodeExecutionError::new(node.id, format!("Failed to serialize tool input: {}", e)))?;
 
-        let tool_input_json = serde_json::to_string(&tool_input)
-            .map_err(|e| NodeExecutionError::new(node.id, format!("Failed to serialize tool input: {}", e)))?;
+            return http.post_json(&format!("/tools/{}/execute", name), &tool_input_json)
+                .await
+                .map(|v| serde_json::json!({
+                    "tool": name,
+                    "result": v,
+                    "executed": true,
+                }))
+                .map_err(|e| NodeExecutionError::new(node.id, format!("Tool execution failed: {}", e)));
+        }
 
-        let output = serde_json::json!({
+        // Fallback: echo structured input for tools that don't require
+        // external execution (e.g. data transforms, JSON path extraction).
+        let tool_input_json = serde_json::to_string(&serde_json::json!({
+            "tool_name": name,
+            "params": params,
+            "input": serde_json::Value::Object(input.into_iter().collect()),
+        })).map_err(|e| NodeExecutionError::new(node.id, format!("Failed to serialize tool input: {}", e)))?;
+
+        Ok(serde_json::json!({
             "tool": name,
             "input": tool_input_json,
             "params": params,
             "executed": true,
-        });
-
-        Ok(output)
+            "mode": "local_echo",
+        }))
     }
 
     async fn execute_memory(
@@ -1494,12 +1514,19 @@ impl DefaultNodeExecutor {
                 }
             }
             MemoryOp::List => {
-                debug!("Memory list operation");
-                Ok(serde_json::json!({
-                    "key": key,
-                    "entries": [],
-                    "note": "List operation returns empty in DefaultNodeExecutor (use SarNodeExecutor for full implementation)",
-                }))
+                match self.hot_memory.list(tenant_id).await {
+                    Ok(keys) => {
+                        debug!(count = keys.len(), "Memory list completed");
+                        Ok(serde_json::json!({
+                            "key": key,
+                            "entries": keys,
+                        }))
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "Memory list error");
+                        Err(NodeExecutionError::non_retryable(node.id, format!("Memory list failed: {}", e)))
+                    }
+                }
             }
         }
     }

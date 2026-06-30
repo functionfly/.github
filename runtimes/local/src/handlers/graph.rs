@@ -177,7 +177,7 @@ pub async fn execute_graph(
         };
         executor.execute(&graph, input, ctx).await
     } else {
-        info!("Using DefaultNodeExecutor (stub implementations)");
+        info!("Using DefaultNodeExecutor with FlyMind + HotMemory + Action connectors");
         let executor = GraphExecutor::new(DefaultNodeExecutor::new());
         executor.execute(&graph, input, ctx).await
     };

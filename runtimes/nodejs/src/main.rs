@@ -141,7 +141,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         }
     } else if args.repl {
-        tracing::info!("Starting REPL mode (not implemented)");
+        tracing::info!("Starting REPL mode");
+        tracing::info!("Type JavaScript code and press Enter. Type 'exit' or Ctrl+C to quit.");
+        let stdin = std::io::stdin();
+        let mut line = String::new();
+        loop {
+            line.clear();
+            eprint!("> ");
+            match stdin.read_line(&mut line) {
+                Ok(0) => break,
+                Ok(_) => {
+                    let trimmed = line.trim();
+                    if trimmed == "exit" || trimmed == "quit" {
+                        break;
+                    }
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    let input = ExecutionInput {
+                        data: serde_json::Value::String(String::new()),
+                        metadata: ExecutionMetadata::default(),
+                    };
+                    let result = runtime.execute(trimmed, input).await;
+                    if result.success {
+                        if let Some(output) = &result.output {
+                            println!("{}", serde_json::to_string_pretty(output).unwrap_or_else(|_| format!("{:?}", output)));
+                        }
+                    } else {
+                        eprintln!("Error: {:?}", result.error);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Read error: {}", e);
+                    break;
+                }
+            }
+        }
     } else {
         tracing::info!("No code provided. Use --code or --daemon");
     }
@@ -192,7 +227,7 @@ async fn execute_handler(
         let auth = headers.get("authorization")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        if auth != format!("Bearer {}", token) {
+        if !constant_time_eq::constant_time_eq(auth.as_bytes(), format!("Bearer {}", token).as_bytes()) {
             return error_response(StatusCode::UNAUTHORIZED, "unauthorized");
         }
     }
@@ -339,10 +374,9 @@ async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std:
 
     if api_token.is_none() {
         if is_production {
-            tracing::error!(
-                "RUNTIME_API_TOKEN is not set in production. \
-                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
-            );
+            return Err("RUNTIME_API_TOKEN is required in production (ENVIRONMENT=production). \
+                 Set the token and restart."
+                .into());
         } else {
             tracing::warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
         }

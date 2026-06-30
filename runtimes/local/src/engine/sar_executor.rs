@@ -402,13 +402,27 @@ async fn execute_memory_node(
             }
         }
         MemoryOp::List => {
-            // List is not fully implemented — return empty for now
-            debug!("Memory list not yet implemented");
-            Ok(serde_json::json!({
-                "key": key,
-                "entries": [],
-                "note": "List operation not yet implemented",
-            }))
+            // List keys from the memory layer (Redis SCAN via warm tier)
+            match memory_layer.warm_list(tenant_id, &key).await {
+                Ok(entries) => {
+                    debug!(count = entries.len(), "Memory list successful");
+                    Ok(serde_json::json!({
+                        "key": key,
+                        "entries": entries,
+                        "count": entries.len(),
+                    }))
+                }
+                Err(e) => {
+                    warn!(error = %e, "Memory list error");
+                    // Non-critical — return empty list on failure
+                    Ok(serde_json::json!({
+                        "key": key,
+                        "entries": [],
+                        "count": 0,
+                        "error": format!("List failed: {}", e),
+                    }))
+                }
+            }
         }
     }
 }
@@ -460,13 +474,16 @@ async fn execute_tool_node(
             }
         }
     } else {
-        // Fallback: return stub response if no WASM executor
-        warn!("No WasmCellExecutor configured — returning stub tool result");
-        Ok(serde_json::json!({
-            "tool": name,
-            "result": format!("[Tool stub - no WASM executor] {} called", name),
-            "params": params,
-        }))
+        // No WASM executor configured — tool execution requires isolation
+        warn!("No WasmCellExecutor configured — cannot execute tool node safely");
+        Err(NodeExecutionError::non_retryable(
+            node.id,
+            format!(
+                "Tool '{}' cannot execute: no WASM executor configured. \
+                 Tool nodes require WASM isolation for safe execution.",
+                name
+            ),
+        ))
     }
 }
 

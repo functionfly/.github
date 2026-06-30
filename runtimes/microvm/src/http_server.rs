@@ -93,7 +93,7 @@ async fn require_token(
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.strip_prefix("Bearer "));
         match bearer {
-            Some(tok) if tok == expected.as_ref() => {}
+            Some(tok) if constant_time_eq::constant_time_eq(tok.as_bytes(), expected.as_ref().as_bytes()) => {}
             _ => {
                 warn!("Unauthorized /execute request (bad or missing bearer token)");
                 return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();

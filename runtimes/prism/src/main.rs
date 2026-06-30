@@ -265,9 +265,9 @@ async fn start_runtime(address: String, mesh: bool, _config_path: &str) -> anyho
 
     if api_token.is_none() {
         if is_production {
-            error!(
-                "RUNTIME_API_TOKEN is not set in production. \
-                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            anyhow::bail!(
+                "RUNTIME_API_TOKEN is required in production (ENVIRONMENT=production). \
+                 Set the token and restart."
             );
         } else {
             info!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
@@ -345,7 +345,7 @@ async fn start_runtime(address: String, mesh: bool, _config_path: &str) -> anyho
                     let auth_ok = request.lines()
                         .find(|line| line.to_lowercase().starts_with("authorization:"))
                         .and_then(|line| line.split(':').nth(1))
-                        .map(|val| val.trim() == format!("Bearer {}", expected_token))
+                        .map(|val| constant_time_eq::constant_time_eq(val.trim().as_bytes(), format!("Bearer {}", expected_token).as_bytes()))
                         .unwrap_or(false);
                     if !auth_ok {
                         json_response(401, "unauthorized")

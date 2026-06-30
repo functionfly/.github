@@ -129,44 +129,80 @@ fn run_onnx_inference(model_name: &str, input: &str) -> anyhow::Result<String> {
     }
 }
 
-/// Run AI inference on a model
+/// Run AI inference on a model.
+///
+/// Tries local ONNX inference first. If the model file is not found,
+/// forwards the request to the orchestrator's AI service (FlyMind)
+/// over HTTP so that cloud-hosted models can serve the request.
 pub fn run_ai_inference(model: &str, input: &str) -> anyhow::Result<String> {
-    // Try to run ONNX inference first
     match run_onnx_inference(model, input) {
-        Ok(result) => Ok(result),
+        Ok(result) => return Ok(result),
         Err(e) => {
-            // Fall back to simple placeholder implementations if ONNX model not found
-            tracing::warn!(
-                "ONNX inference failed for '{}' ({}), using placeholder",
+            tracing::info!(
+                "ONNX inference unavailable for '{}' ({}), forwarding to AI service",
                 model,
                 e
             );
-            run_placeholder_inference(model, input)
         }
     }
+
+    forward_to_ai_service(model, input)
 }
 
-/// Fallback placeholder inference for when ONNX models aren't available
-fn run_placeholder_inference(model: &str, input: &str) -> anyhow::Result<String> {
-    match model {
-        "sentiment" => {
-            // Simple sentiment analysis placeholder
-            if input.contains("good") || input.contains("great") {
-                Ok("positive".to_string())
-            } else if input.contains("bad") || input.contains("terrible") {
-                Ok("negative".to_string())
-            } else {
-                Ok("neutral".to_string())
-            }
+/// Forward an inference request to the orchestrator AI service (FlyMind).
+///
+/// Uses a blocking reqwest call since this runs inside a synchronous
+/// wasmtime host-function context. The target URL is read from
+/// `FLYMIND_URL` (default: `http://localhost:8081`).
+fn forward_to_ai_service(model: &str, input: &str) -> anyhow::Result<String> {
+    let base_url = std::env::var("FLYMIND_URL")
+        .unwrap_or_else(|_| "http://localhost:8081".to_string());
+
+    let url = format!("{}/inference", base_url.trim_end_matches('/'));
+
+    let body = serde_json::json!({
+        "model": model,
+        "input": input,
+    });
+
+    let client = reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| anyhow::anyhow!("Failed to create HTTP client: {}", e))?;
+
+    let mut request = client
+        .post(&url)
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_string(&body)?);
+
+    if let Ok(token) = std::env::var("FLYMIND_API_KEY") {
+        if !token.is_empty() {
+            request = request.header("Authorization", format!("Bearer {}", token));
         }
-        "classify" => {
-            // Simple text classification placeholder
-            if input.len() > 100 {
-                Ok("long_text".to_string())
-            } else {
-                Ok("short_text".to_string())
-            }
-        }
-        _ => Err(anyhow::anyhow!("Unsupported model: {}", model)),
+    }
+
+    let response = request
+        .send()
+        .map_err(|e| anyhow::anyhow!("AI service request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().unwrap_or_default();
+        return Err(anyhow::anyhow!(
+            "AI service returned HTTP {}: {}", status, text
+        ));
+    }
+
+    let result: serde_json::Value = response
+        .json()
+        .map_err(|e| anyhow::anyhow!("Failed to parse AI service response: {}", e))?;
+
+    if let Some(output) = result.get("output").and_then(|v| v.as_str()) {
+        Ok(output.to_string())
+    } else if let Some(output) = result.get("result").and_then(|v| v.as_str()) {
+        Ok(output.to_string())
+    } else {
+        serde_json::to_string(&result)
+            .map_err(|e| anyhow::anyhow!("Failed to serialize AI response: {}", e))
     }
 }

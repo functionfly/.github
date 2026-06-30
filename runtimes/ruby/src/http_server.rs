@@ -288,7 +288,7 @@ async fn execute_handler(
         let auth = headers.get("authorization")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        if auth != format!("Bearer {}", token) {
+        if !constant_time_eq::constant_time_eq(auth.as_bytes(), format!("Bearer {}", token).as_bytes()) {
             return Err((
                 StatusCode::UNAUTHORIZED,
                 Json(ErrorResponse {
@@ -385,7 +385,7 @@ async fn execute_versioned_handler(
         let auth = headers.get("authorization")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        if auth != format!("Bearer {}", token) {
+        if !constant_time_eq::constant_time_eq(auth.as_bytes(), format!("Bearer {}", token).as_bytes()) {
             return Err((
                 StatusCode::UNAUTHORIZED,
                 Json(ErrorResponse {
@@ -483,7 +483,7 @@ pub async fn run_server(
 
     let app = create_app(state);
 
-    let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
+    let addr: SocketAddr = format!("127.0.0.1:{}", port).parse()?;
     let listener = TcpListener::bind(addr).await?;
 
     info!(port = port, "Ruby runtime HTTP server started");

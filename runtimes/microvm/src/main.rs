@@ -101,11 +101,10 @@ async fn main() -> Result<()> {
         .filter(|t| !t.is_empty())
         .map(|t| Arc::from(t.as_str()));
     if api_token.is_none() && is_production {
-        error!(
-            "FUNCTIONFLY_MICROVM_API_TOKEN is not set in a production environment. \
-             The /execute endpoint is unauthenticated — set the token and restart."
+        anyhow::bail!(
+            "FUNCTIONFLY_MICROVM_API_TOKEN is required in production (ENVIRONMENT=production). \
+             Set the token and restart."
         );
-        // Don't bail — operator may have network-level auth; log loudly instead.
     }
 
     info!("Starting FunctionFly MicroVM Orchestrator");

@@ -11,6 +11,7 @@ memory = ["dep:redis", "dep:tokio-postgres", "dep:pgvector"]
 observability = ["dep:opentelemetry", "dep:opentelemetry-otlp", "dep:opentelemetry_sdk", "dep:tracing-opentelemetry"]
 
 [dependencies]
+constant_time_eq = "0.5.0"
 wasmtime = "45.0.1"
 wasmtime-wasi = "45.0.1"
 tokio = { version = "1.52.3", features = ["full", "fs"] }
@@ -25,7 +26,7 @@ tracing-opentelemetry = { version = "0.29.0", optional = true }
 opentelemetry = { version = "0.28", optional = true }
 opentelemetry-otlp = { version = "0.28.0", optional = true, features = ["grpc-tonic", "trace"] }
 opentelemetry_sdk = { version = "0.28.0", optional = true, features = ["rt-tokio"] }
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 clap = { version = "4.6.1", features = ["derive"] }
 reqwest = { version = "0.13.2", features = ["json", "stream", "blocking", "multipart"] }
 tower = "0.5.3"
@@ -55,7 +56,7 @@ quinn-proto = "0.11.14"  # Pin patched version (CVE: unauthenticated remote DoS)
 aws-lc-sys = "0.41.0"    # Pin patched version (CVE: PKCS7_verify cert chain validation bypass)
 libc = "0.2.186"             # For raw seccomp syscalls (Linux only)
 redis = { version = "1.2.2", optional = true, features = ["aio", "tokio-comp"] }  # Warm memory tier (Redis)
-tokio-postgres = { version = "0.7.17", optional = true, features = ["with-uuid-1", "with-chrono-0_4"] }  # Cold memory tier (PostgreSQL)
+tokio-postgres = { version = "0.7.18", optional = true, features = ["with-uuid-1", "with-chrono-0_4"] }  # Cold memory tier (PostgreSQL)
 pgvector = { version = "0.4.2", optional = true, features = ["postgres"] }  # Vector similarity search (pgvector)
 postcard = "1.1.3"  # For state graph memory serialization
 serde_urlencoded = "0.7"  # For Stripe form encoding

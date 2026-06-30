@@ -29,6 +29,14 @@ struct CompiledGraph {
     config: crate::wasm_fusion::FusionConfig,
 }
 
+/// A delegation request from a WASM guest to another function
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DelegationRequest {
+    pub target_function_id: String,
+    pub input: String,
+    pub options: String,
+}
+
 /// Sandbox state for WASM execution with host function support
 pub struct SandboxState {
     /// WASI context for stdio
@@ -49,6 +57,10 @@ pub struct SandboxState {
     stdout: Arc<tokio::sync::RwLock<Vec<u8>>>,
     /// Per-sandbox memory limiter
     pub memory_limiter: SandboxMemoryLimiter,
+    /// Attestation store for get_attestation host function
+    pub attestation_store: HashMap<String, serde_json::Value>,
+    /// Pending delegation requests from delegate() calls
+    pub pending_delegations: Vec<DelegationRequest>,
 }
 
 /// A handler for a capability invocation
@@ -86,6 +98,8 @@ impl SandboxState {
             async_capability_registry: Arc::new(TokioRwLock::new(HashMap::new())),
             stdout: Arc::new(tokio::sync::RwLock::new(stdout.contents().to_vec())),
             memory_limiter: SandboxMemoryLimiter::new(memory_limit_mb),
+            attestation_store: HashMap::new(),
+            pending_delegations: Vec::new(),
         }
     }
 
@@ -1220,6 +1234,110 @@ impl FusionEngine {
             },
         )
         .map_err(|e| PrismError::WasmModuleError(format!("Failed to define env.get_env: {}", e)))?;
+
+        // env.get_attestation(att_id_ptr: i32, att_id_len: u32, resp_ptr: i32, resp_len_ptr: i32) -> i32
+        // Retrieves an attestation by ID. Returns 0 on success, -1 on error.
+        linker.func_wrap(
+            "env",
+            "get_attestation",
+            |mut caller: Caller<'_, SandboxState>, att_id_ptr: i32, att_id_len: u32, resp_ptr: i32, resp_len_ptr: i32| -> i32 {
+                let memory = match caller.get_export("memory").and_then(|m| m.into_memory()) {
+                    Some(m) => m,
+                    None => return -1,
+                };
+                let data = memory.data(&caller);
+                let start = att_id_ptr as usize;
+                let end = start.saturating_add(att_id_len as usize);
+                if end > data.len() { return -1; }
+
+                let att_id = String::from_utf8_lossy(&data[start..end]).to_string();
+
+                // Look up attestation from the runtime's attestation store
+                let result = caller.data().attestation_store.get(&att_id);
+                let response = match result {
+                    Some(att) => serde_json::to_string(att).unwrap_or_default(),
+                    None => return -1,
+                };
+
+                let resp_bytes = response.as_bytes();
+                let resp_len = resp_bytes.len();
+                let mem = match caller.get_export("memory").and_then(|m| m.into_memory()) {
+                    Some(m) => m,
+                    None => return -1,
+                };
+                let mem_size = mem.data_size(&caller);
+                if (resp_ptr as usize) + resp_len > mem_size { return -1; }
+                if (resp_len_ptr as usize) + 4 > mem_size { return -1; }
+
+                let bytes = mem.data_mut(&mut caller);
+                bytes[resp_ptr as usize..resp_ptr as usize + resp_len].copy_from_slice(resp_bytes);
+                let len_bytes = (resp_len as u32).to_le_bytes();
+                bytes[resp_len_ptr as usize..resp_len_ptr as usize + 4].copy_from_slice(&len_bytes);
+
+                0
+            },
+        )
+        .map_err(|e| PrismError::WasmModuleError(format!("Failed to define env.get_attestation: {}", e)))?;
+
+        // env.delegate(target_ptr: i32, target_len: u32, input_ptr: i32, input_len: u32, opts_ptr: i32, opts_len: u32, resp_ptr: i32, resp_len_ptr: i32) -> i32
+        // Delegates execution to another function. Returns 0 on success, -1 on error.
+        linker.func_wrap(
+            "env",
+            "delegate",
+            |mut caller: Caller<'_, SandboxState>, target_ptr: i32, target_len: u32, input_ptr: i32, input_len: u32, opts_ptr: i32, opts_len: u32, resp_ptr: i32, resp_len_ptr: i32| -> i32 {
+                let memory = match caller.get_export("memory").and_then(|m| m.into_memory()) {
+                    Some(m) => m,
+                    None => return -1,
+                };
+                let data = memory.data(&caller);
+
+                let t_start = target_ptr as usize;
+                let t_end = t_start.saturating_add(target_len as usize);
+                let i_start = input_ptr as usize;
+                let i_end = i_start.saturating_add(input_len as usize);
+                if t_end > data.len() || i_end > data.len() { return -1; }
+
+                let target_id = String::from_utf8_lossy(&data[t_start..t_end]).to_string();
+                let input = String::from_utf8_lossy(&data[i_start..i_end]).to_string();
+
+                let options = if opts_len > 0 {
+                    let o_start = opts_ptr as usize;
+                    let o_end = o_start.saturating_add(opts_len as usize);
+                    if o_end > data.len() { return -1; }
+                    String::from_utf8_lossy(&data[o_start..o_end]).to_string()
+                } else {
+                    String::new()
+                };
+
+                // Store delegation request in the sandbox state for the runtime to process
+                let state = caller.data_mut();
+                state.pending_delegations.push(DelegationRequest {
+                    target_function_id: target_id,
+                    input,
+                    options,
+                });
+
+                // Write acknowledgment response
+                let ack = r#"{"status":"delegated"}"#;
+                let ack_bytes = ack.as_bytes();
+                let ack_len = ack_bytes.len();
+                let mem = match caller.get_export("memory").and_then(|m| m.into_memory()) {
+                    Some(m) => m,
+                    None => return -1,
+                };
+                let mem_size = mem.data_size(&caller);
+                if (resp_ptr as usize) + ack_len > mem_size { return -1; }
+                if (resp_len_ptr as usize) + 4 > mem_size { return -1; }
+
+                let bytes = mem.data_mut(&mut caller);
+                bytes[resp_ptr as usize..resp_ptr as usize + ack_len].copy_from_slice(ack_bytes);
+                let len_bytes = (ack_len as u32).to_le_bytes();
+                bytes[resp_len_ptr as usize..resp_len_ptr as usize + 4].copy_from_slice(&len_bytes);
+
+                0
+            },
+        )
+        .map_err(|e| PrismError::WasmModuleError(format!("Failed to define env.delegate: {}", e)))?;
 
         Ok(())
     }

@@ -153,7 +153,7 @@ async fn execute_handler(
         let auth = headers.get("authorization")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        if auth != format!("Bearer {}", token) {
+        if !constant_time_eq::constant_time_eq(auth.as_bytes(), format!("Bearer {}", token).as_bytes()) {
             return Err(ErrorResponse::new("unauthorized", 401));
         }
     }

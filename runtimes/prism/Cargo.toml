@@ -21,6 +21,7 @@ wasm-tools-compose = []
 production = ["secure-sandbox"]
 
 [dependencies]
+constant_time_eq = "0.5.0"
 # === Core Runtime ===
 tokio = { version = "1.49", features = ["full", "sync", "rt-multi-thread"] }
 wasmtime = { version = "45.0.1", features = ["std"] }

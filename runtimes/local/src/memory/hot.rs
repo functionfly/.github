@@ -116,6 +116,10 @@ impl LruCache {
         self.entries.clear();
         self.order.clear();
     }
+
+    fn keys(&self) -> Vec<String> {
+        self.entries.keys().cloned().collect()
+    }
 }
 
 impl HotMemory {
@@ -192,6 +196,22 @@ impl HotMemory {
         let mut cache = shard.write().await;
         cache.clear();
         Ok(())
+    }
+
+    /// List all keys for a tenant (or the default shard if none).
+    ///
+    /// Returns namespaced keys stripped of the tenant prefix so callers
+    /// see the original key they wrote.
+    pub async fn list(&self, tenant_id: Option<&str>) -> anyhow::Result<Vec<String>> {
+        let shard = self.shard(tenant_id);
+        let cache = shard.read().await;
+        let prefix = match tenant_id {
+            Some(t) => format!("mem:{}:", t),
+            None => "mem:".to_string(),
+        };
+        Ok(cache.keys().iter()
+            .filter_map(|k| k.strip_prefix(&prefix).map(String::from))
+            .collect())
     }
 
     /// Evict all expired entries across all shards.

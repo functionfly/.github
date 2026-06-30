@@ -106,9 +106,9 @@ async fn main() -> anyhow::Result<()> {
 
     if api_token.is_none() {
         if is_production {
-            tracing::error!(
-                "RUNTIME_API_TOKEN is not set in production. \
-                 The /execute endpoint is UNAUTHENTICATED. Set the token and restart."
+            anyhow::bail!(
+                "RUNTIME_API_TOKEN is required in production (ENVIRONMENT=production). \
+                 Set the token and restart."
             );
         } else {
             warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");

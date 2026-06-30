@@ -228,22 +228,21 @@ impl Sandbox {
     /// - Execution timeout enforcement
     #[cfg(feature = "wasm-sandbox")]
     async fn execute_with_wasmedge(&self, wasm_bytes: &[u8], timeout: Duration) -> Result<(String, u64)> {
-        // Fuel consumed is proportional to WASM size as a complexity proxy
-        let fuel_consumed = (wasm_bytes.len() as u64) * 100;
+        // Pre-execution complexity estimate: reject obviously oversized modules
+        // before spending CPU on instantiation. A 1MB WASM binary is ~250K
+        // instructions which at 1 instruction/μs ≈ 250ms of CPU time.
+        let estimated_fuel = (wasm_bytes.len() as u64) * 10;
 
-        // Check fuel limit before execution
-        if self.config.enable_fuel_metering && fuel_consumed > self.limits.max_fuel {
+        if self.config.enable_fuel_metering && estimated_fuel > self.limits.max_fuel {
             return Err(anyhow::anyhow!(
-                "fuel limit exceeded: {} > {}",
-                fuel_consumed,
+                "estimated fuel exceeds limit: {} > {} (module too large)",
+                estimated_fuel,
                 self.limits.max_fuel
             ));
         }
 
-        // Clone data for use in blocking task (owned data, no lifetime issues)
         let wasm_bytes_owned = wasm_bytes.to_vec();
 
-        // Execute in blocking task to avoid blocking async context
         let result = tokio::task::spawn_blocking(move || {
             Self::execute_wasm_internal_sync(wasm_bytes_owned, timeout)
         }).await
@@ -285,15 +284,20 @@ impl Sandbox {
             .map_err(|e| anyhow::anyhow!("failed to register module: {}", e))?;
 
         // Execute _start function (WASI entry point for WASI modules)
+        let exec_start = std::time::Instant::now();
         let exec_result = vm.run_func_with_timeout(
             Some("main"),
             "_start",
             params![],
             timeout,
         );
+        let exec_elapsed = exec_start.elapsed();
 
-        // Calculate fuel consumed (simplified - actual fuel tracking requires Statistics)
-        let fuel_consumed = (wasm_bytes.len() as u64) * 100;
+        // Derive fuel from actual wall-clock time (microseconds) as a proxy
+        // for instruction count. WasmEdge's Statistics API is not exposed via
+        // the high-level Rust SDK, so we use elapsed time which correlates
+        // linearly with instructions executed for CPU-bound WASM workloads.
+        let fuel_consumed = exec_elapsed.as_micros() as u64;
 
         match exec_result {
             Ok(_) => Ok((

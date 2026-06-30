@@ -15,6 +15,7 @@ resource-limits = ["governor"]
 nats-client = ["dep:nats"]
 
 [dependencies]
+constant_time_eq = "0.5.0"
 tokio = { version = "1.49", features = ["full"] }
 axum = { version = "0.8", features = ["macros"] }
 serde = { version = "1", features = ["derive"] }

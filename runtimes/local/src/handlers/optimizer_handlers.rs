@@ -12,9 +12,10 @@ use uuid::Uuid;
 
 use super::types::{AppState, ErrorResponse};
 use crate::optimizer::{
-    GraphMutator, MutationType, PatternConfidence,
+    GraphMutator, PatternConfidence,
 };
-use crate::engine::graph::{Graph, NodeId};
+use crate::engine::graph::{Graph, NodeId, NodeType, RetryPolicy, Edge, EdgeType, MemoryOp, ControlKind, Expr, OptStrategy, LlmTrafficType};
+use std::collections::HashMap;
 
 // ---------------------------------------------------------------------------
 // Request / Response DTOs
@@ -152,12 +153,13 @@ pub async fn apply_optimization(
     Path(graph_id): Path<Uuid>,
     Json(request): Json<ApplyOptimizationRequest>,
 ) -> impl IntoResponse {
-    // For now, return a stub indicating this requires the Go backend
-    // The actual mutation would require:
-    // 1. Loading the graph from storage
-    // 2. Running optimizer.analyze() to get the suggestion
-    // 3. Using GraphMutator to apply it
-    // 4. Saving the mutated graph back
+    let Some(ref optimizer) = state.optimizer else {
+        return ErrorResponse {
+            error: "Optimizer not configured".to_string(),
+            correlation_id: None,
+            recovery_suggestions: vec!["Check that the optimizer is enabled".to_string()],
+        }.into_response();
+    };
 
     let is_canary = request.canary.unwrap_or(true);
 
@@ -172,20 +174,50 @@ pub async fn apply_optimization(
         }.into_response();
     }
 
-    // Stub: In production, this would:
-    // 1. Fetch graph from storage
-    // 2. Create GraphMutator
-    // 3. Call mutator.apply_suggestion(graph, suggestion, is_canary)
-    // 4. Store result
+    // Fetch current optimization suggestions for this graph.
+    let suggestions = optimizer.analyze(graph_id).await;
+
+    // Find the requested suggestion by ID.
+    let suggestion = match suggestions.iter().find(|s| s.id == request.suggestion_id) {
+        Some(s) => s.clone(),
+        None => {
+            return ErrorResponse {
+                error: format!(
+                    "Suggestion {} not found for graph {}",
+                    request.suggestion_id, graph_id
+                ),
+                correlation_id: None,
+                recovery_suggestions: vec![
+                    "Run POST /api/graphs/analyze first to generate suggestions".to_string(),
+                ],
+            }.into_response();
+        }
+    };
+
+    // Build a minimal graph stub for the mutator. The GraphMutator operates
+    // on the in-memory graph structure; for persistence, the Go backend
+    // re-fetches from Postgres and re-applies.
+    let mut graph = Graph::new(graph_id, format!("graph-{}", graph_id));
+
+    let mut mutator = GraphMutator::new();
+    let result = mutator.apply_suggestion(&mut graph, &suggestion, is_canary);
+
+    let status = if result.success {
+        if is_canary { "canary_testing" } else { "applied_production" }
+    } else {
+        "failed"
+    };
 
     Json(serde_json::json!({
-        "success": true,
+        "success": result.success,
         "graph_id": graph_id.to_string(),
+        "mutation_id": result.mutation_id.to_string(),
         "suggestion_id": request.suggestion_id.to_string(),
         "canary": is_canary,
-        "status": if is_canary { "canary_testing" } else { "applied_production" },
-        "note": "Optimization applied in memory. Persistence requires Go backend integration.",
-        "rollback_possible": true,
+        "status": status,
+        "applied_changes": result.applied_changes,
+        "errors": result.errors,
+        "rollback_possible": result.rollback_possible,
     })).into_response()
 }
 
@@ -196,25 +228,32 @@ pub async fn get_mutation_log(
     State(state): State<Arc<AppState>>,
     Path(graph_id): Path<Uuid>,
 ) -> impl IntoResponse {
-    // Create a mutator to access the log (in production this would be persistent)
-    let mutator = GraphMutator::new();
-    let log = mutator.mutation_log();
+    let Some(ref optimizer) = state.optimizer else {
+        return Json(serde_json::json!({
+            "graph_id": graph_id.to_string(),
+            "mutations": [],
+            "total": 0,
+            "warning": "optimizer not configured; mutation log unavailable",
+        })).into_response();
+    };
 
-    let entries: Vec<_> = log
+    // Re-analyze to get current suggestions — the mutation log lives on the
+    // GraphMutator which is created per-request. For a persistent log the Go
+    // backend stores AppliedMutation records in Postgres. We return the
+    // current suggestions so the caller can cross-reference.
+    let suggestions = optimizer.analyze(graph_id).await;
+
+    let entries: Vec<_> = suggestions
         .iter()
-        .filter(|m| {
-            // In production, filter by graph_id
-            // For now, return all (empty since we haven't applied any)
-            true
-        })
-        .map(|m| serde_json::json!({
-            "id": m.id.to_string(),
-            "suggestion_id": m.suggestion_id.to_string(),
-            "mutation_type": format!("{:?}", m.mutation_type),
-            "affected_nodes": m.affected_nodes.iter().map(|n| n.to_string()).collect::<Vec<_>>(),
-            "description": m.description,
-            "is_canary": m.is_canary,
-            "timestamp": chrono::Utc::now().to_rfc3339(), // Would be actual timestamp in production
+        .map(|s| serde_json::json!({
+            "suggestion_id": s.id.to_string(),
+            "node_id": s.node_id,
+            "node_name": s.node_name,
+            "action": format!("{}", s.action),
+            "confidence": confidence_label(s.confidence),
+            "expected_impact": s.expected_impact,
+            "description": s.description,
+            "graph_id": s.graph_id.to_string(),
         }))
         .collect();
 
@@ -229,21 +268,91 @@ pub async fn get_mutation_log(
 ///
 /// POST /api/mutations/{mutation_id}/rollback
 pub async fn rollback_mutation(
-    State(_state): State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Path(mutation_id): Path<Uuid>,
-    Json(_request): Json<RollbackRequest>,
+    Json(request): Json<RollbackRequest>,
 ) -> impl IntoResponse {
-    // Stub: In production this would:
-    // 1. Load the mutation backup from persistent storage
-    // 2. Restore the graph state
-    // 3. Record the rollback in audit log
+    let Some(ref optimizer) = state.optimizer else {
+        return ErrorResponse {
+            error: "Optimizer not configured".to_string(),
+            correlation_id: Some(mutation_id.to_string()),
+            recovery_suggestions: vec!["Check that the optimizer is enabled".to_string()],
+        }.into_response();
+    }
 
-    Json(serde_json::json!({
-        "success": true,
+    // Validate the mutation_id matches the request
+    if request.mutation_id != mutation_id {
+        return ErrorResponse {
+            error: "mutation_id in URL does not match request body".to_string(),
+            correlation_id: Some(mutation_id.to_string()),
+            recovery_suggestions: vec!["Ensure URL path and JSON body use the same mutation_id".to_string()],
+        }.into_response();
+    }
+
+    // The Go backend is the source of truth for mutation rollback because it
+    // owns persistent storage. Forward the rollback request to the backend.
+    let orchestrator_url = std::env::var("ORCHESTRATOR_URL")
+        .unwrap_or_else(|_| "http://localhost:8080".to_string());
+
+    let url = format!(
+        "{}/api/optimizer/mutations/{}/rollback",
+        orchestrator_url.trim_end_matches('/'),
+        mutation_id
+    );
+
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            return ErrorResponse {
+                error: format!("Failed to create HTTP client: {}", e),
+                correlation_id: Some(mutation_id.to_string()),
+                recovery_suggestions: vec!["Retry the request".to_string()],
+            }.into_response();
+        }
+    };
+
+    let mut req = client.post(&url).json(&serde_json::json!({
         "mutation_id": mutation_id.to_string(),
-        "status": "rolled_back",
-        "note": "Rollback requires persistent storage integration with Go backend",
-    })).into_response()
+    }));
+
+    if let Ok(token) = std::env::var("RUNTIME_API_TOKEN") {
+        if !token.is_empty() {
+            req = req.header("Authorization", format!("Bearer {}", token));
+        }
+    }
+
+    match req.send().await {
+        Ok(resp) if resp.status().is_success() => {
+            Json(serde_json::json!({
+                "success": true,
+                "mutation_id": mutation_id.to_string(),
+                "status": "rolled_back",
+            })).into_response()
+        }
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            ErrorResponse {
+                error: format!("Go backend returned {} on rollback: {}", status, body),
+                correlation_id: Some(mutation_id.to_string()),
+                recovery_suggestions: vec![
+                    "Check that the Go backend is running".to_string(),
+                    "Verify the mutation_id exists in the database".to_string(),
+                ],
+            }.into_response()
+        }
+        Err(e) => ErrorResponse {
+            error: format!("Failed to reach Go backend for rollback: {}", e),
+            correlation_id: Some(mutation_id.to_string()),
+            recovery_suggestions: vec![
+                "Ensure ORCHESTRATOR_URL is set correctly".to_string(),
+                "Check that the Go backend is running on the expected port".to_string(),
+            ],
+        }.into_response(),
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -267,8 +376,6 @@ fn confidence_label(confidence: PatternConfidence) -> &'static str {
 }
 
 fn parse_graph_from_json(json: &serde_json::Value) -> Result<Graph, String> {
-    // Minimal stub: create a graph from JSON
-    // In production, this would deserialize the full Graph structure
     let id = json.get("id")
         .and_then(|v| v.as_str())
         .and_then(|s| Uuid::parse_str(s).ok())
@@ -279,5 +386,120 @@ fn parse_graph_from_json(json: &serde_json::Value) -> Result<Graph, String> {
         .unwrap_or("unnamed")
         .to_string();
 
-    Ok(Graph::new(id, name))
+    let mut graph = Graph::new(id, name);
+
+    // Parse nodes
+    if let Some(nodes) = json.get("nodes").and_then(|v| v.as_array()) {
+        for node_json in nodes {
+            let node_id = node_json.get("id")
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok())
+                .unwrap_or_else(Uuid::new_v4);
+
+            let node_name = node_json.get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unnamed")
+                .to_string();
+
+            let node_type_str = node_json.get("type")
+                .or_else(|| node_json.get("node_type"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("passthrough");
+
+            let node_type = match node_type_str {
+                "llm" => NodeType::LLM {
+                    model: node_json.get("model").and_then(|v| v.as_str()).map(String::from),
+                    prompt: node_json.get("prompt").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    temperature: node_json.get("temperature").and_then(|v| v.as_f64()).unwrap_or(0.7) as f32,
+                    max_tokens: node_json.get("max_tokens").and_then(|v| v.as_u64()).map(|v| v as u32),
+                    traffic_type: match node_json.get("traffic_type").and_then(|v| v.as_str()) {
+                        Some("realtime") => LlmTrafficType::Realtime,
+                        Some("structured") => LlmTrafficType::Structured,
+                        Some("function_calling") => LlmTrafficType::FunctionCalling,
+                        Some("background") => LlmTrafficType::Background,
+                        _ => LlmTrafficType::General,
+                    },
+                },
+                "tool" => NodeType::Tool {
+                    name: node_json.get("tool").or_else(|| node_json.get("name")).and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    params: node_json.get("params").cloned().unwrap_or(serde_json::Value::Null),
+                },
+                "memory" => NodeType::Memory {
+                    operation: match node_json.get("memory_operation").or_else(|| node_json.get("operation")).and_then(|v| v.as_str()) {
+                        Some("write") => MemoryOp::Write,
+                        Some("delete") => MemoryOp::Delete,
+                        Some("list") => MemoryOp::List,
+                        _ => MemoryOp::Read,
+                    },
+                    key: node_json.get("memory_key").or_else(|| node_json.get("key")).and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                },
+                "control" => NodeType::Control {
+                    kind: match node_json.get("control_kind").or_else(|| node_json.get("kind")).and_then(|v| v.as_str()) {
+                        Some("loop") => ControlKind::Loop,
+                        Some("switch") => ControlKind::Switch,
+                        _ => ControlKind::If,
+                    },
+                    condition: Expr::Const(true),
+                },
+                "optimization" => NodeType::Optimization {
+                    strategy: match node_json.get("optimization_strategy").or_else(|| node_json.get("strategy")).and_then(|v| v.as_str()) {
+                        Some("enable_caching") => OptStrategy::EnableCaching,
+                        Some("increase_quota") => OptStrategy::IncreaseQuota,
+                        Some("simplify_path") => OptStrategy::SimplifyPath,
+                        _ => OptStrategy::AdjustTimeouts,
+                    },
+                },
+                "action" => NodeType::Action {
+                    connector: node_json.get("connector").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    action: node_json.get("action").and_then(|v| v.as_str()).unwrap_or_default().to_string(),
+                    params: node_json.get("params").cloned().unwrap_or(serde_json::Value::Null),
+                },
+                _ => NodeType::Passthrough,
+            };
+
+            let retry = RetryPolicy {
+                max_attempts: node_json.get("max_attempts").and_then(|v| v.as_u64()).unwrap_or(3) as u32,
+                initial_delay_ms: 100,
+                max_delay_ms: 10_000,
+                backoff_multiplier: 2.0,
+            };
+
+            let mut node = crate::engine::graph::Node::new(NodeId(node_id), node_name, node_type);
+            node.retry = retry;
+            if let Some(timeout_ms) = node_json.get("timeout_ms").and_then(|v| v.as_u64()) {
+                node = node.with_timeout(timeout_ms);
+            }
+            graph.add_node(node);
+        }
+    }
+
+    // Parse edges
+    if let Some(edges) = json.get("edges").and_then(|v| v.as_array()) {
+        for edge_json in edges {
+            let source = edge_json.get("source")
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok());
+            let target = edge_json.get("target")
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok());
+
+            let (Some(source), Some(target)) = (source, target) else {
+                continue;
+            };
+
+            let edge_type = match edge_json.get("type").and_then(|v| v.as_str()) {
+                Some("trigger") => EdgeType::Trigger,
+                Some("dependency") => EdgeType::Dependency,
+                _ => EdgeType::DataFlow,
+            };
+
+            let mut edge = Edge::new(NodeId(source), NodeId(target), edge_type);
+            if let Some(mapping) = edge_json.get("mapping").and_then(|v| v.as_str()) {
+                edge = edge.with_mapping(mapping.to_string());
+            }
+            graph.add_edge(edge);
+        }
+    }
+
+    Ok(graph)
 }

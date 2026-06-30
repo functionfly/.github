@@ -257,6 +257,82 @@ impl WarmMemory {
 
         Ok(result)
     }
+
+    /// List all keys matching a pattern for a tenant using SCAN.
+    ///
+    /// Returns entries with their TTL. Uses SCAN instead of KEYS for production safety.
+    pub async fn list(
+        &self,
+        tenant_id: Option<&str>,
+        pattern: &str,
+    ) -> anyhow::Result<Vec<MemoryEntry>> {
+        let client_guard = self.client.read().await;
+        let client = client_guard.as_ref().ok_or_else(|| {
+            anyhow::anyhow!("Redis not connected — set REDIS_URL to enable warm tier")
+        })?;
+
+        let mut conn = client
+            .get_multiplexed_async_connection()
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to get Redis connection: {}", e))?;
+
+        let scan_pattern = if pattern.is_empty() {
+            match tenant_id {
+                Some(t) => format!("mem:{}:*", t),
+                None => "mem:*".to_string(),
+            }
+        } else {
+            Self::key(tenant_id, pattern)
+        };
+
+        let tenant_prefix = match tenant_id {
+            Some(t) => format!("mem:{}:", t),
+            None => "mem:".to_string(),
+        };
+
+        let mut entries = Vec::new();
+        let mut cursor: u64 = 0;
+
+        loop {
+            let (next_cursor, keys): (u64, Vec<String>) = redis::cmd("SCAN")
+                .arg(cursor)
+                .arg("MATCH")
+                .arg(&scan_pattern)
+                .arg("COUNT")
+                .arg(100)
+                .query_async(&mut conn)
+                .await
+                .map_err(|e| anyhow::anyhow!("Redis SCAN failed: {}", e))?;
+
+            for key in &keys {
+                let ttl: i64 = redis::cmd("TTL")
+                    .arg(key)
+                    .query_async(&mut conn)
+                    .await
+                    .unwrap_or(-1);
+
+                let short_key = key.strip_prefix(&tenant_prefix).unwrap_or(key).to_string();
+                entries.push(MemoryEntry {
+                    key: short_key,
+                    ttl_remaining_secs: if ttl >= 0 { Some(ttl as u64) } else { None },
+                });
+            }
+
+            cursor = next_cursor;
+            if cursor == 0 {
+                break;
+            }
+        }
+
+        Ok(entries)
+    }
+}
+
+/// A memory entry returned by list operations.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryEntry {
+    pub key: String,
+    pub ttl_remaining_secs: Option<u64>,
 }
 
 /// Statistics for the warm memory tier.

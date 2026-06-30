@@ -313,8 +313,8 @@ pub struct Config {
     /// When true, only syscalls in the runtime's allowlist are permitted.
     /// Includes architecture validation, NO_NEW_PRIVS, and CLONE_NEWUSER
     /// restriction.
-    /// Default: false (opt-in for now; will default to true in production).
-    #[arg(long, default_value = "false")]
+    /// Default: true.  Use --no-enable-seccomp to disable (dev mode only).
+    #[arg(long, default_value = "true")]
     pub enable_seccomp: bool,
 
     /// When seccomp is enabled, use KILL_PROCESS as the default action for
@@ -369,6 +369,13 @@ pub struct Config {
     /// Set to 0 to disable pre-warming.
     #[arg(long, default_value = "2")]
     pub wasm_pool_prewarm_count: usize,
+
+    /// Bearer token required for /execute/* endpoints.
+    /// When set, all execution requests must include `Authorization: Bearer <token>`.
+    /// Reads from RUNTIME_API_TOKEN env var if not set via CLI.
+    /// When empty AND no env var, execution endpoints are unauthenticated (dev mode only).
+    #[arg(long, default_value = "")]
+    pub runtime_api_token: String,
 }
 
 impl Config {
@@ -519,7 +526,7 @@ impl Default for Config {
             secrets_file: None,
             queue_max_len: 1000,
             queue_max_queues: 16,
-            enable_seccomp: false,
+            enable_seccomp: true,
             seccomp_strict: false,
             seccomp_monitor: false,
             enable_net_ns: false,
@@ -528,6 +535,7 @@ impl Default for Config {
             wasm_pool_max_concurrent: 10,
             wasm_pool_max_idle: 4,
             wasm_pool_prewarm_count: 2,
+            runtime_api_token: String::new(),
         }
     }
 }

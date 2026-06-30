@@ -632,24 +632,26 @@ impl Sandbox {
         Ok(())
     }
 
-    /// Execute code in the sandbox (stub - actual execution in executor)
+    /// Execute code in the sandbox.
     ///
-    /// This method is kept for API compatibility but delegates to the executor.
-    /// The sandbox's role is pre-execution validation, not execution itself.
+    /// Validates code and input, enforces concurrent execution limits,
+    /// then evaluates the code using the embedded QuickJS engine.
+    ///
+    /// NOTE: The primary execution path in production is via the executor
+    /// (executor.rs) which calls `validate_code()` and `validate_input()`
+    /// separately and manages its own QuickJS context. This method is
+    /// provided for standalone sandbox usage (e.g. CLI mode, testing).
     pub fn execute(
         &self,
         code: &str,
         input: &serde_json::Value,
     ) -> Result<serde_json::Value, RuntimeError> {
-        // Validate code and input first
         self.validate_code(code)?;
         self.validate_input(input)?;
 
-        // Increment counters
         let prev_count = self.execution_count.fetch_add(1, Ordering::Relaxed);
         let prev_active = self.active_executions.fetch_add(1, Ordering::Relaxed);
 
-        // Check concurrent execution limit
         if prev_active >= self.config.max_concurrent_executions {
             self.active_executions.fetch_sub(1, Ordering::Relaxed);
             self.total_rejections.fetch_add(1, Ordering::Relaxed);
@@ -665,16 +667,43 @@ impl Sandbox {
             prev_count + 1
         );
 
-        // NOTE: Actual code execution is performed by the executor (JsContext in executor.rs).
-        // This stub returns an error indicating execution should happen elsewhere.
-        // In a future refactor, this could be removed entirely in favor of explicit
-        // validation-only and execution-only paths.
+        // Wrap code in an async IIFE that receives input as a global variable,
+        // then evaluate using the crate's JsContext (rquickjs wrapper).
+        let input_json = serde_json::to_string(input)
+            .map_err(|e| RuntimeError::InvalidInput(format!("Failed to serialize input: {}", e)))?;
 
-        Err(RuntimeError::NotReady(
-            "Execution should be performed by the executor, not the sandbox. \
-             Use validate_code() and validate_input() for pre-execution checks.".to_string()
-        ))
+        let wrapped_code = format!(
+            "(async () => {{ const __input = {}; {} }})()",
+            input_json, code
+        );
+
+        let result = crate::executor::JsContext::new(false, &std::collections::HashMap::new())
+            .map_err(|e| RuntimeError::Execution(format!("Failed to create JS context: {}", e)))
+            .and_then(|mut ctx| {
+                ctx.load_module(&wrapped_code)
+                    .map_err(|e| RuntimeError::Execution(format!("JS load error: {}", e)))?;
+                ctx.call_handler(&input_json)
+                    .map_err(|e| RuntimeError::Execution(format!("JS execution error: {}", e)))
+            })
+            .and_then(|result_json| {
+                serde_json::from_str(&result_json)
+                    .map_err(|e| RuntimeError::Execution(format!("Invalid result JSON: {}", e)))
+            });
+
+        self.active_executions.fetch_sub(1, Ordering::Relaxed);
+
+        match result {
+            Ok(value) => {
+                self.successful_executions.fetch_add(1, Ordering::Relaxed);
+                Ok(value)
+            }
+            Err(e) => {
+                self.failed_executions.fetch_add(1, Ordering::Relaxed);
+                Err(e)
+            }
+        }
     }
+}
 
     /// Check if a module is allowed
     pub fn is_module_allowed(&self, module: &str) -> bool {

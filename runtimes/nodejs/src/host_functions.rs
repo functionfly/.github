@@ -23,6 +23,12 @@ pub struct HostFunctions {
     
     /// Fetch implementation (if network enabled)
     fetch: Option<FetchHandler>,
+
+    /// Attestation retrieval handler
+    attestation: AttestationHandler,
+
+    /// Function delegation handler
+    delegate_handler: DelegateHandler,
 }
 
 impl HostFunctions {
@@ -37,6 +43,8 @@ impl HostFunctions {
             } else {
                 None
             },
+            attestation: AttestationHandler::new(),
+            delegate_handler: DelegateHandler::new(),
         }
     }
 
@@ -58,6 +66,16 @@ impl HostFunctions {
     /// Get fetch handler
     pub fn fetch(&self) -> Option<&FetchHandler> {
         self.fetch.as_ref()
+    }
+
+    /// Get attestation handler
+    pub fn attestation(&self) -> &AttestationHandler {
+        &self.attestation
+    }
+
+    /// Get delegate handler
+    pub fn delegate_handler(&self) -> &DelegateHandler {
+        &self.delegate_handler
     }
 }
 
@@ -288,4 +306,95 @@ pub struct FetchResponse {
     pub status_text: String,
     pub headers: HashMap<String, String>,
     pub body: String,
+}
+
+/// Attestation retrieval handler - provides getAttestation() to JS functions
+pub struct AttestationHandler {
+    /// Base URL for the Trust API
+    base_url: String,
+    /// API key for authentication
+    api_key: String,
+}
+
+impl AttestationHandler {
+    pub fn new() -> Self {
+        Self {
+            base_url: std::env::var("FUNCTIONFLY_API_URL")
+                .unwrap_or_else(|_| "https://api.functionfly.com".to_string()),
+            api_key: std::env::var("FUNCTIONFLY_API_KEY")
+                .unwrap_or_default(),
+        }
+    }
+
+    /// Retrieve an attestation by ID via the Trust API
+    pub async fn get_attestation(&self, attestation_id: &str) -> Result<String, String> {
+        let url = format!("{}/v1/trust/attestations/{}", self.base_url, attestation_id);
+        let client = reqwest::Client::new();
+        let response = client
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .send()
+            .await
+            .map_err(|e| format!("getAttestation request failed: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(format!("getAttestation failed: HTTP {}", response.status()));
+        }
+
+        response.text().await
+            .map_err(|e| format!("getAttestation response read failed: {}", e))
+    }
+}
+
+/// Function delegation handler - provides delegate() to JS functions
+pub struct DelegateHandler {
+    base_url: String,
+    api_key: String,
+}
+
+impl DelegateHandler {
+    pub fn new() -> Self {
+        Self {
+            base_url: std::env::var("FUNCTIONFLY_API_URL")
+                .unwrap_or_else(|_| "https://api.functionfly.com".to_string()),
+            api_key: std::env::var("FUNCTIONFLY_API_KEY")
+                .unwrap_or_default(),
+        }
+    }
+
+    /// Delegate execution to another function via the execution API
+    pub async fn delegate(
+        &self,
+        target_function_id: &str,
+        input: &str,
+        options: &str,
+    ) -> Result<String, String> {
+        let url = format!("{}/v1/functions/{}/execute", self.base_url, target_function_id);
+        let client = reqwest::Client::new();
+
+        let mut body: serde_json::Value = serde_json::from_str(input)
+            .unwrap_or_else(|_| serde_json::json!({ "input": input }));
+
+        if !options.is_empty() {
+            if let Ok(opts) = serde_json::from_str::<serde_json::Value>(options) {
+                body["options"] = opts;
+            }
+        }
+
+        let response = client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .body(body.to_string())
+            .send()
+            .await
+            .map_err(|e| format!("delegate request failed: {}", e))?;
+
+        if !response.status().is_success() {
+            return Err(format!("delegate failed: HTTP {}", response.status()));
+        }
+
+        response.text().await
+            .map_err(|e| format!("delegate response read failed: {}", e))
+    }
 }

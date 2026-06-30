@@ -10,11 +10,15 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
+use hmac::{Hmac, KeyInit, Mac};
+use sha2::Sha256;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::daemon::agent_daemon::{AgentEvent, EventSource, EventSourceType};
+
+type HmacSha256 = Hmac<Sha256>;
 
 // ---------------------------------------------------------------------------
 // Webhook Event Source
@@ -28,6 +32,7 @@ pub struct WebhookEventSource {
     path: String,
     running: Arc<AtomicBool>,
     secret_header: Option<String>,
+    hmac_secret: Option<Vec<u8>>,
 }
 
 impl WebhookEventSource {
@@ -39,12 +44,166 @@ impl WebhookEventSource {
             path,
             running: Arc::new(AtomicBool::new(false)),
             secret_header,
+            hmac_secret: None,
         }
     }
 
-    /// Validate webhook signature (placeholder for HMAC verification)
-    fn validate_signature(&self, _headers: &[(String, String)], _body: &[u8]) -> bool {
-        // In production, verify HMAC signature
+    /// Create a new webhook event source with HMAC secret for signature verification
+    pub fn with_hmac_secret(mut self, secret: Vec<u8>) -> Self {
+        self.hmac_secret = Some(secret);
+        self
+    }
+
+    /// Validate webhook HMAC-SHA256 signature.
+    ///
+    /// For Stripe: header is `t=timestamp,v1=signature` — we verify `v1` over `timestamp.body`
+    /// For Shopify: header is base64-encoded HMAC-SHA256 of the body
+    /// For generic: header is hex-encoded HMAC-SHA256 of the body
+    fn validate_signature(&self, headers: &[(String, String)], body: &[u8]) -> bool {
+        let secret = match &self.hmac_secret {
+            Some(s) => s,
+            None => {
+                warn!(name = %self.name, "No HMAC secret configured — rejecting webhook");
+                return false;
+            }
+        };
+
+        let header_name = match &self.secret_header {
+            Some(h) => h.to_lowercase(),
+            None => {
+                warn!(name = %self.name, "No signature header configured — rejecting webhook");
+                return false;
+            }
+        };
+
+        let signature_value = headers
+            .iter()
+            .find(|(k, _)| k.to_lowercase() == header_name)
+            .map(|(_, v)| v.clone());
+
+        let sig = match signature_value {
+            Some(s) => s,
+            None => {
+                warn!(name = %self.name, header = %header_name, "Missing signature header");
+                return false;
+            }
+        };
+
+        match self.name.as_str() {
+            "stripe" => self.verify_stripe_signature(secret, &sig, body),
+            "shopify" => self.verify_shopify_signature(secret, &sig, body),
+            _ => self.verify_generic_hmac(secret, &sig, body),
+        }
+    }
+
+    /// Verify Stripe webhook signature (v1 scheme).
+    /// Format: `t=timestamp,v1=hex_signature`
+    /// Signed payload: `timestamp.body`
+    fn verify_stripe_signature(&self, secret: &[u8], header: &str, body: &[u8]) -> bool {
+        let mut timestamp = "";
+        let mut sig_hex = "";
+
+        for part in header.split(',') {
+            if let Some(t) = part.strip_prefix("t=") {
+                timestamp = t;
+            } else if let Some(v) = part.strip_prefix("v1=") {
+                sig_hex = v;
+            }
+        }
+
+        if timestamp.is_empty() || sig_hex.is_empty() {
+            warn!(name = %self.name, "Invalid Stripe signature format");
+            return false;
+        }
+
+        // Check timestamp freshness (reject if older than 5 minutes)
+        if let Ok(ts) = timestamp.parse::<i64>() {
+            let now = chrono::Utc::now().timestamp();
+            if (now - ts).abs() > 300 {
+                warn!(name = %self.name, ts = ts, now = now, "Stripe webhook timestamp too old or in future");
+                return false;
+            }
+        }
+
+        let signed_payload = format!("{}.{}", timestamp, String::from_utf8_lossy(body));
+
+        let mut mac = match HmacSha256::new_from_slice(secret) {
+            Ok(m) => m,
+            Err(e) => {
+                error!(name = %self.name, error = %e, "Failed to create HMAC");
+                return false;
+            }
+        };
+        mac.update(signed_payload.as_bytes());
+        let expected = hex::encode(mac.finalize().into_bytes());
+
+        if expected != sig_hex {
+            warn!(name = %self.name, "Stripe HMAC signature mismatch");
+            return false;
+        }
+
+        true
+    }
+
+    /// Verify Shopify webhook signature.
+    /// Header is base64-encoded HMAC-SHA256 of the raw body.
+    fn verify_shopify_signature(&self, secret: &[u8], header: &str, body: &[u8]) -> bool {
+        use base64::Engine as _;
+
+        let expected_bytes = match base64::engine::general_purpose::STANDARD.decode(header.trim()) {
+            Ok(b) => b,
+            Err(e) => {
+                warn!(name = %self.name, error = %e, "Invalid base64 in Shopify signature");
+                return false;
+            }
+        };
+
+        let mut mac = match HmacSha256::new_from_slice(secret) {
+            Ok(m) => m,
+            Err(e) => {
+                error!(name = %self.name, error = %e, "Failed to create HMAC");
+                return false;
+            }
+        };
+        mac.update(body);
+        let computed = mac.finalize().into_bytes();
+
+        // Constant-time comparison
+        if computed.len() != expected_bytes.len() {
+            warn!(name = %self.name, "Shopify HMAC length mismatch");
+            return false;
+        }
+
+        let mut result = 0u8;
+        for (a, b) in computed.iter().zip(expected_bytes.iter()) {
+            result |= a ^ b;
+        }
+
+        if result != 0 {
+            warn!(name = %self.name, "Shopify HMAC signature mismatch");
+            return false;
+        }
+
+        true
+    }
+
+    /// Verify generic hex-encoded HMAC-SHA256 of the body.
+    fn verify_generic_hmac(&self, secret: &[u8], header: &str, body: &[u8]) -> bool {
+        let mut mac = match HmacSha256::new_from_slice(secret) {
+            Ok(m) => m,
+            Err(e) => {
+                error!(name = %self.name, error = %e, "Failed to create HMAC");
+                return false;
+            }
+        };
+        mac.update(body);
+        let expected = hex::encode(mac.finalize().into_bytes());
+
+        if expected != header.trim() {
+            warn!(name = %self.name, "Generic HMAC signature mismatch");
+            return false;
+        }
+
         true
     }
 }
@@ -58,7 +217,7 @@ impl EventSource for WebhookEventSource {
     }
 
     async fn start(&self) -> anyhow::Result<mpsc::Receiver<AgentEvent>> {
-        let (_tx, rx) = mpsc::channel(100);
+        let (tx, rx) = mpsc::channel(100);
         self.running.store(true, Ordering::SeqCst);
 
         info!(
@@ -68,17 +227,120 @@ impl EventSource for WebhookEventSource {
             "Starting webhook event source"
         );
 
-        // In production, this would start an HTTP server
-        // For now, we simulate with a placeholder
         let name = self.name.clone();
-        tokio::spawn(async move {
-            // Placeholder: In production, bind HTTP server here
-            // axum::serve(bind, router).await
+        let path = self.path.clone();
+        let running = self.running.clone();
+        let hmac_secret = self.hmac_secret.clone();
+        let secret_header = self.secret_header.clone();
+        let port = self.port;
 
-            loop {
-                // Simulate webhook events for testing
-                tokio::time::sleep(Duration::from_secs(60)).await;
-                debug!("Webhook event source '{}' heartbeat", name);
+        tokio::spawn(async move {
+            use axum::{extract::State as AxumState, routing::post, Router};
+            use std::net::SocketAddr;
+
+            type WebhookState = Arc<(
+                tokio::sync::Mutex<mpsc::Sender<AgentEvent>>,
+                String,
+                Option<Vec<u8>>,
+                Option<String>,
+            )>;
+
+            let shared_state: WebhookState = Arc::new((
+                tokio::sync::Mutex::new(tx),
+                name.clone(),
+                hmac_secret.clone(),
+                secret_header.clone(),
+            ));
+
+            let webhook_handler = move |
+                AxumState(state): AxumState<WebhookState>,
+                headers: axum::http::HeaderMap,
+                body: axum::body::Bytes,
+            | {
+                let state = state.clone();
+                let body_vec = body.to_vec();
+
+                async move {
+                    let (ref tx, ref name, ref hmac_secret, ref secret_header) = *state;
+                    // Extract headers for HMAC verification
+                    let header_pairs: Vec<(String, String)> = headers
+                        .iter()
+                        .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+                        .collect();
+
+                    // Verify HMAC if secret is configured
+                    if let Some(ref secret) = hmac_secret {
+                        let header_name = secret_header.as_deref().unwrap_or("x-signature-256");
+                        let sig = header_pairs
+                            .iter()
+                            .find(|(k, _)| k.to_lowercase() == header_name.to_lowercase())
+                            .map(|(_, v)| v.clone());
+
+                        let sig = match sig {
+                            Some(s) => s,
+                            None => {
+                                warn!(name = %name, "Webhook rejected: missing signature header");
+                                return axum::http::StatusCode::UNAUTHORIZED;
+                            }
+                        };
+
+                        // Generic HMAC-SHA256 verification
+                        let mut mac = match HmacSha256::new_from_slice(secret) {
+                            Ok(m) => m,
+                            Err(_) => return axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                        };
+                        mac.update(&body_vec);
+                        let expected = hex::encode(mac.finalize().into_bytes());
+
+                        if expected != sig.trim() {
+                            warn!(name = %name, "Webhook rejected: HMAC signature mismatch");
+                            return axum::http::StatusCode::UNAUTHORIZED;
+                        }
+                    }
+
+                    // Parse body as JSON
+                    let payload = match serde_json::from_slice::<serde_json::Value>(&body_vec) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            warn!(name = %name, error = %e, "Failed to parse webhook body");
+                            return axum::http::StatusCode::BAD_REQUEST;
+                        }
+                    };
+
+                    let event = AgentEvent {
+                        id: Uuid::new_v4(),
+                        source: EventSourceType::Webhook { name: name.clone() },
+                        agent_id: String::new(),
+                        payload,
+                        timestamp: Instant::now(),
+                    };
+
+                    let sender = tx.lock().await;
+                    if let Err(e) = sender.send(event).await {
+                        error!(name = %name, error = %e, "Failed to send webhook event");
+                        return axum::http::StatusCode::INTERNAL_SERVER_ERROR;
+                    }
+
+                    info!(name = %name, "Webhook event received and dispatched");
+                    axum::http::StatusCode::OK
+                }
+            };
+
+            let app = Router::new()
+                .route(&path, post(webhook_handler))
+                .with_state(shared_state);
+
+            let addr = SocketAddr::from(([127, 0, 0, 1], port));
+            match tokio::net::TcpListener::bind(addr).await {
+                Ok(listener) => {
+                    info!(name = %name, port = port, path = %path, "Webhook HTTP server listening");
+                    if let Err(e) = axum::serve(listener, app).await {
+                        error!(name = %name, error = %e, "Webhook server error");
+                    }
+                }
+                Err(e) => {
+                    error!(name = %name, port = port, error = %e, "Failed to bind webhook server");
+                }
             }
         });
 
@@ -160,7 +422,7 @@ impl EventSource for DatabaseEventSource {
     }
 
     async fn start(&self) -> anyhow::Result<mpsc::Receiver<AgentEvent>> {
-        let (_tx, rx) = mpsc::channel(100);
+        let (tx, rx) = mpsc::channel(100);
         self.running.store(true, Ordering::SeqCst);
 
         info!(
@@ -169,17 +431,97 @@ impl EventSource for DatabaseEventSource {
             "Starting database event source"
         );
 
-        // In production, this would connect to PostgreSQL and LISTEN
-        // For now, we simulate with a placeholder
         let channel = self.channel.clone();
-        tokio::spawn(async move {
-            // Placeholder: In production, use tokio_postgres to LISTEN
-            // let (client, connection) = tokio_postgres::connect(&database_url, NoTls).await?;
-            // client.execute(&format!("LISTEN {}", channel), &[]).await?;
+        let database_url = self.database_url.clone();
+        let table = self.table.clone();
+        let operations = self.operations.clone();
+        let running = self.running.clone();
 
+        tokio::spawn(async move {
+            // Connect to PostgreSQL using tokio-postgres
+            let (client, connection) = match tokio_postgres::connect(&database_url, tokio_postgres::NoTls).await {
+                Ok((c, conn)) => (c, conn),
+                Err(e) => {
+                    error!(channel = %channel, error = %e, "Failed to connect to PostgreSQL for LISTEN/NOTIFY");
+                    return;
+                }
+            };
+
+            // Spawn connection driver
+            tokio::spawn(async move {
+                if let Err(e) = connection.await {
+                    error!(error = %e, "PostgreSQL connection error in LISTEN task");
+                }
+            });
+
+            // Execute LISTEN on the channel
+            let listen_sql = format!("LISTEN {}", channel);
+            if let Err(e) = client.execute(&listen_sql, &[]).await {
+                error!(channel = %channel, error = %e, "Failed to execute LISTEN");
+                return;
+            }
+
+            info!(channel = %channel, table = %table, "PostgreSQL LISTEN active — waiting for notifications");
+
+            // Poll for pending notifications via a periodic check
+            // tokio-postgres delivers NOTIFY through the connection future,
+            // so we use a polling approach with a check query.
             loop {
-                tokio::time::sleep(Duration::from_secs(30)).await;
-                debug!("Database event source '{}' heartbeat", channel);
+                if !running.load(Ordering::SeqCst) {
+                    break;
+                }
+
+                // Check for pending notifications via a simple query
+                // The PostgreSQL NOTIFY/LISTEN mechanism delivers notifications
+                // through the connection, but tokio-postgres handles them via
+                // the connection future. We use a polling approach with pg_notify.
+                let check_sql = format!(
+                    "SELECT pg_notify('{}', row_to_json(t)::text) FROM (SELECT * FROM {} WHERE updated_at > NOW() - INTERVAL '5 seconds' LIMIT 10) t",
+                    channel, table
+                );
+
+                match client.query(&check_sql, &[]).await {
+                    Ok(rows) => {
+                        for row in &rows {
+                            let payload: Option<String> = row.get(0);
+                            if let Some(payload_str) = payload {
+                                match serde_json::from_str::<serde_json::Value>(&payload_str) {
+                                    Ok(data) => {
+                                        let operation = data.get("operation")
+                                            .and_then(|v| v.as_str())
+                                            .unwrap_or("UNKNOWN");
+
+                                        if operations.iter().any(|op| op == operation) || operations.is_empty() {
+                                            let event = AgentEvent {
+                                                id: Uuid::new_v4(),
+                                                source: EventSourceType::Database {
+                                                    table: table.clone(),
+                                                    operation: operations.join(","),
+                                                },
+                                                agent_id: String::new(),
+                                                payload: data,
+                                                timestamp: Instant::now(),
+                                            };
+
+                                            if let Err(e) = tx.send(event).await {
+                                                error!(error = %e, "Failed to send database event");
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        warn!(error = %e, "Failed to parse notification payload");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        debug!(error = %e, "Database event check query failed (may be no matching rows)");
+                    }
+                }
+
+                tokio::time::sleep(Duration::from_secs(5)).await;
             }
         });
 
@@ -301,22 +643,34 @@ impl EventSource for ScheduledEventSource {
 
 /// Create a webhook event source for Stripe
 pub fn stripe_webhook_source(port: u16) -> Arc<WebhookEventSource> {
-    Arc::new(WebhookEventSource::new(
-        "stripe".to_string(),
-        port,
-        "/webhooks/stripe".to_string(),
-        Some("Stripe-Signature".to_string()),
-    ))
+    let secret = std::env::var("STRIPE_WEBHOOK_SECRET")
+        .map(|s| s.into_bytes())
+        .unwrap_or_default();
+    Arc::new(
+        WebhookEventSource::new(
+            "stripe".to_string(),
+            port,
+            "/webhooks/stripe".to_string(),
+            Some("Stripe-Signature".to_string()),
+        )
+        .with_hmac_secret(secret),
+    )
 }
 
 /// Create a webhook event source for Shopify
 pub fn shopify_webhook_source(port: u16) -> Arc<WebhookEventSource> {
-    Arc::new(WebhookEventSource::new(
-        "shopify".to_string(),
-        port,
-        "/webhooks/shopify".to_string(),
-        Some("X-Shopify-Hmac-SHA256".to_string()),
-    ))
+    let secret = std::env::var("SHOPIFY_WEBHOOK_SECRET")
+        .map(|s| s.into_bytes())
+        .unwrap_or_default();
+    Arc::new(
+        WebhookEventSource::new(
+            "shopify".to_string(),
+            port,
+            "/webhooks/shopify".to_string(),
+            Some("X-Shopify-Hmac-SHA256".to_string()),
+        )
+        .with_hmac_secret(secret),
+    )
 }
 
 /// Create a database event source for a table
@@ -359,6 +713,130 @@ mod tests {
             source.source_type().name(),
             "webhook:test"
         );
+    }
+
+    #[tokio::test]
+    async fn test_webhook_hmac_rejects_without_secret() {
+        let source = WebhookEventSource::new(
+            "test".to_string(),
+            8080,
+            "/webhook".to_string(),
+            Some("X-Signature".to_string()),
+        );
+        // No secret configured — should reject
+        let headers = vec![("X-Signature".to_string(), "abc123".to_string())];
+        assert!(!source.validate_signature(&headers, b"body"));
+    }
+
+    #[tokio::test]
+    async fn test_webhook_hmac_rejects_missing_header() {
+        let source = WebhookEventSource::new(
+            "test".to_string(),
+            8080,
+            "/webhook".to_string(),
+            Some("X-Signature".to_string()),
+        )
+        .with_hmac_secret(b"test-secret".to_vec());
+        // Missing header — should reject
+        let headers: Vec<(String, String)> = vec![];
+        assert!(!source.validate_signature(&headers, b"body"));
+    }
+
+    #[tokio::test]
+    async fn test_webhook_generic_hmac_valid() {
+        use hmac::{Hmac, KeyInit, Mac};
+        use sha2::Sha256;
+        type HmacSha256 = Hmac<Sha256>;
+
+        let secret = b"test-secret-key";
+        let body = b"hello world";
+
+        let mut mac = HmacSha256::new_from_slice(secret).unwrap();
+        mac.update(body);
+        let sig = hex::encode(mac.finalize().into_bytes());
+
+        let source = WebhookEventSource::new(
+            "generic".to_string(),
+            8080,
+            "/webhook".to_string(),
+            Some("X-Signature-256".to_string()),
+        )
+        .with_hmac_secret(secret.to_vec());
+
+        let headers = vec![("X-Signature-256".to_string(), sig)];
+        assert!(source.validate_signature(&headers, body));
+    }
+
+    #[tokio::test]
+    async fn test_webhook_generic_hmac_invalid() {
+        let source = WebhookEventSource::new(
+            "generic".to_string(),
+            8080,
+            "/webhook".to_string(),
+            Some("X-Signature-256".to_string()),
+        )
+        .with_hmac_secret(b"test-secret".to_vec());
+
+        let headers = vec![("X-Signature-256".to_string(), "invalid_signature".to_string())];
+        assert!(!source.validate_signature(&headers, b"body"));
+    }
+
+    #[tokio::test]
+    async fn test_webhook_stripe_hmac_valid() {
+        use hmac::{Hmac, KeyInit, Mac};
+        use sha2::Sha256;
+        type HmacSha256 = Hmac<Sha256>;
+
+        let secret = b"whsec_test123";
+        let body = b"{}";
+        let timestamp = chrono::Utc::now().timestamp().to_string();
+        let signed_payload = format!("{}.{}", timestamp, String::from_utf8_lossy(body));
+
+        let mut mac = HmacSha256::new_from_slice(secret).unwrap();
+        mac.update(signed_payload.as_bytes());
+        let sig = hex::encode(mac.finalize().into_bytes());
+
+        let source = WebhookEventSource::new(
+            "stripe".to_string(),
+            8080,
+            "/webhooks/stripe".to_string(),
+            Some("Stripe-Signature".to_string()),
+        )
+        .with_hmac_secret(secret.to_vec());
+
+        let header = format!("t={},v1={}", timestamp, sig);
+        let headers = vec![("Stripe-Signature".to_string(), header)];
+        assert!(source.validate_signature(&headers, body));
+    }
+
+    #[tokio::test]
+    async fn test_webhook_stripe_hmac_expired() {
+        use hmac::{Hmac, KeyInit, Mac};
+        use sha2::Sha256;
+        type HmacSha256 = Hmac<Sha256>;
+
+        let secret = b"whsec_test123";
+        let body = b"{}";
+        // Use a timestamp from 10 minutes ago
+        let timestamp = (chrono::Utc::now().timestamp() - 600).to_string();
+        let signed_payload = format!("{}.{}", timestamp, String::from_utf8_lossy(body));
+
+        let mut mac = HmacSha256::new_from_slice(secret).unwrap();
+        mac.update(signed_payload.as_bytes());
+        let sig = hex::encode(mac.finalize().into_bytes());
+
+        let source = WebhookEventSource::new(
+            "stripe".to_string(),
+            8080,
+            "/webhooks/stripe".to_string(),
+            Some("Stripe-Signature".to_string()),
+        )
+        .with_hmac_secret(secret.to_vec());
+
+        let header = format!("t={},v1={}", timestamp, sig);
+        let headers = vec![("Stripe-Signature".to_string(), header)];
+        // Should reject — timestamp older than 5 minutes
+        assert!(!source.validate_signature(&headers, body));
     }
 
     #[tokio::test]

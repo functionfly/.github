@@ -288,19 +288,41 @@ impl MemoryLayer {
                 ))
             }
             MemoryOp::List => {
-                // List is a warm-tier scan (not implemented in MVP)
+                // List keys from warm tier (Redis SCAN) with hot tier supplement
+                let entries = match self.warm.list(tenant_id, key).await {
+                    Ok(entries) => {
+                        debug!(tier = "warm", count = entries.len(), "Memory list from warm tier");
+                        entries
+                    }
+                    Err(e) => {
+                        debug!(tier = "warm", error = %e, "Warm list failed, returning empty");
+                        Vec::new()
+                    }
+                };
+
                 let elapsed = start.elapsed().as_millis() as u64;
                 Ok(NodeResult::success(
                     crate::engine::graph::NodeId(uuid::Uuid::nil()),
                     serde_json::json!({
                         "key": key,
-                        "entries": [],
-                        "note": "List not yet implemented — returns empty",
+                        "entries": entries,
+                        "count": entries.len(),
                     }),
                     elapsed,
                 ))
             }
         }
+    }
+
+    /// List keys from the warm tier (Redis SCAN).
+    ///
+    /// Used by the SAR executor's MemoryOp::List path.
+    pub async fn warm_list(
+        &self,
+        tenant_id: Option<&str>,
+        pattern: &str,
+    ) -> anyhow::Result<Vec<crate::memory::warm::MemoryEntry>> {
+        self.warm.list(tenant_id, pattern).await
     }
 
     /// Get statistics for all tiers.

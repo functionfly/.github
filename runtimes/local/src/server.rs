@@ -50,6 +50,61 @@ use crate::shutdown::{ComponentShutdown, ResourceManager, ShutdownCoordinator};
 use crate::yara_scanner::YaraScanner;
 use crate::errors::ErrorRecovery;
 
+/// Extract the runtime API token from config or environment.
+fn resolve_runtime_api_token(config_token: &str) -> Option<String> {
+    if !config_token.is_empty() {
+        return Some(config_token.to_string());
+    }
+    std::env::var("RUNTIME_API_TOKEN").ok().filter(|s| !s.is_empty())
+}
+
+/// Paths that are always accessible without authentication (probes and scraping).
+const PUBLIC_PATHS: &[&str] = &["/health", "/ready", "/metrics"];
+
+/// Axum middleware that enforces Bearer token authentication on all routes
+/// except health-check and Prometheus scraping endpoints.
+/// Returns 401 Unauthorized if the token is missing or invalid.
+/// Skipped entirely when no token is configured (dev mode).
+async fn auth_middleware(
+    axum::extract::State(expected_token): axum::extract::State<Option<String>>,
+    request: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let path = request.uri().path().to_string();
+
+    // Allow public probe / metrics paths without a token
+    if PUBLIC_PATHS.iter().any(|p| path == *p) {
+        return next.run(request).await;
+    }
+
+    // If no token is configured, allow through (dev mode)
+    let expected = match &expected_token {
+        Some(t) => t,
+        None => return next.run(request).await,
+    };
+
+    // Extract Authorization header
+    let auth_header = request
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+
+    // Check Bearer token
+    let token = auth_header.strip_prefix("Bearer ").unwrap_or("");
+    if token.is_empty() || !constant_time_eq::constant_time_eq(token.as_bytes(), expected.as_bytes()) {
+        return axum::response::Response::builder()
+            .status(axum::http::StatusCode::UNAUTHORIZED)
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(
+                serde_json::to_vec(&serde_json::json!({"error": "unauthorized", "message": "Invalid or missing RUNTIME_API_TOKEN"})).unwrap_or_default(),
+            ))
+            .unwrap_or_else(|_| axum::response::Response::new(axum::body::Body::empty()));
+    }
+
+    next.run(request).await
+}
+
 /// Run the HTTP server with graceful shutdown support
 pub async fn run_server(
     port: u16,
@@ -445,6 +500,22 @@ pub async fn run_server(
     }
 
     // Build router
+    let runtime_token = resolve_runtime_api_token(&config.runtime_api_token);
+    let is_production = std::env::var("ENVIRONMENT")
+        .map(|v| v.eq_ignore_ascii_case("production"))
+        .unwrap_or(false);
+
+    if runtime_token.is_some() {
+        tracing::info!("RUNTIME_API_TOKEN configured — all endpoints except /health, /ready, /metrics require Bearer auth");
+    } else if is_production {
+        anyhow::bail!(
+            "RUNTIME_API_TOKEN is required in production (ENVIRONMENT=production). \
+             Set the token via --runtime-api-token flag or RUNTIME_API_TOKEN env var and restart."
+        );
+    } else {
+        tracing::warn!("RUNTIME_API_TOKEN not set — ALL endpoints are UNAUTHENTICATED (dev mode only)");
+    }
+
     let app = Router::new()
         .route("/", post(execute_function))
         .route("/execute/chunked", post(execute_chunked))
@@ -503,6 +574,10 @@ pub async fn run_server(
         // Isolation and security utilities
         .route("/security/isolation", get(isolation_utils))
         .layer(cors)
+        .layer(axum::middleware::from_fn_with_state(
+            runtime_token,
+            auth_middleware,
+        ))
         .layer(TraceLayer::new_for_http())
         .with_state(app_state);
 
@@ -569,19 +644,17 @@ pub async fn run_server(
             &startup_correlation_id,
         );
         if let Err(e) = crate::seccomp::apply_seccomp_profile_with_mode(seccomp_mode, config.seccomp_strict) {
-            let level = if config.seccomp_strict {
-                crate::logging::LogLevel::Error
-            } else {
-                crate::logging::LogLevel::Warn
-            };
+            // In production, seccomp failure is always fatal.
+            if is_production || config.seccomp_strict {
+                return Err(anyhow::anyhow!(
+                    "Seccomp is required in production but could not be applied: {}", e
+                ));
+            }
             logger.log_with_correlation(
-                level,
+                crate::logging::LogLevel::Warn,
                 format!("Failed to apply seccomp profile: {}", e),
                 &startup_correlation_id,
             );
-            if config.seccomp_strict {
-                return Err(anyhow::anyhow!("Seccomp is required but could not be applied: {}", e));
-            }
         } else if config.seccomp_strict {
             // Defense-in-depth: install a second filter with KILL_PROCESS
             // on top of the first.  The kernel applies the most restrictive

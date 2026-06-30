@@ -5,6 +5,7 @@ edition = "2021"
 description = "Firecracker MicroVM orchestrator for CPython execution"
 
 [dependencies]
+constant_time_eq = "0.5.0"
 # Async runtime
 tokio = { version = "1.52.3", features = ["full"] }
 

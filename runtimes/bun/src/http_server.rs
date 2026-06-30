@@ -197,7 +197,7 @@ pub async fn run_server(config: RuntimeConfig, port: u16) -> anyhow::Result<()> 
 
     let app = create_app(state);
 
-    let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
+    let addr: SocketAddr = format!("127.0.0.1:{}", port).parse()?;
     let listener = TcpListener::bind(addr).await?;
 
     info!(port = port, "Bun runtime HTTP server started");
