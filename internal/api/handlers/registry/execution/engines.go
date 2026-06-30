@@ -13,8 +13,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/bundler"
@@ -449,6 +452,59 @@ type nodeJSEngine struct {
 	mu          sync.Mutex
 	isRunning   bool
 	tempDir     string
+	daemonPGID  int // process group ID for cleanup
+}
+
+// killStaleDaemons finds and kills any orphaned functionfly-nodejs processes
+// from previous orchestrator runs. This prevents daemon process accumulation
+// when the orchestrator is killed without a clean shutdown.
+func killStaleDaemons() {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" {
+		return
+	}
+	pid := os.Getpid()
+	procs, err := filepath.Glob("/proc/[0-9]*/cmdline")
+	if err != nil || len(procs) == 0 {
+		return
+	}
+	killed := 0
+	for _, procPath := range procs {
+		data, err := os.ReadFile(procPath)
+		if err != nil {
+			continue
+		}
+		cmdline := string(data)
+		if !strings.Contains(cmdline, "functionfly-nodejs") || !strings.Contains(cmdline, "--daemon") {
+			continue
+		}
+		// Extract PID from path /proc/<pid>/cmdline
+		parts := strings.Split(procPath, "/")
+		if len(parts) < 3 {
+			continue
+		}
+		targetPID, err := strconv.Atoi(parts[2])
+		if err != nil || targetPID == pid {
+			continue
+		}
+		// Skip processes owned by a different user (safety check on shared hosts)
+		procInfo, err := os.Stat(procPath)
+		if err != nil {
+			continue
+		}
+		// Only kill our own processes (same UID)
+		if stat, ok := procInfo.Sys().(*syscall.Stat_t); ok {
+			if stat.Uid != uint32(os.Getuid()) {
+				continue
+			}
+		}
+		if err := syscall.Kill(targetPID, syscall.SIGTERM); err == nil {
+			killed++
+			logrus.WithField("pid", targetPID).Info("nodeJSEngine: killed stale daemon from previous run")
+		}
+	}
+	if killed > 0 {
+		logrus.WithField("count", killed).Info("nodeJSEngine: cleaned up stale daemon processes")
+	}
 }
 
 // newNodeJSEngine creates a nodeJSEngine that launches the QuickJS-WASM daemon
@@ -460,6 +516,9 @@ func newNodeJSEngine() (*nodeJSEngine, error) {
 		// Don't fail — allow healthy=false until we can start it
 		return &nodeJSEngine{RuntimePath: "", daemonURL: "", isRunning: false}, nil
 	}
+
+	// Kill orphaned daemons from previous orchestrator runs before spawning a new one.
+	killStaleDaemons()
 
 	tempDir, err := os.MkdirTemp("", "functionfly-nodejs-*")
 	if err != nil {
@@ -482,6 +541,10 @@ func newNodeJSEngine() (*nodeJSEngine, error) {
 	cmd.Dir = tempDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	// Put the child in its own process group so we can kill it and any
+	// grandchildren atomically on shutdown, and so it survives if the
+	// parent receives SIGKILL without a graceful shutdown path.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if err := cmd.Start(); err != nil {
 		os.RemoveAll(tempDir)
@@ -492,6 +555,7 @@ func newNodeJSEngine() (*nodeJSEngine, error) {
 		RuntimePath: runtimePath,
 		daemonURL:   daemonURL,
 		daemonCmd:   cmd,
+		daemonPGID:  cmd.Process.Pid, // PGID == PID when Setpgid is true
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 			Transport: &http.Transport{
@@ -707,18 +771,30 @@ func (e *nodeJSEngine) Close() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	if e.daemonPGID > 0 {
+		// Kill the entire process group (daemon + any children).
+		if err := syscall.Kill(-e.daemonPGID, syscall.SIGTERM); err != nil && err != syscall.ESRCH {
+			logrus.WithError(err).WithField("pgid", e.daemonPGID).Warn("nodeJSEngine: failed to SIGTERM process group")
+		}
+		// Give the group a moment to exit gracefully, then force-kill.
+		time.Sleep(200 * time.Millisecond)
+		_ = syscall.Kill(-e.daemonPGID, syscall.SIGKILL)
+	}
 	if e.daemonCmd != nil && e.daemonCmd.Process != nil {
-		_ = e.daemonCmd.Process.Kill()
 		_ = e.daemonCmd.Wait()
 	}
 	if e.tempDir != "" {
 		_ = os.RemoveAll(e.tempDir)
 	}
 	e.isRunning = false
+	e.daemonPGID = 0
 	return nil
 }
 
 func (e *nodeJSEngine) startDaemon() error {
+	// Kill orphaned daemons from previous runs before starting a new one.
+	killStaleDaemons()
+
 	port, err := getAvailablePort()
 	if err != nil {
 		return fmt.Errorf("nodeJSEngine: find port: %w", err)
@@ -730,6 +806,7 @@ func (e *nodeJSEngine) startDaemon() error {
 	cmd.Dir = e.tempDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("nodeJSEngine: start: %w", err)
@@ -737,6 +814,7 @@ func (e *nodeJSEngine) startDaemon() error {
 
 	e.daemonURL = daemonURL
 	e.daemonCmd = cmd
+	e.daemonPGID = cmd.Process.Pid
 	e.isRunning = true
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

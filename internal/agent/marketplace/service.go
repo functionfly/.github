@@ -165,6 +165,10 @@ func (s *Service) SearchAgents(ctx context.Context, req *SearchAgentsRequest) ([
 		Preload("Agent")
 
 	// Apply filters
+	if req.AgentID != "" {
+		query = query.Where("agent_id = ?", req.AgentID)
+	}
+
 	if len(req.ListingTypes) > 0 {
 		query = query.Where("listing_type IN ?", req.ListingTypes)
 	}
@@ -252,6 +256,7 @@ func (s *Service) buildSearchAgentsOrderClause(sortBy string) string {
 
 // SearchAgentsRequest represents a search request for agents
 type SearchAgentsRequest struct {
+	AgentID         string   // filter by specific agent_id
 	ListingTypes    []string // worker | manager | infrastructure
 	PricingModel    string
 	MinRating       float64

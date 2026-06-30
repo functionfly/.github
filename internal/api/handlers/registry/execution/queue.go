@@ -17,12 +17,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// shouldQueueExecution determines if an execution should be queued due to high load
-// Queueing is opt-in because queueExecution is currently a placeholder (no worker).
+// shouldQueueExecution determines if an execution should be queued due to high load.
 //
 // Enable with:
 // - EXECUTION_QUEUE_ENABLED=true
 // - Client sets header: X-Queue-If-Busy: true
+//
+// Queued executions are consumed by the RabbitMQ consumer
+// (internal/queue/rabbitmq/consumer.go) or the in-memory ExecutionQueue
+// (internal/queue/execution_queue.go) depending on deployment configuration.
 //
 // Heuristic: if cache is under pressure (low hit ratio and high evictions), treat the node as "busy".
 func (h *Handler) shouldQueueExecution(r *http.Request) bool {
@@ -69,9 +72,9 @@ func (h *Handler) shouldQueueExecution(r *http.Request) bool {
 	return false
 }
 
-// queueExecution queues a function execution for later processing
-// Currently stores the execution request in memory for single-instance deployments.
-// For multi-instance deployments, this should be replaced with Redis-based queuing.
+// queueExecution queues a function execution for later processing.
+// Publishes to RabbitMQ when configured; otherwise falls back to an in-memory
+// priority queue backed by internal/queue/execution_queue.go workers.
 func (h *Handler) queueExecution(r *http.Request, functionID uuid.UUID, execReq functionregistry.ExecutionRequest, fnVersion *storage.RegistryFunctionVersion) error {
 	// Prefer RabbitMQ when configured; otherwise, log-only fallback.
 	pub := rabbitmq.NewPublisherFromEnv()

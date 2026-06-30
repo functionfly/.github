@@ -429,11 +429,10 @@ async def search_%s(query_params: Dict[str, List[str]]) -> Dict[str, Any]:
     """Search %s by query parameters."""
     return await list_%s(query_params)
 `, req.Name, resource, resource, resource, resource, resource, resource, resource, resource, resource,
-		resource, resource, resource, resource, resource, resource, resource,
-		resource, resource, resource, resource, resource,
-		resource, resource, resource, resource,
-		resource, resource, resource, resource,
-		resource)
+		resource, resource, resource, resource, resource, resource, resource, resource, resource,
+		resource, resource, resource, resource, resource, resource, resource, resource,
+		resource, resource, resource, resource, resource, resource, resource, resource,
+		resource, resource, resource, resource)
 
 	return code, nil
 }

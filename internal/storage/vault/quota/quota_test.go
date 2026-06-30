@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/google/uuid"
 )
 
@@ -13,8 +14,8 @@ func TestGetPlanQuota_AllPlansHaveAllResources(t *testing.T) {
 		ResourceSecrets, ResourceDynamicCreds,
 		ResourceTokensPerSecret, ResourceAuditExports,
 	}
-	plans := []Plan{PlanFree, PlanPro, PlanTeam, PlanEnterprise}
-	for _, p := range plans {
+	planList := []string{plans.PlanFree, plans.PlanPro, plans.PlanStarter, plans.PlanEnterprise}
+	for _, p := range planList {
 		for _, r := range resources {
 			q := GetPlanQuota(p, r)
 			if q.Limit <= 0 {
@@ -28,24 +29,24 @@ func TestGetPlanQuota_AllPlansHaveAllResources(t *testing.T) {
 }
 
 func TestGetPlanQuota_HigherPlanHasMoreSecrets(t *testing.T) {
-	free := GetPlanQuota(PlanFree, ResourceSecrets).Limit
-	pro := GetPlanQuota(PlanPro, ResourceSecrets).Limit
-	team := GetPlanQuota(PlanTeam, ResourceSecrets).Limit
-	ent := GetPlanQuota(PlanEnterprise, ResourceSecrets).Limit
+	free := GetPlanQuota(plans.PlanFree, ResourceSecrets).Limit
+	pro := GetPlanQuota(plans.PlanPro, ResourceSecrets).Limit
+	team := GetPlanQuota(plans.PlanStarter, ResourceSecrets).Limit
+	ent := GetPlanQuota(plans.PlanEnterprise, ResourceSecrets).Limit
 	if !(free < pro && pro < team && team < ent) {
 		t.Fatalf("expected free<pro<team<ent, got %d %d %d %d", free, pro, team, ent)
 	}
 }
 
 func TestGetPlanQuota_UnknownPlanReturnsZero(t *testing.T) {
-	q := GetPlanQuota(Plan("unknown"), ResourceSecrets)
+	q := GetPlanQuota("unknown", ResourceSecrets)
 	if q.Limit != 0 {
 		t.Fatalf("unknown plan: limit=%d, want 0", q.Limit)
 	}
 }
 
 func TestGetPlanQuota_DynamicCredsHasWindow(t *testing.T) {
-	q := GetPlanQuota(PlanPro, ResourceDynamicCreds)
+	q := GetPlanQuota(plans.PlanPro, ResourceDynamicCreds)
 	if q.Window == 0 {
 		t.Fatal("dynamic creds must have a 30d window")
 	}
@@ -56,7 +57,7 @@ func TestGetPlanQuota_DynamicCredsHasWindow(t *testing.T) {
 
 // fakeStore is a hand-rolled in-memory quota.Store for unit tests.
 type fakeStore struct {
-	plan      Plan
+	plan      string
 	overrides map[Resource]int64
 	secretN   int64
 	tokens    int64
@@ -64,7 +65,7 @@ type fakeStore struct {
 	auditExp  int64
 }
 
-func (f *fakeStore) GetTenantPlan(_ context.Context, _ uuid.UUID) (Plan, error) {
+func (f *fakeStore) GetTenantPlan(_ context.Context, _ uuid.UUID) (string, error) {
 	return f.plan, nil
 }
 func (f *fakeStore) GetOverride(_ context.Context, _ uuid.UUID, r Resource) (int64, time.Duration, bool, error) {
@@ -87,7 +88,7 @@ func (f *fakeStore) CountAuditExportsSince(_ context.Context, _ uuid.UUID, _ tim
 }
 
 func TestEnforcer_SecretCount_BelowLimit(t *testing.T) {
-	store := &fakeStore{plan: PlanFree, secretN: 10}
+	store := &fakeStore{plan: plans.PlanFree, secretN: 10}
 	e := NewEnforcer(store)
 	d, err := e.CheckSecretCount(context.Background(), uuid.New())
 	if err != nil {
@@ -105,7 +106,7 @@ func TestEnforcer_SecretCount_BelowLimit(t *testing.T) {
 }
 
 func TestEnforcer_SecretCount_AtLimit(t *testing.T) {
-	store := &fakeStore{plan: PlanFree, secretN: 25}
+	store := &fakeStore{plan: plans.PlanFree, secretN: 25}
 	e := NewEnforcer(store)
 	d, _ := e.CheckSecretCount(context.Background(), uuid.New())
 	if d.Allowed {
@@ -118,7 +119,7 @@ func TestEnforcer_SecretCount_AtLimit(t *testing.T) {
 
 func TestEnforcer_SecretCount_OverrideWins(t *testing.T) {
 	store := &fakeStore{
-		plan:      PlanFree,
+		plan:      plans.PlanFree,
 		secretN:   50, // already past free default
 		overrides: map[Resource]int64{ResourceSecrets: 100},
 	}
@@ -133,7 +134,7 @@ func TestEnforcer_SecretCount_OverrideWins(t *testing.T) {
 }
 
 func TestEnforcer_HeadersAlwaysPresent(t *testing.T) {
-	store := &fakeStore{plan: PlanPro, secretN: 5}
+	store := &fakeStore{plan: plans.PlanPro, secretN: 5}
 	e := NewEnforcer(store)
 	d, _ := e.CheckSecretCount(context.Background(), uuid.New())
 	if d.Headers["X-RateLimit-Limit"] == "" {
@@ -145,7 +146,7 @@ func TestEnforcer_HeadersAlwaysPresent(t *testing.T) {
 }
 
 func TestEnforcer_DynamicCredsHasReset(t *testing.T) {
-	store := &fakeStore{plan: PlanPro, dynCreds: 100}
+	store := &fakeStore{plan: plans.PlanPro, dynCreds: 100}
 	e := NewEnforcer(store)
 	d, _ := e.CheckDynamicCreds(context.Background(), uuid.New())
 	if !d.Allowed {
@@ -157,7 +158,7 @@ func TestEnforcer_DynamicCredsHasReset(t *testing.T) {
 }
 
 func TestEnforcer_TokensPerSecret(t *testing.T) {
-	store := &fakeStore{plan: PlanFree, tokens: 4}
+	store := &fakeStore{plan: plans.PlanFree, tokens: 4}
 	e := NewEnforcer(store)
 	d, _ := e.CheckTokensPerSecret(context.Background(), uuid.New())
 	if !d.Allowed {

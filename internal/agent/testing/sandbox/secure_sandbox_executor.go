@@ -178,6 +178,21 @@ var runtimeConfigs = map[string]struct {
 		entryPoint:  "node",
 		handlerFile: "handler.js",
 	},
+	"deno": {
+		image:       "denoland/deno:latest",
+		entryPoint:  "deno",
+		handlerFile: "handler.ts",
+	},
+	"bun": {
+		image:       "oven/bun:latest",
+		entryPoint:  "bun",
+		handlerFile: "handler.js",
+	},
+	"ruby": {
+		image:       "ruby:3.3-slim",
+		entryPoint:  "ruby",
+		handlerFile: "handler.rb",
+	},
 }
 
 // Execute runs the code in an isolated gVisor sandbox

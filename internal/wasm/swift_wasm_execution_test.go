@@ -252,10 +252,16 @@ func TestSwiftWASM_InputValidation(t *testing.T) {
 func TestSwiftWASM_DomainAllowlist(t *testing.T) {
 	t.Parallel()
 
-	// Empty allowlist = all domains allowed
+	// Empty allowlist = default-deny (no domains allowed)
 	config := NewDefaultSecurityConfig()
+	if config.IsDomainAllowed("example.com") {
+		t.Error("empty allowlist should deny all domains (default-deny)")
+	}
+
+	// Explicit wildcard = allow all
+	config.AllowedDomains = []string{"*"}
 	if !config.IsDomainAllowed("example.com") {
-		t.Error("empty allowlist should allow all domains")
+		t.Error("wildcard should allow all domains")
 	}
 
 	// With allowlist

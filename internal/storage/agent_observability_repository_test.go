@@ -31,7 +31,6 @@ func (s *AgentObservabilityRepositoryTestSuite) TearDownTest() {
 }
 
 func (s *AgentObservabilityRepositoryTestSuite) TestCreateRun() {
-	ctx := context.Background()
 	tenantID := uuid.New()
 	atlasTenantID := DeriveAtlasTenantID(tenantID)
 
@@ -54,7 +53,6 @@ func (s *AgentObservabilityRepositoryTestSuite) TestCreateRun() {
 }
 
 func (s *AgentObservabilityRepositoryTestSuite) TestGetRun() {
-	ctx := context.Background()
 	tenantID := uuid.New()
 	atlasTenantID := DeriveAtlasTenantID(tenantID)
 
@@ -70,14 +68,14 @@ func (s *AgentObservabilityRepositoryTestSuite) TestGetRun() {
 	err := s.db.GORM.Create(run).Error
 	require.NoError(s.T(), err)
 
-	retrieved, err := s.db.GORM.Where("id = ? AND tenant_id = ?", run.ID, tenantID).First(&ObservabilityRun{}).First(&ObservabilityRun{}).Error
+	retrieved := &ObservabilityRun{}
+	err = s.db.GORM.Where("id = ? AND tenant_id = ?", run.ID, tenantID).First(retrieved).Error
 	require.NoError(s.T(), err)
 	assert.Equal(s.T(), run.ID, retrieved.ID)
 	assert.Equal(s.T(), "atlas-run-456", retrieved.AtlasRunID)
 }
 
 func (s *AgentObservabilityRepositoryTestSuite) TestListRuns() {
-	ctx := context.Background()
 	tenantID := uuid.New()
 	atlasTenantID := DeriveAtlasTenantID(tenantID)
 
@@ -102,7 +100,6 @@ func (s *AgentObservabilityRepositoryTestSuite) TestListRuns() {
 }
 
 func (s *AgentObservabilityRepositoryTestSuite) TestUpdateRunStats() {
-	ctx := context.Background()
 	tenantID := uuid.New()
 	atlasTenantID := DeriveAtlasTenantID(tenantID)
 
@@ -147,7 +144,6 @@ func (s *AgentObservabilityRepositoryTestSuite) TestUpdateRunStats() {
 }
 
 func (s *AgentObservabilityRepositoryTestSuite) TestEndRun() {
-	ctx := context.Background()
 	tenantID := uuid.New()
 	atlasTenantID := DeriveAtlasTenantID(tenantID)
 
@@ -178,7 +174,6 @@ func (s *AgentObservabilityRepositoryTestSuite) TestEndRun() {
 }
 
 func (s *AgentObservabilityRepositoryTestSuite) TestGetConfig() {
-	ctx := context.Background()
 	tenantID := uuid.New()
 	atlasTenantID := DeriveAtlasTenantID(tenantID)
 
@@ -280,7 +275,6 @@ func (s *AgentObservabilityRepositoryTestSuite) TestShouldTrace_ErrorsOnly() {
 }
 
 func (s *AgentObservabilityRepositoryTestSuite) TestDeleteOldRuns() {
-	ctx := context.Background()
 	tenantID := uuid.New()
 	atlasTenantID := DeriveAtlasTenantID(tenantID)
 
@@ -311,7 +305,7 @@ func (s *AgentObservabilityRepositoryTestSuite) TestDeleteOldRuns() {
 	require.NoError(s.T(), err)
 
 	repo := NewAgentObservabilityRepository(s.db.GORM)
-	err = repo.DeleteOldRuns(ctx, tenantID, 90)
+	_, err = repo.DeleteOldRuns(context.Background(), tenantID, 90)
 	require.NoError(s.T(), err)
 
 	var remaining []*ObservabilityRun

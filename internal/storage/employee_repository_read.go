@@ -150,6 +150,7 @@ type (
 		Name        string    `json:"name" gorm:"not null"`
 		Description string    `json:"description" gorm:"type:text"`
 		IsActive    bool      `json:"is_active" gorm:"default:true"`
+		LaunchedAt  *time.Time `json:"launched_at,omitempty"`
 		CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 		UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	}
@@ -162,6 +163,8 @@ type (
 		AccessedAt  time.Time `json:"accessed_at" gorm:"autoCreateTime"`
 	}
 )
+
+func (FounderEarlyAccess) TableName() string { return "founder_early_access" }
 
 // GetDepartmentByID retrieves a department by ID.
 func (r *EmployeeRepository) GetDepartmentByID(ctx context.Context, id int64) (*Department, error) {

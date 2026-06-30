@@ -89,6 +89,8 @@ func (s *Server) registerMCPRoutes(
 	api.HandleFunc("/mcp/settings", mcpGlobalHandler.HandleUpdateMCPSettings).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/mcp/analytics", mcpGlobalHandler.HandleGetMCPAnalytics).Methods("GET", "OPTIONS")
 	api.HandleFunc("/mcp/connections", mcpGlobalHandler.HandleGetMCPConnections).Methods("GET", "OPTIONS")
+	api.HandleFunc("/mcp/connections/{clientType}", mcpGlobalHandler.HandleToggleMCPConnection).Methods("PATCH", "OPTIONS")
+	api.HandleFunc("/mcp/connections/{clientType}/test", mcpGlobalHandler.HandleTestMCPConnection).Methods("POST", "OPTIONS")
 }
 
 // buildMCPHandler constructs a *mcp.Handler with the production store and

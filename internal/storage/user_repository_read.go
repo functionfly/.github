@@ -160,6 +160,8 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*Us
 	var nameNull sql.NullString
 	var bioNull sql.NullString
 	var profileNumberNull sql.NullInt64
+	var isFounderNull sql.NullBool
+	var founderNumberNull sql.NullInt64
 
 	var row *sql.Row
 	if stmt, _ := r.db.GetPreparedStatement("getUserByID"); stmt != nil {
@@ -171,7 +173,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*Us
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &provider, &providerID, &providerData,
 		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt,
-		&nameNull, &bioNull, &lastActiveNull, &profileNumberNull)
+		&nameNull, &bioNull, &lastActiveNull, &profileNumberNull, &isFounderNull, &founderNumberNull)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -189,6 +191,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*Us
 		return nil, err
 	}
 	populateUserNameBioLastActiveProfile(user, nameNull, bioNull, lastActiveNull, profileNumberNull)
+	populateUserFounderFields(user, isFounderNull, founderNumberNull)
 	return user, nil
 }
 

@@ -38,9 +38,17 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		"version": version,
 	}).Info("HandleExecute called")
 
+	// Limit request body to 10 MB to prevent memory exhaustion
+	const maxBodyBytes = 10 << 20 // 10 MB
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+
 	// Parse request body
 	var execReq functionregistry.ExecutionRequest
 	if err := json.NewDecoder(r.Body).Decode(&execReq); err != nil {
+		if err.Error() == "http: request body too large" {
+			h.writeError(w, http.StatusRequestEntityTooLarge, functionregistry.ErrCodeInvalidInput, "Request body too large (max 10MB)")
+			return
+		}
 		h.writeError(w, http.StatusBadRequest, functionregistry.ErrCodeInvalidInput, "Invalid request body")
 		return
 	}

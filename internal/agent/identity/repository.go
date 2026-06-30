@@ -95,6 +95,18 @@ func (r *Repository) GetAgent(ctx context.Context, agentID string) (*AgentIdenti
 	return &agent, nil
 }
 
+func (r *Repository) GetAgentByUUID(ctx context.Context, id uuid.UUID) (*AgentIdentity, error) {
+	var agent AgentIdentity
+	err := r.db.WithContext(ctx).Where("id = ? AND status != ?", id, AgentStatusDeleted).First(&agent).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("agent not found: %s", id)
+		}
+		return nil, fmt.Errorf("failed to get agent: %w", err)
+	}
+	return &agent, nil
+}
+
 // GetAgentByAPIKeyHash retrieves an agent by hashed API key (for auth)
 func (r *Repository) GetAgentByAPIKeyHash(ctx context.Context, apiKey string) (*AgentIdentity, error) {
 	keyHash := hashAPIKey(apiKey)
@@ -190,6 +202,53 @@ func (r *Repository) UpdateAgentStatus(ctx context.Context, agentID string, stat
 		return fmt.Errorf("agent not found: %s", agentID)
 	}
 	return nil
+}
+
+// UpdateAgentRequest holds the fields that can be updated on an agent identity.
+type UpdateAgentRequest struct {
+	Name              *string `json:"name,omitempty"`
+	Description       *string `json:"description,omitempty"`
+	Capabilities      JSONBMap `json:"capabilities,omitempty"`
+	AutonomousEnabled *bool   `json:"autonomous_enabled,omitempty"`
+	EvolutionEnabled  *bool   `json:"evolution_enabled,omitempty"`
+	Model             *string `json:"model,omitempty"`
+}
+
+// UpdateAgent applies partial updates to an agent identity.
+func (r *Repository) UpdateAgent(ctx context.Context, agentID string, req *UpdateAgentRequest) (*AgentIdentity, error) {
+	updates := map[string]interface{}{
+		"updated_at": time.Now(),
+	}
+	if req.Name != nil {
+		updates["name"] = *req.Name
+	}
+	if req.Description != nil {
+		updates["description"] = *req.Description
+	}
+	if req.Capabilities != nil {
+		updates["capabilities"] = req.Capabilities
+	}
+	if req.AutonomousEnabled != nil {
+		updates["autonomous_enabled"] = *req.AutonomousEnabled
+	}
+	if req.EvolutionEnabled != nil {
+		updates["evolution_enabled"] = *req.EvolutionEnabled
+	}
+	if req.Model != nil {
+		updates["model"] = *req.Model
+	}
+
+	result := r.db.WithContext(ctx).Model(&AgentIdentity{}).
+		Where("agent_id = ? AND status != ?", agentID, AgentStatusDeleted).
+		Updates(updates)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to update agent: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return nil, fmt.Errorf("agent not found: %s", agentID)
+	}
+
+	return r.GetAgent(ctx, agentID)
 }
 
 // GetQuotaConfig retrieves the quota config for an agent

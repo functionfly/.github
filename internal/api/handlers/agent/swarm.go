@@ -473,6 +473,7 @@ func marketplaceAgentFromResult(res marketplace.AgentSearchResult) marketplaceAg
 func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	req := marketplace.SearchAgentsRequest{
+		AgentID:      q.Get("agent_id"),
 		PricingModel: q.Get("pricing_model"),
 		SortBy:       q.Get("sort_by"),
 		Limit:        20,
@@ -513,6 +514,14 @@ func (h *SwarmHandler) SearchAgents(w http.ResponseWriter, r *http.Request) {
 		req.Capabilities = strings.Split(c, ",")
 		for i := range req.Capabilities {
 			req.Capabilities[i] = strings.TrimSpace(req.Capabilities[i])
+		}
+	}
+
+	if req.AgentID != "" {
+		if parsedUUID, err := uuid.Parse(req.AgentID); err == nil {
+			if agent, err := h.identityRepo.GetAgentByUUID(r.Context(), parsedUUID); err == nil {
+				req.AgentID = agent.AgentID
+			}
 		}
 	}
 

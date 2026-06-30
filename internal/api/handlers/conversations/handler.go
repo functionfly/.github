@@ -324,11 +324,11 @@ type CreateConversationRequest struct {
 
 // CreateFromThreadRequest is the body for "Move to Private Debug Thread".
 type CreateFromThreadRequest struct {
-	ThreadID string `json:"thread_id"` // Flywheel thread UUID
+	ThreadID string `json:"thread_id"`
 }
 
 // CreateFromThread handles POST /api/v1/conversations/from-thread
-// Creates a conversation linked to a Flywheel thread (move to private debug).
+// Creates a conversation linked to an external thread (move to private debug).
 func (h *Handler) CreateFromThread(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {

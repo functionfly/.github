@@ -68,7 +68,7 @@ func (h *VotesHandler) HandleListVotes(w http.ResponseWriter, r *http.Request) {
 	responses := make([]VoteResponse, 0, len(votes))
 	for _, vote := range votes {
 		var opts []VoteOption
-		if err := json.Unmarshal(vote.Options, &opts); err != nil {
+		if err := json.Unmarshal([]byte(vote.Options), &opts); err != nil {
 			h.log.WithError(err).Warn("Failed to unmarshal vote options")
 			continue
 		}
@@ -80,7 +80,6 @@ func (h *VotesHandler) HandleListVotes(w http.ResponseWriter, r *http.Request) {
 			ID:          vote.ID,
 			Title:       vote.Title,
 			Description: vote.Description,
-			VoteType:    vote.VoteType,
 			Status:      vote.Status,
 			Options:     opts,
 			HasVoted:    hasVoted,
@@ -129,7 +128,7 @@ func (h *VotesHandler) HandleGetVote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var opts []VoteOption
-	if err := json.Unmarshal(vote.Options, &opts); err != nil {
+	if err := json.Unmarshal([]byte(vote.Options), &opts); err != nil {
 		h.log.WithError(err).Warn("Failed to unmarshal vote options")
 	}
 
@@ -143,7 +142,6 @@ func (h *VotesHandler) HandleGetVote(w http.ResponseWriter, r *http.Request) {
 			"id":          vote.ID,
 			"title":       vote.Title,
 			"description": vote.Description,
-			"vote_type":   vote.VoteType,
 			"status":      vote.Status,
 			"options":     opts,
 			"results":     results,
@@ -254,7 +252,7 @@ func (h *VotesHandler) HandleGetResults(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var opts []VoteOption
-	if err := json.Unmarshal(vote.Options, &opts); err != nil {
+	if err := json.Unmarshal([]byte(vote.Options), &opts); err != nil {
 		h.log.WithError(err).Warn("Failed to unmarshal vote options")
 	}
 

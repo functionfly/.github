@@ -73,7 +73,7 @@ func TestValidateCreateRequest(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := h.validateCreateRequest(tt.req)
+			err := h.validateCreateRequest(tt.req, "")
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

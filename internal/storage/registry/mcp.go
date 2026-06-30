@@ -545,12 +545,14 @@ type MCPTransportCount struct {
 
 // MCPConnectionRecord represents a client connection summary.
 type MCPConnectionRecord struct {
-	ClientType         string
-	ClientIcon         string
-	Status             string
-	ConnectedFunctions int
-	TotalInvocations   int64
-	LastConnectedAt    *time.Time
+	ClientType             string
+	ClientIcon             string
+	Status                 string
+	ConnectedFunctions     int
+	TotalInvocations       int64
+	LastConnectedAt        *time.Time
+	AvgLatencyMs           int
+	ConnectedFunctionNames []string
 }
 
 // GetTotalMCPInvocations returns the total number of MCP invocations since the given time.
@@ -728,17 +730,26 @@ func (r *RegistryRepository) GetMCPTransportUsage(ctx context.Context, since tim
 func (r *RegistryRepository) GetMCPConnections(ctx context.Context) ([]MCPConnectionRecord, error) {
 	rows, err := r.db.WithContext(ctx).Raw(`
 		SELECT
-			COALESCE(NULLIF(caller_id, ''), 'unknown') as client_type,
-			COUNT(DISTINCT function_id) as connected_functions,
+			COALESCE(NULLIF(i.caller_id, ''), 'unknown') as client_type,
+			COUNT(DISTINCT i.function_id) as connected_functions,
 			COUNT(*) as total_invocations,
-			MAX(timestamp) as last_connected_at,
+			MAX(i.timestamp) as last_connected_at,
 			CASE
-				WHEN MAX(timestamp) IS NULL THEN 'never'
-				WHEN MAX(timestamp) < NOW() - INTERVAL '7 days' THEN 'stale'
+				WHEN MAX(i.timestamp) IS NULL THEN 'never'
+				WHEN MAX(i.timestamp) < NOW() - INTERVAL '7 days' THEN 'stale'
 				ELSE 'active'
-			END as status
-		FROM registry_mcp_invocations
-		GROUP BY caller_id
+			END as status,
+			COALESCE(ROUND(AVG(i.duration_ms)), 0)::int as avg_latency_ms,
+			COALESCE(
+				(SELECT array_agg(DISTINCT rf.author || '/' || rf.name ORDER BY rf.author || '/' || rf.name)
+				 FROM registry_mcp_invocations mi
+				 JOIN registry_functions rf ON rf.id = mi.function_id
+				 WHERE COALESCE(NULLIF(mi.caller_id, ''), 'unknown') = COALESCE(NULLIF(i.caller_id, ''), 'unknown')
+				),
+				'{}'
+			) as connected_function_names
+		FROM registry_mcp_invocations i
+		GROUP BY i.caller_id
 		ORDER BY total_invocations DESC
 	`).Rows()
 	if err != nil {
@@ -749,8 +760,14 @@ func (r *RegistryRepository) GetMCPConnections(ctx context.Context) ([]MCPConnec
 	var results []MCPConnectionRecord
 	for rows.Next() {
 		var c MCPConnectionRecord
-		if err := rows.Scan(&c.ClientType, &c.ConnectedFunctions, &c.TotalInvocations, &c.LastConnectedAt, &c.Status); err != nil {
+		var functionNames []string
+		if err := rows.Scan(&c.ClientType, &c.ConnectedFunctions, &c.TotalInvocations, &c.LastConnectedAt, &c.Status, &c.AvgLatencyMs, &functionNames); err != nil {
 			return nil, err
+		}
+		if functionNames != nil {
+			c.ConnectedFunctionNames = functionNames
+		} else {
+			c.ConnectedFunctionNames = []string{}
 		}
 		// Set default icon based on client type
 		c.ClientIcon = getClientIcon(c.ClientType)

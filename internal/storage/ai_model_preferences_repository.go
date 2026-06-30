@@ -22,6 +22,7 @@ type TenantAIPreferences struct {
 	UseSameModelEverywhere  bool                       `json:"use_same_model_everywhere"`
 	Defaults                map[string]ModelSelection  `json:"defaults"`
 	EnabledModels           []ModelSelection           `json:"enabled_models"`
+	EnabledProviders        []string                   `json:"enabled_providers"`
 	AllowUserOverrides      bool                       `json:"allow_user_overrides"`
 	RoutingStrategy         string                     `json:"routing_strategy"`
 	UpdatedBy               *uuid.UUID                 `json:"updated_by,omitempty"`
@@ -35,6 +36,7 @@ type TenantAIPreferencesUpdate struct {
 	UseSameModelEverywhere bool                      `json:"use_same_model_everywhere"`
 	Defaults               map[string]ModelSelection `json:"defaults"`
 	EnabledModels          []ModelSelection          `json:"enabled_models"`
+	EnabledProviders       []string                  `json:"enabled_providers"`
 	AllowUserOverrides     bool                      `json:"allow_user_overrides"`
 	RoutingStrategy        string                    `json:"routing_strategy"`
 }
@@ -55,6 +57,7 @@ func DefaultTenantAIPreferences(tenantID uuid.UUID) *TenantAIPreferences {
 		UseSameModelEverywhere: false,
 		Defaults:               map[string]ModelSelection{},
 		EnabledModels:          []ModelSelection{},
+		EnabledProviders:       []string{},
 		AllowUserOverrides:     true,
 		RoutingStrategy:        "quality_first",
 	}
@@ -63,7 +66,7 @@ func DefaultTenantAIPreferences(tenantID uuid.UUID) *TenantAIPreferences {
 func (r *AIModelPreferencesRepository) GetTenantAIPreferences(ctx context.Context, tenantID uuid.UUID) (*TenantAIPreferences, error) {
 	const query = `
 		SELECT profile, global_default, use_same_model_everywhere, defaults, enabled_models,
-		       allow_user_overrides, routing_strategy, updated_by, created_at, updated_at
+		       enabled_providers, allow_user_overrides, routing_strategy, updated_by, created_at, updated_at
 		FROM tenant_ai_preferences
 		WHERE tenant_id = $1`
 
@@ -72,6 +75,7 @@ func (r *AIModelPreferencesRepository) GetTenantAIPreferences(ctx context.Contex
 		globalDefaultRaw           []byte
 		defaultsRaw                []byte
 		enabledModelsRaw           []byte
+		enabledProvidersRaw        []byte
 		updatedBy                  sql.NullString
 	)
 
@@ -81,6 +85,7 @@ func (r *AIModelPreferencesRepository) GetTenantAIPreferences(ctx context.Contex
 		&prefs.UseSameModelEverywhere,
 		&defaultsRaw,
 		&enabledModelsRaw,
+		&enabledProvidersRaw,
 		&prefs.AllowUserOverrides,
 		&prefs.RoutingStrategy,
 		&updatedBy,
@@ -97,6 +102,7 @@ func (r *AIModelPreferencesRepository) GetTenantAIPreferences(ctx context.Contex
 	prefs.TenantID = tenantID
 	prefs.Defaults = map[string]ModelSelection{}
 	prefs.EnabledModels = []ModelSelection{}
+	prefs.EnabledProviders = []string{}
 
 	if len(globalDefaultRaw) > 0 && string(globalDefaultRaw) != "null" && string(globalDefaultRaw) != "{}" {
 		var selection ModelSelection
@@ -109,6 +115,9 @@ func (r *AIModelPreferencesRepository) GetTenantAIPreferences(ctx context.Contex
 	}
 	if len(enabledModelsRaw) > 0 {
 		_ = json.Unmarshal(enabledModelsRaw, &prefs.EnabledModels)
+	}
+	if len(enabledProvidersRaw) > 0 {
+		_ = json.Unmarshal(enabledProvidersRaw, &prefs.EnabledProviders)
 	}
 	if updatedBy.Valid {
 		if id, err := uuid.Parse(updatedBy.String); err == nil {
@@ -123,13 +132,14 @@ func (r *AIModelPreferencesRepository) UpsertTenantAIPreferences(ctx context.Con
 	globalDefaultRaw, _ := json.Marshal(update.GlobalDefault)
 	defaultsRaw, _ := json.Marshal(update.Defaults)
 	enabledModelsRaw, _ := json.Marshal(update.EnabledModels)
+	enabledProvidersRaw, _ := json.Marshal(update.EnabledProviders)
 
 	const query = `
 		INSERT INTO tenant_ai_preferences (
 			tenant_id, profile, global_default, use_same_model_everywhere, defaults, enabled_models,
-			allow_user_overrides, routing_strategy, updated_by, created_at, updated_at
+			enabled_providers, allow_user_overrides, routing_strategy, updated_by, created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()
 		)
 		ON CONFLICT (tenant_id) DO UPDATE SET
 			profile = EXCLUDED.profile,
@@ -137,30 +147,33 @@ func (r *AIModelPreferencesRepository) UpsertTenantAIPreferences(ctx context.Con
 			use_same_model_everywhere = EXCLUDED.use_same_model_everywhere,
 			defaults = EXCLUDED.defaults,
 			enabled_models = EXCLUDED.enabled_models,
+			enabled_providers = EXCLUDED.enabled_providers,
 			allow_user_overrides = EXCLUDED.allow_user_overrides,
 			routing_strategy = EXCLUDED.routing_strategy,
 			updated_by = EXCLUDED.updated_by,
 			updated_at = NOW()
 		RETURNING profile, global_default, use_same_model_everywhere, defaults, enabled_models,
-		          allow_user_overrides, routing_strategy, updated_by, created_at, updated_at`
+		          enabled_providers, allow_user_overrides, routing_strategy, updated_by, created_at, updated_at`
 
 	var (
-		prefs             TenantAIPreferences
-		globalDefaultOut  []byte
-		defaultsOut       []byte
-		enabledModelsOut  []byte
-		updatedByOut      sql.NullString
+		prefs               TenantAIPreferences
+		globalDefaultOut    []byte
+		defaultsOut         []byte
+		enabledModelsOut    []byte
+		enabledProvidersOut []byte
+		updatedByOut        sql.NullString
 	)
 
 	err := r.db.QueryRowContext(ctx, query,
 		tenantID, update.Profile, globalDefaultRaw, update.UseSameModelEverywhere, defaultsRaw,
-		enabledModelsRaw, update.AllowUserOverrides, update.RoutingStrategy, updatedBy,
+		enabledModelsRaw, enabledProvidersRaw, update.AllowUserOverrides, update.RoutingStrategy, updatedBy,
 	).Scan(
 		&prefs.Profile,
 		&globalDefaultOut,
 		&prefs.UseSameModelEverywhere,
 		&defaultsOut,
 		&enabledModelsOut,
+		&enabledProvidersOut,
 		&prefs.AllowUserOverrides,
 		&prefs.RoutingStrategy,
 		&updatedByOut,
@@ -174,6 +187,7 @@ func (r *AIModelPreferencesRepository) UpsertTenantAIPreferences(ctx context.Con
 	prefs.TenantID = tenantID
 	prefs.Defaults = map[string]ModelSelection{}
 	prefs.EnabledModels = []ModelSelection{}
+	prefs.EnabledProviders = []string{}
 
 	if len(globalDefaultOut) > 0 && string(globalDefaultOut) != "null" && string(globalDefaultOut) != "{}" {
 		var selection ModelSelection
@@ -186,6 +200,9 @@ func (r *AIModelPreferencesRepository) UpsertTenantAIPreferences(ctx context.Con
 	}
 	if len(enabledModelsOut) > 0 {
 		_ = json.Unmarshal(enabledModelsOut, &prefs.EnabledModels)
+	}
+	if len(enabledProvidersOut) > 0 {
+		_ = json.Unmarshal(enabledProvidersOut, &prefs.EnabledProviders)
 	}
 	if updatedByOut.Valid {
 		if id, err := uuid.Parse(updatedByOut.String); err == nil {

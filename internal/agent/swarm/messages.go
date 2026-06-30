@@ -52,6 +52,21 @@ func NewMessageService(db *gorm.DB, redisClient *redis.Client) *MessageService {
 	return s
 }
 
+// NewMessageServiceWithoutWorkers creates a MessageService without starting background workers.
+// Use this for testing when you don't want async workers running.
+func NewMessageServiceWithoutWorkers(db *gorm.DB, redisClient *redis.Client) *MessageService {
+	s := &MessageService{
+		db:             db,
+		signingService: NewSigningService(redisClient),
+		redisClient:    redisClient,
+		propagator:     otel.NewPropagator("agent-message"),
+		asyncChan:      make(chan *identity.AgentMessage, asyncSendBufferSize),
+		asyncStopCh:    make(chan struct{}),
+	}
+	// Don't start async workers
+	return s
+}
+
 // startAsyncWorkers starts background workers for async message processing
 func (s *MessageService) startAsyncWorkers() {
 	for i := 0; i < asyncWorkerCount; i++ {

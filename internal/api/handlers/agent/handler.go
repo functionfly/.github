@@ -22,6 +22,7 @@ import (
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/registry"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/redis/go-redis/v9"
 	"github.com/sirupsen/logrus"
@@ -41,6 +42,7 @@ type Handler struct {
 	financialTxRepo *storage.FinancialTransactionRepository
 	notificationSvc *notification.Service
 	toolRegistry    tools.Registry
+	prefsRepo       *storage.AIModelPreferencesRepository
 }
 
 // NewHandler creates a new AEP handler
@@ -51,6 +53,7 @@ func NewHandler(
 	userRepo storage.Repository,
 	notificationSvc *notification.Service,
 ) *Handler {
+	sqlDB, _ := db.DB()
 	return &Handler{
 		identityRepo:    identity.NewRepository(db),
 		quotaEnforcer:   quota.NewEnforcer(db, redisClient),
@@ -63,12 +66,25 @@ func NewHandler(
 		financialTxRepo: storage.NewFinancialTransactionRepository(db),
 		notificationSvc: notificationSvc,
 		toolRegistry:    tools.NewRegistry(),
+		prefsRepo:       storage.NewAIModelPreferencesRepository(sqlDB),
 	}
 }
 
 // SetToolRegistry sets the tool registry (allows injection of custom registry)
 func (h *Handler) SetToolRegistry(r tools.Registry) {
 	h.toolRegistry = r
+}
+
+// getAgentByIDOrUUID looks up an agent by agent_id string first, then falls back to UUID lookup.
+// This matches the behavior of HandleGetAgent so all handlers resolve agents consistently.
+func (h *Handler) getAgentByIDOrUUID(r *http.Request, agentID string) (*identity.AgentIdentity, error) {
+	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	if err != nil {
+		if parsedUUID, parseErr := uuid.Parse(agentID); parseErr == nil {
+			agent, err = h.identityRepo.GetAgentByUUID(r.Context(), parsedUUID)
+		}
+	}
+	return agent, err
 }
 
 // ============================================================
@@ -128,7 +144,7 @@ func (h *Handler) HandleGetAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -143,6 +159,46 @@ func (h *Handler) HandleGetAgent(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":    true,
 		"agent": agent,
+	})
+}
+
+// HandleUpdateAgent updates an agent's mutable fields (name, description, capabilities, etc.)
+// PUT /v1/agent/{agent_id}
+func (h *Handler) HandleUpdateAgent(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+
+	agentID := mux.Vars(r)["agent_id"]
+	existing, err := h.getAgentByIDOrUUID(r, agentID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
+		return
+	}
+
+	if existing.TenantID != claims.TenantID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	var req identity.UpdateAgentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "INVALID_REQUEST", "invalid request body")
+		return
+	}
+
+	updated, err := h.identityRepo.UpdateAgent(r.Context(), agentID, &req)
+	if err != nil {
+		logrus.WithError(err).WithField("agent_id", agentID).Error("failed to update agent")
+		writeError(w, http.StatusInternalServerError, "UPDATE_FAILED", "failed to update agent")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":    true,
+		"agent": updated,
 	})
 }
 
@@ -194,7 +250,7 @@ func (h *Handler) HandleDeleteAgent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -233,7 +289,7 @@ func (h *Handler) HandleUpdateQuota(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -272,7 +328,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -309,7 +365,7 @@ func (h *Handler) HandleUpdatePolicy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -348,7 +404,7 @@ func (h *Handler) HandleGetPolicy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -391,7 +447,7 @@ func (h *Handler) HandleListExecutions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -442,7 +498,7 @@ func (h *Handler) HandleGetExecution(w http.ResponseWriter, r *http.Request) {
 	agentID := mux.Vars(r)["agent_id"]
 	execID := mux.Vars(r)["exec_id"]
 
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -475,7 +531,7 @@ func (h *Handler) HandleGetAnalytics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -520,7 +576,7 @@ func (h *Handler) HandleStartSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	agentID := mux.Vars(r)["agent_id"]
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -565,7 +621,7 @@ func (h *Handler) HandleEndSession(w http.ResponseWriter, r *http.Request) {
 	agentID := mux.Vars(r)["agent_id"]
 	sessionID := mux.Vars(r)["session_id"]
 
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -599,7 +655,7 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 	agentID := mux.Vars(r)["agent_id"]
 	sessionID := mux.Vars(r)["session_id"]
 
-	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	agent, err := h.getAgentByIDOrUUID(r, agentID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
 		return
@@ -700,4 +756,90 @@ func sanitizedAgentErrorMessage(status int, code, contextMsg string) string {
 
 func generateSessionID() string {
 	return "sess_" + strconv.FormatInt(time.Now().UnixNano(), 36)
+}
+
+// HandleListModels returns the curated list of AI models available for agents.
+// GET /v1/ai/models
+func (h *Handler) HandleListModels(w http.ResponseWriter, r *http.Request) {
+	models := []map[string]string{
+		// OpenRouter — frontier
+		{"id": "anthropic/claude-opus-4.7", "name": "Claude Opus 4.7", "provider": "openrouter", "tier": "frontier", "cost": "$$$"},
+		{"id": "anthropic/claude-sonnet-4.6", "name": "Claude Sonnet 4.6", "provider": "openrouter", "tier": "frontier", "cost": "$$"},
+		{"id": "openai/gpt-5.5", "name": "GPT-5.5", "provider": "openrouter", "tier": "frontier", "cost": "$$$"},
+		{"id": "openai/gpt-5.4", "name": "GPT-5.4", "provider": "openrouter", "tier": "frontier", "cost": "$$"},
+		{"id": "google/gemini-3.1-pro", "name": "Gemini 3.1 Pro", "provider": "openrouter", "tier": "frontier", "cost": "$$"},
+		{"id": "deepseek/deepseek-v4-pro", "name": "DeepSeek V4 Pro", "provider": "openrouter", "tier": "frontier", "cost": "$"},
+		{"id": "z-ai/glm-5.2", "name": "GLM 5.2", "provider": "openrouter", "tier": "frontier", "cost": "$$"},
+		{"id": "x-ai/grok-4", "name": "Grok 4", "provider": "openrouter", "tier": "frontier", "cost": "$$"},
+		{"id": "qwen/qwen3.7-plus", "name": "Qwen 3.7 Plus", "provider": "openrouter", "tier": "frontier", "cost": "$$"},
+		{"id": "nex-agi/nex-n2-pro", "name": "Nex N2 Pro", "provider": "openrouter", "tier": "frontier", "cost": "$$"},
+		// OpenRouter — fast
+		{"id": "anthropic/claude-haiku-4", "name": "Claude Haiku 4", "provider": "openrouter", "tier": "fast", "cost": "$"},
+		{"id": "openai/gpt-5-mini", "name": "GPT-5 Mini", "provider": "openrouter", "tier": "fast", "cost": "$"},
+		{"id": "google/gemini-2.5-flash", "name": "Gemini 2.5 Flash", "provider": "openrouter", "tier": "fast", "cost": "$"},
+		{"id": "deepseek/deepseek-v4-flash", "name": "DeepSeek V4 Flash", "provider": "openrouter", "tier": "fast", "cost": "$"},
+		{"id": "meta-llama/llama-3.3-70b-instruct", "name": "Llama 3.3 70B", "provider": "openrouter", "tier": "fast", "cost": "$"},
+		{"id": "mistralai/mistral-large", "name": "Mistral Large", "provider": "openrouter", "tier": "fast", "cost": "$$"},
+		// OpenRouter — reasoning
+		{"id": "openai/o3", "name": "OpenAI o3", "provider": "openrouter", "tier": "reasoning", "cost": "$$$"},
+		{"id": "deepseek/deepseek-r1", "name": "DeepSeek R1", "provider": "openrouter", "tier": "reasoning", "cost": "$"},
+		{"id": "openrouter/free", "name": "Free Models Router", "provider": "openrouter", "tier": "fast", "cost": "free"},
+		{"id": "openai/gpt-oss-120b", "name": "GPT-OSS 120B", "provider": "openrouter", "tier": "reasoning", "cost": "free"},
+		{"id": "nvidia/nemotron-3-super-120b-a12b:free", "name": "Nemotron 3 Super 120B", "provider": "openrouter", "tier": "reasoning", "cost": "free"},
+		{"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "name": "Nemotron 3 Ultra 550B", "provider": "openrouter", "tier": "reasoning", "cost": "free"},
+		// OpenRouter — code
+		{"id": "qwen/qwen3-coder", "name": "Qwen3 Coder", "provider": "openrouter", "tier": "code", "cost": "$$"},
+		{"id": "openai/gpt-5-codex", "name": "GPT-5 Codex", "provider": "openrouter", "tier": "code", "cost": "$$$"},
+		{"id": "cohere/north-mini-code:free", "name": "North Mini Code", "provider": "openrouter", "tier": "code", "cost": "free"},
+		{"id": "moonshotai/kimi-k2.7-code", "name": "Kimi K2.7 Code", "provider": "openrouter", "tier": "code", "cost": "$$"},
+		// Direct — OpenAI
+		{"id": "gpt-4o", "name": "GPT-4o", "provider": "openai", "tier": "fast", "cost": "$$"},
+		{"id": "gpt-4o-mini", "name": "GPT-4o Mini", "provider": "openai", "tier": "fast", "cost": "$"},
+		// Direct — Anthropic
+		{"id": "claude-sonnet-4-6", "name": "Claude Sonnet 4.6", "provider": "anthropic", "tier": "frontier", "cost": "$$"},
+		{"id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "provider": "anthropic", "tier": "fast", "cost": "$$"},
+		{"id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "provider": "anthropic", "tier": "fast", "cost": "$"},
+		// Groq — low latency
+		{"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B (Groq)", "provider": "groq", "tier": "fast", "cost": "$"},
+		{"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "provider": "groq", "tier": "fast", "cost": "$"},
+	}
+
+	if h.prefsRepo != nil {
+		if claims := middleware.GetUserFromContext(r); claims != nil {
+			prefs, err := h.prefsRepo.GetTenantAIPreferences(r.Context(), claims.TenantID)
+			if err == nil {
+				if len(prefs.EnabledProviders) > 0 {
+					allowProv := make(map[string]struct{}, len(prefs.EnabledProviders))
+					for _, p := range prefs.EnabledProviders {
+						allowProv[p] = struct{}{}
+					}
+					filtered := make([]map[string]string, 0, len(models))
+					for _, m := range models {
+						if _, ok := allowProv[m["provider"]]; ok {
+							filtered = append(filtered, m)
+						}
+					}
+					models = filtered
+				}
+				if len(prefs.EnabledModels) > 0 {
+					allow := make(map[string]struct{}, len(prefs.EnabledModels))
+					for _, item := range prefs.EnabledModels {
+						allow[item.Provider+":"+item.ModelID] = struct{}{}
+					}
+					filtered := make([]map[string]string, 0, len(models))
+					for _, m := range models {
+						if _, ok := allow[m["provider"]+":"+m["id"]]; ok {
+							filtered = append(filtered, m)
+						}
+					}
+					models = filtered
+				}
+			}
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":     true,
+		"models": models,
+	})
 }

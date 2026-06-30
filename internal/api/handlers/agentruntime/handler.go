@@ -2,7 +2,6 @@ package agentruntime
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 
 	agentrun "github.com/functionfly/functionfly/internal/agent/runtime"
 	"github.com/functionfly/functionfly/internal/storage"
+	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -18,10 +18,11 @@ import (
 
 // Handler handles agent function API requests
 type Handler struct {
-	repo        *storage.AgentFunctionRepository
-	router      *agentrun.RuntimeRouter
-	billingCtrl BillingController
-	logger      *logrus.Logger
+	repo         *storage.AgentFunctionRepository
+	registryRepo *storageregistry.RegistryRepository
+	router       *agentrun.RuntimeRouter
+	billingCtrl  BillingController
+	logger       *logrus.Logger
 }
 
 // BillingController interface for billing operations
@@ -32,12 +33,13 @@ type BillingController interface {
 }
 
 // NewHandler creates a new agent function handler
-func NewHandler(repo *storage.AgentFunctionRepository, billingCtrl BillingController) *Handler {
+func NewHandler(repo *storage.AgentFunctionRepository, registryRepo *storageregistry.RegistryRepository, billingCtrl BillingController) *Handler {
 	return &Handler{
-		repo:        repo,
-		router:      agentrun.DefaultRuntimeRouter(),
-		billingCtrl: billingCtrl,
-		logger:      logrus.New(),
+		repo:         repo,
+		registryRepo: registryRepo,
+		router:       agentrun.DefaultRuntimeRouter(),
+		billingCtrl:  billingCtrl,
+		logger:       logrus.New(),
 	}
 }
 
@@ -132,13 +134,36 @@ func (h *Handler) HandleGetFunction(w http.ResponseWriter, r *http.Request) {
 	author := vars["author"]
 	name := vars["name"]
 
-	// This would typically look up the function in the registry
-	// For now, return a placeholder response
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":    true,
-		"author": author,
-		"name":  name,
-	})
+	fn, err := h.lookupFunction(author, name)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", fmt.Sprintf("function %s/%s not found", author, name))
+		return
+	}
+
+	resp := map[string]interface{}{
+		"ok":     true,
+		"id":     fn.ID,
+		"author": fn.Author,
+		"name":   fn.Name,
+	}
+	if fn.LatestVersion.Valid {
+		resp["latest_version"] = fn.LatestVersion.String
+	}
+	if fn.Title.Valid {
+		resp["title"] = fn.Title.String
+	}
+	if fn.Description.Valid {
+		resp["description"] = fn.Description.String
+	}
+	if fn.Category.Valid {
+		resp["category"] = fn.Category.String
+	}
+	resp["visibility"] = fn.Visibility
+	resp["price_per_call"] = fn.PricePerCall
+	resp["trust_score"] = fn.TrustScore
+	resp["trust_tier"] = fn.TrustTier
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // AgentExecuteRequest is the request body for agent function execution
@@ -375,23 +400,23 @@ func (h *Handler) HandleToolCall(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// lookupFunction looks up a function by author and name
-// This is a simplified version - would normally query the registry
+// lookupFunction looks up a function by author and name from the registry.
 func (h *Handler) lookupFunction(author, name string) (*storage.RegistryFunction, error) {
-	// Simplified - in production this would query the registry
-	return &storage.RegistryFunction{
-		ID:          uuid.New(),
-		Author:      author,
-		Name:        name,
-		LatestVersion: sql.NullString{String: "1.0.0", Valid: true},
-		Description:  sql.NullString{String: fmt.Sprintf("Function %s/%s", author, name), Valid: true},
-	}, nil
+	if h.registryRepo == nil {
+		return nil, fmt.Errorf("registry repository not configured")
+	}
+	fn, err := h.registryRepo.GetFunctionByAuthorName(context.Background(), author, name)
+	if err != nil {
+		return nil, fmt.Errorf("function %s/%s not found: %w", author, name, err)
+	}
+	return fn, nil
 }
 
-// getFunctionCategory returns the category for a function
+// getFunctionCategory returns the category for a function from its registry record.
 func (h *Handler) getFunctionCategory(fn *storage.RegistryFunction) string {
-	// Simplified - would normally look up from agent_functions table
-	// Default to compute for unknown functions
+	if fn.Category.Valid && fn.Category.String != "" {
+		return fn.Category.String
+	}
 	return string(agentrun.RuntimeTypeCompute)
 }
 

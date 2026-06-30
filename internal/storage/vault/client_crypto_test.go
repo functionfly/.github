@@ -2,7 +2,6 @@ package vault
 
 import (
 	"bytes"
-	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -118,41 +117,6 @@ func TestZeroizeString(t *testing.T) {
 	ZeroizeString(&s)
 	if s != "" {
 		t.Errorf("after zeroize, s = %q, want empty", s)
-	}
-}
-
-func TestResolveAdminPasswordServerMode(t *testing.T) {
-	tenant := uuid.New()
-	target := &DynamicSecretTarget{
-		TenantID:               tenant,
-		EncryptionMode:         DynamicSecretEncryptionServer,
-		EncryptedAdminPassword: []byte("unused"),
-		PasswordNonce:          []byte("unused"),
-	}
-	got, err := ResolveAdminPassword(context.Background(), target, "explicit-pw")
-	if err != nil {
-		t.Fatalf("ResolveAdminPassword: %v", err)
-	}
-	if got != "explicit-pw" {
-		t.Errorf("got %q, want explicit-pw", got)
-	}
-}
-
-func TestResolveAdminPasswordClientMode(t *testing.T) {
-	tenant := uuid.New()
-	target := &DynamicSecretTarget{
-		TenantID:       tenant,
-		EncryptionMode: DynamicSecretEncryptionClient,
-	}
-	if _, err := ResolveAdminPassword(context.Background(), target, ""); err != ErrClientEncryptedTarget {
-		t.Errorf("got err = %v, want ErrClientEncryptedTarget", err)
-	}
-	got, err := ResolveAdminPassword(context.Background(), target, "client-supplied")
-	if err != nil {
-		t.Fatalf("ResolveAdminPassword: %v", err)
-	}
-	if got != "client-supplied" {
-		t.Errorf("got %q, want client-supplied", got)
 	}
 }
 

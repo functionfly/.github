@@ -226,8 +226,8 @@ func TestClaims_TenantID(t *testing.T) {
 	assert.Equal(t, user.TenantID, claims.TenantID)
 }
 
-// TestClaims_Role tests that Role claim is properly set
-func TestClaims_Role(t *testing.T) {
+// TestClaims_Role_AdminRole tests that Role claim is properly set for admin users
+func TestClaims_Role_AdminRole(t *testing.T) {
 	authSvc := mockAuthServiceForJWT("test-secret-key")
 	user := mockAdminUser()
 
@@ -235,20 +235,6 @@ func TestClaims_Role(t *testing.T) {
 	require.NoError(t, err)
 
 	claims, err := authSvc.ValidateToken(context.Background(), token)
-	require.NoError(t, err)
-
-	assert.Equal(t, user.TenantID, claims.TenantID)
-}
-
-// TestClaims_Role tests that Role claim is properly set
-func TestClaims_Role(t *testing.T) {
-	authSvc := mockAuthServiceForJWT("test-secret-key")
-	user := mockAdminUser()
-
-	token, err := authSvc.GenerateToken(user)
-	require.NoError(t, err)
-
-	claims, err := authSvc.ValidateToken(token)
 	require.NoError(t, err)
 
 	assert.Equal(t, user.Role, claims.Role)

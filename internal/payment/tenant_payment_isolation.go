@@ -563,6 +563,20 @@ type BundlePaymentRequirements struct {
 	ConnectAccountEnabled bool     `json:"connect_account_enabled"`
 }
 
+// ValidateBundlePaymentRequirements validates that tenant config meets bundle payment requirements.
+func ValidateBundlePaymentRequirements(req *BundlePaymentRequirements, config *storage.TenantStripeConfig) error {
+	if req == nil {
+		return fmt.Errorf("bundle payment requirements not provided")
+	}
+	if config == nil {
+		return fmt.Errorf("tenant stripe config is required")
+	}
+	if req.IsolatedPayments && !config.IsolatedPaymentEnabled {
+		return fmt.Errorf("isolated payments but tenant does not have them enabled")
+	}
+	return nil
+}
+
 // GetStripePrice retrieves a Stripe price by ID with tenant isolation context.
 func GetStripePrice(ctx context.Context, priceID string) (*stripe.Price, error) {
 	if !strings.HasPrefix(priceID, "price_") {

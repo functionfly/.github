@@ -1,10 +1,14 @@
 package frg
 
 import (
+	"crypto/ed25519"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
+	"github.com/fxamacker/cbor/v2"
 	"github.com/nats-io/nats.go"
 	"github.com/sirupsen/logrus"
 )
@@ -50,6 +54,8 @@ type RuntimeSubscriberConfig struct {
 	ExecutionResultSubjects []string
 	// Heartbeat timeout — how long before a runtime is considered stale
 	HeartbeatTimeout time.Duration
+	// TrustedPublicKeys is a list of base64-encoded ED25519 public keys for verifying signed messages
+	TrustedPublicKeys []string
 }
 
 // DefaultRuntimeSubscriberConfig returns default configuration
@@ -78,6 +84,13 @@ type RuntimeEventHandlers struct {
 	OnRuntimeStatus    func(RuntimeStatusReport)
 }
 
+// SignedNATSMessage represents a signed NATS message envelope
+type SignedNATSMessage struct {
+	Payload   []byte `json:"payload"`
+	Signature string `json:"signature"`
+	PublicKey string `json:"public_key"`
+}
+
 // RuntimeSubscriber subscribes to NATS messages from Prism/SAR/Kotlin runtimes
 // and dispatches them to registered handlers.
 type RuntimeSubscriber struct {
@@ -85,6 +98,7 @@ type RuntimeSubscriber struct {
 	config        *RuntimeSubscriberConfig
 	handlers      RuntimeEventHandlers
 	subscriptions []*nats.Subscription
+	trustedKeys   map[string]ed25519.PublicKey
 	mu            sync.Mutex
 	running       bool
 }
@@ -94,11 +108,74 @@ func NewRuntimeSubscriber(nc *nats.Conn, config *RuntimeSubscriberConfig, handle
 	if config == nil {
 		config = DefaultRuntimeSubscriberConfig()
 	}
-	return &RuntimeSubscriber{
-		nc:       nc,
-		config:   config,
-		handlers: handlers,
+
+	trustedKeys := make(map[string]ed25519.PublicKey)
+	for _, pubKeyStr := range config.TrustedPublicKeys {
+		pubKey, err := base64.StdEncoding.DecodeString(pubKeyStr)
+		if err != nil {
+			continue // Skip invalid base64
+		}
+		if len(pubKey) == ed25519.PublicKeySize {
+			trustedKeys[pubKeyStr] = ed25519.PublicKey(pubKey)
+		}
 	}
+
+	return &RuntimeSubscriber{
+		nc:          nc,
+		config:      config,
+		handlers:    handlers,
+		trustedKeys:  trustedKeys,
+	}
+}
+
+// decodeMessage decodes a message into the given target type.
+// It handles JSON, CBOR, and signed message formats.
+func (rs *RuntimeSubscriber) decodeMessage(data []byte, out interface{}) error {
+	// Try to detect if this is a signed envelope
+	var signed SignedNATSMessage
+	if err := json.Unmarshal(data, &signed); err == nil && signed.Payload != nil {
+		// This is a signed envelope
+		if err := rs.verifySignature(signed); err != nil {
+			return err
+		}
+		data = signed.Payload
+	}
+
+	// Try CBOR first
+	var cborErr error
+	if out != nil {
+		cborErr = cbor.Unmarshal(data, out)
+		if cborErr == nil {
+			return nil
+		}
+	}
+
+	// Fall back to JSON
+	return json.Unmarshal(data, out)
+}
+
+// verifySignature verifies a signed message envelope
+func (rs *RuntimeSubscriber) verifySignature(signed SignedNATSMessage) error {
+	if len(rs.trustedKeys) == 0 {
+		// No trusted keys configured, skip verification
+		return nil
+	}
+
+	pubKey, ok := rs.trustedKeys[signed.PublicKey]
+	if !ok {
+		return fmt.Errorf("untrusted public key: %s", signed.PublicKey)
+	}
+
+	sig, err := base64.StdEncoding.DecodeString(signed.Signature)
+	if err != nil {
+		return fmt.Errorf("invalid signature encoding: %w", err)
+	}
+
+	if !ed25519.Verify(pubKey, signed.Payload, sig) {
+		return fmt.Errorf("signature verification failed")
+	}
+
+	return nil
 }
 
 // Start begins subscribing to all configured NATS subjects

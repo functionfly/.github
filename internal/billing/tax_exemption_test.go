@@ -2,13 +2,13 @@ package billing
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUSStateCodes(t *testing.T) {
@@ -335,7 +335,7 @@ func (e *validationError) Error() string {
 
 type mockStorage struct{}
 
-func (m *mockStorage) Upload(ctx context.Context, key string, content interface{}, contentType string, size int64) (string, error) {
+func (m *mockStorage) Upload(ctx context.Context, key string, content io.Reader, contentType string, size int64) (string, error) {
 	return "https://storage.example.com/" + key, nil
 }
 

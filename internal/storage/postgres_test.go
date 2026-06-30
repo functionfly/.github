@@ -108,22 +108,24 @@ func (s *PostgresTestSuite) createTenant(name, domain, adminEmail string) (strin
 
 func (s *PostgresTestSuite) getTenant(id string) (*Tenant, error) {
 	repo := s.db.Repository()
-	tenantID, err := parseUUID(id)
+	ctx := context.Background()
+	tenantID, err := parseUUIDLocal(id)
 	if err != nil {
 		return nil, err
 	}
-	return repo.GetTenantByID(tenantID)
+	return repo.GetTenantByID(ctx, tenantID)
 }
 
 func (s *PostgresTestSuite) listTenants() ([]*Tenant, error) {
 	repo := s.db.Repository()
-	return repo.ListTenants()
+	ctx := context.Background()
+	return repo.ListTenants(ctx)
 }
 
 func (s *PostgresTestSuite) updateTenant(id, name, domain string) error {
 	repo := s.db.Repository()
 	ctx := context.Background()
-	tenantID, err := parseUUID(id)
+	tenantID, err := parseUUIDLocal(id)
 	if err != nil {
 		return err
 	}
@@ -137,7 +139,7 @@ func (s *PostgresTestSuite) updateTenant(id, name, domain string) error {
 func (s *PostgresTestSuite) deleteTenant(id string) error {
 	repo := s.db.Repository()
 	ctx := context.Background()
-	tenantID, err := parseUUID(id)
+	tenantID, err := parseUUIDLocal(id)
 	if err != nil {
 		return err
 	}
@@ -146,7 +148,8 @@ func (s *PostgresTestSuite) deleteTenant(id string) error {
 
 func (s *PostgresTestSuite) createUser(tenantID, username, email, hashedPassword string, isAdmin bool) (string, error) {
 	repo := s.db.Repository()
-	user, err := repo.CreateUser(email, hashedPassword, parseUUIDMust(tenantID))
+	ctx := context.Background()
+	user, err := repo.CreateUser(ctx, email, hashedPassword, parseUUIDMust(tenantID))
 	if err != nil {
 		return "", err
 	}
@@ -155,17 +158,19 @@ func (s *PostgresTestSuite) createUser(tenantID, username, email, hashedPassword
 
 func (s *PostgresTestSuite) getUser(id string) (*User, error) {
 	repo := s.db.Repository()
-	userID, err := parseUUID(id)
+	ctx := context.Background()
+	userID, err := parseUUIDLocal(id)
 	if err != nil {
 		return nil, err
 	}
-	return repo.GetUserByID(userID)
+	return repo.GetUserByID(ctx, userID)
 }
 
 func (s *PostgresTestSuite) authenticateUser(username, passwordHash string) (*User, error) {
 	// Simple implementation - find user by email and check password
 	repo := s.db.Repository()
-	user, err := repo.GetUserByEmail(username) // Assuming username is email for now
+	ctx := context.Background()
+	user, err := repo.GetUserByEmail(ctx, username) // Assuming username is email for now
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +183,8 @@ func (s *PostgresTestSuite) authenticateUser(username, passwordHash string) (*Us
 
 func (s *PostgresTestSuite) createApp(tenantID, name, description string) (string, error) {
 	repo := s.db.Repository()
-	app, err := repo.CreateApp(name, name, parseUUIDMust(tenantID)) // Using name as slug
+	ctx := context.Background()
+	app, err := repo.CreateApp(ctx, name, name, parseUUIDMust(tenantID)) // Using name as slug
 	if err != nil {
 		return "", err
 	}
@@ -187,26 +193,29 @@ func (s *PostgresTestSuite) createApp(tenantID, name, description string) (strin
 
 func (s *PostgresTestSuite) getApp(id string) (*App, error) {
 	repo := s.db.Repository()
-	appID, err := parseUUID(id)
+	ctx := context.Background()
+	appID, err := parseUUIDLocal(id)
 	if err != nil {
 		return nil, err
 	}
-	return repo.GetAppByID(appID)
+	return repo.GetAppByID(ctx, appID)
 }
 
 func (s *PostgresTestSuite) listAppsByTenant(tenantID string) ([]*App, error) {
 	repo := s.db.Repository()
-	tID, err := parseUUID(tenantID)
+	ctx := context.Background()
+	tID, err := parseUUIDLocal(tenantID)
 	if err != nil {
 		return nil, err
 	}
-	return repo.ListAppsByTenant(tID)
+	return repo.ListAppsByTenant(ctx, tID)
 }
 
 func (s *PostgresTestSuite) createBackend(appID, name, provider, config string, enabled bool) (string, error) {
 	repo := s.db.Repository()
+	ctx := context.Background()
 	appUUID := parseUUIDMust(appID)
-	backend, err := repo.CreateBackend(appUUID, provider, provider, "", "", nil) // Simplified
+	backend, err := repo.CreateBackend(ctx, appUUID, provider, provider, "", "", nil) // Simplified
 	if err != nil {
 		return "", err
 	}
@@ -215,32 +224,37 @@ func (s *PostgresTestSuite) createBackend(appID, name, provider, config string, 
 
 func (s *PostgresTestSuite) getBackend(id string) (*Backend, error) {
 	repo := s.db.Repository()
-	backendID, err := parseUUID(id)
+	ctx := context.Background()
+	backendID, err := parseUUIDLocal(id)
 	if err != nil {
 		return nil, err
 	}
-	return repo.GetBackendByID(backendID)
+	return repo.GetBackendByID(ctx, backendID)
 }
 
 func (s *PostgresTestSuite) getAllEnabledBackends() ([]*Backend, error) {
 	repo := s.db.Repository()
-	return repo.GetAllEnabledBackends()
+	ctx := context.Background()
+	return repo.GetAllEnabledBackends(ctx)
 }
 
 func (s *PostgresTestSuite) recordHealthCheck(backendID string, ok bool, latencyMs int, message string) error {
 	repo := s.db.Repository()
+	ctx := context.Background()
 	backendUUID := parseUUIDMust(backendID)
-	return repo.InsertHealthCheck(backendUUID, ok, 200, latencyMs, message)
+	return repo.InsertHealthCheck(ctx, backendUUID, ok, 200, latencyMs, message)
 }
 
 func (s *PostgresTestSuite) getRecentHealthChecks(backendID string, limit int) ([]*HealthCheck, error) {
 	repo := s.db.Repository()
+	ctx := context.Background()
 	backendUUID := parseUUIDMust(backendID)
-	return repo.GetRecentHealthChecks(backendUUID, limit)
+	return repo.GetRecentHealthChecks(ctx, backendUUID, limit)
 }
 
 func (s *PostgresTestSuite) updateCircuitState(backendID string, success bool) error {
 	repo := s.db.Repository()
+	ctx := context.Background()
 	backendUUID := parseUUIDMust(backendID)
 	state := &CircuitState{
 		BackendID: backendUUID,
@@ -250,13 +264,14 @@ func (s *PostgresTestSuite) updateCircuitState(backendID string, success bool) e
 	} else {
 		state.FailCount = 1
 	}
-	return repo.UpsertCircuitState(state)
+	return repo.UpsertCircuitState(ctx, state)
 }
 
 func (s *PostgresTestSuite) getCircuitState(backendID string) (*CircuitState, error) {
 	repo := s.db.Repository()
+	ctx := context.Background()
 	backendUUID := parseUUIDMust(backendID)
-	return repo.GetCircuitState(backendUUID)
+	return repo.GetCircuitState(ctx, backendUUID)
 }
 
 // Transactional versions
@@ -271,7 +286,7 @@ func (s *PostgresTestSuite) createAppTx(tx *sql.Tx, tenantID, name, description 
 }
 
 // Helper functions
-func parseUUID(s string) (uuid.UUID, error) {
+func parseUUIDLocal(s string) (uuid.UUID, error) {
 	return uuid.Parse(s)
 }
 

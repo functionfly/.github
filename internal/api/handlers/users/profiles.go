@@ -371,9 +371,11 @@ func (h *Handler) HandleGetMe(w http.ResponseWriter, r *http.Request) {
 		"updatedAt":     user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"profileNumber": getInt(user.ProfileNumber),
 		"role":          user.Role, // Platform admin role for badge display
+		"founderNumber": getInt(user.FounderNumber),
 		"createdAt":     user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 	h.attachProfileStats(r.Context(), resp, user.ID)
+	h.applyProfileVisibility(r.Context(), resp, user.ID)
 	writeJSON(w, http.StatusOK, resp)
 }
 

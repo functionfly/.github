@@ -32,7 +32,8 @@ func (s *Service) GetOrCreateWallet(ctx context.Context, agentID string) (*ident
 		return nil, err
 	}
 
-	// Create wallet
+	// Create wallet (deprecated_at required by agent_wallets_deprecated_check constraint)
+	now := time.Now()
 	wallet = identity.AgentWallet{
 		ID:               uuid.New(),
 		AgentID:          agentID,
@@ -40,8 +41,9 @@ func (s *Service) GetOrCreateWallet(ctx context.Context, agentID string) (*ident
 		EscrowBalanceUSD: 0,
 		TotalEarnedUSD:   0,
 		TotalSpentUSD:    0,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		DeprecatedAt:     &now,
+		CreatedAt:        now,
+		UpdatedAt:        now,
 	}
 	if err := s.db.WithContext(ctx).Create(&wallet).Error; err != nil {
 		return nil, err
@@ -77,7 +79,8 @@ func (s *Service) Credit(ctx context.Context, agentID string, amount float64, tr
 	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 		Where("agent_id = ?", agentID).First(&wallet).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			// Create wallet if not exists, within transaction
+			// Create wallet if not exists, within transaction (deprecated_at required by constraint)
+			now := time.Now()
 			wallet = identity.AgentWallet{
 				ID:               uuid.New(),
 				AgentID:          agentID,
@@ -85,8 +88,9 @@ func (s *Service) Credit(ctx context.Context, agentID string, amount float64, tr
 				EscrowBalanceUSD: 0,
 				TotalEarnedUSD:   0,
 				TotalSpentUSD:    0,
-				CreatedAt:        time.Now(),
-				UpdatedAt:        time.Now(),
+				DeprecatedAt:     &now,
+				CreatedAt:        now,
+				UpdatedAt:        now,
 			}
 			if err := tx.Create(&wallet).Error; err != nil {
 				return nil, err

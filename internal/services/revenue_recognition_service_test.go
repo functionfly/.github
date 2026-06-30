@@ -137,8 +137,7 @@ func TestCreateOverTimeSchedules_MonthsCalculation(t *testing.T) {
 
 func TestAllocateAndSchedule_Validation(t *testing.T) {
 	svc := &RevenueRecognitionService{
-		repo:      nil,
-		txManager: nil,
+		repo: nil,
 	}
 
 	tests := []struct {

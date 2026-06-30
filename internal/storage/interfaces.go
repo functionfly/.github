@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/functionfly/functionfly/internal/types"
+	"github.com/google/uuid"
 )
 
 // PgNotification is re-exported from the types package.
@@ -1351,6 +1351,22 @@ type Repository interface {
 	CreateEmployeeCareerProgress(ctx context.Context, prog *EmployeeCareerProgress) (*EmployeeCareerProgress, error)
 	GetCareerTimeline(ctx context.Context, employeeID uuid.UUID) ([]*CareerTimelineEvent, error)
 	CreateCareerTimelineEvent(ctx context.Context, ev *CareerTimelineEvent) (*CareerTimelineEvent, error)
+
+	// Founder operations
+	GetFounderCount(ctx context.Context) (int, error)
+	GetFounderRank(ctx context.Context, userID uuid.UUID) (int, error)
+	AssignFounderStatus(ctx context.Context, userID uuid.UUID) (int, error)
+	GetFoundersLeaderboard(ctx context.Context, limit int) ([]*User, int, error)
+	GetFounderEarlyAccessFeatures(ctx context.Context) ([]*FounderEarlyAccessFeature, error)
+	GetFounderEarlyAccessFeatureBySlug(ctx context.Context, slug string) (*FounderEarlyAccessFeature, error)
+	GetUserFounderEarlyAccess(ctx context.Context, userID uuid.UUID) ([]*FounderEarlyAccess, error)
+	HasUserClaimedEarlyAccess(ctx context.Context, userID uuid.UUID, slug string) (bool, error)
+	ClaimFounderEarlyAccess(ctx context.Context, userID uuid.UUID, feature *FounderEarlyAccessFeature) error
+	ListActiveFounderVotes(ctx context.Context) ([]*FounderVote, error)
+	GetFounderVote(ctx context.Context, voteID uuid.UUID) (*FounderVote, error)
+	GetFounderVoteResponse(ctx context.Context, voteID, userID uuid.UUID) (*FounderVoteResponse, error)
+	GetFounderVoteResults(ctx context.Context, voteID uuid.UUID) (map[string]int, int, error)
+	CastFounderVote(ctx context.Context, voteID, userID uuid.UUID, optionID string) error
 }
 
 // Untyped re-exports of typed string constants from the types package.

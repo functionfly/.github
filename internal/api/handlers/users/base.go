@@ -72,6 +72,9 @@ func (h *Handler) applyProfileVisibility(ctx context.Context, profile map[string
 		profile["companyName"] = ""
 		profile["jobTitle"] = ""
 	}
+	if !boolSetting(settings, "showFounderBadge") {
+		profile["founderNumber"] = 0
+	}
 }
 
 // getPublishedFunctions fetches published registry functions for a given author/username.

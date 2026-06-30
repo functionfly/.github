@@ -64,7 +64,7 @@ func TestDunningManager_InitiateDunningWorkflow(t *testing.T) {
 		WithArgs("default").
 		WillReturnRows(scheduleRows)
 
-	existingRows := sqlmock.NewRows([]string{"id", "tenant_id"})
+	_ = sqlmock.NewRows([]string{"id", "tenant_id"})
 	mock.ExpectQuery(`SELECT .+ FROM payment_retries WHERE invoice_id = \$1`).
 		WithArgs("inv_123").
 		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id"}))
@@ -484,6 +484,16 @@ func TestGetAdminEmails(t *testing.T) {
 	assert.Contains(t, emails, "finance@example.com")
 }
 
+type mockNotificationSvc struct{}
+
+func (m *mockNotificationSvc) SendBillingAlert(ctx context.Context, email, alertType string, data map[string]interface{}) error {
+	return nil
+}
+
+func (m *mockNotificationSvc) Send(ctx context.Context, req notification.SendRequest) (*notification.Notification, error) {
+	return nil, nil
+}
+
 type mockUserRepo struct{}
 
 func (m *mockUserRepo) UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID, status string) error {
@@ -498,86 +508,12 @@ func (m *mockUserRepo) UpdateBundleSubscription(ctx context.Context, sub *storag
 	return nil
 }
 
-func (m *mockUserRepo) ListActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]storage.User, error) {
-	return []storage.User{
+func (m *mockUserRepo) ListActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]*storage.User, error) {
+	return []*storage.User{
 		{ID: uuid.New(), Email: "admin@example.com", Role: "owner"},
 	}, nil
 }
 
-func (m *mockUserRepo) GetTenantByID(tenantID uuid.UUID) (*storage.Tenant, error) {
+func (m *mockUserRepo) GetTenantByID(ctx context.Context, tenantID uuid.UUID) (*storage.Tenant, error) {
 	return &storage.Tenant{ID: tenantID, Name: "Test Tenant"}, nil
-}
-
-func (m *mockUserRepo) GetTenantByDomain(domain string) (*storage.Tenant, error) {
-	return nil, nil
-}
-
-func (m *mockUserRepo) CreateTenant(tenant *storage.Tenant) error {
-	return nil
-}
-
-func (m *mockUserRepo) UpdateTenant(tenant *storage.Tenant) error {
-	return nil
-}
-
-func (m *mockUserRepo) ListTenants(limit, offset int) ([]storage.Tenant, int64, error) {
-	return nil, 0, nil
-}
-
-func (m *mockUserRepo) CreateUser(user *storage.User) error {
-	return nil
-}
-
-func (m *mockUserRepo) UpdateUser(user *storage.User) error {
-	return nil
-}
-
-func (m *mockUserRepo) GetUserByID(id uuid.UUID) (*storage.User, error) {
-	return nil, nil
-}
-
-func (m *mockUserRepo) GetUserByEmail(email string) (*storage.User, error) {
-	return nil, nil
-}
-
-func (m *mockUserRepo) ListUsersByTenant(tenantID uuid.UUID, limit, offset int) ([]storage.User, int64, error) {
-	return nil, 0, nil
-}
-
-func (m *mockUserRepo) DeleteUser(id uuid.UUID) error {
-	return nil
-}
-
-func (m *mockUserRepo) GetRepository() interface{} {
-	return nil
-}
-
-func (m *mockUserRepo) LogAuditEvent(ctx context.Context, event *storage.AuditEvent) error {
-	return nil
-}
-
-func (m *mockUserRepo) ListSecurityScans(limit, offset int, filters map[string]interface{}) ([]*storage.SecurityScan, error) {
-	return nil, nil
-}
-
-func (m *mockUserRepo) GetVulnerabilities(filters map[string]interface{}) ([]*storage.Vulnerability, error) {
-	return nil, nil
-}
-
-func (m *mockUserRepo) GetVulnerabilityByID(id uuid.UUID) (*storage.Vulnerability, error) {
-	return nil, nil
-}
-
-func (m *mockUserRepo) UpdateVulnerability(id uuid.UUID, updates map[string]interface{}) (*storage.Vulnerability, error) {
-	return nil, nil
-}
-
-type mockNotificationSvc struct{}
-
-func (m *mockNotificationSvc) SendBillingAlert(ctx context.Context, email, alertType string, data map[string]interface{}) error {
-	return nil
-}
-
-func (m *mockNotificationSvc) Send(ctx context.Context, req notification.SendRequest) (string, error) {
-	return "", nil
 }

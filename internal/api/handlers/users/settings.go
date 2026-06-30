@@ -75,6 +75,7 @@ func getDefaultSettings() map[string]interface{} {
 		"showCompany":           true,
 		"showActivity":          true,
 		"showAnalytics":         true,
+		"showFounderBadge":      true,
 		"emailNotifications":    true,
 		"pushNotifications":     false,
 		"notifyOnFollow":        true,
@@ -283,6 +284,7 @@ func (h *Handler) HandlePatchUserSettingsVisibility(w http.ResponseWriter, r *ht
 		"showCompany",
 		"showActivity",
 		"showAnalytics",
+		"showFounderBadge",
 	}
 
 	for _, field := range visibilityFields {
@@ -546,6 +548,7 @@ func (h *Handler) HandlePatchUserSettingsVisibilityMe(w http.ResponseWriter, r *
 		"showCompany",
 		"showActivity",
 		"showAnalytics",
+		"showFounderBadge",
 	}
 
 	for _, field := range visibilityFields {

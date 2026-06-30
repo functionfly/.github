@@ -174,6 +174,14 @@ func (c *AIModelCostConfig) ComputeCostWithMarkup(provider, model string, inputT
 	return baseCost * c.MarkupMultiplier()
 }
 
+// ComputeCostBYOK returns 0 for BYOK calls (user pays provider directly).
+func (c *AIModelCostConfig) ComputeCostBYOK(provider, model string, inputTokens, outputTokens int, isBYOK bool) float64 {
+	if isBYOK {
+		return 0
+	}
+	return c.ComputeCostWithMarkup(provider, model, inputTokens, outputTokens)
+}
+
 // MarkupMultiplier returns the markup as a multiplier (e.g. 1.25 for 25%).
 func (c *AIModelCostConfig) MarkupMultiplier() float64 {
 	return 1.0 + (float64(c.MarkupPercent) / 100.0)

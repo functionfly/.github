@@ -70,7 +70,7 @@ func newE2ETestEnv(t *testing.T) *e2eTestEnv {
 	swarmService := swarm.NewService(db, identityRepo, walletService)
 
 	// Create lifecycle service
-	lifecycleSvc := lifecycle.NewService(db, nil, logger)
+	lifecycleSvc := lifecycle.NewService(db, nil, logger, identityRepo)
 
 	// Create autonomy service
 	autonomySvc := autonomy.NewService(db)
@@ -702,7 +702,7 @@ func TestAgentLifecycle(t *testing.T) {
 		require.NoError(t, err)
 
 		stateSnapshot := lifecycle.JSONMap{"tasks_completed": 5, "errors": 0}
-		err = env.lifecycleSvc.RecordHeartbeat(ctx, agent.AgentID, stateSnapshot)
+		err = env.lifecycleSvc.RecordHeartbeat(ctx, agent.AgentID, "", stateSnapshot)
 		require.NoError(t, err)
 
 		isAlive := env.lifecycleSvc.IsAgentAlive(ctx, agent.AgentID)
@@ -806,7 +806,7 @@ func TestAgentLifecycle(t *testing.T) {
 		err = env.lifecycleSvc.RegisterAgent(ctx, agent.AgentID)
 		require.NoError(t, err)
 
-		err = env.lifecycleSvc.RecordHeartbeat(ctx, agent.AgentID, nil)
+		err = env.lifecycleSvc.RecordHeartbeat(ctx, agent.AgentID, "", nil)
 		require.NoError(t, err)
 
 		events, err := env.lifecycleSvc.GetEvents(ctx, agent.AgentID, 10)

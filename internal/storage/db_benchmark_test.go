@@ -24,7 +24,7 @@ func BenchmarkUserOperations(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			email := fmt.Sprintf("user%d@example.com", i)
 			passwordHash := fmt.Sprintf("hash%d", i)
-			user, err := db.CreateUser(email, passwordHash, tenantID)
+			user, err := db.CreateUser(context.Background(), email, passwordHash, tenantID)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -38,7 +38,7 @@ func BenchmarkUserOperations(b *testing.B) {
 		for i := 0; i < 1000; i++ {
 			email := fmt.Sprintf("benchuser%d@example.com", i)
 			passwordHash := "hash"
-			_, err := db.CreateUser(email, passwordHash, tenantID)
+			_, err := db.CreateUser(context.Background(), email, passwordHash, tenantID)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -47,7 +47,7 @@ func BenchmarkUserOperations(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			email := fmt.Sprintf("benchuser%d@example.com", i%1000)
-			user, err := db.GetUserByEmail(email)
+			user, err := db.GetUserByEmail(context.Background(), email)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -75,7 +75,7 @@ func BenchmarkAppOperations(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			name := fmt.Sprintf("App %d", i)
 			slug := fmt.Sprintf("app-%d", i)
-			app, err := db.CreateApp(name, slug, tenant.ID)
+			app, err := db.CreateApp(context.Background(), name, slug, tenant.ID)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -89,7 +89,7 @@ func BenchmarkAppOperations(b *testing.B) {
 		for i := 0; i < 100; i++ {
 			name := fmt.Sprintf("List App %d", i)
 			slug := fmt.Sprintf("list-app-%d", i)
-			_, err := db.CreateApp(name, slug, tenant.ID)
+			_, err := db.CreateApp(context.Background(), name, slug, tenant.ID)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -97,7 +97,7 @@ func BenchmarkAppOperations(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			apps, err := db.ListAppsByTenant(tenant.ID)
+			apps, err := db.ListAppsByTenant(context.Background(), tenant.ID)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -119,7 +119,7 @@ func BenchmarkDeploymentOperations(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	app, err := db.CreateApp("Benchmark App", "benchmark-app", tenant.ID)
+	app, err := db.CreateApp(context.Background(), "Benchmark App", "benchmark-app", tenant.ID)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func BenchmarkDeploymentOperations(b *testing.B) {
 			deploymentID := fmt.Sprintf("deploy-%d", i)
 			artifactKey := fmt.Sprintf("artifact-%d", i)
 			routes := []string{fmt.Sprintf("/api/v%d", i)}
-			deployment, err := db.CreateDeployment(app.ID, "vercel", "us-east-1", deploymentID, artifactKey, routes)
+			deployment, err := db.CreateDeployment(context.Background(), app.ID, "vercel", "us-east-1", deploymentID, artifactKey, routes)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -146,7 +146,7 @@ func BenchmarkDeploymentOperations(b *testing.B) {
 			deploymentID := fmt.Sprintf("list-deploy-%d", i)
 			artifactKey := fmt.Sprintf("list-artifact-%d", i)
 			routes := []string{fmt.Sprintf("/api/list-v%d", i)}
-			_, err := db.CreateDeployment(app.ID, "vercel", "us-east-1", deploymentID, artifactKey, routes)
+			_, err := db.CreateDeployment(context.Background(), app.ID, "vercel", "us-east-1", deploymentID, artifactKey, routes)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -215,7 +215,7 @@ func BenchmarkAuditOperations(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			events, err := db.ListAuditEvents(50, 0)
+			events, err := db.ListAuditEvents(context.Background(), 50, 0)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -268,7 +268,7 @@ func BenchmarkUsageOperations(b *testing.B) {
 		endTime := time.Now()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			rollups, err := db.GetUsageByTenant(tenantID, "api_call", startTime, endTime)
+			rollups, err := db.GetUsageByTenant(context.Background(), tenantID, "api_call", startTime, endTime)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -297,7 +297,7 @@ func BenchmarkConcurrentOperations(b *testing.B) {
 			for pb.Next() {
 				email := fmt.Sprintf("concurrent-user%d@example.com", i)
 				passwordHash := "hash"
-				user, err := db.CreateUser(email, passwordHash, tenant.ID)
+				user, err := db.CreateUser(context.Background(), email, passwordHash, tenant.ID)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -312,7 +312,7 @@ func BenchmarkConcurrentOperations(b *testing.B) {
 		for i := 0; i < 100; i++ {
 			email := fmt.Sprintf("read-user%d@example.com", i)
 			passwordHash := "hash"
-			_, err := db.CreateUser(email, passwordHash, tenant.ID)
+			_, err := db.CreateUser(context.Background(), email, passwordHash, tenant.ID)
 			if err != nil {
 				b.Fatal(err)
 			}
@@ -323,7 +323,7 @@ func BenchmarkConcurrentOperations(b *testing.B) {
 			i := 0
 			for pb.Next() {
 				email := fmt.Sprintf("read-user%d@example.com", i%100)
-				user, err := db.GetUserByEmail(email)
+				user, err := db.GetUserByEmail(context.Background(), email)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -377,7 +377,7 @@ func BenchmarkComplexQuery(b *testing.B) {
 	for i := 0; i < 100; i++ {
 		email := fmt.Sprintf("complex-user%d@example.com", i)
 		passwordHash := "hash"
-		_, err := db.CreateUser(email, passwordHash, tenantID)
+			_, err := db.CreateUser(context.Background(), email, passwordHash, tenantID)
 		if err != nil {
 			b.Skip("Cannot pre-populate data:", err)
 		}
@@ -400,7 +400,7 @@ func BenchmarkComplexQuery(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			// This would typically use the tenant usage summary view
 			// For now, we'll just measure a simple query
-			users, err := db.ListUsers()
+			users, err := db.ListUsers(context.Background())
 			if err != nil {
 				b.Fatal(err)
 			}

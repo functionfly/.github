@@ -115,6 +115,7 @@ type AgentIdentity struct {
 	Capabilities      JSONBMap  `json:"capabilities" gorm:"type:jsonb;default:'{}'"`
 	AutonomousEnabled bool      `json:"autonomous_enabled" gorm:"not null;default:false"`
 	EvolutionEnabled  bool      `json:"evolution_enabled" gorm:"not null;default:false"`
+	Model             string    `json:"model" gorm:"not null;default:'gpt-4o-mini'"`
 	TrustScore        float64   `json:"trust_score" gorm:"type:decimal(5,2);default:0"`
 	EconomicScore     float64   `json:"economic_score" gorm:"type:decimal(5,2);default:0"`
 
@@ -300,6 +301,7 @@ type AgentWallet struct {
 	TotalSpentUSD    float64    `json:"total_spent_usd" gorm:"type:decimal(12,2);not null;default:0"`
 	LastEarningAt    *time.Time `json:"last_earning_at"`
 	LastSpendingAt   *time.Time `json:"last_spending_at"`
+	DeprecatedAt     *time.Time `json:"deprecated_at,omitempty"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 }

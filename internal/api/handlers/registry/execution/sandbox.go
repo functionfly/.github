@@ -54,6 +54,24 @@ type SandboxExecutor struct {
 	tenantID       string // Tenant UUID for KV namespace isolation
 }
 
+// SandboxTier represents the isolation tier for function execution
+type SandboxTier string
+
+const (
+	SandboxTierWasm    SandboxTier = "wasm"
+	SandboxTierGvisor  SandboxTier = "gvisor"
+	SandboxTierDocker  SandboxTier = "docker"
+	SandboxTierMicroVM SandboxTier = "microvm"
+)
+
+// GetSandboxTier returns the active sandbox tier for this executor
+func (se *SandboxExecutor) GetSandboxTier() SandboxTier {
+	if se.enterpriseConf != nil && se.enterpriseConf.Enabled {
+		return SandboxTierMicroVM
+	}
+	return SandboxTierWasm
+}
+
 // hashWasmBinary computes a hex-encoded SHA-256 hash of the given WASM bytes.
 func hashWasmBinary(data []byte) string {
 	h := sha256.Sum256(data)
@@ -806,7 +824,7 @@ func getGlobalSandboxClient() *SandboxClient {
 }
 
 // ExecuteLocally runs a registry function version locally (sandbox/WASM) with the given resource limits.
-// It is the exported entry point for use by flywheel and other callers that need to run registry functions.
+// It is the exported entry point for callers that need to run registry functions.
 // Pass fn=nil, backendRepo=nil when tenant context is not available (enterprise MicroVM will be disabled).
 func ExecuteLocally(fnVersion *storage.RegistryFunctionVersion, input json.RawMessage, maxMemoryMB, maxCPUTimeMs int) (json.RawMessage, error) {
 	return executeLocallyWithLimits(fnVersion, input, maxMemoryMB, maxCPUTimeMs, nil, nil)

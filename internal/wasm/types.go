@@ -88,6 +88,13 @@ type HostFunctionHandler interface {
 	StateGetFabric(fabricID string) (string, error)
 	// StateCreateSnapshot creates a fabric snapshot.
 	StateCreateSnapshot(path string, label string) (string, error)
+	// GetAttestation retrieves an attestation by ID for the current function's context.
+	// Returns the attestation as a JSON string.
+	GetAttestation(attestationID string) (string, error)
+	// Delegate delegates execution to another function with trust-aware routing.
+	// targetFunctionID is the function to call, input is the JSON-encoded input,
+	// and options is an optional JSON string with delegation options (min_trust_score, timeout_ms, etc.).
+	Delegate(targetFunctionID string, input string, options string) (string, error)
 	// Call invokes a host function by name with the given arguments
 	// and returns its result. The function implementation is responsible
 	// for validating the name and argument types.
@@ -171,6 +178,16 @@ func (d *DefaultHostHandler) StateCreateSnapshot(_, _ string) (string, error) {
 	return "", ErrStateNotAvailable
 }
 
+// GetAttestation returns ErrAttestationNotAvailable.
+func (d *DefaultHostHandler) GetAttestation(_ string) (string, error) {
+	return "", ErrAttestationNotAvailable
+}
+
+// Delegate returns ErrDelegateNotAvailable.
+func (d *DefaultHostHandler) Delegate(_, _, _ string) (string, error) {
+	return "", ErrDelegateNotAvailable
+}
+
 // Call returns (nil, nil) for every invocation.
 func (d *DefaultHostHandler) Call(_ context.Context, _ string, _ ...interface{}) (interface{}, error) {
 	return nil, nil
@@ -178,10 +195,12 @@ func (d *DefaultHostHandler) Call(_ context.Context, _ string, _ ...interface{})
 
 // Sentinel errors returned by the no-op DefaultHostHandler.
 var (
-	ErrFetchNotAvailable   = errorString("fetch not available in no-op host handler")
-	ErrKVNotAvailable      = errorString("kv store not available in no-op host handler")
-	ErrAINotAvailable      = errorString("ai inference not available in no-op host handler")
-	ErrStateNotAvailable   = errorString("state fabric not available in no-op host handler")
+	ErrFetchNotAvailable      = errorString("fetch not available in no-op host handler")
+	ErrKVNotAvailable         = errorString("kv store not available in no-op host handler")
+	ErrAINotAvailable         = errorString("ai inference not available in no-op host handler")
+	ErrStateNotAvailable      = errorString("state fabric not available in no-op host handler")
+	ErrAttestationNotAvailable = errorString("attestation not available in no-op host handler")
+	ErrDelegateNotAvailable   = errorString("delegate not available in no-op host handler")
 )
 
 type errorString string

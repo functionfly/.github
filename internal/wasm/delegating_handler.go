@@ -72,3 +72,11 @@ func (d *DelegatingHostHandler) StateGetFabric(fabricID string) (string, error) 
 func (d *DelegatingHostHandler) StateCreateSnapshot(path string, label string) (string, error) {
 	return d.current().StateCreateSnapshot(path, label)
 }
+
+func (d *DelegatingHostHandler) GetAttestation(attestationID string) (string, error) {
+	return d.current().GetAttestation(attestationID)
+}
+
+func (d *DelegatingHostHandler) Delegate(targetFunctionID string, input string, options string) (string, error) {
+	return d.current().Delegate(targetFunctionID, input, options)
+}

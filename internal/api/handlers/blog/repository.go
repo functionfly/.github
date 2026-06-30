@@ -820,7 +820,7 @@ func (r *BlogRepository) scanBlogPost(row scanableBlogPost) (*BlogPost, error) {
 
 	if bodyBytes != nil {
 		if err := json.Unmarshal(bodyBytes, &post.Body); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal body: %w", err)
+			post.Body = string(bodyBytes)
 		}
 	}
 

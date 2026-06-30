@@ -149,6 +149,9 @@ func (m *mockPreferenceRepo) ResetStaleProcessing(ctx context.Context, staleAfte
 func (m *mockPreferenceRepo) CleanupDeadLetterQueue(ctx context.Context, maxAge time.Duration) error {
 	return nil
 }
+func (m *mockPreferenceRepo) CleanupExpiredNotifications(ctx context.Context, retentionDays int) (int64, error) {
+	return 0, nil
+}
 func (m *mockPreferenceRepo) GetPreferences(ctx context.Context, userID uuid.UUID) ([]*NotificationPreference, error) {
 	return nil, nil
 }
@@ -168,6 +171,33 @@ func (m *mockPreferenceRepo) SavePreference(ctx context.Context, p *Notification
 	return nil
 }
 func (m *mockPreferenceRepo) CreateDefaultPreferences(ctx context.Context, userID uuid.UUID) error {
+	return nil
+}
+func (m *mockPreferenceRepo) CreateDeadLetter(ctx context.Context, n *Notification, failureReason string) error {
+	return nil
+}
+func (m *mockPreferenceRepo) DeleteDeadLetter(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+func (m *mockPreferenceRepo) ListDeadLetters(ctx context.Context, opts DeadLetterListOptions) ([]*DeadLetter, error) {
+	return nil, nil
+}
+func (m *mockPreferenceRepo) GetDeadLetter(ctx context.Context, id uuid.UUID) (*DeadLetter, error) {
+	return nil, nil
+}
+func (m *mockPreferenceRepo) RetryDeadLetter(ctx context.Context, id uuid.UUID) (*Notification, error) {
+	return nil, nil
+}
+func (m *mockPreferenceRepo) GetPendingNotifications(ctx context.Context, olderThan time.Duration, limit int) ([]*Notification, error) {
+	return nil, nil
+}
+func (m *mockPreferenceRepo) RequeueNotification(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+func (m *mockPreferenceRepo) MarkAbandonedDeadLetters(ctx context.Context, maxRetries int) (int64, error) {
+	return 0, nil
+}
+func (m *mockPreferenceRepo) MoveToDeadLetterQueue(ctx context.Context, notificationID uuid.UUID, failureReason string) error {
 	return nil
 }
 func (m *mockPreferenceRepo) GetTemplate(ctx context.Context, notificationType, channel string) (*NotificationTemplate, error) {

@@ -105,6 +105,7 @@ type User struct {
 	GithubURL     *string    `json:"github_url,omitempty" gorm:"column:github_url;size:500"`
 	LinkedInURL   *string    `json:"linkedin_url,omitempty" gorm:"column:linkedin_url;size:500"`
 	CoverImageURL *string    `json:"cover_image_url,omitempty" gorm:"column:cover_image_url;size:500"`
+	AvatarURL     *string    `json:"avatar_url,omitempty" gorm:"column:avatar_url;size:500"`
 	VerificationToken     *string    `json:"verification_token,omitempty"`
 	VerificationExpiresAt *time.Time `json:"verification_expires_at,omitempty"`
 	Provider      *string `json:"provider,omitempty"`
@@ -257,6 +258,29 @@ type Provider struct {
 
 func (Provider) TableName() string {
 	return "providers"
+}
+
+// AIProviderKey represents a user-provided (BYOK) API key for an AI provider.
+type AIProviderKey struct {
+	ID              string     `json:"id" gorm:"type:varchar(255);primaryKey"`
+	TenantID        uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index"`
+	Provider        string     `json:"provider" gorm:"not null"`
+	EncryptedKey    []byte     `json:"-" gorm:"column:encrypted_key;not null"`
+	KeyNonce        []byte     `json:"-" gorm:"column:key_nonce;not null"`
+	KeyTag          []byte     `json:"-" gorm:"column:key_tag;not null"`
+	KeyVersion      int        `json:"key_version" gorm:"default:1"`
+	KeyLast4        string     `json:"key_last4" gorm:"not null"`
+	Status          string     `json:"status" gorm:"not null;default:'active'"`
+	HealthMessage   string     `json:"health_message,omitempty"`
+	LastHealthCheck *time.Time `json:"last_health_check,omitempty"`
+	LastUsedAt      *time.Time `json:"last_used_at,omitempty"`
+	ConnectedBy     uuid.UUID  `json:"connected_by" gorm:"type:uuid;not null"`
+	CreatedAt       time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (AIProviderKey) TableName() string {
+	return "ai_provider_keys"
 }
 
 // ProviderSettings represents platform-wide provider maintenance settings

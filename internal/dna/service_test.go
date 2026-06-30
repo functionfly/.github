@@ -1,7 +1,6 @@
 package dna
 
 import (
-	"net/http"
 	"testing"
 	"time"
 

@@ -78,8 +78,8 @@ func (r *UserRepository) UpdateUserSettings(ctx context.Context, userID uuid.UUI
 	}
 
 	_, err = r.db.ExecContext(ctx, `
-		UPDATE users SET settings = $1, updated_at = NOW() WHERE id = $2`,
-		settingsJSON, userID)
+		UPDATE users SET settings = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+		string(settingsJSON), userID)
 
 	if err != nil {
 		return fmt.Errorf("failed to update user settings: %w", err)

@@ -355,3 +355,7 @@ func TestService_AddCreditsToAgent_NilRepo(t *testing.T) {
 func testUUID() uuid.UUID {
 	return uuid.MustParse("12345678-1234-1234-1234-123456789012")
 }
+
+func mustParseUUID(s string) uuid.UUID {
+	return uuid.MustParse(s)
+}

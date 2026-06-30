@@ -98,10 +98,16 @@ func TestWASMConfigValidateOutputSize(t *testing.T) {
 func TestWASMConfigIsDomainAllowed(t *testing.T) {
 	config := NewDefaultSecurityConfig()
 
-	// Empty list should allow all domains
+	// Empty list should DENY all domains (default-deny)
 	config.AllowedDomains = []string{}
+	if config.IsDomainAllowed("any-domain.com") {
+		t.Error("Expected all domains to be DENIED when AllowedDomains is empty (default-deny)")
+	}
+
+	// Explicit wildcard should allow all domains
+	config.AllowedDomains = []string{"*"}
 	if !config.IsDomainAllowed("any-domain.com") {
-		t.Error("Expected all domains to be allowed when AllowedDomains is empty")
+		t.Error("Expected all domains to be allowed when AllowedDomains contains '*'")
 	}
 
 	// Single domain

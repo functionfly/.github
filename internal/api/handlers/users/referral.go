@@ -40,6 +40,13 @@ func (h *Handler) HandleGetMyReferralCode(w http.ResponseWriter, r *http.Request
 
 	ctx := r.Context()
 
+	user, err := h.repo.GetUserByID(ctx, claims.UserID)
+	if err != nil || user == nil {
+		logrus.WithError(err).Error("Failed to get user for referral code")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get user"))
+		return
+	}
+
 	codes, err := h.repo.ListAffiliateCodesByPublisher(ctx, claims.UserID)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list affiliate codes")
@@ -78,13 +85,18 @@ func (h *Handler) HandleGetMyReferralCode(w http.ResponseWriter, r *http.Request
 		code = created
 	}
 
+	refSlug := code.Code
+	if user.Username != nil && *user.Username != "" {
+		refSlug = "f-" + *user.Username
+	}
+
 	response := ReferralCodeResponse{
 		Code:            code.Code,
 		Name:            code.Name,
 		CommissionType:  code.CommissionType,
 		CommissionValue: code.CommissionValue,
 		IsActive:        code.IsActive,
-		ShareURL:        foundersSignupURL + "?ref=" + code.Code,
+		ShareURL:        foundersSignupURL + "?ref=" + refSlug,
 	}
 
 	writeJSON(w, http.StatusOK, response)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"runtime"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/apierror"
@@ -412,24 +413,28 @@ func (h *Handler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Read real Go runtime memory stats
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+
 	diagnostics := RuntimeDiagnostics{
 		Runtime: fn.Runtime,
 		Environment: map[string]string{
-			"Node.js Version": "20.11.0",
-			"V8 Engine":       "12.0.267.53",
-			"Platform":        "linux/amd64",
-			"Architecture":    "x86_64",
+			"Go Version":   runtime.Version(),
+			"GOOS":         runtime.GOOS,
+			"GOARCH":       runtime.GOARCH,
+			"NumCPU":       fmt.Sprintf("%d", runtime.NumCPU()),
 		},
 		Resources: ResourceUsage{
 			MemoryLimit: fn.MemoryMB,
-			MemoryUsed:  45,
-			CPUCores:    1,
+			MemoryUsed:  int(memStats.Alloc / 1024 / 1024),
+			CPUCores:    runtime.NumCPU(),
 			Timeout:     fn.TimeoutMs,
 		},
 		Network: NetworkStatus{
 			Enabled:       fn.NetworkEnabled,
 			DNSWorking:    true,
-			ExternalCalls: 3,
+			ExternalCalls: 0,
 		},
 		Security: SecurityStatus{
 			SandboxEnabled:     true,
@@ -438,11 +443,11 @@ func (h *Handler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 			EnvironmentCount:   len(fn.Environment),
 		},
 		Performance: PerformanceData{
-			ColdStartAvgMs:   450,
-			WarmExecAvgMs:    12,
+			ColdStartAvgMs:   0,
+			WarmExecAvgMs:    0,
 			CodeCacheEnabled: true,
 			ConcurrentLimit:  fn.MaxConcurrent,
-			SuccessRate:      99,
+			SuccessRate:      0,
 		},
 		Timestamp: time.Now(),
 	}
@@ -461,6 +466,9 @@ func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	functionID := vars["function_id"]
 
+	// Limit request body to 1 MB
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+
 	var config struct {
 		Runtime        string `json:"runtime"`
 		MemoryMB       int    `json:"memory_mb"`
@@ -470,6 +478,34 @@ func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
 		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+		return
+	}
+
+	// Validate runtime name
+	validRuntimes := map[string]bool{
+		"nodejs": true, "nodejs18": true, "nodejs20": true,
+		"deno": true, "bun": true, "python3.11": true, "python3.12": true,
+		"python-microvm": true, "rust": true, "go": true,
+		"c": true, "cpp": true, "ruby": true, "kotlin": true,
+		"swift": true, "wasmedge": true, "sar": true, "prism": true,
+	}
+	if config.Runtime != "" && !validRuntimes[config.Runtime] {
+		apierror.WriteError(w, apierror.NewBadRequest(
+			fmt.Sprintf("Invalid runtime '%s'", config.Runtime)))
+		return
+	}
+
+	// Validate memory bounds (1 MB – 8192 MB)
+	if config.MemoryMB != 0 && (config.MemoryMB < 1 || config.MemoryMB > 8192) {
+		apierror.WriteError(w, apierror.NewBadRequest(
+			fmt.Sprintf("memory_mb must be between 1 and 8192, got %d", config.MemoryMB)))
+		return
+	}
+
+	// Validate timeout bounds (1 s – 600 s)
+	if config.TimeoutMs != 0 && (config.TimeoutMs < 1000 || config.TimeoutMs > 600_000) {
+		apierror.WriteError(w, apierror.NewBadRequest(
+			fmt.Sprintf("timeout_ms must be between 1000 and 600000, got %d", config.TimeoutMs)))
 		return
 	}
 

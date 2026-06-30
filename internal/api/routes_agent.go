@@ -94,7 +94,7 @@ func registerAgentRoutes(
 	if s.walletService != nil {
 		agentRuntimeBillingCtrl = &walletBillingAdapter{wallet: s.walletService}
 	}
-	agentRuntimeHandler := agentruntime.NewHandler(agentFuncRepo, agentRuntimeBillingCtrl)
+	agentRuntimeHandler := agentruntime.NewHandler(agentFuncRepo, registryRepo, agentRuntimeBillingCtrl)
 
 	// Agent function discovery (public)
 	api.HandleFunc("/agent/functions", agentRuntimeHandler.HandleListFunctions).Methods("GET", "OPTIONS")
@@ -143,7 +143,10 @@ func registerAgentRoutes(
 		protected.HandleFunc("/agent/register", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleRegisterAgent, agentTeamMiddleware))).Methods("POST", "OPTIONS")
 	}
 	protected.HandleFunc("/agent", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleListAgents, agentTeamMiddleware))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/ai/models", authMiddleware.RequireAuth(aepHandler.HandleListModels)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/chat", authMiddleware.RequireAuth(aepHandler.HandleAgentChat)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleGetAgent, agentTeamMiddleware))).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleUpdateAgent, agentTeamMiddleware))).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleDeleteAgent, agentTeamMiddleware))).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/quota", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleUpdateQuota, agentTeamMiddleware))).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/usage", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleGetUsage, agentTeamMiddleware))).Methods("GET", "OPTIONS")

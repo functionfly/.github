@@ -84,10 +84,8 @@ func (a *AuthService) generateToken(user *storage.User) (string, error) {
 		claims.Username = *user.Username
 	}
 
-	// Add permissions based on role
-	if user.Role != "" {
-		claims.Permissions = a.getPermissionsForRole(user.Role)
-	}
+	// Add permissions based on role (defaults to memory read/write for empty role)
+	claims.Permissions = a.getPermissionsForRole(user.Role)
 
 	// SECURITY FIX: Add token version for revocation support
 	// TokenVersion is stored in the user record and incremented on password change/logout all
@@ -179,6 +177,9 @@ func (a *AuthService) getPermissionsForRole(role string) []string {
 			PermSystemRead,
 		}
 	default:
-		return []string{} // Regular users have no admin permissions
+		return []string{
+			PermMemoryRead,
+			PermMemoryWrite,
+		}
 	}
 }

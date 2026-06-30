@@ -538,7 +538,7 @@ func (r *Runtime) handleHealth(w http.ResponseWriter, req *http.Request) {
 // Start starts the local runtime server
 func (r *Runtime) Start(port int) error {
 	r.port = port
-	addr := fmt.Sprintf(":%d", port)
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
 	r.server = &http.Server{
 		Addr:    addr,
 		Handler: r,

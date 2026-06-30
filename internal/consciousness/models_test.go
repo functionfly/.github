@@ -1,11 +1,8 @@
 package consciousness
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

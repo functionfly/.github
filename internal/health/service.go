@@ -287,53 +287,6 @@ func (s *Service) CheckCPUUsage() HealthCheck {
 	}
 }
 
-// CheckFlywheelHealth performs Flywheel-specific health checks
-func (s *Service) CheckFlywheelHealth(ctx context.Context) HealthCheck {
-	// Flywheel depends on shared infrastructure (Redis, DB, websocket hub, etc.).
-	// We do best-effort dependency checks with whatever is wired into this Service.
-	now := time.Now()
-
-	subchecks := map[string]interface{}{}
-	status := HealthStatusHealthy
-	description := "Flywheel service is healthy"
-
-	redisCheck := s.CheckRedisHealth(ctx)
-	subchecks["redis"] = map[string]interface{}{
-		"status":      redisCheck.Status,
-		"description": redisCheck.Description,
-		"error":       redisCheck.Error,
-		"details":     redisCheck.Details,
-	}
-	if redisCheck.Status == HealthStatusUnhealthy {
-		status = HealthStatusUnhealthy
-		description = "Flywheel dependencies unhealthy (redis)"
-	} else if redisCheck.Status == HealthStatusDegraded && status == HealthStatusHealthy {
-		status = HealthStatusDegraded
-		description = "Flywheel dependencies degraded (redis)"
-	}
-
-	return HealthCheck{
-		Name:        "flywheel_service",
-		Status:      status,
-		Description: description,
-		Timestamp:   now,
-		Details: map[string]interface{}{
-			"component": "flywheel",
-			"dependency_checks": subchecks,
-			"features": []string{
-				"threads",
-				"replies",
-				"reputation",
-				"challenges",
-				"leaderboards",
-				"websocket",
-				"search",
-				"notifications",
-			},
-		},
-	}
-}
-
 // CheckDatabaseHealth performs database health check
 func (s *Service) CheckDatabaseHealth(ctx context.Context) HealthCheck {
 	if s.db == nil {
@@ -465,7 +418,6 @@ func (s *Service) GetSystemHealth(ctx context.Context) SystemHealth {
 		s.CheckDiskSpace(),
 		s.CheckGoroutines(),
 		s.CheckCPUUsage(),
-		s.CheckFlywheelHealth(ctx),
 		s.CheckDatabaseHealth(ctx),
 		s.CheckRedisHealth(ctx),
 	}
@@ -486,7 +438,6 @@ func (s *Service) GetSystemHealth(ctx context.Context) SystemHealth {
 		Timestamp: time.Now(),
 		Version:   "1.0.0",
 		Services: map[string]HealthCheck{
-			"flywheel": s.CheckFlywheelHealth(ctx),
 			"database": s.CheckDatabaseHealth(ctx),
 			"redis":    s.CheckRedisHealth(ctx),
 		},

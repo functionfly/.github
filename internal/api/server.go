@@ -186,6 +186,9 @@ type Server struct {
 
 	// Stripe meter usage scheduler for automated overage reporting to Stripe
 	stripeMeterUsageScheduler *scheduler.StripeMeterUsageScheduler
+
+	// RuntimeRouter manages execution engine lifecycle (nodeJS daemon, WASM pools, etc.)
+	runtimeRouter *regexec.RuntimeRouter
 }
 
 func NewServer(db *storage.PostgresDB) *Server {
@@ -1005,6 +1008,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	// Shutdown the persistent SandboxClient daemon
 	regexec.ShutdownSandboxClient()
+
+	// Shutdown the RuntimeRouter (kills nodeJS daemon, closes WASM pools, etc.)
+	if s.runtimeRouter != nil {
+		if err := s.runtimeRouter.Close(); err != nil {
+			logging.Logger().WithError(err).Warn("RuntimeRouter shutdown error")
+		}
+		logging.Logger().Info("RuntimeRouter shutdown complete")
+	}
 
 	return s.httpServer.Shutdown(ctx)
 }

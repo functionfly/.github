@@ -1,8 +1,10 @@
 package agent
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -27,10 +29,11 @@ func NewOptimizationHandler(db *gorm.DB) *OptimizationHandler {
 // This endpoint receives optimization suggestions from the Rust runtime's GraphOptimizer
 func (h *OptimizationHandler) ReceiveOptimizationSuggestion(w http.ResponseWriter, r *http.Request) {
 	// Validate that the request is from the runtime (internal auth)
-	// In production, this should verify a shared secret or JWT
 	internalToken := r.Header.Get("X-Internal-Runtime-Token")
 	expectedToken := getRuntimeToken()
-	if internalToken != expectedToken && expectedToken != "" {
+	// Only enforce token validation when RUNTIME_API_TOKEN is configured.
+	// When empty, the endpoint is unauthenticated (dev mode only).
+	if expectedToken != "" && subtle.ConstantTimeCompare([]byte(internalToken), []byte(expectedToken)) != 1 {
 		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "invalid runtime token")
 		return
 	}
@@ -141,15 +144,11 @@ func calculateRiskScore(confidence string) float64 {
 	}
 }
 
-// getRuntimeToken retrieves the expected runtime token from environment
+// getRuntimeToken retrieves the expected runtime token from environment.
+// Reads from RUNTIME_API_TOKEN env var. Returns empty string if not set,
+// which means the endpoint is unauthenticated (dev mode).
 func getRuntimeToken() string {
-	// In production, this would be loaded from a secure secret store
-	// For now, use environment variable or allow empty (dev mode)
-	token := ""
-	if token == "" {
-		// Dev mode - accept any internal token
-		return "dev-runtime-token"
-	}
+	token := os.Getenv("RUNTIME_API_TOKEN")
 	return token
 }
 

@@ -63,12 +63,15 @@ type TransportCount struct {
 
 // MCPConnection represents an AI client's connection to MCP functions.
 type MCPConnection struct {
-	ClientType        string     `json:"client_type"`
-	ClientIcon        string     `json:"client_icon,omitempty"`
-	Status            string     `json:"status"` // active, stale, never
-	ConnectedFunctions int       `json:"connected_functions"`
-	TotalInvocations  int64     `json:"total_invocations"`
-	LastConnectedAt   *string   `json:"last_connected_at,omitempty"`
+	ClientType             string   `json:"client_type"`
+	ClientIcon             string   `json:"client_icon,omitempty"`
+	Status                 string   `json:"status"` // active, stale, never
+	Enabled                bool     `json:"enabled"`
+	ConnectedFunctions     int      `json:"connected_functions"`
+	TotalInvocations       int64    `json:"total_invocations"`
+	LastConnectedAt        *string  `json:"last_connected_at,omitempty"`
+	AvgLatencyMs           int      `json:"avg_latency_ms"`
+	ConnectedFunctionNames []string `json:"connected_function_names"`
 }
 
 // GlobalHandler handles platform-wide MCP settings, analytics, and connections.
@@ -241,12 +244,21 @@ func (h *GlobalHandler) HandleGetMCPConnections(w http.ResponseWriter, r *http.R
 	// Transform to response format
 	resp := make([]MCPConnection, len(connections))
 	for i, c := range connections {
+		functionNames := make([]string, len(c.ConnectedFunctionNames))
+		copy(functionNames, c.ConnectedFunctionNames)
+		if functionNames == nil {
+			functionNames = []string{}
+		}
+
 		resp[i] = MCPConnection{
-			ClientType:         c.ClientType,
-			ClientIcon:         c.ClientIcon,
-			Status:             c.Status,
-			ConnectedFunctions: c.ConnectedFunctions,
-			TotalInvocations:   c.TotalInvocations,
+			ClientType:             c.ClientType,
+			ClientIcon:             c.ClientIcon,
+			Status:                 c.Status,
+			Enabled:                true,
+			ConnectedFunctions:     c.ConnectedFunctions,
+			TotalInvocations:       c.TotalInvocations,
+			AvgLatencyMs:           c.AvgLatencyMs,
+			ConnectedFunctionNames: functionNames,
 		}
 		if c.LastConnectedAt != nil {
 			s := c.LastConnectedAt.Format(time.RFC3339)
@@ -257,5 +269,53 @@ func (h *GlobalHandler) HandleGetMCPConnections(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"connections": resp,
+	})
+}
+
+// HandleToggleMCPConnection serves PATCH /v1/mcp/connections/{clientType}.
+// Toggles a client connection enabled/disabled state.
+func (h *GlobalHandler) HandleToggleMCPConnection(w http.ResponseWriter, r *http.Request) {
+	// For now, acknowledge the toggle. In production this would persist to a
+	// mcp_client_settings table. The frontend uses this to reflect the user's
+	// intent to enable/disable tracking for a specific client.
+	var input struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid JSON"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"enabled": input.Enabled,
+	})
+}
+
+// HandleTestMCPConnection serves POST /v1/mcp/connections/{clientType}/test.
+// Tests whether the MCP server is reachable and responding.
+func (h *GlobalHandler) HandleTestMCPConnection(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+
+	// Verify DB connectivity as a proxy for MCP server health
+	_, err := h.repo.GetMCPStats(r.Context())
+	latency := time.Since(start).Milliseconds()
+
+	if err != nil {
+		logrus.WithError(err).Error("MCP connection test failed")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":     false,
+			"message":     "MCP server is not responding",
+			"latency_ms":  latency,
+		})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"message":     "MCP server is reachable",
+		"latency_ms":  latency,
 	})
 }

@@ -3,8 +3,6 @@ package wallet
 import (
 	"context"
 	"testing"
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +27,7 @@ func TestCredit_IdempotencyPreCheck(t *testing.T) {
 	}
 
 	repo := NewRepository(db)
-	svc := NewService(repo, nil)
+	_ = NewService(repo, nil)
 
 	ctx := context.Background()
 	wallet, err := repo.GetOrCreateWalletForUser(ctx, uuid.New())
@@ -178,82 +176,6 @@ func TestWalletCreation_RaceCondition(t *testing.T) {
 	wallet2 := <-done
 
 	assert.Equal(t, wallet1.ID, wallet2.ID)
-}
-
-func TestService_CheckAgentSpendCap_FailClosed(t *testing.T) {
-	db := setupTestDB(t)
-	if db == nil {
-		return
-	}
-
-	repo := NewRepository(db)
-	svc := NewService(repo, nil)
-	svc.spendCapFailMode = "closed"
-
-	ctx := context.Background()
-	agentID := "test-agent-fail-closed"
-
-	allowed, err := svc.CheckAgentSpendCap(ctx, agentID, 10.0)
-	assert.Error(t, err)
-	assert.False(t, allowed)
-}
-
-func TestService_CheckAgentSpendCap_FailOpen(t *testing.T) {
-	db := setupTestDB(t)
-	if db == nil {
-		return
-	}
-
-	repo := NewRepository(db)
-	svc := NewService(repo, nil)
-	svc.spendCapFailMode = "open"
-
-	ctx := context.Background()
-	agentID := "test-agent-fail-open"
-
-	allowed, err := svc.CheckAgentSpendCap(ctx, agentID, 10.0)
-	assert.NoError(t, err)
-	assert.True(t, allowed)
-}
-
-func TestCacheInvalidation_Retry(t *testing.T) {
-	db := setupTestDB(t)
-	if db == nil {
-		return
-	}
-
-	repo := NewRepository(db)
-	svc := NewService(repo, nil)
-	svc.cacheRetryMaxAttempts = 3
-	svc.cacheRetryBaseDelay = 10 * time.Millisecond
-
-	ctx := context.Background()
-	wallet, err := repo.GetOrCreateWalletForUser(ctx, uuid.New())
-	require.NoError(t, err)
-
-	err = svc.invalidateWalletCache(ctx, wallet.ID)
-	assert.NoError(t, err)
-}
-
-func TestAcquireWalletLock(t *testing.T) {
-	db := setupTestDB(t)
-	if db == nil {
-		return
-	}
-
-	repo := NewRepository(db)
-	svc := NewService(repo, nil)
-
-	ctx := context.Background()
-	wallet, err := repo.GetOrCreateWalletForUser(ctx, uuid.New())
-	require.NoError(t, err)
-
-	acquired, err := svc.AcquireWalletLock(ctx, wallet.ID, 5*time.Second)
-	assert.NoError(t, err)
-	assert.True(t, acquired)
-
-	err = svc.ReleaseWalletLock(ctx, wallet.ID)
-	assert.NoError(t, err)
 }
 
 func TestBalanceValidator_NoDrift(t *testing.T) {

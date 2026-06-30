@@ -37,8 +37,11 @@ func validateMemoryBounds(memoryData []byte, ptr, size int32) error {
 
 // validateDomain checks if a URL's domain is in the allowed list
 func validateDomain(requestURL string) error {
-	if globalSecurityConfig == nil || len(globalSecurityConfig.AllowedDomains) == 0 {
-		return nil // No restrictions
+	if globalSecurityConfig == nil {
+		return nil // No config — allow (no enforcement layer active)
+	}
+	if len(globalSecurityConfig.AllowedDomains) == 0 {
+		return fmt.Errorf("domain not allowed: all outbound fetch() is blocked (no AllowedDomains configured)")
 	}
 
 	parsedURL, err := url.Parse(requestURL)
@@ -645,6 +648,112 @@ func defineHostFunctions(linker *wasmtime.Linker, store *wasmtime.Store, handler
 			return 0 // success
 		}); err != nil {
 		return fmt.Errorf("failed to define ai_infer function: %w", err)
+	}
+
+	// functionfly.get_attestation(att_id_ptr i32, att_id_len i32, resp_ptr i32, resp_len_ptr i32) -> i32
+	// Returns attestation JSON. 0 = success, -1 = error.
+	if err := linker.DefineFunc(store, "functionfly", "get_attestation",
+		func(caller *wasmtime.Caller, attIDPtr, attIDLen, respPtr, respLenPtr int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				log.Printf("WASM get_attestation: memory not found")
+				return -1
+			}
+			memoryData := memory.UnsafeData(store)
+
+			if err := validateMemoryBounds(memoryData, attIDPtr, attIDLen); err != nil {
+				log.Printf("WASM get_attestation: invalid att_id pointer: %v", err)
+				return -1
+			}
+
+			attestationID := string(memoryData[attIDPtr : attIDPtr+attIDLen])
+
+			response, err := handler.GetAttestation(attestationID)
+			if err != nil {
+				log.Printf("WASM get_attestation: %v", err)
+				return -1
+			}
+
+			responseBytes := []byte(response)
+			respLen := int32(len(responseBytes))
+
+			if err := validateMemoryBounds(memoryData, respPtr, respLen); err != nil {
+				log.Printf("WASM get_attestation: %v", err)
+				return -1
+			}
+			copy(memoryData[respPtr:], responseBytes)
+
+			if err := validateMemoryBounds(memoryData, respLenPtr, 4); err != nil {
+				return -1
+			}
+			memoryData[respLenPtr] = byte(respLen)
+			memoryData[respLenPtr+1] = byte(respLen >> 8)
+			memoryData[respLenPtr+2] = byte(respLen >> 16)
+			memoryData[respLenPtr+3] = byte(respLen >> 24)
+
+			return 0
+		}); err != nil {
+		return fmt.Errorf("failed to define get_attestation function: %w", err)
+	}
+
+	// functionfly.delegate(target_ptr i32, target_len i32, input_ptr i32, input_len i32, opts_ptr i32, opts_len i32, resp_ptr i32, resp_len_ptr i32) -> i32
+	// Delegates execution to another function. 0 = success, -1 = error.
+	if err := linker.DefineFunc(store, "functionfly", "delegate",
+		func(caller *wasmtime.Caller, targetPtr, targetLen, inputPtr, inputLen, optsPtr, optsLen, respPtr, respLenPtr int32) int32 {
+			memory := caller.GetExport("memory").Memory()
+			if memory == nil {
+				log.Printf("WASM delegate: memory not found")
+				return -1
+			}
+			memoryData := memory.UnsafeData(store)
+
+			if err := validateMemoryBounds(memoryData, targetPtr, targetLen); err != nil {
+				log.Printf("WASM delegate: invalid target pointer: %v", err)
+				return -1
+			}
+			if err := validateMemoryBounds(memoryData, inputPtr, inputLen); err != nil {
+				log.Printf("WASM delegate: invalid input pointer: %v", err)
+				return -1
+			}
+
+			targetFunctionID := string(memoryData[targetPtr : targetPtr+targetLen])
+			input := string(memoryData[inputPtr : inputPtr+inputLen])
+
+			var options string
+			if optsLen > 0 {
+				if err := validateMemoryBounds(memoryData, optsPtr, optsLen); err != nil {
+					log.Printf("WASM delegate: invalid options pointer: %v", err)
+					return -1
+				}
+				options = string(memoryData[optsPtr : optsPtr+optsLen])
+			}
+
+			response, err := handler.Delegate(targetFunctionID, input, options)
+			if err != nil {
+				log.Printf("WASM delegate: %v", err)
+				return -1
+			}
+
+			responseBytes := []byte(response)
+			respLen := int32(len(responseBytes))
+
+			if err := validateMemoryBounds(memoryData, respPtr, respLen); err != nil {
+				log.Printf("WASM delegate: %v", err)
+				return -1
+			}
+			copy(memoryData[respPtr:], responseBytes)
+
+			if err := validateMemoryBounds(memoryData, respLenPtr, 4); err != nil {
+				return -1
+			}
+			memoryData[respLenPtr] = byte(respLen)
+			memoryData[respLenPtr+1] = byte(respLen >> 8)
+			memoryData[respLenPtr+2] = byte(respLen >> 16)
+			memoryData[respLenPtr+3] = byte(respLen >> 24)
+
+			return 0
+		}); err != nil {
+		return fmt.Errorf("failed to define delegate function: %w", err)
 	}
 
 	// Register StateFabric host functions for edge state access

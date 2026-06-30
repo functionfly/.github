@@ -27,6 +27,9 @@ type Feature struct {
 	Default     interface{} `json:"default"`
 }
 
+// BYOK (Bring Your Own Key) feature
+const FeatureBYOK = "byok"
+
 // Enterprise-only features
 const (
 	FeatureMicroVMs           = "micro_vms"
@@ -89,6 +92,18 @@ const (
 	FeatureLongTimeout       = "long_timeout"
 	FeatureBulkOperations    = "bulk_operations"
 	FeaturePremiumSupport    = "premium_support"
+)
+
+// Trust & Attestation features
+const (
+	FeatureAttestationRead       = "attestation_read"       // Free+: view attestations and verify chains
+	FeatureAttestationCreate     = "attestation_create"     // Pro+: create attestations
+	FeatureAttestationRevoke     = "attestation_revoke"     // Enterprise+: revoke attestations
+	FeatureAttestationManage     = "attestation_manage"     // Pro+: manage attestation lifecycle (create + view)
+	FeatureTrustVerification     = "trust_verification"     // Starter+: submit verification requests
+	FeatureTrustReports          = "trust_reports"          // Starter+: submit trust reports
+	FeatureTrustPolicyEvaluate   = "trust_policy_evaluate"  // Pro+: evaluate functions against trust policies
+	FeatureTrustPolicyManage     = "trust_policy_manage"    // Pro+: create/update/delete trust policies
 )
 
 // Starter features (included by default)
@@ -285,6 +300,72 @@ var featureDefinitions = map[string]Feature{
 		Default:     false,
 	},
 
+	// Trust & Attestation features
+	FeatureAttestationRead: {
+		Key:         FeatureAttestationRead,
+		Name:        "Attestation Read",
+		Description: "View function attestations and verify cryptographic chains",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     true, // Available to all plans
+	},
+	FeatureAttestationCreate: {
+		Key:         FeatureAttestationCreate,
+		Name:        "Attestation Create",
+		Description: "Create new cryptographic attestations for function properties",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureAttestationRevoke: {
+		Key:         FeatureAttestationRevoke,
+		Name:        "Attestation Revoke",
+		Description: "Revoke existing attestations (admin/security action)",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureAttestationManage: {
+		Key:         FeatureAttestationManage,
+		Name:        "Attestation Management",
+		Description: "Full attestation lifecycle management including creation and policy evaluation",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTrustVerification: {
+		Key:         FeatureTrustVerification,
+		Name:        "Trust Verification",
+		Description: "Submit function verification requests to establish trust",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTrustReports: {
+		Key:         FeatureTrustReports,
+		Name:        "Trust Reports",
+		Description: "Submit trust issue reports for functions",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTrustPolicyEvaluate: {
+		Key:         FeatureTrustPolicyEvaluate,
+		Name:        "Trust Policy Evaluation",
+		Description: "Evaluate functions against trust policies",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+	FeatureTrustPolicyManage: {
+		Key:         FeatureTrustPolicyManage,
+		Name:        "Trust Policy Management",
+		Description: "Create, update, and delete trust policies",
+		Category:    CategorySecurity,
+		Type:        FeatureTypeBoolean,
+		Default:     false,
+	},
+
 	// Pro features
 	FeatureExtendedProviders: {
 		Key:         FeatureExtendedProviders,
@@ -420,6 +501,14 @@ var featureDefinitions = map[string]Feature{
 		Key:         FeaturePublishFunctions,
 		Name:        "Publish Functions",
 		Description: "Publish functions to registry",
+		Category:    CategoryCore,
+		Type:        FeatureTypeBoolean,
+		Default:     true,
+	},
+	FeatureBYOK: {
+		Key:         FeatureBYOK,
+		Name:        "Bring Your Own Key",
+		Description: "Connect your own AI provider API keys to avoid platform AI costs",
 		Category:    CategoryCore,
 		Type:        FeatureTypeBoolean,
 		Default:     true,
@@ -567,6 +656,16 @@ var (
 		FeatureSFAIRecall,
 		FeatureSFAdvancedInsights,
 		FeatureSFAdvancedSecurity,
+		// Trust & Attestation (full access)
+		FeatureAttestationRead,
+		FeatureAttestationCreate,
+		FeatureAttestationRevoke,
+		FeatureAttestationManage,
+		FeatureTrustVerification,
+		FeatureTrustReports,
+		FeatureTrustPolicyEvaluate,
+		FeatureTrustPolicyManage,
+		FeatureBYOK,
 	}
 
 	// Enterprise SLA features - enhanced SLA with 99.999% uptime guarantee
@@ -618,6 +717,15 @@ var (
 		FeatureSFAIRecall,
 		FeatureSFAdvancedInsights,
 		FeatureSFAdvancedSecurity,
+		// Trust & Attestation (full access)
+		FeatureAttestationRead,
+		FeatureAttestationCreate,
+		FeatureAttestationRevoke,
+		FeatureAttestationManage,
+		FeatureTrustVerification,
+		FeatureTrustReports,
+		FeatureTrustPolicyEvaluate,
+		FeatureTrustPolicyManage,
 	}
 
 	proFeatures = []string{
@@ -644,6 +752,15 @@ var (
 		FeatureConsciousnessBasic,
 		// State Fabric add-ons (Hot Cache available as add-on)
 		FeatureSFHotCache,
+		// Trust & Attestation
+		FeatureAttestationRead,
+		FeatureAttestationCreate,
+		FeatureAttestationManage,
+		FeatureTrustVerification,
+		FeatureTrustReports,
+		FeatureTrustPolicyEvaluate,
+		FeatureTrustPolicyManage,
+		FeatureBYOK,
 	}
 
 	starterFeatures = []string{
@@ -657,6 +774,10 @@ var (
 		FeatureTimeMachineBasic,
 		FeatureTimeMachineExtended,
 		FeatureConsciousnessBasic,
+		FeatureAttestationRead,
+		FeatureTrustVerification,
+		FeatureTrustReports,
+		FeatureBYOK,
 	}
 
 	freeFeatures = []string{
@@ -667,6 +788,8 @@ var (
 		FeatureStandardSLA,
 		FeaturePublishFunctions,
 		FeatureTimeMachineBasic,
+		FeatureAttestationRead,
+		FeatureBYOK,
 	}
 
 	agentEnterpriseFeatures = []string{
@@ -688,6 +811,7 @@ var (
 		FeatureConsciousnessBasic,
 		FeatureConsciousnessAdvanced,
 		FeatureConsciousnessAutonomous,
+		FeatureBYOK,
 	}
 
 	agentProFeatures = []string{

@@ -15,6 +15,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/types"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/bundler"
+	"github.com/functionfly/functionfly/internal/config"
 	deployPkg "github.com/functionfly/functionfly/internal/deployment"
 	"github.com/functionfly/functionfly/internal/flypy"
 	"github.com/functionfly/functionfly/internal/manifest"
@@ -318,7 +319,12 @@ func (h *Handler) HandleDeployFunction(w http.ResponseWriter, r *http.Request) {
 	go h.deployFunctionAsync(r.Context(), function, backend, createdDeployment, user.TenantID, environment)
 
 	// Build the deployment URL
-	deploymentURL := fmt.Sprintf("https://%s.%s.functionfly.com", function.Name, backend.Region)
+	var deploymentURL string
+	if config.IsProduction() {
+		deploymentURL = fmt.Sprintf("https://%s.%s.functionfly.com", function.Name, backend.Region)
+	} else {
+		deploymentURL = fmt.Sprintf("http://%s.%s.localhost:8082", function.Name, backend.Region)
+	}
 
 	response := types.DeployFunctionResponse{
 		FunctionID:   function.ID.String(),

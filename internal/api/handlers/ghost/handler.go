@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/deployment"
 	"github.com/functionfly/functionfly/internal/agent/generation"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/config"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
@@ -1298,7 +1299,12 @@ func (h *Handler) HandleDeployProduction(w http.ResponseWriter, r *http.Request)
 	}
 
 	deployID := "deploy_" + uuid.New().String()[:8]
-	url := "https://" + deployID + ".functionfly.com"
+	var url string
+	if config.IsProduction() {
+		url = "https://" + deployID + ".functionfly.com"
+	} else {
+		url = "http://" + deployID + ".localhost:8082"
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":        true,

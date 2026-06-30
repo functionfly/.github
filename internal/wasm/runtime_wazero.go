@@ -384,10 +384,8 @@ func (r *WazeroRuntime) wazeroFetch(ctx context.Context, m api.Module, reqPtr, r
 	}
 
 	// Security: Domain allowlist check
-	if len(r.config.AllowedDomains) > 0 {
-		if !r.config.IsDomainAllowed(extractDomain(fetchReq.URL)) {
-			return -1
-		}
+	if !r.config.IsDomainAllowed(extractDomain(fetchReq.URL)) {
+		return -1
 	}
 
 	response, err := r.handler.Fetch(requestStr)

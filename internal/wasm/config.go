@@ -185,16 +185,20 @@ func NewSecurityConfigFromEnv() *WASMSecurityConfig {
 	return config
 }
 
-// IsDomainAllowed checks if a domain is in the allowed domains list
-// If AllowedDomains is empty, all domains are allowed (for backward compatibility)
+// IsDomainAllowed checks if a domain is in the allowed domains list.
+// If AllowedDomains is empty, all domains are DENIED (default-deny).
+// Use AllowedDomains = ["*"] to explicitly allow all domains.
 func (c *WASMSecurityConfig) IsDomainAllowed(domain string) bool {
 	if len(c.AllowedDomains) == 0 {
-		return true // No restriction when list is empty
+		return false // Default-deny: no domains allowed when list is empty
 	}
 
 	domain = strings.ToLower(domain)
 	for _, allowed := range c.AllowedDomains {
 		allowed = strings.ToLower(allowed)
+		if allowed == "*" {
+			return true // Explicit wildcard — allow everything
+		}
 		if domain == allowed || strings.HasSuffix(domain, "."+allowed) {
 			return true
 		}

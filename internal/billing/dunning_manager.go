@@ -15,11 +15,26 @@ import (
 	"github.com/stripe/stripe-go/v83/invoice"
 )
 
+// NotificationService defines the interface for sending notifications
+type NotificationService interface {
+	Send(ctx context.Context, req notification.SendRequest) (*notification.Notification, error)
+	SendBillingAlert(ctx context.Context, userEmail string, alertType string, data map[string]interface{}) error
+}
+
+// UserRepository defines the interface for user operations needed by DunningManager
+type UserRepository interface {
+	UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID, status string) error
+	GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*storage.BundleSubscription, error)
+	UpdateBundleSubscription(ctx context.Context, sub *storage.BundleSubscription) error
+	ListActiveUsersByTenant(ctx context.Context, tenantID uuid.UUID) ([]*storage.User, error)
+	GetTenantByID(ctx context.Context, tenantID uuid.UUID) (*storage.Tenant, error)
+}
+
 // DunningManager handles automated retry logic for failed payments
 type DunningManager struct {
 	dunningRepo     *storage.DunningRepository
-	userRepo        storage.Repository
-	notificationSvc *notification.Service
+	userRepo        UserRepository
+	notificationSvc NotificationService
 	stripeKey       string
 	stop            chan struct{}
 }
@@ -27,8 +42,8 @@ type DunningManager struct {
 // NewDunningManager creates a new dunning manager
 func NewDunningManager(
 	dunningRepo *storage.DunningRepository,
-	userRepo storage.Repository,
-	notificationSvc *notification.Service,
+	userRepo UserRepository,
+	notificationSvc NotificationService,
 ) *DunningManager {
 	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
 	return &DunningManager{

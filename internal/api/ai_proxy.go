@@ -2,13 +2,16 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/aikeys"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/functionfly/functionfly/internal/apierror"
 )
@@ -19,10 +22,11 @@ import (
 type AIProxyHandler struct {
 	aiServiceURL string
 	httpClient   *http.Client
+	byokRepo     *aikeys.Repository
 }
 
 // NewAIProxyHandler creates a new AI proxy handler
-func NewAIProxyHandler() *AIProxyHandler {
+func NewAIProxyHandler(byokRepo *aikeys.Repository) *AIProxyHandler {
 	aiURL := os.Getenv("AI_SERVICE_URL")
 	if aiURL == "" {
 		logrus.Warn("AI_SERVICE_URL not set - AI proxy will not be available")
@@ -34,6 +38,7 @@ func NewAIProxyHandler() *AIProxyHandler {
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second, // Longer timeout for AI generation
 		},
+		byokRepo: byokRepo,
 	}
 }
 
@@ -70,9 +75,11 @@ func (h *AIProxyHandler) proxyRequest(w http.ResponseWriter, r *http.Request, ai
 	proxyReq.Header.Set("Content-Type", "application/json")
 
 	// Add user context to the request for the AI service to use
-	// This allows the AI service to track usage per user/tenant
 	proxyReq.Header.Set("X-User-ID", user.UserID.String())
 	proxyReq.Header.Set("X-Tenant-ID", user.TenantID.String())
+
+	// Inject BYOK key if user has one for the requested provider
+	h.injectBYOKHeader(proxyReq, user.TenantID.String(), body)
 
 	// Send the request
 	resp, err := h.httpClient.Do(proxyReq)
@@ -296,4 +303,63 @@ func (h *AIProxyHandler) HandleAIStatus(w http.ResponseWriter, r *http.Request) 
 	}
 
 	json.NewEncoder(w).Encode(status)
+}
+
+// injectBYOKHeader checks if the tenant has a BYOK key for the provider
+// being requested and injects the key into the proxy request headers.
+func (h *AIProxyHandler) injectBYOKHeader(proxyReq *http.Request, tenantID string, body []byte) {
+	if h.byokRepo == nil {
+		proxyReq.Header.Set("X-Key-Source", "platform")
+		return
+	}
+
+	// Extract provider from request body
+	provider := extractProviderFromBody(body)
+	if provider == "" {
+		proxyReq.Header.Set("X-Key-Source", "platform")
+		return
+	}
+
+	// Parse tenant UUID
+	tid, err := uuid.Parse(tenantID)
+	if err != nil {
+		proxyReq.Header.Set("X-Key-Source", "platform")
+		return
+	}
+
+	// Look up BYOK key
+	key, err := h.byokRepo.GetByTenantAndProvider(proxyReq.Context(), tid, provider)
+	if err != nil || key == nil || key.Status != "active" {
+		proxyReq.Header.Set("X-Key-Source", "platform")
+		return
+	}
+
+	// Decrypt the key
+	plaintext, err := aikeys.DecryptKey(key.EncryptedKey, key.KeyNonce, tid)
+	if err != nil {
+		logrus.WithError(err).WithField("provider", provider).Warn("Failed to decrypt BYOK key, falling back to platform")
+		proxyReq.Header.Set("X-Key-Source", "platform")
+		return
+	}
+
+	// Inject BYOK headers
+	proxyReq.Header.Set("X-BYOK-Key", string(plaintext))
+	proxyReq.Header.Set("X-BYOK-Provider", provider)
+	proxyReq.Header.Set("X-Key-Source", "byok")
+
+	// Update last_used_at in background
+	go func() {
+		_ = h.byokRepo.UpdateLastUsed(context.Background(), key.ID)
+	}()
+}
+
+// extractProviderFromBody tries to extract the "provider" field from a JSON request body.
+func extractProviderFromBody(body []byte) string {
+	var req struct {
+		Provider string `json:"provider"`
+	}
+	if err := json.Unmarshal(body, &req); err != nil {
+		return ""
+	}
+	return req.Provider
 }

@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -281,6 +282,51 @@ func (r *SearchRuntime) Execute(ctx context.Context, input json.RawMessage, time
 // BrowserRuntime — headless browser via chromedp CLI
 // ---------------------------------------------------------------------------
 
+// isPrivateIP checks if an IP address is in a private/reserved range (SSRF protection).
+func isPrivateIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsPrivate() || ip.IsUnspecified() {
+		return true
+	}
+	// Block cloud metadata endpoints (169.254.169.254)
+	if ip4 := ip.To4(); ip4 != nil {
+		return ip4[0] == 169 && ip4[1] == 254
+	}
+	return false
+}
+
+// validateNavigateURL checks a URL for SSRF risks before allowing browser navigation.
+// Blocks: private IPs, loopback, link-local, metadata endpoints, non-HTTP(S) schemes.
+func validateNavigateURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	scheme := strings.ToLower(parsed.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("blocked scheme '%s': only http/https allowed", scheme)
+	}
+
+	hostname := parsed.Hostname()
+	if hostname == "" {
+		return fmt.Errorf("URL has no hostname")
+	}
+
+	// Resolve hostname to IP and check
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return fmt.Errorf("DNS lookup failed for '%s': %w", hostname, err)
+	}
+
+	for _, ip := range ips {
+		if isPrivateIP(ip) {
+			return fmt.Errorf("blocked navigation to private/reserved IP %s (hostname: %s)", ip, hostname)
+		}
+	}
+
+	return nil
+}
+
 type BrowserRuntime struct {
 	Headless      bool
 	TimeoutMs     int
@@ -316,6 +362,9 @@ func (r *BrowserRuntime) Execute(ctx context.Context, input json.RawMessage, tim
 	case "navigate":
 		if req.URL == "" {
 			return nil, fmt.Errorf("url is required for navigate")
+		}
+		if err := validateNavigateURL(req.URL); err != nil {
+			return nil, fmt.Errorf("SSRF protection: %w", err)
 		}
 		payload, _ := json.Marshal(map[string]string{"url": req.URL})
 		resp, err := client.Post(browserBase+"/json/new?"+url.Values{"url": {req.URL}}.Encode(), "application/json", bytes.NewReader(payload))
@@ -851,9 +900,10 @@ func (r *AssureRuntime) Name() string { return "assure" }
 
 func (r *AssureRuntime) Execute(ctx context.Context, input json.RawMessage, timeout time.Duration) (json.RawMessage, error) {
 	var req struct {
-		Action  string   `json:"action"`
-		Subject string   `json:"subject,omitempty"`
-		Checks  []string `json:"checks"`
+		Action    string   `json:"action"`
+		Subject   string   `json:"subject,omitempty"`
+		Checks    []string `json:"checks"`
+		InputData string   `json:"input_data,omitempty"`
 	}
 	if err := json.Unmarshal(input, &req); err != nil {
 		return nil, fmt.Errorf("invalid input: %w", err)
@@ -863,36 +913,84 @@ func (r *AssureRuntime) Execute(ctx context.Context, input json.RawMessage, time
 	allPassed := true
 
 	for _, check := range req.Checks {
-		result := map[string]interface{}{
-			"check":   check,
-			"passed":  true,
-			"message": fmt.Sprintf("Check '%s' passed", check),
-		}
-		switch check {
-		case "no_pii":
-			result["category"] = "privacy"
-		case "no_secrets":
-			result["category"] = "security"
-		case "rate_limit":
-			result["category"] = "governance"
-		case "budget":
-			result["category"] = "billing"
-		case "capability":
-			result["category"] = "access_control"
-		default:
-			result["category"] = "general"
+		result := r.evaluateCheck(check, req.InputData)
+		if passed, ok := result["passed"].(bool); ok && !passed {
+			allPassed = false
 		}
 		checkResults = append(checkResults, result)
 	}
 
 	return json.Marshal(map[string]interface{}{
-		"action":     req.Action,
-		"subject":    req.Subject,
-		"passed":     allPassed,
-		"checks":     checkResults,
+		"action":      req.Action,
+		"subject":     req.Subject,
+		"passed":      allPassed,
+		"checks":      checkResults,
 		"check_count": len(checkResults),
-		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 	})
+}
+
+// evaluateCheck runs a single policy check against the input data.
+func (r *AssureRuntime) evaluateCheck(check string, inputData string) map[string]interface{} {
+	result := map[string]interface{}{
+		"check": check,
+	}
+
+	switch check {
+	case "no_pii":
+		result["category"] = "privacy"
+		findings := scanPII(inputData)
+		if len(findings) > 0 {
+			result["passed"] = false
+			result["message"] = fmt.Sprintf("PII detected: %d finding(s)", len(findings))
+			result["findings"] = findings
+		} else {
+			result["passed"] = true
+			result["message"] = "No PII detected"
+		}
+
+	case "no_secrets":
+		result["category"] = "security"
+		findings := scanSecrets(inputData)
+		if len(findings) > 0 {
+			result["passed"] = false
+			result["message"] = fmt.Sprintf("Secrets detected: %d finding(s)", len(findings))
+			result["findings"] = findings
+		} else {
+			result["passed"] = true
+			result["message"] = "No secrets detected"
+		}
+
+	case "rate_limit":
+		result["category"] = "governance"
+		// Rate limit checks require external state (Redis) — evaluate basic input size heuristic
+		if len(inputData) > 1_000_000 {
+			result["passed"] = false
+			result["message"] = "Input exceeds 1MB rate limit threshold"
+		} else {
+			result["passed"] = true
+			result["message"] = "Within rate limits"
+		}
+
+	case "budget":
+		result["category"] = "billing"
+		// Budget checks require external state — pass with a note
+		result["passed"] = true
+		result["message"] = "Budget check delegated to billing service"
+
+	case "capability":
+		result["category"] = "access_control"
+		// Capability checks require external state — pass with a note
+		result["passed"] = true
+		result["message"] = "Capability check delegated to authorization service"
+
+	default:
+		result["category"] = "general"
+		result["passed"] = true
+		result["message"] = fmt.Sprintf("Check '%s' passed (no specific policy)", check)
+	}
+
+	return result
 }
 
 // ---------------------------------------------------------------------------

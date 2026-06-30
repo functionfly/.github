@@ -76,18 +76,33 @@ func (h *Handler) HandleGetCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	prefs, err := h.prefsRepo.GetTenantAIPreferences(r.Context(), claims.TenantID)
-	if err == nil && len(prefs.EnabledModels) > 0 {
-		allow := make(map[string]struct{}, len(prefs.EnabledModels))
-		for _, item := range prefs.EnabledModels {
-			allow[item.Provider+":"+item.ModelID] = struct{}{}
-		}
-		filtered := make([]CatalogModel, 0, len(models))
-		for _, model := range models {
-			if _, ok := allow[model.Provider+":"+model.ID]; ok {
-				filtered = append(filtered, model)
+	if err == nil {
+		if len(prefs.EnabledProviders) > 0 {
+			allowProv := make(map[string]struct{}, len(prefs.EnabledProviders))
+			for _, p := range prefs.EnabledProviders {
+				allowProv[p] = struct{}{}
 			}
+			filtered := make([]CatalogModel, 0, len(models))
+			for _, model := range models {
+				if _, ok := allowProv[model.Provider]; ok {
+					filtered = append(filtered, model)
+				}
+			}
+			models = filtered
 		}
-		models = filtered
+		if len(prefs.EnabledModels) > 0 {
+			allow := make(map[string]struct{}, len(prefs.EnabledModels))
+			for _, item := range prefs.EnabledModels {
+				allow[item.Provider+":"+item.ModelID] = struct{}{}
+			}
+			filtered := make([]CatalogModel, 0, len(models))
+			for _, model := range models {
+				if _, ok := allow[model.Provider+":"+model.ID]; ok {
+					filtered = append(filtered, model)
+				}
+			}
+			models = filtered
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{"models": models})
