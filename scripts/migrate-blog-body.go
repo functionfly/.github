@@ -7,6 +7,8 @@
 // and writes it back. The column type is changed by the SQL migration
 // 20260620150931_blog_body_to_markdown.up.sql.
 
+//go:build ignore
+
 package main
 
 import (

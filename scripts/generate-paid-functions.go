@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -176,7 +178,7 @@ def handler(event):
         data = event.get("data", "")
     else:
         data = ""
-    
+
     # TODO: Implement %s logic
     result = {"ok": True, "result": data, "tier": "%s"}
     return result

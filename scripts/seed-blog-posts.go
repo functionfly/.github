@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -81,7 +83,7 @@ var blogPosts = []BlogPostData{
 	{
 		Title:       "Welcome to FunctionFly: Serverless Infrastructure for the AI Era",
 		Slug:        "welcome-to-functionfly",
-		Description: "Introducing FunctionFly, the serverless platform purpose-built for AI applications with Flywheel Network, zero-knowledge secrets, and AI-first architecture.",
+		Description: "Introducing FunctionFly, the serverless platform purpose-built for AI applications with zero-knowledge secrets and AI-first architecture.",
 		Body: []map[string]interface{}{
 			{
 				"type": "paragraph",
@@ -105,12 +107,6 @@ var blogPosts = []BlogPostData{
 			{
 				"type": "paragraph",
 				"children": []map[string]interface{}{
-					{"text": "🔄 **Flywheel Network™**: A proof-of-execution knowledge network where every function execution becomes verifiable, composable knowledge. Problems are structured, solutions are executable, and AI agents collaborate in open debates."},
-				},
-			},
-			{
-				"type": "paragraph",
-				"children": []map[string]interface{}{
 					{"text": "🔐 **Zero-Knowledge Secrets Vault**: Client-side encrypted secrets that scale from free to enterprise-grade without compromising security. Your data never touches our servers in plaintext."},
 				},
 			},
@@ -122,43 +118,8 @@ var blogPosts = []BlogPostData{
 			},
 		},
 		CategorySlug: "platform",
-		Tags:         []string{"functionfly", "serverless", "ai", "platform", "introduction", "flywheel-network", "secrets-vault"},
+		Tags:         []string{"functionfly", "serverless", "ai", "platform", "introduction", "secrets-vault"},
 		PublishedAt:  "2024-01-10T09:00:00Z",
-	},
-	{
-		Title:       "Introducing Flywheel Network™: Proof-of-Execution Knowledge Network",
-		Slug:        "introducing-flywheel-network",
-		Description: "Flywheel Network brings proof-of-execution to function calls, creating a decentralized knowledge network that rewards computational contributions.",
-		Body: []map[string]interface{}{
-			{
-				"type": "paragraph",
-				"children": []map[string]interface{}{
-					{"text": "Flywheel Network™ is FunctionFly's revolutionary proof-of-execution knowledge network. It transforms every function execution into verifiable, composable knowledge—creating a self-reinforcing ecosystem where problems are structured, solutions are executable, and AI agents collaborate in open debates."},
-				},
-			},
-			{
-				"type":  "heading",
-				"level": 2,
-				"children": []map[string]interface{}{
-					{"text": "The Problem with Traditional Development"},
-				},
-			},
-			{
-				"type": "paragraph",
-				"children": []map[string]interface{}{
-					{"text": "Today's development is fragmented. Code repositories store static snapshots. Documentation becomes outdated. Knowledge lives in tribal repositories—Slack threads, Notion docs, and institutional memory. When AI agents try to collaborate, they lack shared context and verifiable execution history."},
-				},
-			},
-			{
-				"type": "paragraph",
-				"children": []map[string]interface{}{
-					{"text": "Flywheel Network solves this by treating execution as knowledge. Every function run becomes a data point. Every solution becomes composable. Every agent interaction becomes part of a growing knowledge graph."},
-				},
-			},
-		},
-		CategorySlug: "platform",
-		Tags:         []string{"flywheel", "decentralized", "proof-of-execution", "knowledge-network", "ai-collaboration"},
-		PublishedAt:  "2024-01-20T11:00:00Z",
 	},
 	{
 		Title:       "Introducing Secrets Vault: Zero-Knowledge Secrets That Scale",

@@ -1,3 +1,5 @@
+//go:build ignore
+
 package main
 
 import (
@@ -104,7 +106,7 @@ var premiumFunctions = []FunctionSpec{
 
 func main() {
 	baseDir := "./functions/functionfly"
-	
+
 	for _, fn := range premiumFunctions {
 		dir := filepath.Join(baseDir, fn.Name)
 		os.MkdirAll(dir, 0755)
@@ -131,7 +133,7 @@ func main() {
     # Premium %s function
     return {"ok": True, "result": "premium_function_executed", "price": %f}`, fn.Name, fn.Price/100)
 		os.WriteFile(filepath.Join(dir, "main.py"), []byte(code), 0644)
-		
+
 		fmt.Printf("✅ Created %s (%.4f/call)\n", fn.Name, fn.Price)
 	}
 }
