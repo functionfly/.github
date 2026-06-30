@@ -15,6 +15,12 @@ import type { Env } from "./env";
 export * from "./context";
 export * from "./env";
 
+export type {
+  Attestation,
+  DelegateOptions,
+  DelegateResult,
+} from "./context";
+
 /**
  * HTTP Request object passed to function handlers.
  * This is the standard request format across all FunctionFly runtimes.

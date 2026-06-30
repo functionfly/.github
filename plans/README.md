@@ -24,7 +24,6 @@
 |------|-------------|
 | [AI_MICROSERVICE_ARCHITECTURE.md](AI_MICROSERVICE_ARCHITECTURE.md) | AI service architecture design |
 | [CACHE_ARCHITECTURE.md](CACHE_ARCHITECTURE.md) | Caching strategy |
-| [FLYWHEEL_NETWORK_ARCHITECTURE.md](FLYWHEEL_NETWORK_ARCHITECTURE.md) | Flywheel network design |
 | [STAGING_DEPLOYMENT_ARCHITECTURE.md](STAGING_DEPLOYMENT_ARCHITECTURE.md) | Staging environment architecture |
 
 ### Features & Implementation

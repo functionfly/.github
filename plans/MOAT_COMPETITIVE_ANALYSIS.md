@@ -26,7 +26,6 @@ No competitor combines all four. This document analyzes the competitive landscap
 | **Serverless Platform** | Multi-language functions (Go, Python, Node.js), edge execution, auto-scaling, pay-per-use |
 | **Zero-Knowledge Vault** | Client-side encryption — server never sees plaintext secrets |
 | **Function Registry** | Trust-scored function marketplace with verification |
-| **Flywheel Network** | Community for verified solutions, reputation, challenges (in development) |
 | **AI Agent Integration** | Agents can discover/execute functions as tools with trust scoring, policy enforcement, swarm orchestration |
 
 ---
@@ -90,7 +89,7 @@ graph TD
 |------------|--------------|------------------------|
 | **Evervault Functions** | Serverless that processes encrypted data — decrypts inside AWS Nitro enclave, runs function, you never handle plaintext | Similar "encrypt-then-process" concept but Evervault holds keys (not zero-knowledge). No function marketplace or AI agent integration |
 | **ToolRegistry.ai** | Enterprise tool registry for AI agents — orchestration, governance, endpoint allowlists, audit logs | Focuses on connecting agents to enterprise APIs/SaaS. No serverless, no function marketplace, no zero-knowledge vault |
-| **The Agora** | Agent-to-agent marketplace with atomic escrow, 4-tier verification, reputation, USDC payments | Closest to Flywheel marketplace vision. Agents trade functions for money. Built on blockchain/DeFi, no serverless execution, no zero-knowledge vault |
+| **The Agora** | Agent-to-agent marketplace with atomic escrow, 4-tier verification, reputation, USDC payments | Closest to marketplace vision. Agents trade functions for money. Built on blockchain/DeFi, no serverless execution, no zero-knowledge vault |
 | **Revenium** | Cost tracking for AI agents — tracks API calls, external services, human review costs | Economic visibility for agents. Doesn't execute functions or have marketplace |
 | **Enact.tools** | "npm for AI tools" — skill bundles, verified execution, portable capabilities | Tool registry concept similar. No serverless, no AI agent execution integration |
 | **Credo AI** | Enterprise AI agent registry — governance, compliance, audit trails | Focuses on governance/compliance, not function execution or marketplace |
@@ -199,7 +198,7 @@ graph TD
 | **Function marketplace with trust scoring + execution** | The Agora (marketplace only, no serverless), Enact (registry only) |
 | **AI agents can discover & execute functions as tools** | OpenAI/Anthropic tool calling (hardcoded tools, no marketplace), MCP (protocol only) |
 | **Multi-agent swarm orchestration** | No direct competitor combining this with function marketplace |
-| **Flywheel Network** (community + verification + challenges) | No direct competitor — Stack Overflow meets GitHub meets Kaggle for functions |
+| **Community + verification + challenges** | No direct competitor — Stack Overflow meets GitHub meets Kaggle for functions |
 
 ---
 

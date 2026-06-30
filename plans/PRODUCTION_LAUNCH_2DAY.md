@@ -183,7 +183,7 @@ REDIS_PASSWORD=<upstash-token>
 
 - [ ] **8.5** Test Agent Swarm endpoints
 
-- [ ] **8.6** Test Flywheel Network operations
+
 
 ### Phase 9: Dashboard Testing
 
