@@ -228,6 +228,62 @@ class ProviderManager:
 
         raise ValueError("No embedding provider available")
 
+    def get_provider_for_request(
+        self, provider_name: str, byok_key: Optional[str] = None
+    ) -> BaseProvider:
+        """Get a provider instance, optionally with a BYOK key override.
+
+        When byok_key is provided, creates a new provider instance with the
+        user's key. Otherwise returns the cached platform provider.
+
+        Args:
+            provider_name: Provider name (openai, anthropic, etc.)
+            byok_key: Optional BYOK API key override
+
+        Returns:
+            Provider instance (cached for platform keys, fresh for BYOK)
+
+        Raises:
+            ValueError: If provider not found
+        """
+        if byok_key:
+            return self._create_byok_provider(provider_name, byok_key)
+
+        if provider_name not in self._providers:
+            raise ValueError(f"Provider '{provider_name}' not found")
+
+        return self._providers[provider_name]
+
+    def _create_byok_provider(self, provider_name: str, api_key: str) -> BaseProvider:
+        """Create a fresh provider instance with a BYOK key."""
+        provider_classes = {
+            "openai": OpenAIProvider,
+            "anthropic": AnthropicProvider,
+            "openrouter": OpenRouterProvider,
+            "fireworks": FireworksProvider,
+            "groq": GroqProvider,
+            "deepinfra": DeepInfraProvider,
+            "together": TogetherProvider,
+        }
+
+        # Try to import optional providers
+        try:
+            from .mimo import MiMoProvider
+            provider_classes["mimo"] = MiMoProvider
+        except ImportError:
+            pass
+        try:
+            from .stepfun import StepFunProvider
+            provider_classes["stepfun"] = StepFunProvider
+        except ImportError:
+            pass
+
+        cls = provider_classes.get(provider_name)
+        if cls is None:
+            raise ValueError(f"Provider '{provider_name}' does not support BYOK")
+
+        return cls(api_key=api_key)
+
     def list_providers(self) -> list[ProviderInfo]:
         """Get information about all providers.
 

@@ -47,7 +47,7 @@ class FireworksProvider(BaseProvider):
     falls back to OpenAI-compatible API otherwise.
     """
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="fireworks",
             display_name="Fireworks AI",
@@ -57,8 +57,10 @@ class FireworksProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
         self.api_key = (
+            api_key or
             getattr(settings, 'fireworks_api_key', None) or
             os.environ.get("FIREWORKS_API_KEY")
         )

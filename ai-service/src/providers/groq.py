@@ -34,18 +34,20 @@ class GroqProvider(BaseProvider):
     free tier with 30 RPM for prototyping.
     """
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="groq",
             display_name="Groq",
-            rate_limit=getattr(settings, 'groq_rate_limit', 30),  # Free tier: 30 RPM
+            rate_limit=getattr(settings, 'groq_rate_limit', 30),
             retry_config=RetryConfig(
                 max_retries=settings.max_retries,
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
         self.api_key = (
+            api_key or
             getattr(settings, 'groq_api_key', None) or
             os.environ.get("GROQ_API_KEY")
         )

@@ -29,7 +29,7 @@ STEPFUN_BASE_URL = "https://api.stepfun.ai/v1"
 class StepFunProvider(BaseProvider):
     """StepFun AI provider (OpenAI-compatible)."""
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="stepfun",
             display_name="StepFun",
@@ -39,9 +39,11 @@ class StepFunProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
         self.api_key = (
-            getattr(settings, "stepfun_api_key", None)
+            api_key
+            or getattr(settings, "stepfun_api_key", None)
             or os.environ.get("STEPFUN_API_KEY")
         )
         self.model = getattr(settings, "stepfun_model", "step-3.5-flash")

@@ -25,7 +25,7 @@ class OpenAIProvider(BaseProvider):
     Supports GPT-4o, o1, GPT-4.1, and text-embedding-3 models.
     """
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="openai",
             display_name="OpenAI",
@@ -35,8 +35,9 @@ class OpenAIProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
-        self.api_key = settings.openai_api_key or os.environ.get("OPENAI_API_KEY")
+        self.api_key = api_key or settings.openai_api_key or os.environ.get("OPENAI_API_KEY")
         self.model = settings.openai_model
         self.embedding_model = settings.openai_embedding_model
         self.embedding_dimensions = settings.openai_embedding_dimensions

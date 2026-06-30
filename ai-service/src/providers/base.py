@@ -79,6 +79,7 @@ class BaseProvider(ABC):
         display_name: str,
         rate_limit: int,
         retry_config: Optional[RetryConfig] = None,
+        api_key: Optional[str] = None,
     ):
         self.name = name
         self.display_name = display_name
@@ -86,6 +87,7 @@ class BaseProvider(ABC):
         self.retry_config = retry_config or RetryConfig()
         self._available = True
         self._models: list[str] = []
+        self._byok = api_key is not None  # True if using a BYOK key
 
     @property
     def available(self) -> bool:

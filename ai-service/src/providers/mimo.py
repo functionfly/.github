@@ -28,7 +28,7 @@ MIMO_BASE_URL = "https://api.xiaomimimo.com/v1"
 class MiMoProvider(BaseProvider):
     """Xiaomi MiMo provider (OpenAI-compatible)."""
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="mimo",
             display_name="Xiaomi MiMo",
@@ -38,9 +38,11 @@ class MiMoProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
         self.api_key = (
-            getattr(settings, "mimo_api_key", None)
+            api_key
+            or getattr(settings, "mimo_api_key", None)
             or os.environ.get("MIMO_API_KEY")
             or os.environ.get("XIAOMIMIMO_API_KEY")
         )

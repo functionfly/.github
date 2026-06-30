@@ -77,6 +77,9 @@ class OptimizedGenerationResponse(BaseModel):
 async def generate_function(
     request: FunctionGenerationRequest,
     api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
+    x_byok_key: Optional[str] = Header(default=None, alias="X-BYOK-Key"),
+    x_byok_provider: Optional[str] = Header(default=None, alias="X-BYOK-Provider"),
+    x_key_source: str = Header(default="platform", alias="X-Key-Source"),
 ):
     """Generate a function using AI based on natural language description.
 
@@ -86,6 +89,9 @@ async def generate_function(
     Args:
         request: Function generation request with description and optional constraints
         api_key: Validated API key with chat:write scope
+        x_byok_key: Optional BYOK API key from Go proxy
+        x_byok_provider: Optional BYOK provider name from Go proxy
+        x_key_source: Key source indicator ("byok" or "platform")
 
     Returns:
         FunctionGenerationResponse with generated code and metadata
@@ -95,12 +101,19 @@ async def generate_function(
 
     try:
         provider_manager = get_provider_manager()
-        provider_name = "openrouter"
-        provider = provider_manager.get_provider(provider_name)
+        byok_key = x_byok_key if x_key_source == "byok" else None
+        byok_provider = x_byok_provider if x_key_source == "byok" else None
 
-        if not provider or not provider.available:
-            provider_name = "openai"
+        if byok_key and byok_provider:
+            provider = provider_manager.get_provider_for_request(byok_provider, byok_key)
+            provider_name = byok_provider
+        else:
+            provider_name = "openrouter"
             provider = provider_manager.get_provider(provider_name)
+
+            if not provider or not provider.available:
+                provider_name = "openai"
+                provider = provider_manager.get_provider(provider_name)
 
         if not provider or not provider.available:
             raise HTTPException(
@@ -381,6 +394,9 @@ Capabilities are strings like "http", "network", "filesystem", etc."""
 async def generate_function_stream(
     request: FunctionGenerationRequest,
     api_key: APIKeyInfo = Depends(require_api_key_with_scope(KeyScope.CHAT_WRITE)),
+    x_byok_key: Optional[str] = Header(default=None, alias="X-BYOK-Key"),
+    x_byok_provider: Optional[str] = Header(default=None, alias="X-BYOK-Provider"),
+    x_key_source: str = Header(default="platform", alias="X-Key-Source"),
 ):
     """Stream a function generation using AI.
 
@@ -390,6 +406,9 @@ async def generate_function_stream(
     Args:
         request: Function generation request
         api_key: Validated API key with chat:write scope
+        x_byok_key: Optional BYOK API key from Go proxy
+        x_byok_provider: Optional BYOK provider name from Go proxy
+        x_key_source: Key source indicator ("byok" or "platform")
 
     Returns:
         Streaming response with generated content chunks
@@ -404,7 +423,13 @@ async def generate_function_stream(
 
     try:
         provider_manager = get_provider_manager()
-        provider = provider_manager.get_provider("openai")
+        byok_key = x_byok_key if x_key_source == "byok" else None
+        byok_provider = x_byok_provider if x_key_source == "byok" else None
+
+        if byok_key and byok_provider:
+            provider = provider_manager.get_provider_for_request(byok_provider, byok_key)
+        else:
+            provider = provider_manager.get_provider("openai")
 
         if not provider or not provider.available:
             raise HTTPException(

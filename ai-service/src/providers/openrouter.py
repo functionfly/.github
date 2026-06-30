@@ -55,7 +55,7 @@ class OpenRouterProvider(BaseProvider):
     Chat and stream only; no native embeddings (use OpenAI/other for embeddings).
     """
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="openrouter",
             display_name="OpenRouter",
@@ -65,8 +65,9 @@ class OpenRouterProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
-        self.api_key = settings.openrouter_api_key or os.environ.get("OPENROUTER_API_KEY")
+        self.api_key = api_key or settings.openrouter_api_key or os.environ.get("OPENROUTER_API_KEY")
         self.model = settings.openrouter_model
         self.base_url = getattr(settings, "openrouter_base_url", OPENROUTER_BASE_URL)
         self._models = [

@@ -33,7 +33,7 @@ class TogetherProvider(BaseProvider):
     at 50% less cost, 200+ model catalog.
     """
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="together",
             display_name="Together AI",
@@ -43,8 +43,10 @@ class TogetherProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
         self.api_key = (
+            api_key or
             getattr(settings, 'together_api_key', None) or
             os.environ.get("TOGETHER_API_KEY")
         )

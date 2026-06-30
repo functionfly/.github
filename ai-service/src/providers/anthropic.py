@@ -25,7 +25,7 @@ class AnthropicProvider(BaseProvider):
     Supports Claude Sonnet 4.6, Claude 3.5 Sonnet/Haiku, and Claude 3 Opus.
     """
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="anthropic",
             display_name="Anthropic",
@@ -35,8 +35,9 @@ class AnthropicProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
-        self.api_key = settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
+        self.api_key = api_key or settings.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
         self.model = settings.anthropic_model
         self.max_tokens = settings.anthropic_max_tokens
         self._models = [

@@ -33,7 +33,7 @@ class DeepInfraProvider(BaseProvider):
     batch processing support, good for non-latency-sensitive work.
     """
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None):
         super().__init__(
             name="deepinfra",
             display_name="DeepInfra",
@@ -43,8 +43,10 @@ class DeepInfraProvider(BaseProvider):
                 base_delay=settings.retry_base_delay,
                 max_delay=settings.retry_max_delay,
             ),
+            api_key=api_key,
         )
         self.api_key = (
+            api_key or
             getattr(settings, 'deepinfra_api_key', None) or
             os.environ.get("DEEPINFRA_API_KEY")
         )
