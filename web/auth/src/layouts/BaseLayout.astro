@@ -7,6 +7,7 @@ interface Props {
 }
 const { title, description = "Authenticate to FunctionFly™" } = Astro.props;
 const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefined;
+const gaId = import.meta.env.PUBLIC_GOOGLE_ANALYTICS_ID as string | undefined;
 ---
 <!doctype html>
 <html lang="en">
@@ -63,6 +64,22 @@ const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefine
         window.mixpanel.init(mixpanelToken);
       })();
     </script>
+
+    {/* Google Analytics */}
+    {gaId && (
+      <script define:vars={{ gaId }}>
+        (function() {
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId);
+        })();
+      </script>
+    )}
 
     <style>
       /* Global resets that can't be in component layer */

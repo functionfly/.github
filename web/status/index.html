@@ -39,6 +39,23 @@
 
     <title>FunctionFly™ Status</title>
 
+    <!-- Google Analytics (loaded only when VITE_GOOGLE_ANALYTICS_ID is set) -->
+    <script>
+      (function() {
+        var gaId = '%VITE_GOOGLE_ANALYTICS_ID%';
+        if (gaId && gaId.indexOf('G-') === 0) {
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId);
+        }
+      })();
+    </script>
+
     <style>
       /* Critical CSS for initial render */
       html {

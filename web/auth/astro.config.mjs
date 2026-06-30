@@ -15,11 +15,11 @@ const SUPPORTED_LOCALES = [
 // Production CSP headers (from _headers) - also used in dev to prevent extension interference
 const CSP_VALUE = [
   "default-src 'none'",
-  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://challenges.cloudflare.com https://www.googletagmanager.com https://cdn.mxpnl.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https://challenges.cloudflare.com",
+  "img-src 'self' data: blob: https://challenges.cloudflare.com https://www.google-analytics.com",
   "font-src 'self' https://fonts.gstatic.com",
-  "connect-src 'self' https://api.functionfly.com https://api.staging.functionfly.com http://localhost:8080 http://127.0.0.1:8080",
+  "connect-src 'self' https://api.functionfly.com https://api.staging.functionfly.com http://localhost:8080 http://127.0.0.1:8080 https://www.google-analytics.com https://www.googletagmanager.com https://api.mixpanel.com",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com",

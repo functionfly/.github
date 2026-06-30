@@ -56,7 +56,7 @@ export const ui = {
     "hero.stat2Label": "scores + verification",
     "hero.stat3Value": "Vault",
     "hero.stat3Label": "zero-knowledge encrypted",
-    "hero.stat4Value": "Flywheel",
+    "hero.stat4Value": "Ecosystem",
     "hero.stat4Label": "continuous agent learning",
 
     "audience.title": "Who benefits most from FunctionFly",

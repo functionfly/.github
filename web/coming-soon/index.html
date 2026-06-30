@@ -17,6 +17,32 @@
       rel="stylesheet"
     />
 
+    <!-- Google Analytics (GA4) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+
+    <!-- Mixpanel Analytics -->
+    <script>
+      (function() {
+        var w = window, mp = w.mixpanel = w.mixpanel || [];
+        function i(a){mp.push(arguments)}i.q=mp.q||[];mp._i=[];
+        mp.init=function(t,c){mp.push(['init',t,c]);return mp};
+        mp.track=function(){return mp.q.push(arguments)};
+        mp.people={track_charge:function(){mp.q.push(['people.track_charge',arguments])}};
+        var s = document.createElement('script');
+        s.type = 'text/javascript'; s.async = true;
+        s.src = 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
+        var x = document.getElementsByTagName('script')[0];
+        x.parentNode.insertBefore(s, x);
+        mp.init('MIXPANEL_TOKEN_HERE');
+      })();
+    </script>
+
     <style>
       /* ============================================
        CSS VARIABLES - Void & Afterburner Palette

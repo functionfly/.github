@@ -9,6 +9,7 @@ import '../styles/global.css';
 import '../styles/sc-main.css';
 
 const mixpanelToken = import.meta.env.PUBLIC_MIXPANEL_TOKEN as string | undefined;
+const gaId = import.meta.env.PUBLIC_GOOGLE_ANALYTICS_ID as string | undefined;
 
 interface Props {
   title: string;
@@ -201,6 +202,22 @@ const finalSchemas = schema
               window.mixpanel.track('site_cta_clicked', { location: 'site', href: href });
             }
           });
+        })();
+      </script>
+    )}
+
+    {/* Google Analytics */}
+    {gaId && (
+      <script define:vars={{ gaId }}>
+        (function() {
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId);
         })();
       </script>
     )}

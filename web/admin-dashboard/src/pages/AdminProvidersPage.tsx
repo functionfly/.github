@@ -1,13 +1,30 @@
 /**
  * Admin Providers Page
- * Manage external providers and service integrations
+ * Manage external providers, service integrations, and AI model provider access
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiClient, getProviderSettings, updateProviderSettings, ProviderSettings } from '@/lib/api/adminClient';
-import { Plus, Search, MoreVertical, Trash2, AlertTriangle, Settings, X } from 'lucide-react';
+import { Plus, Search, MoreVertical, Trash2, AlertTriangle, Settings, X, Brain, Globe } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
+
+interface AIModelPreferences {
+  tenant_id: string;
+  enabled_providers: string[];
+  enabled_models: Array<{ provider: string; model_id: string }>;
+  profile: string;
+  routing_strategy: string;
+}
+
+interface AIModelCatalogItem {
+  id: string;
+  display_name: string;
+  provider: string;
+  tier?: string;
+  cost_hint?: string;
+  provider_available?: boolean;
+}
 
 interface Provider {
   id: string;
@@ -75,6 +92,92 @@ export function AdminProvidersPage() {
       setOpenMenuId(null);
     },
   });
+
+  const [showAIProviders, setShowAIProviders] = useState(false);
+  const [aiDraftProviders, setAiDraftProviders] = useState<string[] | null>(null);
+
+  const { data: aiCatalog = [] } = useQuery({
+    queryKey: ['ai-model-catalog-admin'],
+    queryFn: async (): Promise<AIModelCatalogItem[]> => {
+      try {
+        const res = await adminApiClient.get<{ models: AIModelCatalogItem[] }>('/ai/models/catalog');
+        return (res as unknown as { models?: AIModelCatalogItem[] }).models ?? [];
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: showAIProviders,
+  });
+
+  const { data: aiPrefs } = useQuery({
+    queryKey: ['ai-model-preferences-admin'],
+    queryFn: async (): Promise<AIModelPreferences | null> => {
+      try {
+        const res = await adminApiClient.get<AIModelPreferences>('/ai/models/preferences');
+        return res as unknown as AIModelPreferences;
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60,
+    enabled: showAIProviders,
+  });
+
+  const aiProviders = useMemo(() => {
+    const map = new Map<string, { count: number; available: number }>();
+    for (const m of aiCatalog) {
+      const entry = map.get(m.provider) ?? { count: 0, available: 0 };
+      entry.count++;
+      if (m.provider_available !== false) entry.available++;
+      map.set(m.provider, entry);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [aiCatalog]);
+
+  const effectiveEnabledProviders = aiDraftProviders ?? aiPrefs?.enabled_providers ?? [];
+
+  const saveAIProvidersMutation = useMutation({
+    mutationFn: async (enabledProviders: string[]) => {
+      const payload = {
+        ...(aiPrefs ?? {}),
+        enabled_providers: enabledProviders,
+        profile: aiPrefs?.profile ?? 'balanced',
+        use_same_model_everywhere: false,
+        defaults: aiPrefs?.defaults ?? {},
+        enabled_models: aiPrefs?.enabled_models ?? [],
+        allow_user_overrides: true,
+        routing_strategy: aiPrefs?.routing_strategy ?? 'quality_first',
+      };
+      await adminApiClient.put('/ai/models/preferences', payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-model-preferences-admin'] });
+      setAiDraftProviders(null);
+    },
+  });
+
+  const handleToggleAIProvider = (provider: string) => {
+    const current = effectiveEnabledProviders;
+    const allProviders = aiProviders.map(([name]) => name);
+    let next: string[];
+
+    if (current.length === 0) {
+      // Currently all allowed → restrict to all except this one
+      next = allProviders.filter((p) => p !== provider);
+    } else if (current.includes(provider)) {
+      next = current.filter((p) => p !== provider);
+    } else {
+      next = [...current, provider];
+    }
+
+    // If all providers are in the list, treat as "all allowed" (empty array)
+    if (next.length === allProviders.length) {
+      next = [];
+    }
+
+    setAiDraftProviders(next);
+  };
 
   const providers = providersResponse ?? [];
   const settings = settingsResponse ?? [];
@@ -240,6 +343,117 @@ export function AdminProvidersPage() {
           </div>
         </div>
       )}
+
+      {/* AI Model Providers — enable/disable providers for model selection */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <Brain className="w-5 h-5 text-blue-500" />
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Model Providers</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Control which AI providers are available for model selection. Disabled providers hide all their models from agent dropdowns.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setShowAIProviders(!showAIProviders)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
+              showAIProviders
+                ? 'bg-blue-50 border-blue-300 text-blue-700 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300'
+                : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            {showAIProviders ? 'Hide' : 'Configure'}
+          </button>
+        </div>
+
+        {showAIProviders && (
+          <>
+            <div className="flex flex-wrap gap-2 mb-4">
+              <button
+                onClick={() => setAiDraftProviders([])}
+                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Allow all
+              </button>
+              <button
+                onClick={() => setAiDraftProviders(aiProviders.map(([name]) => name))}
+                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                Restrict to listed
+              </button>
+              {effectiveEnabledProviders.length > 0 && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  {effectiveEnabledProviders.length} of {aiProviders.length} enabled
+                </span>
+              )}
+              {effectiveEnabledProviders.length === 0 && (
+                <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                  All providers allowed
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {aiProviders.map(([name, stats]) => {
+                const isEnabled = effectiveEnabledProviders.length === 0 || effectiveEnabledProviders.includes(name);
+                return (
+                  <div
+                    key={name}
+                    className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-colors ${
+                      isEnabled
+                        ? 'bg-gray-50 border-gray-200 dark:bg-gray-700/50 dark:border-gray-600'
+                        : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800 opacity-60'
+                    }`}
+                    onClick={() => handleToggleAIProvider(name)}
+                  >
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100 capitalize">{name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {stats.count} model{stats.count !== 1 ? 's' : ''}
+                        {stats.available < stats.count && (
+                          <span className="ml-1 text-amber-600 dark:text-amber-400">({stats.available} avail)</span>
+                        )}
+                      </p>
+                    </div>
+                    <div
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                        isEnabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                          isEnabled ? 'translate-x-4' : 'translate-x-1'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {aiDraftProviders !== null && (
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  onClick={() => saveAIProvidersMutation.mutate(effectiveEnabledProviders)}
+                  disabled={saveAIProvidersMutation.isPending}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm"
+                >
+                  {saveAIProvidersMutation.isPending ? 'Saving...' : 'Save provider settings'}
+                </button>
+                <button
+                  onClick={() => setAiDraftProviders(null)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-sm"
+                >
+                  Discard
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="flex gap-4">
         <div className="flex-1 relative">

@@ -23,10 +23,46 @@
     />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.functionfly.com http://localhost:8080 http://127.0.0.1:8080 ws: wss: https://www.google-analytics.com https://www.googletagmanager.com; base-uri 'self'; form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com; object-src 'none'; frame-src 'none';"
+      content="default-src 'none'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://www.googletagmanager.com https://cdn.mxpnl.com; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://www.google-analytics.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://api.functionfly.com http://localhost:8080 http://127.0.0.1:8080 ws: wss: https://www.google-analytics.com https://www.googletagmanager.com https://api.mixpanel.com; base-uri 'self'; form-action 'self' https://api.functionfly.com https://api.staging.functionfly.com; object-src 'none'; frame-src 'none';"
     />
 
     <title>FunctionFly™ Admin Dashboard</title>
+
+    <!-- Google Analytics (loaded only when VITE_GOOGLE_ANALYTICS_ID is set) -->
+    <script>
+      (function() {
+        var gaId = '%VITE_GOOGLE_ANALYTICS_ID%';
+        if (gaId && gaId.indexOf('G-') === 0) {
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + gaId;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', gaId);
+        }
+      })();
+    </script>
+
+    <!-- Mixpanel Analytics (loaded only when VITE_MIXPANEL_TOKEN is set) -->
+    <script>
+      (function() {
+        var token = '%VITE_MIXPANEL_TOKEN%';
+        if (token && token.indexOf('0') === 0 && token.length > 5) {
+          var w = window, mp = w.mixpanel = w.mixpanel || [];
+          function i(a){mp.push(arguments)}i.q=mp.q||[];mp._i=[];
+          mp.init=function(t,c){mp.push(['init',t,c]);return mp};
+          mp.track=function(){return mp.q.push(arguments)};
+          var s = document.createElement('script');
+          s.type = 'text/javascript'; s.async = true;
+          s.src = 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js';
+          var x = document.getElementsByTagName('script')[0];
+          x.parentNode.insertBefore(s, x);
+          mp.init(token);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
