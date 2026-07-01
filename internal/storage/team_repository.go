@@ -278,3 +278,42 @@ func (r *TeamRepository) IsUserTeamAdmin(ctx context.Context, userID, teamID uui
 	err := r.db.WithContext(ctx).Model(&TeamMembership{}).Where("team_id = ? AND user_id = ? AND role IN ?", teamID, userID, pq.Array([]string{"owner", "admin"})).Count(&count).Error
 	return count > 0, err
 }
+
+// TransferTeamOwnership moves the owner role from one user to another
+func (r *TeamRepository) TransferTeamOwnership(ctx context.Context, teamID, fromUserID, toUserID uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&TeamMembership{}).Where("team_id = ? AND user_id = ?", teamID, fromUserID).Update("role", "admin").Error; err != nil {
+			return err
+		}
+		return tx.Model(&TeamMembership{}).Where("team_id = ? AND user_id = ?", teamID, toUserID).Update("role", "owner").Error
+	})
+}
+
+// LeaveTeam removes the current user from a team (non-owners only)
+func (r *TeamRepository) LeaveTeam(ctx context.Context, teamID, userID uuid.UUID) error {
+	return r.db.WithContext(ctx).Where("team_id = ? AND user_id = ? AND role != 'owner'", teamID, userID).Delete(&TeamMembership{}).Error
+}
+
+// CreateTeamAuditLog creates an audit log entry
+func (r *TeamRepository) CreateTeamAuditLog(ctx context.Context, entry *TeamAuditLog) error {
+	return r.db.WithContext(ctx).Create(entry).Error
+}
+
+// GetTeamAuditLogs gets audit logs for a team with pagination
+func (r *TeamRepository) GetTeamAuditLogs(ctx context.Context, teamID uuid.UUID, limit, offset int) ([]*TeamAuditLog, error) {
+	var logs []*TeamAuditLog
+	err := r.db.WithContext(ctx).Preload("Actor").Where("team_id = ?", teamID).Order("created_at DESC").Limit(limit).Offset(offset).Find(&logs).Error
+	return logs, err
+}
+
+// GetTeamQuotas returns all quotas for a team
+func (r *TeamRepository) GetTeamQuotas(ctx context.Context, teamID uuid.UUID) ([]*TeamQuota, error) {
+	var quotas []*TeamQuota
+	err := r.db.WithContext(ctx).Where("team_id = ?", teamID).Find(&quotas).Error
+	return quotas, err
+}
+
+// UpdateTeamQuota adjusts the current_count for a resource type
+func (r *TeamRepository) UpdateTeamQuota(ctx context.Context, teamID uuid.UUID, resourceType string, delta int) error {
+	return r.db.WithContext(ctx).Model(&TeamQuota{}).Where("team_id = ? AND resource_type = ?", teamID, resourceType).Update("current_count", gorm.Expr("current_count + ?", delta)).Error
+}

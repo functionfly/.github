@@ -19,10 +19,48 @@ func userSettingsKeyForType(notifType string) string {
 		return "deploymentSuccess"
 	case TypeDeploymentFailed:
 		return "deploymentFailure"
+	case TypeDeploymentStarted:
+		return "deploymentStarted"
 	case TypeFailoverTriggered, TypeFailoverResolved:
 		return "failoverEvents"
 	case TypeProviderOffline, TypeProviderOnline, TypeProviderDegraded:
 		return "providerIssues"
+	case TypeBillingPaymentFailed, TypeBillingPaymentSuccess:
+		return "paymentFailures"
+	case TypeBillingWalletLowBalance:
+		return "lowWalletBalance"
+	case TypeBillingSpendCapWarning, TypeBillingForecastExceeded, TypeBillingUsageSpike:
+		return "spendCapWarnings"
+	case TypeBillingInvoiceGenerated:
+		return "invoiceGenerated"
+	case TypeBillingSubscriptionExpiring:
+		return "subscriptionExpiring"
+	case TypeSecurityNewDeviceLogin:
+		return "newDeviceLogin"
+	case TypeSecuritySuspiciousActivity:
+		return "suspiciousActivity"
+	case TypeFunctionError:
+		return "functionErrors"
+	case TypeFunctionPublished:
+		return "functionPublished"
+	case TypeFunctionUpdated:
+		return "functionUpdated"
+	case TypeTeamInvitation, TypeTeamInviteSent, TypeTeamInviteAccepted:
+		return "teamInvitations"
+	case TypeTeamRoleChanged:
+		return "roleChanges"
+	case TypeTeamDirectMessage:
+		return "directMessages"
+	case TypePayoutCompleted:
+		return "payoutCompleted"
+	case TypePayoutFailed, TypePayoutCancelled, TypePayoutReversed:
+		return "payoutFailed"
+	case TypePayoutApprovalNeeded:
+		return "payoutApprovalNeeded"
+	case TypeConsciousnessCritical:
+		return "consciousnessCritical"
+	case TypeConsciousnessAutoApplied:
+		return "consciousnessAutoApplied"
 	default:
 		return ""
 	}
@@ -49,13 +87,14 @@ func boolFromSettings(settings map[string]interface{}, key string, defaultVal bo
 }
 
 // IsNotificationTypeEnabled checks user_settings toggles for operational notification types.
-// Security notifications always return true.
+// Core security notifications (password, MFA, username changes) always return true.
+// New device login and suspicious activity respect their user toggles.
 func IsNotificationTypeEnabled(settings map[string]interface{}, notifType string) bool {
-	if strings.HasPrefix(notifType, "security.") {
-		return true
-	}
 	if key := userSettingsKeyForType(notifType); key != "" {
 		return boolFromSettings(settings, key, true)
+	}
+	if strings.HasPrefix(notifType, "security.") {
+		return true
 	}
 	return true
 }
@@ -90,14 +129,16 @@ func SyncPreferencesFromSettings(ctx context.Context, repo Repository, userID uu
 
 	pushMaster := IsPushEnabled(settings)
 	categoryToggles := []categoryToggle{
-		{CategoryDeployment, boolFromSettings(settings, "deploymentSuccess", true) && boolFromSettings(settings, "deploymentFailure", true)},
+		{CategoryDeployment, boolFromSettings(settings, "deploymentSuccess", true) || boolFromSettings(settings, "deploymentFailure", true) || boolFromSettings(settings, "deploymentStarted", false)},
 		{CategoryFailover, boolFromSettings(settings, "failoverEvents", true)},
 		{CategoryProvider, boolFromSettings(settings, "providerIssues", true)},
-		{CategoryBilling, emailMaster},
-		{CategoryTeam, emailMaster},
+		{CategoryBilling, boolFromSettings(settings, "paymentFailures", true) || boolFromSettings(settings, "lowWalletBalance", true) || boolFromSettings(settings, "spendCapWarnings", true) || boolFromSettings(settings, "invoiceGenerated", false) || boolFromSettings(settings, "subscriptionExpiring", true)},
+		{CategoryTeam, boolFromSettings(settings, "teamInvitations", true) || boolFromSettings(settings, "roleChanges", true) || boolFromSettings(settings, "directMessages", true)},
 		{CategoryMessages, emailMaster},
 		{CategorySystem, emailMaster},
-		{CategoryFunction, emailMaster},
+		{CategoryFunction, boolFromSettings(settings, "functionErrors", true) || boolFromSettings(settings, "functionPublished", false) || boolFromSettings(settings, "functionUpdated", false)},
+		{CategoryConsciousness, boolFromSettings(settings, "consciousnessCritical", true) || boolFromSettings(settings, "consciousnessAutoApplied", false)},
+		{CategoryPayout, boolFromSettings(settings, "payoutCompleted", false) || boolFromSettings(settings, "payoutFailed", true) || boolFromSettings(settings, "payoutApprovalNeeded", true)},
 	}
 
 	for _, ct := range categoryToggles {
@@ -116,10 +157,10 @@ func SyncPreferencesFromSettings(ctx context.Context, repo Repository, userID uu
 				enabled = true
 			}
 			if ct.category == CategoryDeployment {
-				// deployment success/failure are type-level; keep category enabled if either is on
 				success := boolFromSettings(settings, "deploymentSuccess", true)
 				failure := boolFromSettings(settings, "deploymentFailure", true)
-				enabled = success || failure
+				started := boolFromSettings(settings, "deploymentStarted", false)
+				enabled = success || failure || started
 				if channel == ChannelEmail {
 					enabled = enabled && emailMaster
 				}

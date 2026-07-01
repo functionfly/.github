@@ -38,6 +38,12 @@ type (
 	Alert                             = types.Alert
 	AnalyticsEvent                    = types.AnalyticsEvent
 	App                               = types.App
+	AppAnalyticsResponse              = types.AppAnalyticsResponse
+	AppAnalyticsSummary               = types.AppAnalyticsSummary
+	AppBackendBreakdown               = types.AppBackendBreakdown
+	AppErrorBreakdown                 = types.AppErrorBreakdown
+	AppLatencyTimeseriesPoint         = types.AppLatencyTimeseriesPoint
+	AppRequestTimeseriesPoint         = types.AppRequestTimeseriesPoint
 	AuditEvent                        = types.AuditEvent
 	AuthEvent                         = types.AuthEvent
 	Backend                           = types.Backend
@@ -133,12 +139,14 @@ type (
 	TaxIDValidationLog                = types.TaxIDValidationLog
 	TaxRate                           = types.TaxRate
 	TaxSettings                       = types.TaxSettings
+	TeamAuditLog                      = types.TeamAuditLog
 	TeamInvite                        = types.TeamInvite
 	TeamMemory                        = types.TeamMemory
 	TeamMemoryFilter                  = types.TeamMemoryFilter
 	TeamMemorySearchResult            = types.TeamMemorySearchResult
 	TeamMembership                    = types.TeamMembership
 	TeamPermission                    = types.TeamPermission
+	TeamQuota                         = types.TeamQuota
 	Tenant                            = types.Tenant
 	TenantAuthAuditLog                = types.TenantAuthAuditLog
 	TenantAuthSettings                = types.TenantAuthSettings
@@ -357,6 +365,12 @@ type Repository interface {
 	GetUserPermissions(ctx context.Context, userID uuid.UUID, resourceType string) ([]string, error)
 	IsUserTeamOwner(ctx context.Context, userID, teamID uuid.UUID) (bool, error)
 	IsUserTeamAdmin(ctx context.Context, userID, teamID uuid.UUID) (bool, error)
+	TransferTeamOwnership(ctx context.Context, teamID, fromUserID, toUserID uuid.UUID) error
+	LeaveTeam(ctx context.Context, teamID, userID uuid.UUID) error
+	CreateTeamAuditLog(ctx context.Context, log *TeamAuditLog) error
+	GetTeamAuditLogs(ctx context.Context, teamID uuid.UUID, limit, offset int) ([]*TeamAuditLog, error)
+	GetTeamQuotas(ctx context.Context, teamID uuid.UUID) ([]*TeamQuota, error)
+	UpdateTeamQuota(ctx context.Context, teamID uuid.UUID, resourceType string, delta int) error
 
 	// Audit operations
 	ListAuditEvents(ctx context.Context, limit, offset int) ([]*AuditEvent, error)
@@ -541,6 +555,8 @@ type Repository interface {
 	// GetAppBySlugAndTenant returns an app by slug scoped to the tenant (dashboard / tenant APIs).
 	GetAppBySlugAndTenant(ctx context.Context, slug string, tenantID uuid.UUID) (*App, error)
 	ListAppsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*App, error)
+	UpdateApp(ctx context.Context, id uuid.UUID, name string) (*App, error)
+	DeleteApp(ctx context.Context, id uuid.UUID) error
 
 	// Backend operations
 	CreateBackend(ctx context.Context, appID uuid.UUID, provider, region, url, sharedSecret string, priority *int) (*Backend, error)
@@ -567,6 +583,13 @@ type Repository interface {
 	// Routing operations
 	InsertRoutingEvent(ctx context.Context, appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error
 	GetRecentRoutingEvents(ctx context.Context, limit int, since time.Time) ([]*RoutingEvent, error)
+
+	// App analytics operations
+	GetAppAnalyticsSummary(ctx context.Context, appID uuid.UUID, since time.Time) (*AppAnalyticsSummary, error)
+	GetAppRequestTimeseries(ctx context.Context, appID uuid.UUID, since time.Time, interval string) ([]*AppRequestTimeseriesPoint, error)
+	GetAppLatencyTimeseries(ctx context.Context, appID uuid.UUID, since time.Time, interval string) ([]*AppLatencyTimeseriesPoint, error)
+	GetAppTopErrors(ctx context.Context, appID uuid.UUID, since time.Time) ([]*AppErrorBreakdown, error)
+	GetAppBackendBreakdown(ctx context.Context, appID uuid.UUID, since time.Time) ([]*AppBackendBreakdown, error)
 
 	// Deployment operations
 	CreateDeployment(ctx context.Context, appID uuid.UUID, provider, region, deploymentID, artifactKey string, routes []string) (*Deployment, error)
@@ -690,6 +713,7 @@ type Repository interface {
 	GetUserLockoutStatus(ctx context.Context, userID uuid.UUID) (*time.Time, error)
 	ClearUserLockout(ctx context.Context, userID uuid.UUID) error
 	DeleteOldLoginAttempts(ctx context.Context, before time.Time) (int64, error)
+	CreateLoginHistory(ctx context.Context, userID uuid.UUID, eventType, ipAddress, userAgent, device, loginMethod string, mfaUsed bool, sessionID *uuid.UUID) (*LoginHistory, error)
 	ListUserLoginHistory(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*LoginHistory, error)
 	CountUserLoginHistory(ctx context.Context, userID uuid.UUID) (int, error)
 
@@ -1363,6 +1387,7 @@ type Repository interface {
 	HasUserClaimedEarlyAccess(ctx context.Context, userID uuid.UUID, slug string) (bool, error)
 	ClaimFounderEarlyAccess(ctx context.Context, userID uuid.UUID, feature *FounderEarlyAccessFeature) error
 	ListActiveFounderVotes(ctx context.Context) ([]*FounderVote, error)
+	ListFounderVotes(ctx context.Context) ([]*FounderVote, error)
 	GetFounderVote(ctx context.Context, voteID uuid.UUID) (*FounderVote, error)
 	GetFounderVoteResponse(ctx context.Context, voteID, userID uuid.UUID) (*FounderVoteResponse, error)
 	GetFounderVoteResults(ctx context.Context, voteID uuid.UUID) (map[string]int, int, error)

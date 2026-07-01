@@ -32,9 +32,9 @@ func (r *Repository) Create(ctx context.Context, tenantID, userID uuid.UUID, req
 		return nil, "", fmt.Errorf("failed to generate API key: %w", err)
 	}
 
-	// Hash the key for storage
+	// Hash the key for storage (deterministic SHA-256 for DB lookup)
 	hasher := NewHasher()
-	keyHash := hasher.Hash(plaintext)
+	keyHash := hasher.HashDeterministic(plaintext)
 
 	// Get prefix for key type
 	prefix := GetPrefixForKeyType(req.KeyType)
@@ -55,6 +55,7 @@ func (r *Repository) Create(ctx context.Context, tenantID, userID uuid.UUID, req
 		ID:                    uuid.New(),
 		TenantID:              tenantID,
 		UserID:                userID,
+		TeamID:                req.TeamID,
 		Name:                  req.Name,
 		Description:           req.Description,
 		KeyType:               req.KeyType,
@@ -195,6 +196,12 @@ func (r *Repository) List(ctx context.Context, filters *ListFilters, limit, offs
 		if filters.UserID != nil {
 			query = query.Where("user_id = ?", *filters.UserID)
 		}
+		if filters.TeamID != nil {
+			query = query.Where("team_id = ?", *filters.TeamID)
+		}
+		if filters.TeamIDIsNull {
+			query = query.Where("team_id IS NULL")
+		}
 		if filters.KeyType != nil {
 			query = query.Where("key_type = ?", *filters.KeyType)
 		}
@@ -231,6 +238,12 @@ func (r *Repository) List(ctx context.Context, filters *ListFilters, limit, offs
 			}
 			if filters.UserID != nil {
 				countQuery = countQuery.Where("user_id = ?", *filters.UserID)
+			}
+			if filters.TeamID != nil {
+				countQuery = countQuery.Where("team_id = ?", *filters.TeamID)
+			}
+			if filters.TeamIDIsNull {
+				countQuery = countQuery.Where("team_id IS NULL")
 			}
 			if filters.KeyType != nil {
 				countQuery = countQuery.Where("key_type = ?", *filters.KeyType)
@@ -294,9 +307,9 @@ func (r *Repository) Rotate(ctx context.Context, keyID uuid.UUID, newPlaintext s
 		return err
 	}
 
-	// Hash the new key
+	// Hash the new key (deterministic SHA-256 for DB lookup)
 	hasher := NewHasher()
-	newHash := hasher.Hash(newPlaintext)
+	newHash := hasher.HashDeterministic(newPlaintext)
 
 	now := time.Now()
 
@@ -510,9 +523,9 @@ func (r *Repository) CreateTrustAPIKey(ctx context.Context, req *CreateTrustAPIK
 		return nil, "", fmt.Errorf("failed to generate Trust API key: %w", err)
 	}
 
-	// Hash the key for storage
+	// Hash the key for storage (deterministic SHA-256 for DB lookup)
 	hasher := NewHasher()
-	keyHash := hasher.Hash(plaintext)
+	keyHash := hasher.HashDeterministic(plaintext)
 
 	now := time.Now()
 	apiKey := &APIKey{
@@ -581,7 +594,7 @@ func (r *Repository) ValidateAPIKey(rawKey string) (*APIKey, error) {
 	if strings.HasPrefix(rawKey, PrefixTrust+"v1_") {
 		// New platform format: fft_v1_random_crc8
 		hasher := NewHasher()
-		keyHash = hasher.Hash(rawKey)
+		keyHash = hasher.HashDeterministic(rawKey)
 	} else if strings.HasPrefix(rawKey, PrefixTrust) {
 		// Legacy Trust format: fft_xxx (no version/checksum)
 		hash := sha256.Sum256([]byte(rawKey))

@@ -148,6 +148,7 @@ type APIKey struct {
 	ID                    uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	TenantID              uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null;index:idx_api_keys_tenant"`
 	UserID                uuid.UUID  `json:"user_id" gorm:"type:uuid;not null"`
+	TeamID                *uuid.UUID `json:"team_id,omitempty" gorm:"type:uuid;index:idx_api_keys_team_id"`
 	Name                  string     `json:"name" gorm:"size:255;not null"`
 	Description           string     `json:"description" gorm:"type:text"`
 	KeyType               KeyType    `json:"key_type" gorm:"type:varchar(50);not null;index:idx_api_keys_type"`
@@ -223,6 +224,7 @@ type CreateAPIKeyRequest struct {
 	Name                  string            `json:"name"`
 	Description           string            `json:"description,omitempty"`
 	KeyType               KeyType           `json:"key_type"`
+	TeamID                *uuid.UUID        `json:"team_id,omitempty"`
 	Permissions           []PermissionGrant `json:"permissions,omitempty"`
 	Environments          []uuid.UUID       `json:"environments,omitempty"`
 	ExpiresAt             *time.Time        `json:"expires_at,omitempty"`
@@ -248,6 +250,8 @@ type RotateAPIKeyRequest struct {
 type ListFilters struct {
 	TenantID      *uuid.UUID `json:"tenant_id,omitempty"`
 	UserID        *uuid.UUID `json:"user_id,omitempty"`
+	TeamID        *uuid.UUID `json:"team_id,omitempty"`
+	TeamIDIsNull  bool       `json:"team_id_is_null,omitempty"`
 	KeyType       *KeyType   `json:"key_type,omitempty"`
 	IsActive      *bool      `json:"is_active,omitempty"`
 	ExpiresBefore *time.Time `json:"expires_before,omitempty"`
@@ -261,6 +265,7 @@ type APIKeyResponse struct {
 	Name                  string              `json:"name"`
 	Description           string              `json:"description,omitempty"`
 	KeyType               KeyType             `json:"key_type"`
+	TeamID                *uuid.UUID          `json:"team_id,omitempty"`
 	Prefix                string              `json:"prefix"`
 	ExpiresAt             *time.Time          `json:"expires_at,omitempty"`
 	LastUsedAt            *time.Time          `json:"last_used_at,omitempty"`
@@ -358,6 +363,7 @@ func (k *APIKey) ToResponse() *APIKeyResponse {
 		Name:                  k.Name,
 		Description:           k.Description,
 		KeyType:               k.KeyType,
+		TeamID:                k.TeamID,
 		Prefix:                k.KeyPrefix,
 		ExpiresAt:             k.ExpiresAt,
 		LastUsedAt:            k.LastUsedAt,

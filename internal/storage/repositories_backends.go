@@ -74,6 +74,28 @@ func (db *PostgresDB) GetRecentRoutingEvents(ctx context.Context, limit int, sin
 	return db.backendRepository.GetRecentRoutingEvents(ctx, limit, since)
 }
 
+// App analytics operations
+
+func (db *PostgresDB) GetAppAnalyticsSummary(ctx context.Context, appID uuid.UUID, since time.Time) (*AppAnalyticsSummary, error) {
+	return db.appAnalyticsRepository.GetAppAnalyticsSummary(ctx, appID, since)
+}
+
+func (db *PostgresDB) GetAppRequestTimeseries(ctx context.Context, appID uuid.UUID, since time.Time, interval string) ([]*AppRequestTimeseriesPoint, error) {
+	return db.appAnalyticsRepository.GetAppRequestTimeseries(ctx, appID, since, interval)
+}
+
+func (db *PostgresDB) GetAppLatencyTimeseries(ctx context.Context, appID uuid.UUID, since time.Time, interval string) ([]*AppLatencyTimeseriesPoint, error) {
+	return db.appAnalyticsRepository.GetAppLatencyTimeseries(ctx, appID, since, interval)
+}
+
+func (db *PostgresDB) GetAppTopErrors(ctx context.Context, appID uuid.UUID, since time.Time) ([]*AppErrorBreakdown, error) {
+	return db.appAnalyticsRepository.GetAppTopErrors(ctx, appID, since)
+}
+
+func (db *PostgresDB) GetAppBackendBreakdown(ctx context.Context, appID uuid.UUID, since time.Time) ([]*AppBackendBreakdown, error) {
+	return db.appAnalyticsRepository.GetAppBackendBreakdown(ctx, appID, since)
+}
+
 func (db *PostgresDB) GetBackendStatusByAppID(ctx context.Context, appID uuid.UUID) ([]*BackendStatus, error) {
 	return db.backendRepository.GetBackendStatusByAppID(ctx, appID)
 }

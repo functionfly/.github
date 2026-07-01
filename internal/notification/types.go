@@ -49,17 +49,18 @@ const (
 
 // Categories
 const (
-	CategorySystem     = "system"
-	CategorySecurity   = "security"
-	CategoryBilling    = "billing"
-	CategoryDeployment = "deployment"
-	CategoryFunction   = "function"
-	CategoryTeam       = "team"
-	CategoryMessages   = "messages"
-	CategoryRegistry   = "registry"
-	CategoryFailover   = "failover"
-	CategoryProvider   = "provider"
+	CategorySystem        = "system"
+	CategorySecurity      = "security"
+	CategoryBilling       = "billing"
+	CategoryDeployment    = "deployment"
+	CategoryFunction      = "function"
+	CategoryTeam          = "team"
+	CategoryMessages      = "messages"
+	CategoryRegistry      = "registry"
+	CategoryFailover      = "failover"
+	CategoryProvider      = "provider"
 	CategoryConsciousness = "consciousness"
+	CategoryPayout        = "payout"
 )
 
 // Frequencies

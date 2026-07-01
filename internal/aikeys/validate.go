@@ -3,6 +3,7 @@ package aikeys
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -25,7 +26,10 @@ func SupportedProviders() []SupportedProvider {
 		{ID: "deepinfra", Name: "DeepInfra", Description: "Cost-optimized serverless inference", KeyFormat: "Any (min 20 chars)"},
 		{ID: "together", Name: "Together AI", Description: "Wide model catalog, batch at 50% off", KeyFormat: "Any (min 20 chars)"},
 		{ID: "mimo", Name: "MiMo (Xiaomi)", Description: "Long-context reasoning, 1M context", KeyFormat: "Any (min 10 chars)"},
+		{ID: "mimo-token-plan", Name: "MiMo Token Plan", Description: "Prepaid credit plan (tp-...)", KeyFormat: "tp-...", KeyPrefix: "tp-"},
 		{ID: "stepfun", Name: "StepFun", Description: "Reasoning + vision models", KeyFormat: "Any (min 10 chars)"},
+		{ID: "minimax", Name: "MiniMax", Description: "MiniMax M3, long-context models", KeyFormat: "Any (min 20 chars)"},
+		{ID: "minimax-token-plan", Name: "MiniMax Token Plan", Description: "Subscription plan for MiniMax M3 (sk-cp-...)", KeyFormat: "sk-cp-...", KeyPrefix: "sk-cp-"},
 	}
 }
 
@@ -70,9 +74,17 @@ func validateFormat(provider, apiKey string) error {
 		if len(apiKey) < 20 {
 			return fmt.Errorf("%s keys must be at least 20 characters", provider)
 		}
-	case "mimo", "stepfun":
+	case "mimo", "stepfun", "minimax":
 		if len(apiKey) < 10 {
 			return fmt.Errorf("%s keys must be at least 10 characters", provider)
+		}
+	case "mimo-token-plan":
+		if !strings.HasPrefix(apiKey, "tp-") || len(apiKey) < 10 {
+			return fmt.Errorf("MiMo Token Plan keys start with 'tp-' and are at least 10 characters")
+		}
+	case "minimax-token-plan":
+		if !strings.HasPrefix(apiKey, "sk-cp-") || len(apiKey) < 20 {
+			return fmt.Errorf("MiniMax Token Plan keys start with 'sk-cp-' and are at least 20 characters")
 		}
 	default:
 		return fmt.Errorf("unsupported provider: %s", provider)
@@ -84,9 +96,14 @@ func validateFormat(provider, apiKey string) error {
 func testProviderAPI(provider, apiKey string) ValidationResponse {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	endpoint, method, headers := providerTestConfig(provider, apiKey)
+	endpoint, method, headers, body := providerTestConfig(provider, apiKey)
 
-	req, err := http.NewRequest(method, endpoint, nil)
+	var reqBody io.Reader
+	if body != "" {
+		reqBody = strings.NewReader(body)
+	}
+
+	req, err := http.NewRequest(method, endpoint, reqBody)
 	if err != nil {
 		return ValidationResponse{IsValid: false, Message: fmt.Sprintf("request error: %v", err)}
 	}
@@ -114,11 +131,19 @@ func testProviderAPI(provider, apiKey string) ValidationResponse {
 		Errors []struct {
 			Message string `json:"message"`
 		} `json:"errors"`
+		BaseResp *struct {
+			StatusCode int    `json:"status_code"`
+			StatusMsg  string `json:"status_msg"`
+		} `json:"base_resp"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&errResp); err == nil {
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(bodyBytes, &errResp); err == nil {
 		msg := errResp.Error.Message
 		if msg == "" && len(errResp.Errors) > 0 {
 			msg = errResp.Errors[0].Message
+		}
+		if msg == "" && errResp.BaseResp != nil && errResp.BaseResp.StatusMsg != "" {
+			msg = errResp.BaseResp.StatusMsg
 		}
 		if msg != "" {
 			return ValidationResponse{IsValid: false, Message: msg}
@@ -128,8 +153,51 @@ func testProviderAPI(provider, apiKey string) ValidationResponse {
 	return ValidationResponse{IsValid: false, Message: fmt.Sprintf("validation failed (HTTP %d)", resp.StatusCode)}
 }
 
-// providerTestConfig returns the endpoint, method, and headers for testing each provider.
-func providerTestConfig(provider, apiKey string) (endpoint, method string, headers map[string]string) {
+// TokenPlanRegionURLs maps region codes to Token Plan API base URLs.
+var TokenPlanRegionURLs = map[string]string{
+	"cn":  "https://token-plan-cn.xiaomimimo.com/v1",
+	"sgp": "https://token-plan-sgp.xiaomimimo.com/v1",
+	"eu":  "https://token-plan-ams.xiaomimimo.com/v1",
+}
+
+// ValidTokenPlanRegions is the set of valid region codes for MiMo Token Plan.
+var ValidTokenPlanRegions = map[string]bool{
+	"cn":  true,
+	"sgp": true,
+	"eu":  true,
+}
+
+// TestProviderAPIWithRegion tests a provider API with an explicit region override.
+// Used for mimo-token-plan keys where the region determines the endpoint.
+func TestProviderAPIWithRegion(provider, apiKey, region string) ValidationResponse {
+	if provider == "mimo-token-plan" {
+		if base, ok := TokenPlanRegionURLs[region]; ok {
+			client := &http.Client{Timeout: 10 * time.Second}
+			endpoint := base + "/models"
+			req, err := http.NewRequest("GET", endpoint, nil)
+			if err != nil {
+				return ValidationResponse{IsValid: false, Message: fmt.Sprintf("request error: %v", err)}
+			}
+			req.Header.Set("Authorization", "Bearer "+apiKey)
+			req.Header.Set("Content-Type", "application/json")
+
+			resp, err := client.Do(req)
+			if err != nil {
+				return ValidationResponse{IsValid: false, Message: fmt.Sprintf("connection failed: %v", err)}
+			}
+			defer func() { _ = resp.Body.Close() }()
+
+			if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusCreated {
+				return ValidationResponse{IsValid: true, Message: "mimo-token-plan key validated successfully"}
+			}
+			return ValidationResponse{IsValid: false, Message: fmt.Sprintf("validation failed (HTTP %d)", resp.StatusCode)}
+		}
+	}
+	return testProviderAPI(provider, apiKey)
+}
+
+// providerTestConfig returns the endpoint, method, headers, and optional body for testing each provider.
+func providerTestConfig(provider, apiKey string) (endpoint, method string, headers map[string]string, body string) {
 	headers = map[string]string{"Content-Type": "application/json"}
 
 	switch provider {
@@ -158,12 +226,24 @@ func providerTestConfig(provider, apiKey string) (endpoint, method string, heade
 	case "mimo":
 		endpoint = "https://api.mimo.ai/v1/models"
 		headers["Authorization"] = "Bearer " + apiKey
+	case "mimo-token-plan":
+		endpoint = "https://token-plan-sgp.xiaomimimo.com/v1/models"
+		headers["Authorization"] = "Bearer " + apiKey
 	case "stepfun":
 		endpoint = "https://api.stepfun.com/v1/models"
 		headers["Authorization"] = "Bearer " + apiKey
+	case "minimax", "minimax-token-plan":
+		endpoint = "https://api.minimax.io/v1/text/chatcompletion_v2"
+		method = "POST"
+		headers["Authorization"] = "Bearer " + apiKey
+		body = `{"model":"MiniMax-Text-01","messages":[{"role":"user","content":"ping"}],"max_tokens":1}`
 	default:
 		endpoint = ""
 	}
 
-	return endpoint, "GET", headers
+	if method == "" {
+		method = "GET"
+	}
+
+	return endpoint, method, headers, body
 }

@@ -525,12 +525,12 @@ func (TrustAPIVerification) TableName() string {
 // PartnerCreateRequest represents a request to create a new partner
 type PartnerCreateRequest struct {
 	Name         string `json:"name" binding:"required,min=2,max=255"`
-	Slug         string `json:"slug" binding:"required,min=2,max=100,alphanum"`
+	Slug         string `json:"slug" binding:"required,min=2,max=100"`
 	Description  string `json:"description"`
 	ContactEmail string `json:"contact_email" binding:"required,email"`
 	ContactName  string `json:"contact_name"`
 	WebsiteURL   string `json:"website_url" binding:"omitempty,url"`
-	Tier         string `json:"tier" binding:"omitempty,oneof=developer startup business enterprise"`
+	Tier         string `json:"tier" binding:"omitempty,oneof=developer payg startup business enterprise"`
 }
 
 // PartnerResponse represents a partner in API responses

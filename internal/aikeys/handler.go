@@ -2,6 +2,7 @@ package aikeys
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -50,8 +51,26 @@ func (h *Handler) HandleConnectKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate region for token plan keys
+	if req.Provider == "mimo-token-plan" {
+		if !ValidTokenPlanRegions[req.Region] {
+			apierror.WriteError(w, apierror.NewBadRequest("region is required for MiMo Token Plan (cn, sgp, eu)"))
+			return
+		}
+	}
+
 	// Validate format + test API call
-	validation := ValidateProviderKey(req.Provider, req.APIKey)
+	// Token plan keys: format-only validation (skip live test to avoid rate limit friction)
+	var validation ValidationResponse
+	if req.Provider == "mimo-token-plan" || req.Provider == "minimax-token-plan" {
+		if err := validateFormat(req.Provider, req.APIKey); err != nil {
+			validation = ValidationResponse{IsValid: false, Message: err.Error()}
+		} else {
+			validation = ValidationResponse{IsValid: true, Message: "token plan key format validated"}
+		}
+	} else {
+		validation = ValidateProviderKey(req.Provider, req.APIKey)
+	}
 	if !validation.IsValid {
 		apierror.WriteError(w, apierror.NewValidation("Validation failed: "+validation.Message))
 		return
@@ -69,13 +88,17 @@ func (h *Handler) HandleConnectKey(w http.ResponseWriter, r *http.Request) {
 	existing, _ := h.repo.GetByTenantAndProvider(r.Context(), claims.TenantID, req.Provider)
 	if existing != nil {
 		now := time.Now()
+		healthMsg := ""
+		if req.Provider == "mimo-token-plan" {
+			healthMsg = "region:" + req.Region
+		}
 		err = h.repo.Update(r.Context(), existing.ID, map[string]interface{}{
 			"encrypted_key":   ciphertext,
 			"key_nonce":       nonce,
 			"key_version":     version,
 			"key_last4":       KeyLast4(req.APIKey),
 			"status":          "active",
-			"health_message":  "",
+			"health_message":  healthMsg,
 			"last_health_check": nil,
 			"updated_at":      now,
 		})
@@ -97,10 +120,11 @@ func (h *Handler) HandleConnectKey(w http.ResponseWriter, r *http.Request) {
 
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"key": KeyResponse{
-				ID:       existing.ID,
-				Provider: req.Provider,
-				KeyLast4: KeyLast4(req.APIKey),
-				Status:   "active",
+				ID:              existing.ID,
+				Provider:        req.Provider,
+				KeyLast4:        KeyLast4(req.APIKey),
+				Status:          "active",
+				TokenPlanRegion: req.Region,
 			},
 		})
 		return
@@ -114,16 +138,23 @@ func (h *Handler) HandleConnectKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	healthMsg := ""
+	if req.Provider == "mimo-token-plan" {
+		healthMsg = "region:" + req.Region
+	}
+
 	key := &types.AIProviderKey{
-		ID:           id,
-		TenantID:     claims.TenantID,
-		Provider:     req.Provider,
-		EncryptedKey: ciphertext,
-		KeyNonce:     nonce,
-		KeyVersion:   version,
-		KeyLast4:     KeyLast4(req.APIKey),
-		Status:       "active",
-		ConnectedBy:  claims.UserID,
+		ID:            id,
+		TenantID:      claims.TenantID,
+		Provider:      req.Provider,
+		EncryptedKey:  ciphertext,
+		KeyNonce:      nonce,
+		KeyTag:        []byte{},
+		KeyVersion:    version,
+		KeyLast4:      KeyLast4(req.APIKey),
+		Status:        "active",
+		HealthMessage: healthMsg,
+		ConnectedBy:   claims.UserID,
 	}
 
 	if err := h.repo.Create(r.Context(), key); err != nil {
@@ -140,11 +171,12 @@ func (h *Handler) HandleConnectKey(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusCreated, map[string]interface{}{
 		"key": KeyResponse{
-			ID:        key.ID,
-			Provider:  key.Provider,
-			KeyLast4:  key.KeyLast4,
-			Status:    key.Status,
-			CreatedAt: key.CreatedAt.Format(time.RFC3339),
+			ID:              key.ID,
+			Provider:        key.Provider,
+			KeyLast4:        key.KeyLast4,
+			Status:          key.Status,
+			CreatedAt:       key.CreatedAt.Format(time.RFC3339),
+			TokenPlanRegion: req.Region,
 		},
 	})
 }
@@ -233,7 +265,14 @@ func (h *Handler) HandleTestKey(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result := testProviderAPI(provider, string(plaintext))
+	// Use region-specific endpoint for token plan keys
+	var result ValidationResponse
+	if provider == "mimo-token-plan" || provider == "minimax-token-plan" {
+		region := extractRegion(provider, existing.HealthMessage)
+		result = TestProviderAPIWithRegion(provider, string(plaintext), region)
+	} else {
+		result = testProviderAPI(provider, string(plaintext))
+	}
 
 	newStatus := "active"
 	if !result.IsValid {
@@ -339,7 +378,7 @@ func toKeyResponse(k *types.AIProviderKey) KeyResponse {
 		s := k.LastUsedAt.Format(time.RFC3339)
 		lastUsed = &s
 	}
-	return KeyResponse{
+	kr := KeyResponse{
 		ID:              k.ID,
 		Provider:        k.Provider,
 		KeyLast4:        k.KeyLast4,
@@ -348,7 +387,20 @@ func toKeyResponse(k *types.AIProviderKey) KeyResponse {
 		LastHealthCheck: lastCheck,
 		LastUsedAt:      lastUsed,
 		CreatedAt:       k.CreatedAt.Format(time.RFC3339),
+		TokenPlanRegion: extractRegion(k.Provider, k.HealthMessage),
 	}
+	return kr
+}
+
+// extractRegion extracts the region code from health_message for token plan keys.
+func extractRegion(provider, healthMessage string) string {
+	if provider != "mimo-token-plan" {
+		return ""
+	}
+	if strings.HasPrefix(healthMessage, "region:") {
+		return strings.TrimPrefix(healthMessage, "region:")
+	}
+	return ""
 }
 
 

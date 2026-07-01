@@ -161,3 +161,27 @@ func (db *PostgresDB) IsUserTeamOwner(ctx context.Context, userID, teamID uuid.U
 func (db *PostgresDB) IsUserTeamAdmin(ctx context.Context, userID, teamID uuid.UUID) (bool, error) {
 	return db.teamRepository.IsUserTeamAdmin(ctx, userID, teamID)
 }
+
+func (db *PostgresDB) TransferTeamOwnership(ctx context.Context, teamID, fromUserID, toUserID uuid.UUID) error {
+	return db.teamRepository.TransferTeamOwnership(ctx, teamID, fromUserID, toUserID)
+}
+
+func (db *PostgresDB) LeaveTeam(ctx context.Context, teamID, userID uuid.UUID) error {
+	return db.teamRepository.LeaveTeam(ctx, teamID, userID)
+}
+
+func (db *PostgresDB) CreateTeamAuditLog(ctx context.Context, entry *TeamAuditLog) error {
+	return db.teamRepository.CreateTeamAuditLog(ctx, entry)
+}
+
+func (db *PostgresDB) GetTeamAuditLogs(ctx context.Context, teamID uuid.UUID, limit, offset int) ([]*TeamAuditLog, error) {
+	return db.teamRepository.GetTeamAuditLogs(ctx, teamID, limit, offset)
+}
+
+func (db *PostgresDB) GetTeamQuotas(ctx context.Context, teamID uuid.UUID) ([]*TeamQuota, error) {
+	return db.teamRepository.GetTeamQuotas(ctx, teamID)
+}
+
+func (db *PostgresDB) UpdateTeamQuota(ctx context.Context, teamID uuid.UUID, resourceType string, delta int) error {
+	return db.teamRepository.UpdateTeamQuota(ctx, teamID, resourceType, delta)
+}

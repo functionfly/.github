@@ -174,13 +174,21 @@ func GetExecutionContext(ctx context.Context) *ExecutionContext {
 }
 
 // ---------------------------------------------------------------------------
-// SearchRuntime — Google Custom Search API
+// SearchRuntime — web search via cascade provider (SearXNG → Brave) with Google CSE fallback
 // ---------------------------------------------------------------------------
 
 type SearchRuntime struct {
 	HTTPClient *http.Client
 	APIKey     string
 	EngineID   string
+	// CascadeSearch, if non-nil, is used instead of Google CSE.
+	// Set via DefaultRuntimeRouter when SEARXNG_URL or BRAVE_API_KEY is configured.
+	CascadeSearch CascadeSearchProvider
+}
+
+// CascadeSearchProvider allows the runtime to delegate to the cascade search system.
+type CascadeSearchProvider interface {
+	RuntimeWebSearch(ctx context.Context, query string, maxResults int) (json.RawMessage, error)
 }
 
 func (r *SearchRuntime) Name() string { return "search" }
@@ -205,8 +213,14 @@ func (r *SearchRuntime) Execute(ctx context.Context, input json.RawMessage, time
 		req.NumResults = 100
 	}
 
+	// Use cascade provider if available
+	if r.CascadeSearch != nil {
+		return r.CascadeSearch.RuntimeWebSearch(ctx, req.Query, req.NumResults)
+	}
+
+	// Fallback to Google Custom Search
 	if r.APIKey == "" || r.EngineID == "" {
-		return nil, fmt.Errorf("search not configured: set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID")
+		return nil, fmt.Errorf("search not configured: set GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID, or configure SEARXNG_URL/BRAVE_API_KEY")
 	}
 
 	client := r.HTTPClient
@@ -1792,6 +1806,181 @@ func (r *MemoryRuntime) Execute(ctx context.Context, input json.RawMessage, time
 // DefaultRuntimeRouter — wires all runtimes with env-var configuration
 // ---------------------------------------------------------------------------
 
+// newSearchRuntimeWithFallback creates a SearchRuntime that tries cascade providers
+// (SearXNG/Brave) first, falling back to Google Custom Search.
+func newSearchRuntimeWithFallback() *SearchRuntime {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	braveKey := os.Getenv("BRAVE_API_KEY")
+
+	if searxngURL != "" || braveKey != "" {
+		cascade, err := newRuntimeCascadeProvider()
+		if err == nil {
+			return &SearchRuntime{CascadeSearch: cascade}
+		}
+		logrus.WithError(err).Warn("failed to create cascade search for runtime, falling back to Google CSE")
+	}
+
+	return &SearchRuntime{
+		APIKey:   os.Getenv("GOOGLE_API_KEY"),
+		EngineID: os.Getenv("GOOGLE_SEARCH_ENGINE_ID"),
+	}
+}
+
+func newRuntimeCascadeProvider() (CascadeSearchProvider, error) {
+	searxngURL := os.Getenv("SEARXNG_URL")
+	braveKey := os.Getenv("BRAVE_API_KEY")
+	cascadeOrder := os.Getenv("SEARCH_CASCADE_ORDER")
+	if cascadeOrder == "" {
+		cascadeOrder = "searxng,brave"
+	}
+
+	var providers []func(ctx context.Context, query string, maxResults int) (*runtimeSearchResult, error)
+
+	for _, name := range strings.Split(cascadeOrder, ",") {
+		name = strings.TrimSpace(name)
+		switch name {
+		case "searxng":
+			if searxngURL != "" {
+				baseURL := strings.TrimRight(searxngURL, "/")
+				providers = append(providers, func(ctx context.Context, query string, maxResults int) (*runtimeSearchResult, error) {
+					return runtimeSearXNGSearch(ctx, baseURL, query, maxResults)
+				})
+			}
+		case "brave":
+			if braveKey != "" {
+				providers = append(providers, func(ctx context.Context, query string, maxResults int) (*runtimeSearchResult, error) {
+					return runtimeBraveSearch(ctx, braveKey, query, maxResults)
+				})
+			}
+		}
+	}
+
+	if len(providers) == 0 {
+		return nil, fmt.Errorf("no cascade providers configured")
+	}
+
+	return &runtimeCascadeAdapterFunc{providers: providers}, nil
+}
+
+type runtimeCascadeAdapterFunc struct {
+	providers []func(ctx context.Context, query string, maxResults int) (*runtimeSearchResult, error)
+}
+
+type runtimeSearchResult struct {
+	Results      []map[string]interface{} `json:"results"`
+	TotalResults int                      `json:"total_results"`
+}
+
+func (a *runtimeCascadeAdapterFunc) RuntimeWebSearch(ctx context.Context, query string, maxResults int) (json.RawMessage, error) {
+	var lastErr error
+	for _, fn := range a.providers {
+		result, err := fn(ctx, query, maxResults)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return json.Marshal(map[string]interface{}{
+			"results":       result.Results,
+			"query":         query,
+			"count":         len(result.Results),
+			"total_results": result.TotalResults,
+		})
+	}
+	if lastErr != nil {
+		return nil, fmt.Errorf("all search providers failed: %w", lastErr)
+	}
+	return nil, fmt.Errorf("no search providers available")
+}
+
+func runtimeSearXNGSearch(ctx context.Context, baseURL, query string, maxResults int) (*runtimeSearchResult, error) {
+	reqURL := fmt.Sprintf("%s/search?q=%s&format=json&categories=general&count=%d", baseURL, url.QueryEscape(query), maxResults)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("searxng returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var apiResp struct {
+		Results []struct {
+			Title   string `json:"title"`
+			URL     string `json:"url"`
+			Content string `json:"content"`
+		} `json:"results"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, err
+	}
+
+	results := make([]map[string]interface{}, 0, len(apiResp.Results))
+	for i, r := range apiResp.Results {
+		results = append(results, map[string]interface{}{
+			"title":     r.Title,
+			"url":       r.URL,
+			"snippet":   r.Content,
+			"relevance": 1.0 - float64(i)*0.05,
+		})
+	}
+
+	return &runtimeSearchResult{Results: results, TotalResults: len(results)}, nil
+}
+
+func runtimeBraveSearch(ctx context.Context, apiKey, query string, maxResults int) (*runtimeSearchResult, error) {
+	reqURL := fmt.Sprintf("https://api.search.brave.com/res/v1/web/search?q=%s&count=%d", url.QueryEscape(query), maxResults)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("X-Subscription-Token", apiKey)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("brave returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var apiResp struct {
+		Web struct {
+			Results []struct {
+				Title       string `json:"title"`
+				URL         string `json:"url"`
+				Description string `json:"description"`
+			} `json:"results"`
+		} `json:"web"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return nil, err
+	}
+
+	results := make([]map[string]interface{}, 0, len(apiResp.Web.Results))
+	for i, r := range apiResp.Web.Results {
+		results = append(results, map[string]interface{}{
+			"title":     r.Title,
+			"url":       r.URL,
+			"snippet":   r.Description,
+			"relevance": 1.0 - float64(i)*0.05,
+		})
+	}
+
+	return &runtimeSearchResult{Results: results, TotalResults: len(results)}, nil
+}
+
 func DefaultRuntimeRouter() *RuntimeRouter {
 	router := NewRuntimeRouter()
 
@@ -1802,10 +1991,7 @@ func DefaultRuntimeRouter() *RuntimeRouter {
 	}
 	redisClient = redis.NewClient(&redis.Options{Addr: redisURL})
 
-	router.RegisterRuntime(RuntimeTypeSearch, &SearchRuntime{
-		APIKey:   os.Getenv("GOOGLE_API_KEY"),
-		EngineID: os.Getenv("GOOGLE_SEARCH_ENGINE_ID"),
-	})
+	router.RegisterRuntime(RuntimeTypeSearch, newSearchRuntimeWithFallback())
 	router.RegisterRuntime(RuntimeTypeBrowser, &BrowserRuntime{
 		Headless:      true,
 		ScreenshotDir: os.Getenv("SCREENSHOT_DIR"),

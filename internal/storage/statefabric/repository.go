@@ -3,6 +3,7 @@ package statefabric
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -113,14 +114,23 @@ func getHTTPTimeout() time.Duration {
 }
 
 func newHTTPClient() *http.Client {
+	transport := &http.Transport{
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
+
+	if os.Getenv("PIPELINE_TLS_SKIP_VERIFY") == "true" {
+		//nolint:gosec // Intentional for local development only
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	} else {
+		transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+
 	return &http.Client{
-		Timeout: getHTTPTimeout(),
-		Transport: &http.Transport{
-			MaxIdleConns:          100,
-			IdleConnTimeout:       90 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
+		Timeout:   getHTTPTimeout(),
+		Transport: transport,
 	}
 }
 
@@ -540,7 +550,7 @@ func daysSince(t time.Time) int64 {
 }
 
 func maxInt(v, fallback int64) int64 {
-	if v < 0 {
+	if v < fallback {
 		return fallback
 	}
 	return v

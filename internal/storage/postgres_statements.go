@@ -41,6 +41,7 @@ func (db *PostgresDB) initPreparedStatements(ctx context.Context) error {
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
 			       created_at, updated_at, name, bio, last_active_at, profile_number,
+			       location, website, job_title, twitter_url, github_url, linkedin_url,
 			       is_founder, founder_number
 			FROM users WHERE id = $1`,
 		"getTenantByID": `
@@ -209,7 +210,7 @@ func (db *PostgresDB) GetStatementQuery(name string) string {
 	return db.getStatementQuery(name)
 }
 
-// getStatementQuery returns the SQL query for a given statement name
+	// getStatementQuery returns the SQL query for a given statement name
 func (db *PostgresDB) getStatementQuery(name string) string {
 	queries := map[string]string{
 		"getUserByEmail": `
@@ -221,6 +222,7 @@ func (db *PostgresDB) getStatementQuery(name string) string {
 			SELECT id, tenant_id, username, email, password_hash, role, email_verified, company_name, verification_token, verification_expires_at,
 			       provider, provider_id, provider_data, mfa_secret, mfa_enabled, mfa_backup_codes, mfa_last_used,
 			       created_at, updated_at, name, bio, last_active_at, profile_number,
+			       location, website, job_title, twitter_url, github_url, linkedin_url,
 			       is_founder, founder_number
 			FROM users WHERE id = $1`,
 		"getTenantByID": `

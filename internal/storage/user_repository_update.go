@@ -239,8 +239,8 @@ func (r *UserRepository) UpdateUserProviderData(ctx context.Context, userID uuid
 	}
 
 	_, err = r.db.ExecContext(ctx, `
-		UPDATE users SET provider_data = $1, updated_at = NOW() WHERE id = $2`,
-		dataJSON, userID)
+		UPDATE users SET provider_data = $1::jsonb, updated_at = NOW() WHERE id = $2`,
+		string(dataJSON), userID)
 
 	if err != nil {
 		return fmt.Errorf("failed to update user provider data: %w", err)

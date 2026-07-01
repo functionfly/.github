@@ -45,6 +45,7 @@ type PostgresDB struct {
 	auditRepository              *AuditRepository
 	pciAuditRepository          *PCIAuditRepository
 	appRepository                *AppRepository
+	appAnalyticsRepository       *AppAnalyticsRepository
 	backendRepository            *BackendRepository
 	deploymentRepository         *DeploymentRepository
 	contentRepository            *ContentRepository
@@ -274,6 +275,7 @@ func NewPostgresDBWithOptions(skipPreparedStatements bool) (*PostgresDB, error) 
 	postgresDB.auditRepository = NewAuditRepository(postgresDB)
 	postgresDB.pciAuditRepository = NewPCIAuditRepository(postgresDB)
 	postgresDB.appRepository = NewAppRepository(postgresDB)
+	postgresDB.appAnalyticsRepository = NewAppAnalyticsRepository(postgresDB)
 	postgresDB.backendRepository = NewBackendRepository(postgresDB)
 	postgresDB.deploymentRepository = NewDeploymentRepository(postgresDB)
 	postgresDB.contentRepository = NewContentRepository(postgresDB)

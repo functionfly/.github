@@ -340,8 +340,8 @@ func (r *RateLimiter) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// Hash the key
-		keyHash := r.hasher.Hash(plaintextKey)
+		// Hash the key (deterministic SHA-256 for DB lookup)
+		keyHash := r.hasher.HashDeterministic(plaintextKey)
 
 		// Look up the API key in the database
 		apiKey, err := r.repo.GetByHash(req.Context(), keyHash)

@@ -160,6 +160,12 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*Us
 	var nameNull sql.NullString
 	var bioNull sql.NullString
 	var profileNumberNull sql.NullInt64
+	var locationNull sql.NullString
+	var websiteNull sql.NullString
+	var jobTitleNull sql.NullString
+	var twitterURLNull sql.NullString
+	var githubURLNull sql.NullString
+	var linkedinURLNull sql.NullString
 	var isFounderNull sql.NullBool
 	var founderNumberNull sql.NullInt64
 
@@ -173,7 +179,9 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*Us
 		&user.ID, &user.TenantID, &username, &user.Email, &user.PasswordHash, &role, &user.EmailVerified, &companyName,
 		&verificationToken, &verificationExpiresAt, &provider, &providerID, &providerData,
 		&mfaSecret, &user.MFAEnabled, &mfaBackupCodes, &mfaLastUsed, &user.CreatedAt, &user.UpdatedAt,
-		&nameNull, &bioNull, &lastActiveNull, &profileNumberNull, &isFounderNull, &founderNumberNull)
+		&nameNull, &bioNull, &lastActiveNull, &profileNumberNull,
+		&locationNull, &websiteNull, &jobTitleNull, &twitterURLNull, &githubURLNull, &linkedinURLNull,
+		&isFounderNull, &founderNumberNull)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -191,6 +199,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, userID uuid.UUID) (*Us
 		return nil, err
 	}
 	populateUserNameBioLastActiveProfile(user, nameNull, bioNull, lastActiveNull, profileNumberNull)
+	populateUserPublicProfileFields(user, locationNull, websiteNull, jobTitleNull, twitterURLNull, githubURLNull, linkedinURLNull)
 	populateUserFounderFields(user, isFounderNull, founderNumberNull)
 	return user, nil
 }

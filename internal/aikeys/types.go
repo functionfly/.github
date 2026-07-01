@@ -9,6 +9,7 @@ import (
 type ConnectRequest struct {
 	Provider string `json:"provider"`
 	APIKey   string `json:"apiKey"`
+	Region   string `json:"region,omitempty"`
 }
 
 // RotateRequest is the request to rotate a BYOK key.
@@ -26,6 +27,7 @@ type KeyResponse struct {
 	LastHealthCheck *string `json:"last_health_check,omitempty"`
 	LastUsedAt      *string `json:"last_used_at,omitempty"`
 	CreatedAt       string  `json:"created_at"`
+	TokenPlanRegion string  `json:"token_plan_region,omitempty"`
 }
 
 // TestResponse is the response for a key test.

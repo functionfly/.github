@@ -85,3 +85,27 @@ func (r *AppRepository) ListAppsByTenant(ctx context.Context, tenantID uuid.UUID
 	}
 	return apps, nil
 }
+
+// UpdateApp updates an app's mutable fields (name).
+func (r *AppRepository) UpdateApp(ctx context.Context, id uuid.UUID, name string) (*App, error) {
+	updates := map[string]interface{}{}
+	if name != "" {
+		updates["name"] = name
+	}
+	if len(updates) == 0 {
+		return r.GetAppByID(ctx, id)
+	}
+	if err := r.db.WithContext(ctx).Model(&App{}).Where("id = ?", id).Updates(updates).Error; err != nil {
+		return nil, fmt.Errorf("failed to update app: %w", err)
+	}
+	return r.GetAppByID(ctx, id)
+}
+
+// DeleteApp deletes an app by ID. Cascading deletes for backends/deployments
+// are handled by FK constraints.
+func (r *AppRepository) DeleteApp(ctx context.Context, id uuid.UUID) error {
+	if err := r.db.WithContext(ctx).Delete(&App{}, id).Error; err != nil {
+		return fmt.Errorf("failed to delete app: %w", err)
+	}
+	return nil
+}

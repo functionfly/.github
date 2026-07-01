@@ -124,15 +124,17 @@ type (
 
 type (
 	FounderVote struct {
-		ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-		TenantID    uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null"`
-		Title       string    `json:"title" gorm:"not null"`
-		Description string    `json:"description" gorm:"type:text"`
-		Options     string    `json:"options" gorm:"type:jsonb;default:'[]'"` // JSON array of options
-		Status      string    `json:"status" gorm:"default:'active'"`
-		CreatedBy   uuid.UUID `json:"created_by" gorm:"type:uuid;not null"`
-		CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
-		UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+		ID          uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+		TenantID    uuid.UUID  `json:"tenant_id" gorm:"type:uuid;not null"`
+		Title       string     `json:"title" gorm:"not null"`
+		Description string     `json:"description" gorm:"type:text"`
+		Options     string     `json:"options" gorm:"type:jsonb;default:'[]'"` // JSON array of options
+		ChangeDiff  string     `json:"change_diff" gorm:"type:jsonb;default:'{}'"` // JSON structured change info
+		Status      string     `json:"status" gorm:"default:'active'"`
+		Quorum      int        `json:"quorum" gorm:"default:0"` // 0 = no quorum required
+		CreatedBy   uuid.UUID  `json:"created_by" gorm:"type:uuid;not null"`
+		CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
+		UpdatedAt   time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 	}
 
 	FounderVoteResponse struct {

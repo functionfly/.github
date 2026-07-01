@@ -116,3 +116,11 @@ func (db *PostgresDB) GetAppBySlugAndTenant(ctx context.Context, slug string, te
 func (db *PostgresDB) ListAppsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*App, error) {
 	return db.appRepository.ListAppsByTenant(ctx, tenantID)
 }
+
+func (db *PostgresDB) UpdateApp(ctx context.Context, id uuid.UUID, name string) (*App, error) {
+	return db.appRepository.UpdateApp(ctx, id, name)
+}
+
+func (db *PostgresDB) DeleteApp(ctx context.Context, id uuid.UUID) error {
+	return db.appRepository.DeleteApp(ctx, id)
+}

@@ -53,6 +53,34 @@ func (r *Repository) CreatePartner(partner *TrustAPIPartner) error {
 	return r.db.Create(partner).Error
 }
 
+// CreatePartnerInTransaction creates a new partner inside a transaction.
+// This prevents TOCTOU race conditions on slug/email uniqueness checks
+// and ensures UNIQUE constraint violations are surfaced cleanly.
+func (r *Repository) CreatePartnerInTransaction(partner *TrustAPIPartner) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if partner.ID == uuid.Nil {
+			partner.ID = uuid.New()
+		}
+		if partner.Tier == "" {
+			partner.Tier = string(PartnerTierDeveloper)
+		}
+		if partner.Status == "" {
+			partner.Status = string(PartnerStatusPending)
+		}
+		if partner.RateLimitPerMinute == 0 {
+			partner.RateLimitPerMinute = 60
+		}
+		if partner.RateLimitPerDay == 0 {
+			partner.RateLimitPerDay = 10000
+		}
+		if partner.MonthlyRequestLimit == 0 {
+			partner.MonthlyRequestLimit = 50000
+		}
+
+		return tx.Create(partner).Error
+	})
+}
+
 // GetPartnerByID retrieves a partner by ID
 func (r *Repository) GetPartnerByID(id uuid.UUID) (*TrustAPIPartner, error) {
 	var partner TrustAPIPartner

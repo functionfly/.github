@@ -91,8 +91,12 @@ func (m *MetricsCollector) collectStorageMetrics(ctx context.Context) {
 	periodStart := now.Truncate(time.Hour)
 	periodEnd := periodStart.Add(time.Hour)
 
+	type result struct {
+		metric *StateUsageMetric
+	}
+
+	results := make(chan result, len(states))
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	for _, state := range states {
 		wg.Add(1)
@@ -111,29 +115,35 @@ func (m *MetricsCollector) collectStorageMetrics(ctx context.Context) {
 				return
 			}
 
-			metric := &StateUsageMetric{
-				ID:          uuid.New(),
-				TenantID:    s.TenantID,
-				StateID:     &s.ID,
-				MetricType:  "storage",
-				Value:       totalSize,
-				Unit:        "bytes",
-				PeriodStart: periodStart,
-				PeriodEnd:   periodEnd,
-				CreatedAt:   now,
-			}
-
-			mu.Lock()
-			err = m.db.WithContext(ctx).Create(metric).Error
-			mu.Unlock()
-
-			if err != nil {
-				m.logger.WithError(err).Errorf("Failed to store storage metric for state %s", s.ID)
+			results <- result{
+				metric: &StateUsageMetric{
+					ID:          uuid.New(),
+					TenantID:    s.TenantID,
+					StateID:     &s.ID,
+					MetricType:  "storage",
+					Value:       totalSize,
+					Unit:        "bytes",
+					PeriodStart: periodStart,
+					PeriodEnd:   periodEnd,
+					CreatedAt:   now,
+				},
 			}
 		}(state)
 	}
 
 	wg.Wait()
+	close(results)
+
+	var metrics []*StateUsageMetric
+	for r := range results {
+		metrics = append(metrics, r.metric)
+	}
+
+	if len(metrics) > 0 {
+		if err := m.db.WithContext(ctx).CreateInBatches(metrics, m.config.BatchSize).Error; err != nil {
+			m.logger.WithError(err).Error("Failed to batch insert storage metrics")
+		}
+	}
 }
 
 func (m *MetricsCollector) collectOperationMetrics(ctx context.Context) {
@@ -148,8 +158,12 @@ func (m *MetricsCollector) collectOperationMetrics(ctx context.Context) {
 	periodStart := now.Truncate(time.Hour)
 	periodEnd := periodStart.Add(time.Hour)
 
+	type result struct {
+		metric *StateUsageMetric
+	}
+
+	results := make(chan result, len(states))
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	for _, state := range states {
 		wg.Add(1)
@@ -167,29 +181,35 @@ func (m *MetricsCollector) collectOperationMetrics(ctx context.Context) {
 				return
 			}
 
-			writeMetric := &StateUsageMetric{
-				ID:          uuid.New(),
-				TenantID:    s.TenantID,
-				StateID:     &s.ID,
-				MetricType:  "write_ops",
-				Value:       writeOps,
-				Unit:        "ops",
-				PeriodStart: periodStart,
-				PeriodEnd:   periodEnd,
-				CreatedAt:   now,
-			}
-
-			mu.Lock()
-			err = m.db.WithContext(ctx).Create(writeMetric).Error
-			mu.Unlock()
-
-			if err != nil {
-				m.logger.WithError(err).Errorf("Failed to store write metric for state %s", s.ID)
+			results <- result{
+				metric: &StateUsageMetric{
+					ID:          uuid.New(),
+					TenantID:    s.TenantID,
+					StateID:     &s.ID,
+					MetricType:  "write_ops",
+					Value:       writeOps,
+					Unit:        "ops",
+					PeriodStart: periodStart,
+					PeriodEnd:   periodEnd,
+					CreatedAt:   now,
+				},
 			}
 		}(state)
 	}
 
 	wg.Wait()
+	close(results)
+
+	var metrics []*StateUsageMetric
+	for r := range results {
+		metrics = append(metrics, r.metric)
+	}
+
+	if len(metrics) > 0 {
+		if err := m.db.WithContext(ctx).CreateInBatches(metrics, m.config.BatchSize).Error; err != nil {
+			m.logger.WithError(err).Error("Failed to batch insert operation metrics")
+		}
+	}
 }
 
 func (m *MetricsCollector) collectTenantMetrics(ctx context.Context) {
@@ -207,8 +227,12 @@ func (m *MetricsCollector) collectTenantMetrics(ctx context.Context) {
 	periodStart := now.Truncate(time.Hour)
 	periodEnd := periodStart.Add(time.Hour)
 
+	type result struct {
+		metric *StateUsageMetric
+	}
+
+	results := make(chan result, len(tenants))
 	var wg sync.WaitGroup
-	var mu sync.Mutex
 
 	for _, tenantID := range tenants {
 		wg.Add(1)
@@ -230,28 +254,34 @@ func (m *MetricsCollector) collectTenantMetrics(ctx context.Context) {
 					WHERE s.tenant_id = ?
 				`, tid).Scan(&totalStorage)
 
-			metric := &StateUsageMetric{
-				ID:          uuid.New(),
-				TenantID:    tid,
-				MetricType:  "tenant_aggregate",
-				Value:       totalStorage,
-				Unit:        "bytes",
-				PeriodStart: periodStart,
-				PeriodEnd:   periodEnd,
-				CreatedAt:   now,
-			}
-
-			mu.Lock()
-			err = m.db.WithContext(ctx).Create(metric).Error
-			mu.Unlock()
-
-			if err != nil {
-				m.logger.WithError(err).Errorf("Failed to store tenant metric for %s", tid)
+			results <- result{
+				metric: &StateUsageMetric{
+					ID:          uuid.New(),
+					TenantID:    tid,
+					MetricType:  "tenant_aggregate",
+					Value:       totalStorage,
+					Unit:        "bytes",
+					PeriodStart: periodStart,
+					PeriodEnd:   periodEnd,
+					CreatedAt:   now,
+				},
 			}
 		}(tenantID)
 	}
 
 	wg.Wait()
+	close(results)
+
+	var metrics []*StateUsageMetric
+	for r := range results {
+		metrics = append(metrics, r.metric)
+	}
+
+	if len(metrics) > 0 {
+		if err := m.db.WithContext(ctx).CreateInBatches(metrics, m.config.BatchSize).Error; err != nil {
+			m.logger.WithError(err).Error("Failed to batch insert tenant metrics")
+		}
+	}
 }
 
 func (m *MetricsCollector) GetMetrics(ctx context.Context, tenantID uuid.UUID, start, end time.Time) ([]*StateUsageMetric, error) {

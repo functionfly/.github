@@ -8,11 +8,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 )
 
 // MonitoringRepository handles monitoring-related database operations
 type MonitoringRepository struct {
-	db *PostgresDB
+	db       *PostgresDB
+	listener *pq.Listener
 }
 
 // NewMonitoringRepository creates a new monitoring repository
@@ -395,43 +398,67 @@ func (r *MonitoringRepository) PgNotify(ctx context.Context, channel, payload st
 	return err
 }
 
-// PgListen starts listening on a PostgreSQL channel for notifications
-func (r *MonitoringRepository) PgListen(ctx context.Context, channel string) error {
-	query := "LISTEN " + channel
-	_, err := r.db.ExecContext(ctx, query)
-	return err
+// listenerConnString builds a DSN for the pq.Listener without the prefer_simple_protocol flag.
+func (r *MonitoringRepository) listenerConnString() string {
+	config := r.db.config
+	if config.ConnectionString != "" {
+		return config.ConnectionString
+	}
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		config.Host, config.Port, config.User, config.Password, config.Database, config.SSLMode)
 }
 
-// PgWaitForNotification waits for a notification on listened channels
-// Note: This is a simplified implementation. For production use, consider using pgx driver
-// which has better support for asynchronous notifications.
-func (r *MonitoringRepository) PgWaitForNotification(ctx context.Context) (*PgNotification, error) {
-	row := r.db.QueryRowContext(ctx, "SELECT pg_notification_queue_usage()")
-	var queueUsage float64
-	if err := row.Scan(&queueUsage); err != nil {
-		return nil, fmt.Errorf("failed to check notification queue: %w", err)
+// ensureListener lazily initialises a pq.Listener backed by a dedicated connection.
+func (r *MonitoringRepository) ensureListener() error {
+	if r.listener != nil {
+		return nil
 	}
-
-	if queueUsage > 0 {
-		row := r.db.QueryRowContext(ctx, `
-			SELECT pg_notify_pid, pg_notify_channel, pg_notify_payload
-			FROM pg_notification_queue_get()
-			LIMIT 1
-		`)
-		var pid int
-		var channel, payload string
-		if err := row.Scan(&pid, &channel, &payload); err != nil {
-			return nil, fmt.Errorf("failed to get notification: %w", err)
+	connStr := r.listenerConnString()
+	r.listener = pq.NewListener(connStr, 10*time.Second, time.Minute, func(ev pq.ListenerEventType, err error) {
+		if err != nil {
+			logrus.WithError(err).Warn("pq.Listener event error")
 		}
+	})
+	return nil
+}
 
+// PgListen starts listening on a PostgreSQL channel for notifications via pq.Listener.
+func (r *MonitoringRepository) PgListen(ctx context.Context, channel string) error {
+	if err := r.ensureListener(); err != nil {
+		return err
+	}
+	return r.listener.Listen(channel)
+}
+
+// PgWaitForNotification blocks until a notification arrives on any listened channel.
+func (r *MonitoringRepository) PgWaitForNotification(ctx context.Context) (*PgNotification, error) {
+	if r.listener == nil {
+		return nil, fmt.Errorf("listener not initialized; call PgListen first")
+	}
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case n, ok := <-r.listener.Notify:
+		if !ok {
+			return nil, fmt.Errorf("listener notification channel closed")
+		}
+		if n == nil {
+			return nil, nil
+		}
 		return &PgNotification{
-			PID:     pid,
-			Channel: channel,
-			Payload: payload,
+			PID:     n.BePid,
+			Channel: n.Channel,
+			Payload: n.Extra,
 		}, nil
 	}
+}
 
-	return nil, nil
+// Close shuts down the pq.Listener, releasing the dedicated connection.
+func (r *MonitoringRepository) Close() error {
+	if r.listener != nil {
+		return r.listener.Close()
+	}
+	return nil
 }
 
 // StoreDatabaseMetrics stores database metrics for historical analysis

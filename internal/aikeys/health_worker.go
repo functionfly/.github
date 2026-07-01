@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -90,7 +91,13 @@ func (w *HealthWorker) runCheck(ctx context.Context) {
 	logrus.WithField("count", len(keys)).Info("BYOK health check: checking keys")
 
 	for _, key := range keys {
-		result := testProviderAPI(key.Provider, "")
+		var result ValidationResponse
+		if key.Provider == "mimo-token-plan" {
+			region := extractRegionFromHealthMsg(key.HealthMessage)
+			result = TestProviderAPIWithRegion(key.Provider, "", region)
+		} else {
+			result = testProviderAPI(key.Provider, "")
+		}
 
 		newStatus := "active"
 		message := "health check passed"
@@ -127,4 +134,13 @@ func StartHealthWorkerIfEnabled(ctx context.Context, repo *Repository) *HealthWo
 	worker := NewHealthWorker(repo)
 	go worker.Start(ctx)
 	return worker
+}
+
+// extractRegionFromHealthMsg extracts region code from health_message field.
+func extractRegionFromHealthMsg(healthMessage string) string {
+	const prefix = "region:"
+	if strings.HasPrefix(healthMessage, prefix) {
+		return strings.TrimPrefix(healthMessage, prefix)
+	}
+	return ""
 }

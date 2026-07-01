@@ -1,6 +1,8 @@
 package apikey
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
@@ -34,6 +36,13 @@ func NewHasherWithSalt(salt string) *Hasher {
 func (h *Hasher) Hash(key string) string {
 	hash, _ := bcrypt.GenerateFromPassword([]byte(key), bcryptCost)
 	return string(hash)
+}
+
+// HashDeterministic returns a deterministic SHA-256 hash of the key
+// Used for database lookups where the same input must always produce the same output
+func (h *Hasher) HashDeterministic(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
 }
 
 // HashBytes returns a bcrypt hash of the given bytes

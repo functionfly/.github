@@ -184,18 +184,19 @@ type Tenant struct {
 
 // Team represents a team within a tenant
 type Team struct {
-	ID          uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	TenantID    uuid.UUID        `json:"tenant_id" gorm:"type:uuid;not null"`
-	Tenant      *Tenant          `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
-	Name        string           `json:"name" gorm:"not null"`
-	Slug        string           `json:"slug" gorm:"not null;size:100;uniqueIndex:idx_team_tenant_slug,priority:2"`
-	Description string           `json:"description"`
-	Visibility  string           `json:"visibility" gorm:"default:'private';size:20"`
-	CreatedBy   uuid.UUID       `json:"created_by" gorm:"type:uuid;not null"`
-	Members     []TeamMembership `json:"members,omitempty" gorm:"foreignKey:TeamID"`
-	Permissions []TeamPermission `json:"permissions,omitempty" gorm:"foreignKey:TeamID"`
-	CreatedAt   time.Time        `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt   time.Time        `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                uuid.UUID        `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TenantID          uuid.UUID        `json:"tenant_id" gorm:"type:uuid;not null"`
+	Tenant            *Tenant          `json:"tenant,omitempty" gorm:"foreignKey:TenantID"`
+	Name              string           `json:"name" gorm:"not null"`
+	Slug              string           `json:"slug" gorm:"not null;size:100;uniqueIndex:idx_team_tenant_slug,priority:2"`
+	Description       string           `json:"description"`
+	Visibility        string           `json:"visibility" gorm:"default:'private';size:20"`
+	DefaultInviteRole string           `json:"default_invite_role" gorm:"default:'member';size:50"`
+	CreatedBy         uuid.UUID        `json:"created_by" gorm:"type:uuid;not null"`
+	Members           []TeamMembership `json:"members,omitempty" gorm:"foreignKey:TeamID"`
+	Permissions       []TeamPermission `json:"permissions,omitempty" gorm:"foreignKey:TeamID"`
+	CreatedAt         time.Time        `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt         time.Time        `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TeamMembership represents a user's membership in a team
@@ -240,6 +241,30 @@ type TeamInvite struct {
 
 func (TeamInvite) TableName() string {
 	return "team_invites"
+}
+
+// TeamAuditLog represents an audit log entry for team actions
+type TeamAuditLog struct {
+	ID         uuid.UUID   `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TeamID     uuid.UUID   `json:"team_id" gorm:"type:uuid;not null;index"`
+	ActorID    uuid.UUID   `json:"actor_id" gorm:"type:uuid;not null"`
+	Actor      *User       `json:"actor,omitempty" gorm:"foreignKey:ActorID"`
+	Action     string      `json:"action" gorm:"not null;size:100"`
+	TargetType string      `json:"target_type,omitempty" gorm:"size:50"`
+	TargetID   *uuid.UUID  `json:"target_id,omitempty" gorm:"type:uuid"`
+	Details    interface{} `json:"details,omitempty" gorm:"type:jsonb;serializer:json"`
+	IPAddress  string      `json:"ip_address,omitempty"`
+	CreatedAt  time.Time   `json:"created_at" gorm:"autoCreateTime;index"`
+}
+
+// TeamQuota represents a resource quota for a team
+type TeamQuota struct {
+	ID           uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	TeamID       uuid.UUID `json:"team_id" gorm:"type:uuid;not null;index"`
+	ResourceType string    `json:"resource_type" gorm:"not null;size:50"`
+	MaxCount     int       `json:"max_count" gorm:"not null;default:0"`
+	CurrentCount int       `json:"current_count" gorm:"not null;default:0"`
+	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // Provider represents a cloud provider configuration
@@ -1876,6 +1901,59 @@ type RoutingEvent struct {
 	LatencyMs int       `json:"latency_ms"`
 	Outcome   string    `json:"outcome"`
 	RequestID string    `json:"request_id"`
+}
+
+// AppAnalyticsSummary contains aggregated analytics for an app.
+type AppAnalyticsSummary struct {
+	TotalRequests    int     `json:"totalRequests"`
+	AvgLatencyMs     float64 `json:"avgLatencyMs"`
+	P95LatencyMs     int     `json:"p95LatencyMs"`
+	P99LatencyMs     int     `json:"p99LatencyMs"`
+	ErrorRate        float64 `json:"errorRate"`
+	SuccessRate      float64 `json:"successRate"`
+	TotalExecutions  int     `json:"totalExecutions"`
+	TotalCostCents   int64   `json:"totalCostCents"`
+}
+
+// AppRequestTimeseriesPoint is a single bucket in the requests-over-time chart.
+type AppRequestTimeseriesPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	Total     int       `json:"total"`
+	Success   int       `json:"success"`
+	Errors    int       `json:"errors"`
+}
+
+// AppLatencyTimeseriesPoint is a single bucket in the latency-over-time chart.
+type AppLatencyTimeseriesPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	AvgMs     float64   `json:"avgMs"`
+	P50Ms     int       `json:"p50Ms"`
+	P95Ms     int       `json:"p95Ms"`
+	P99Ms     int       `json:"p99Ms"`
+}
+
+// AppErrorBreakdown groups errors by status code.
+type AppErrorBreakdown struct {
+	StatusCode int `json:"statusCode"`
+	Count      int `json:"count"`
+}
+
+// AppBackendBreakdown provides per-backend analytics.
+type AppBackendBreakdown struct {
+	BackendID    string  `json:"backendId"`
+	Provider     string  `json:"provider"`
+	Requests     int     `json:"requests"`
+	AvgLatencyMs float64 `json:"avgLatencyMs"`
+	ErrorRate    float64 `json:"errorRate"`
+}
+
+// AppAnalyticsResponse is the full response for GET /v1/apps/{appId}/analytics.
+type AppAnalyticsResponse struct {
+	Summary           *AppAnalyticsSummary        `json:"summary"`
+	RequestsOverTime  []*AppRequestTimeseriesPoint `json:"requestsOverTime"`
+	LatencyOverTime   []*AppLatencyTimeseriesPoint `json:"latencyOverTime"`
+	TopErrors         []*AppErrorBreakdown         `json:"topErrors"`
+	BackendBreakdown  []*AppBackendBreakdown       `json:"backendBreakdown"`
 }
 
 // Deployment represents a deployment of an app
