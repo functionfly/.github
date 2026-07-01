@@ -117,15 +117,15 @@ export function VaultSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px]" style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-chamber)' }}>
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand-500/20 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-brand-500" />
+            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'rgba(143, 255, 208, 0.08)', border: '1px solid rgba(143, 255, 208, 0.15)' }}>
+              <Shield className="w-5 h-5" style={{ color: 'var(--status-ok)' }} />
             </div>
             <div>
-              <DialogTitle>{isSetup ? 'Set Up Vault Passphrase' : 'Unlock Vault'}</DialogTitle>
-              <DialogDescription>
+              <DialogTitle style={{ fontFamily: 'var(--font-display)' }}>{isSetup ? 'Set Up Vault Passphrase' : 'Unlock Vault'}</DialogTitle>
+              <DialogDescription style={{ color: 'var(--text-dim)' }}>
                 {isSetup
                   ? 'Create a passphrase to encrypt your API keys. This passphrase will be required to view your keys.'
                   : 'Enter your vault passphrase to access your stored API keys.'}
@@ -136,14 +136,14 @@ export function VaultSetupDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-600 dark:text-red-400">
+            <div className="p-3 text-sm rounded-[var(--radius)]" style={{ background: 'rgba(255, 107, 107, 0.06)', border: '1px solid rgba(255, 107, 107, 0.2)', color: 'var(--status-revoked)' }}>
               {error}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="vault-passphrase">
-              {isSetup ? 'Create Passphrase' : 'Passphrase'} <span className="text-red-500">*</span>
+            <Label htmlFor="vault-passphrase" style={{ color: 'var(--text)' }}>
+              {isSetup ? 'Create Passphrase' : 'Passphrase'} <span style={{ color: 'var(--status-revoked)' }}>*</span>
             </Label>
             <div className="relative">
               <Input
@@ -152,13 +152,15 @@ export function VaultSetupDialog({
                 placeholder={isSetup ? 'Create a strong passphrase' : 'Enter your passphrase'}
                 value={passphrase}
                 onChange={(e) => setPassphrase(e.target.value)}
-                className={cn(error && 'border-red-500', 'pr-10')}
+                style={error ? { borderColor: 'var(--status-revoked)' } : undefined}
+                className="pr-10"
                 disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={() => setShowPassphrase(!showPassphrase)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                style={{ color: 'var(--text-faint)' }}
               >
                 {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -168,8 +170,8 @@ export function VaultSetupDialog({
 
           {isSetup && (
             <div className="space-y-2">
-              <Label htmlFor="confirm-passphrase">
-                Confirm Passphrase <span className="text-red-500">*</span>
+              <Label htmlFor="confirm-passphrase" style={{ color: 'var(--text)' }}>
+                Confirm Passphrase <span style={{ color: 'var(--status-revoked)' }}>*</span>
               </Label>
               <Input
                 id="confirm-passphrase"
@@ -177,19 +179,19 @@ export function VaultSetupDialog({
                 placeholder="Confirm your passphrase"
                 value={confirmPassphrase}
                 onChange={(e) => setConfirmPassphrase(e.target.value)}
-                className={cn(error && 'border-red-500')}
+                style={error ? { borderColor: 'var(--status-revoked)' } : undefined}
                 disabled={isLoading}
               />
             </div>
           )}
 
           {isSetup && (
-            <div className="rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 p-4">
+            <div className="p-4 rounded-[var(--radius)]" style={{ background: 'rgba(232, 196, 104, 0.04)', border: '1px solid rgba(232, 196, 104, 0.15)' }}>
               <div className="flex items-start gap-3">
-                <Lock className="w-5 h-5 text-amber-600 mt-0.5" />
-                <div className="text-sm text-amber-800 dark:text-amber-200">
+                <Lock className="w-5 h-5 mt-0.5" style={{ color: 'var(--status-pending)' }} />
+                <div className="text-sm" style={{ color: 'var(--status-pending)' }}>
                   <p className="font-medium mb-1">Important: Save Your Passphrase</p>
-                  <p>
+                  <p style={{ color: 'var(--text-dim)' }}>
                     Your passphrase is used to encrypt your API keys locally. We cannot recover this
                     passphrase if you lose it. Store it securely in a password manager.
                   </p>

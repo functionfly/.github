@@ -5,11 +5,12 @@ import { useAgentMemories } from '@/hooks/useAgentMemory';
 import { ROUTES } from '@/lib/constants';
 import { usePageTitle } from '@/hooks';
 import {
-  ArrowLeft, Bot, Brain, Copy, Check, GitBranch, Loader2, MemoryStick, Save, Settings, Trash2, Wallet, BarChart3, Plus, X, Terminal, MessageSquare,
+  ArrowLeft, Bot, Brain, Copy, Check, GitBranch, Loader2, MemoryStick, Save, Settings, Trash2, Wallet, BarChart3, Plus, X, Terminal,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { AgentChatHistory } from '@/components/agent-console';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AgentMemoryGraph } from './AgentDetailPage/components/AgentMemoryGraph';
 import { SwarmTopologyView } from '@/components/topology';
@@ -67,7 +68,10 @@ export function AgentDetailPage() {
   const navigate = useNavigate();
   const agentId = sanitizeAgentIdParam(pathAgentId);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlTab = searchParams.get('tab') || 'overview';
+
+  const [activeTab, setActiveTab] = useState(urlTab);
   const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -83,7 +87,7 @@ export function AgentDetailPage() {
   const [newCapValue, setNewCapValue] = useState('');
   const [copied, setCopied] = useState(false);
   const [model, setModel] = useState('gpt-4o-mini');
-  const [models, setModels] = useState<Array<{ id: string; name: string; provider: string; tier: string; cost: string }>>([]);
+  const [models, setModels] = useState<Array<{ id: string; name: string; provider: string; provider_label?: string; key_source?: string; tier: string; cost: string }>>([]);
 
   const { data: agentData, isLoading: loading, error } = useAgent(agentId ?? '');
   const { data: policyData } = useAgentPolicy(agentId ?? '');
@@ -122,6 +126,12 @@ export function AgentDetailPage() {
       setMaxMemoryGrowthMB(policy.maxMemoryGrowthMB ?? 512);
     }
   }, [policy]);
+
+  useEffect(() => {
+    if (urlTab && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [urlTab]);
 
   const isDirty = useMemo(() => {
     if (!agent) return false;
@@ -301,7 +311,7 @@ export function AgentDetailPage() {
       <div className="adp-tabs">
         {tabs.map((tab) => (
           <button key={tab.value} className={`adp-tab ${activeTab === tab.value ? 'adp-tab--active' : ''}`}
-            onClick={() => setActiveTab(tab.value)}>
+            onClick={() => { setActiveTab(tab.value); setSearchParams({ tab: tab.value }); }}>
             <tab.icon className="adp-icon-sm" />
             {tab.label}
           </button>
@@ -398,7 +408,7 @@ export function AgentDetailPage() {
                     <optgroup key={tier} label={tierLabels[tier] || tier}>
                       {items.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.name} — {m.provider} ({m.cost})
+                          {m.name} — {m.provider_label || m.provider} ({m.cost})
                         </option>
                       ))}
                     </optgroup>
@@ -502,11 +512,11 @@ export function AgentDetailPage() {
       {activeTab === 'console' && (
         <Card className="adp-card">
           <div className="adp-card__header">
-            <h3 className="adp-card__title">Agent Console</h3>
-            <p className="adp-card__desc">Chat with {agent?.name || agentId} using {model}</p>
+            <h3 className="adp-card__title">{t('agentDetail.consoleTitle')}</h3>
+            <p className="adp-card__desc">{t('agentDetail.consoleDescription', { name: agent?.name || agentId, model })}</p>
           </div>
           <div className="adp-card__body">
-            <AgentConsole agentId={agentId ?? ''} agentName={agent?.name || (agentId ?? '')} model={model} />
+            <AgentChatHistory agentId={agentId ?? ''} agentName={agent?.name || (agentId ?? '')} model={model} />
           </div>
         </Card>
       )}
@@ -553,78 +563,3 @@ export function AgentDetailPage() {
 }
 
 export default AgentDetailPage;
-
-function AgentConsole({ agentId, agentName, model }: { agentId: string; agentName: string; model: string }) {
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || sending) return;
-    setInput('');
-    setMessages((prev) => [...prev, { role: 'user', content: text }]);
-    setSending(true);
-    try {
-      const res = await agentApi.agentChat(agentId, text);
-      setMessages((prev) => [...prev, { role: 'assistant', content: res.message || '(no response)' }]);
-    } catch (err) {
-      setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${err instanceof Error ? err.message : 'Failed to reach agent'}` }]);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <div style={{
-        minHeight: 320, maxHeight: 480, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem',
-        padding: '0.75rem', borderRadius: 8, border: '1px solid var(--border-color, #2a2a3a)', background: 'var(--bg-secondary, #0f0f1a)',
-      }}>
-        {messages.length === 0 && (
-          <div style={{ textAlign: 'center', color: 'var(--text-muted, #666)', padding: '3rem 1rem' }}>
-            <MessageSquare size={32} style={{ marginBottom: 8, opacity: 0.4 }} />
-            <p>Start a conversation with {agentName}</p>
-            <p style={{ fontSize: '0.8rem', marginTop: 4 }}>Model: {model}</p>
-          </div>
-        )}
-        {messages.map((msg, i) => (
-          <div key={i} style={{
-            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-            maxWidth: '80%', padding: '0.5rem 0.75rem', borderRadius: 12,
-            background: msg.role === 'user' ? 'var(--accent, #6366f1)' : 'var(--bg-tertiary, #1a1a2e)',
-            color: msg.role === 'user' ? '#fff' : 'var(--text-primary, #e0e0e0)',
-            fontSize: '0.9rem', lineHeight: 1.5, whiteSpace: 'pre-wrap',
-          }}>
-            {msg.content}
-          </div>
-        ))}
-        {sending && (
-          <div style={{ alignSelf: 'flex-start', padding: '0.5rem 0.75rem', borderRadius: 12, background: 'var(--bg-tertiary, #1a1a2e)', color: 'var(--text-muted, #666)' }}>
-            <Loader2 size={16} className="adp-spin" />
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <input
-          className="adp-input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-          placeholder={`Message ${agentName}...`}
-          disabled={sending}
-          style={{ flex: 1 }}
-        />
-        <SealedButton onClick={handleSend} disabled={sending || !input.trim()} loading={sending} iconLeft={<MessageSquare className="adp-icon-sm" />}>
-          Send
-        </SealedButton>
-      </div>
-    </div>
-  );
-}

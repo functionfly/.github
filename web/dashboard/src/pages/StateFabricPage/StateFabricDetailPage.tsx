@@ -23,10 +23,10 @@ import {
   Info,
   Check,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +40,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
-import { StatusBadge } from "@/components/common/StatusBadge";
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  AnnotationTag,
+  StatusPill,
+} from "@/components/containment";
 import {
   useStateFabrics,
   useStateFabric,
@@ -54,6 +61,7 @@ import {
   useUpdateStateFabric,
 } from "@/hooks/useStateFabric";
 import { usePlan } from "@/hooks/usePlan";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   canCreateStateFabric,
   getStateFabricsLimit,
@@ -99,6 +107,8 @@ export function StateFabricDetailPage() {
   const fabricLimit = getStateFabricsLimit(plan);
 
   const { data: fabric, isLoading: fabricLoading, error } = useStateFabric(isNew ? "" : id!);
+  const fabricName = (fabric as StateFabric)?.name;
+  usePageTitle(isNew ? 'State Fabric / New' : fabricName ? `State Fabric / ${fabricName}` : 'State Fabric');
   const { data: metrics } = useStateFabricMetrics(id || "");
   const { data: stores } = useStateFabricStores(id || "");
   const { data: pipelines } = useStateFabricPipelines(id || "");
@@ -116,15 +126,15 @@ export function StateFabricDetailPage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to State Fabrics
         </Button>
-        <Card className="border-dashed border-white/20 bg-bg-secondary/50">
+        <Card className="border-dashed border-white/20 rgba(14,19,24,0.5)/50">
           <CardHeader>
-            <CardTitle className="text-text-primary">
+            <CardTitle className="text-[var(--text)]">
               {!stateFabricUnlocked
                 ? "State Fabric is not on your plan"
                 : "State fabric limit reached"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 text-text-secondary text-sm">
+          <CardContent className="space-y-4 text-[var(--text-dim)] text-sm">
             {!stateFabricUnlocked ? (
               <p>
                 State Fabric is available on Starter, Professional, and Enterprise plans.
@@ -150,7 +160,11 @@ export function StateFabricDetailPage() {
         onCancel={() => navigate("/state-fabric")}
         onCreate={async (data) => {
           const created = await createFabric.mutateAsync(data);
-          navigate(`/state-fabric/${created.id}`);
+          if (created?.id) {
+            navigate(`/state-fabric/${created.id}`);
+          } else {
+            navigate("/state-fabric");
+          }
         }}
         isSubmitting={createFabric.isPending}
       />
@@ -181,7 +195,7 @@ export function StateFabricDetailPage() {
           Back to State Fabrics
         </Button>
         <Card className="p-12 text-center">
-          <div className="text-red-400 mb-4">Failed to load state fabric</div>
+          <div className="text-[var(--status-revoked)] mb-4">Failed to load state fabric</div>
           <Button onClick={() => window.location.reload()} variant="outline">
             Retry
           </Button>
@@ -205,242 +219,197 @@ export function StateFabricDetailPage() {
     );
   }
 
+  const detailTabs = [
+    { value: 'overview', label: 'Overview', icon: Activity },
+    { value: 'stores', label: 'Stores', icon: Database },
+    { value: 'pipelines', label: 'Pipelines', icon: Network },
+    { value: 'events', label: 'Events', icon: History },
+    { value: 'snapshots', label: 'Snapshots', icon: Camera },
+    { value: 'triggers', label: 'Triggers', icon: Zap },
+    { value: 'metrics', label: 'Metrics', icon: Activity },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/state-fabric")}
-            className="shrink-0"
-            aria-label="Back to State Fabric"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
+      <PageGrid />
+
+      {/* Hero Header */}
+      <Chamber ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="MODULE SF-02" secondary="State Fabric" position="top-right" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4" style={{ paddingTop: 'var(--space-3)', paddingRight: '140px' }}>
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-text-primary">
-                {fabric.name}
-              </h1>
-              <StatusBadge status={fabric.status} />
+              <TrustSeal size="lg" />
+              <div>
+                <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
+                  {fabric.name}
+                </h1>
+                <p style={{ color: 'var(--text-dim)' }}>{fabric.description}</p>
+              </div>
             </div>
-            <p className="text-text-secondary">{fabric.description}</p>
+            <StatusPill status={fabric.status === 'online' ? 'live' : fabric.status === 'degraded' ? 'pending' : 'revoked'} />
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => navigate(`/state-fabric/${id}/edit`)}>
+              <Settings className="w-4 h-4 mr-2" />
+              Configure
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate(`/state-fabric/${id}/edit`)}>
-            <Settings className="w-4 h-4 mr-2" />
-            Configure
-          </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete
-          </Button>
-        </div>
-      </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-text-muted mb-2">
-              <Activity className="w-4 h-4" />
-              <span className="text-sm">Throughput</span>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          {[
+            { label: 'Throughput', value: metrics?.operationsPerSecond ? `${metrics.operationsPerSecond.toFixed(1)}` : 'N/A', sub: 'ops/sec', icon: Activity },
+            { label: 'Latency', value: metrics?.averageLatency ? `${metrics.averageLatency.toFixed(0)}` : 'N/A', sub: 'ms avg', icon: Clock },
+            { label: 'Stores', value: String(stores?.length || 0), sub: 'active stores', icon: Database },
+            { label: 'Pipelines', value: String(pipelines?.length || 0), sub: 'configured', icon: Network },
+          ].map((stat) => (
+            <div key={stat.label} className="p-4 rounded-[var(--radius)]" style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}>
+              <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--text-faint)' }}>
+                <stat.icon className="w-4 h-4" />
+                <span className="text-sm">{stat.label}</span>
+              </div>
+              <p className="text-2xl font-bold font-mono tabular-nums" style={{ color: 'var(--text)' }}>{stat.value}</p>
+              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{stat.sub}</p>
             </div>
-            <p className="text-2xl font-bold text-text-primary">
-              {metrics?.operationsPerSecond
-                ? `${metrics.operationsPerSecond.toFixed(1)}`
-                : "N/A"}
-            </p>
-            <p className="text-xs text-text-muted">ops/sec</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-text-muted mb-2">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">Latency</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary">
-              {metrics?.averageLatency
-                ? `${metrics.averageLatency.toFixed(0)}`
-                : "N/A"}
-            </p>
-            <p className="text-xs text-text-muted">ms avg</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-text-muted mb-2">
-              <Database className="w-4 h-4" />
-              <span className="text-sm">Stores</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary">
-              {stores?.length || 0}
-            </p>
-            <p className="text-xs text-text-muted">active stores</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-text-muted mb-2">
-              <Network className="w-4 h-4" />
-              <span className="text-sm">Pipelines</span>
-            </div>
-            <p className="text-2xl font-bold text-text-primary">
-              {pipelines?.length || 0}
-            </p>
-            <p className="text-xs text-text-muted">configured</p>
-          </CardContent>
-        </Card>
-      </div>
+          ))}
+        </div>
+      </Chamber>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-3 md:grid-cols-6 lg:w-fit">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="stores">Stores</TabsTrigger>
-          <TabsTrigger value="pipelines">Pipelines</TabsTrigger>
-          <TabsTrigger value="events">Events</TabsTrigger>
-          <TabsTrigger value="snapshots">Snapshots</TabsTrigger>
-          <TabsTrigger value="triggers">Triggers</TabsTrigger>
-          <TabsTrigger value="metrics">Metrics</TabsTrigger>
-        </TabsList>
+      <div>
+        <div
+          className="inline-flex gap-1 p-1 rounded-[var(--radius)] overflow-x-auto"
+          style={{ background: 'var(--panel)', border: '1px solid var(--panel-edge)' }}
+          role="tablist"
+        >
+          {detailTabs.map(({ value, label, icon: Icon }) => {
+            const isActive = activeTab === value;
+            return (
+              <button
+                key={value}
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(value)}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-[var(--radius-sm)] transition-all whitespace-nowrap"
+                style={{
+                  background: isActive ? 'var(--panel-raised)' : 'transparent',
+                  color: isActive ? 'var(--text)' : 'var(--text-faint)',
+                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+                  fontFamily: 'var(--font-body)',
+                }}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Configuration */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Configuration</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-text-muted">Type</p>
-                    <p className="font-medium text-text-primary capitalize">
-                      {fabric.type}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-muted">Auto Snapshot</p>
-                    <p className="font-medium text-text-primary">
-                      {fabric.settings?.autoSnapshot ? "Enabled" : "Disabled"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-muted">Snapshot Interval</p>
-                    <p className="font-medium text-text-primary">
-                      {fabric.settings?.snapshotIntervalMinutes || 60} minutes
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-muted">Retention</p>
-                    <p className="font-medium text-text-primary">
-                      {fabric.settings?.retentionDays || 30} days
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-muted">Replication</p>
-                    <p className="font-medium text-text-primary">
-                      {fabric.settings?.enableReplication ? "Enabled" : "Disabled"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-text-muted">Conflict Resolution</p>
-                    <p className="font-medium text-text-primary capitalize">
-                      {(fabric.settings?.conflictResolution || "last-write-wins").replace(/-/g, " ")}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Regions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Regions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {fabric.settings?.regions && fabric.settings.regions.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {fabric.settings.regions.map((region) => (
-                      <Badge key={region} variant="secondary">
-                        {region}
-                      </Badge>
+        <div className="mt-6 space-y-6">
+          {activeTab === 'overview' && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Chamber nested>
+                <CardHeader>
+                  <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Configuration</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      ['Type', fabric.type],
+                      ['Auto Snapshot', fabric.settings?.autoSnapshot ? 'Enabled' : 'Disabled'],
+                      ['Snapshot Interval', `${fabric.settings?.snapshotIntervalMinutes || 60} minutes`],
+                      ['Retention', `${fabric.settings?.retentionDays || 30} days`],
+                      ['Replication', fabric.settings?.enableReplication ? 'Enabled' : 'Disabled'],
+                      ['Conflict Resolution', (fabric.settings?.conflictResolution || 'last-write-wins').replace(/-/g, ' ')],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <p className="text-sm" style={{ color: 'var(--text-faint)' }}>{label}</p>
+                        <p className="font-medium capitalize" style={{ color: 'var(--text)' }}>{value}</p>
+                      </div>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-text-muted">No regions configured</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Chamber>
 
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {eventLogs?.events && eventLogs.events.length > 0 ? (
-                <div className="space-y-2">
-                  {eventLogs.events.slice(0, 5).map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-center justify-between py-2 border-b border-border-subtle last:border-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="capitalize">
-                          {event.eventType}
-                        </Badge>
-                        <span className="text-sm text-text-secondary">
-                          {event.correlationId?.slice(0, 8) || "System"}
+              <Chamber nested>
+                <CardHeader>
+                  <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Regions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {fabric.settings?.regions && fabric.settings.regions.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {fabric.settings.regions.map((region) => (
+                        <span key={region} className="text-xs px-2.5 py-0.5 rounded-[var(--radius-sm)]" style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)' }}>
+                          {region}
                         </span>
-                      </div>
-                      <span className="text-xs text-text-muted">
-                        {new Date(event.timestamp).toLocaleString()}
-                      </span>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-text-muted">No recent activity</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  ) : (
+                    <p style={{ color: 'var(--text-faint)' }}>No regions configured</p>
+                  )}
+                </CardContent>
+              </Chamber>
 
-        <TabsContent value="stores">
-          <StoreConfiguration fabricId={id || ""} stores={stores || []} />
-        </TabsContent>
+              <Chamber nested className="lg:col-span-2">
+                <CardHeader>
+                  <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {eventLogs?.events && eventLogs.events.length > 0 ? (
+                    <div className="space-y-2">
+                      {eventLogs.events.slice(0, 5).map((event) => (
+                        <div
+                          key={event.id}
+                          className="flex items-center justify-between py-2"
+                          style={{ borderBottom: '1px solid var(--panel-edge)' }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs px-2 py-0.5 rounded-[var(--radius-sm)] capitalize" style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)' }}>
+                              {event.eventType}
+                            </span>
+                            <span className="text-sm" style={{ color: 'var(--text-dim)' }}>
+                              {event.correlationId?.slice(0, 8) || 'System'}
+                            </span>
+                          </div>
+                          <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                            {new Date(event.timestamp).toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: 'var(--text-faint)' }}>No recent activity</p>
+                  )}
+                </CardContent>
+              </Chamber>
+            </div>
+          )}
 
-        <TabsContent value="pipelines">
-          <PipelineVisualization fabricId={id || ""} pipelines={pipelines || []} />
-        </TabsContent>
-
-        <TabsContent value="events">
-          <StateFabricAddonGate addonId="advanced_security_pack">
-            <EventLogViewer fabricId={id || ""} events={eventLogs?.events || []} total={eventLogs?.total || 0} />
-          </StateFabricAddonGate>
-        </TabsContent>
-
-        <TabsContent value="snapshots">
-          <SnapshotManager fabricId={id || ""} snapshots={snapshots || []} />
-        </TabsContent>
-
-        <TabsContent value="triggers">
-          <TriggerConfiguration fabricId={id || ""} />
-        </TabsContent>
-
-        <TabsContent value="metrics">
-          <StateFabricAddonGate addonId="advanced_insights">
-            <MetricsDashboard fabricId={id || ""} metrics={metrics} />
-          </StateFabricAddonGate>
-        </TabsContent>
-      </Tabs>
+          {activeTab === 'stores' && <StoreConfiguration fabricId={id || ''} stores={stores || []} />}
+          {activeTab === 'pipelines' && <PipelineVisualization fabricId={id || ''} pipelines={pipelines || []} />}
+          {activeTab === 'events' && (
+            <StateFabricAddonGate addonId="advanced_security_pack">
+              <EventLogViewer fabricId={id || ''} events={eventLogs?.events || []} total={eventLogs?.total || 0} />
+            </StateFabricAddonGate>
+          )}
+          {activeTab === 'snapshots' && <SnapshotManager fabricId={id || ''} snapshots={snapshots || []} />}
+          {activeTab === 'triggers' && <TriggerConfiguration fabricId={id || ''} />}
+          {activeTab === 'metrics' && (
+            <StateFabricAddonGate addonId="advanced_insights">
+              <MetricsDashboard fabricId={id || ''} metrics={metrics} />
+            </StateFabricAddonGate>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -451,7 +420,8 @@ interface FabricTypeConfig {
   description: string;
   icon: React.ReactNode;
   features: string[];
-  gradient: string;
+  iconBg: string;
+  defaultSettings: StateFabricSettings;
 }
 
 const FABRIC_TYPES: FabricTypeConfig[] = [
@@ -461,7 +431,15 @@ const FABRIC_TYPES: FabricTypeConfig[] = [
     description: "Manage user sessions with automatic expiry and distributed replication",
     icon: <User className="w-6 h-6" />,
     features: ["Auto-expiry", "Distributed", "High availability"],
-    gradient: "from-blue-500/20 via-blue-500/10 to-transparent",
+    iconBg: "rgba(159,216,255,0.1)",
+    defaultSettings: {
+      autoSnapshot: false,
+      snapshotIntervalMinutes: 30,
+      retentionDays: 7,
+      enableReplication: true,
+      regions: [],
+      conflictResolution: "last-write-wins",
+    },
   },
   {
     value: "catalog",
@@ -469,7 +447,15 @@ const FABRIC_TYPES: FabricTypeConfig[] = [
     description: "Centralized metadata management for your data assets",
     icon: <Package className="w-6 h-6" />,
     features: ["Schema registry", "Data lineage", "Search & discovery"],
-    gradient: "from-green-500/20 via-green-500/10 to-transparent",
+    iconBg: "rgba(143,255,208,0.1)",
+    defaultSettings: {
+      autoSnapshot: true,
+      snapshotIntervalMinutes: 120,
+      retentionDays: 90,
+      enableReplication: false,
+      regions: [],
+      conflictResolution: "last-write-wins",
+    },
   },
   {
     value: "cache",
@@ -477,7 +463,15 @@ const FABRIC_TYPES: FabricTypeConfig[] = [
     description: "High-performance distributed caching with TTL support",
     icon: <Zap className="w-6 h-6" />,
     features: ["Sub-millisecond latency", "TTL support", "LRU eviction"],
-    gradient: "from-yellow-500/20 via-yellow-500/10 to-transparent",
+    iconBg: "rgba(232,196,104,0.1)",
+    defaultSettings: {
+      autoSnapshot: false,
+      snapshotIntervalMinutes: 60,
+      retentionDays: 3,
+      enableReplication: true,
+      regions: [],
+      conflictResolution: "last-write-wins",
+    },
   },
   {
     value: "workflow",
@@ -485,7 +479,15 @@ const FABRIC_TYPES: FabricTypeConfig[] = [
     description: "Orchestrate complex business processes with state management",
     icon: <Workflow className="w-6 h-6" />,
     features: ["State machines", "Event-driven", "Retry logic"],
-    gradient: "from-purple-500/20 via-purple-500/10 to-transparent",
+    iconBg: "rgba(217,196,255,0.1)",
+    defaultSettings: {
+      autoSnapshot: true,
+      snapshotIntervalMinutes: 60,
+      retentionDays: 90,
+      enableReplication: false,
+      regions: [],
+      conflictResolution: "manual",
+    },
   },
   {
     value: "custom",
@@ -493,7 +495,15 @@ const FABRIC_TYPES: FabricTypeConfig[] = [
     description: "Build your own state fabric with full customization",
     icon: <Sparkles className="w-6 h-6" />,
     features: ["Fully customizable", "Multi-store", "Custom pipelines"],
-    gradient: "from-gray-500/20 via-gray-500/10 to-transparent",
+    iconBg: "rgba(74,86,95,0.15)",
+    defaultSettings: {
+      autoSnapshot: false,
+      snapshotIntervalMinutes: 60,
+      retentionDays: 30,
+      enableReplication: false,
+      regions: [],
+      conflictResolution: "last-write-wins",
+    },
   },
 ];
 
@@ -510,8 +520,20 @@ function StateFabricCreateForm({
   const [description, setDescription] = useState("");
   const [type, setType] = useState<CreateStateFabricRequest["type"]>("session");
   const [errors, setErrors] = useState<{ name?: string }>({});
+  const [settings, setSettings] = useState<StateFabricSettings>(
+    FABRIC_TYPES[0].defaultSettings
+  );
+  const [showSettings, setShowSettings] = useState(false);
 
   const selectedType = FABRIC_TYPES.find((t) => t.value === type)!;
+
+  const handleTypeChange = (newType: CreateStateFabricRequest["type"]) => {
+    setType(newType);
+    const typeConfig = FABRIC_TYPES.find((t) => t.value === newType);
+    if (typeConfig) {
+      setSettings(typeConfig.defaultSettings);
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: { name?: string } = {};
@@ -526,14 +548,26 @@ function StateFabricCreateForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
-    onCreate({ name: name.trim(), description: description.trim(), type });
+    try {
+      await onCreate({
+        name: name.trim(),
+        description: description.trim(),
+        type,
+        settings: showSettings ? settings : undefined,
+      });
+    } catch (err: any) {
+      const message = err?.message || "Failed to create state fabric";
+      toast.error(message);
+    }
   };
 
   return (
     <div className="space-y-6 max-w-4xl">
+      <PageGrid />
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button
@@ -546,8 +580,8 @@ function StateFabricCreateForm({
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Create State Fabric</h1>
-          <p className="text-text-secondary">
+          <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>Create State Fabric</h1>
+          <p style={{ color: 'var(--text-dim)' }}>
             Configure a new state fabric for your application
           </p>
         </div>
@@ -555,88 +589,93 @@ function StateFabricCreateForm({
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Type Selection */}
-        <Card>
+        <Chamber>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <AnnotationTag primary="MODULE SF-01" secondary="Fabric Type" position="top-right" />
+
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Database className="w-5 h-5 text-brand-500" />
+            <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+              <Database className="w-5 h-5" style={{ color: 'var(--status-ok)' }} />
               Choose Fabric Type
             </CardTitle>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
               Select the type that best fits your use case
             </p>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {FABRIC_TYPES.map((fabricType) => (
-                <button
-                  key={fabricType.value}
-                  type="button"
-                  onClick={() => setType(fabricType.value)}
-                  disabled={isSubmitting}
-                  className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 ${
-                    type === fabricType.value
-                      ? "border-brand-500 bg-brand-500/5"
-                      : "border-border-subtle hover:border-border-default hover:bg-bg-hover"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {/* Selection indicator */}
-                  {type === fabricType.value && (
-                    <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                  )}
-
-                  {/* Icon with gradient background */}
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 bg-gradient-to-br ${fabricType.gradient} ${
-                      type === fabricType.value ? "text-brand-400" : "text-text-secondary"
-                    }`}
+              {FABRIC_TYPES.map((fabricType) => {
+                const isSelected = type === fabricType.value;
+                return (
+                  <button
+                    key={fabricType.value}
+                    type="button"
+                    onClick={() => handleTypeChange(fabricType.value)}
+                    disabled={isSubmitting}
+                    className="relative p-4 rounded-[var(--radius)] text-left transition-all duration-200"
+                    style={{
+                      background: isSelected ? 'rgba(143,255,208,0.03)' : 'var(--panel-raised)',
+                      border: isSelected ? '2px solid var(--status-ok)' : '2px solid var(--panel-edge)',
+                      opacity: isSubmitting ? 0.5 : 1,
+                      cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                    }}
                   >
-                    {fabricType.icon}
-                  </div>
+                    {isSelected && (
+                      <div className="absolute top-3 right-3 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: 'var(--status-ok)' }}>
+                        <Check className="w-3 h-3" style={{ color: 'var(--bg)' }} />
+                      </div>
+                    )}
 
-                  {/* Label */}
-                  <h3 className="font-semibold text-text-primary mb-1">{fabricType.label}</h3>
+                    <div
+                      className="w-12 h-12 rounded-[var(--radius)] flex items-center justify-center mb-3"
+                      style={{ background: fabricType.iconBg, color: isSelected ? 'var(--status-ok)' : 'var(--text-dim)' }}
+                    >
+                      {fabricType.icon}
+                    </div>
 
-                  {/* Description */}
-                  <p className="text-xs text-text-secondary mb-3 line-clamp-2">
-                    {fabricType.description}
-                  </p>
+                    <h3 className="font-semibold mb-1" style={{ color: 'var(--text)' }}>{fabricType.label}</h3>
 
-                  {/* Features */}
-                  <div className="flex flex-wrap gap-1">
-                    {fabricType.features.map((feature) => (
-                      <span
-                        key={feature}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-bg-tertiary text-text-muted"
-                      >
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-                </button>
-              ))}
+                    <p className="text-xs mb-3 line-clamp-2" style={{ color: 'var(--text-dim)' }}>
+                      {fabricType.description}
+                    </p>
+
+                    <div className="flex flex-wrap gap-1">
+                      {fabricType.features.map((feature) => (
+                        <span
+                          key={feature}
+                          className="text-[10px] px-2 py-0.5 rounded-[var(--radius-sm)]"
+                          style={{ background: 'var(--panel)', color: 'var(--text-faint)', border: '1px solid var(--panel-edge)' }}
+                        >
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
-        </Card>
+        </Chamber>
 
         {/* Configuration */}
-        <Card>
+        <Chamber>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Settings className="w-5 h-5 text-brand-500" />
+            <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+              <Settings className="w-5 h-5" style={{ color: 'var(--status-ok)' }} />
               Configuration
             </CardTitle>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
               Basic settings for your state fabric
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Name Field */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-2">
-                Name
-                <span className="text-red-500">*</span>
+              <Label htmlFor="name" style={{ color: 'var(--text)' }}>
+                Name <span style={{ color: 'var(--status-revoked)' }}>*</span>
               </Label>
               <Input
                 id="name"
@@ -648,20 +687,19 @@ function StateFabricCreateForm({
                 placeholder={`e.g., My ${selectedType.label}`}
                 required
                 disabled={isSubmitting}
-                className={errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}
+                style={errors.name ? { borderColor: 'var(--status-revoked)' } : undefined}
               />
               {errors.name ? (
-                <p className="text-sm text-red-500">{errors.name}</p>
+                <p className="text-sm" style={{ color: 'var(--status-revoked)' }}>{errors.name}</p>
               ) : (
-                <p className="text-xs text-text-muted">
+                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
                   A unique name to identify this state fabric (3-50 characters)
                 </p>
               )}
             </div>
 
-            {/* Description Field */}
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" style={{ color: 'var(--text)' }}>Description</Label>
               <Textarea
                 id="description"
                 value={description}
@@ -671,34 +709,118 @@ function StateFabricCreateForm({
                 rows={3}
                 className="resize-none"
               />
-              <p className="text-xs text-text-muted">
+              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
                 Optional description to help team members understand its purpose
               </p>
             </div>
+          </CardContent>
+        </Chamber>
 
-            {/* Selected Type Info */}
-            <div className="p-4 rounded-lg bg-bg-tertiary border border-border-subtle">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-brand-500 mt-0.5 shrink-0" />
+        {/* Advanced Settings (collapsible) */}
+        <Chamber>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+
+          <CardHeader>
+            <button
+              type="button"
+              onClick={() => setShowSettings(!showSettings)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                <Settings className="w-5 h-5" style={{ color: 'var(--status-ok)' }} />
+                Advanced Settings
+              </CardTitle>
+              <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                {showSettings ? "Hide" : "Show"} &mdash; defaults for {selectedType.label}
+              </span>
+            </button>
+          </CardHeader>
+          {showSettings && (
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-[var(--panel-edge)] p-4">
                 <div>
-                  <h4 className="font-medium text-text-primary text-sm">
-                    About {selectedType.label}
-                  </h4>
-                  <p className="text-sm text-text-secondary mt-1">
-                    {selectedType.description}
-                  </p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedType.features.map((feature) => (
-                      <Badge key={feature} variant="secondary" className="text-xs">
-                        {feature}
-                      </Badge>
-                    ))}
-                  </div>
+                  <Label style={{ color: 'var(--text)' }}>Auto snapshot</Label>
+                  <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Create snapshots automatically</p>
+                </div>
+                <Switch
+                  checked={settings.autoSnapshot}
+                  onCheckedChange={(v) => setSettings((s) => ({ ...s, autoSnapshot: v }))}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="snapshotInterval" style={{ color: 'var(--text)' }}>Snapshot interval (min)</Label>
+                  <Input
+                    id="snapshotInterval"
+                    type="number"
+                    min={1}
+                    max={10080}
+                    value={settings.snapshotIntervalMinutes}
+                    onChange={(e) =>
+                      setSettings((s) => ({
+                        ...s,
+                        snapshotIntervalMinutes: Math.max(1, parseInt(e.target.value, 10) || 1),
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="retentionDays" style={{ color: 'var(--text)' }}>Retention (days)</Label>
+                  <Input
+                    id="retentionDays"
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={settings.retentionDays}
+                    onChange={(e) =>
+                      setSettings((s) => ({
+                        ...s,
+                        retentionDays: Math.max(1, parseInt(e.target.value, 10) || 1),
+                      }))
+                    }
+                    disabled={isSubmitting}
+                  />
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex items-center justify-between rounded-lg border border-[var(--panel-edge)] p-4">
+                <div>
+                  <Label style={{ color: 'var(--text)' }}>Enable replication</Label>
+                  <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Replicate across regions</p>
+                </div>
+                <Switch
+                  checked={settings.enableReplication}
+                  onCheckedChange={(v) => setSettings((s) => ({ ...s, enableReplication: v }))}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="conflictResolution" style={{ color: 'var(--text)' }}>Conflict resolution</Label>
+                <Select
+                  value={settings.conflictResolution}
+                  onValueChange={(v) =>
+                    setSettings((s) => ({
+                      ...s,
+                      conflictResolution: v as StateFabricSettings["conflictResolution"],
+                    }))
+                  }
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger id="conflictResolution">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="last-write-wins">Last write wins</SelectItem>
+                    <SelectItem value="first-write-wins">First write wins</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          )}
+        </Chamber>
 
         {/* Actions */}
         <div className="flex items-center justify-between pt-4">
@@ -795,8 +917,8 @@ function StateFabricEditForm({
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold text-text-primary">Edit State Fabric</h1>
-          <p className="text-text-secondary">
+          <h1 className="text-2xl font-bold text-[var(--text)]">Edit State Fabric</h1>
+          <p className="text-[var(--text-dim)]">
             Update name, description, and settings for this fabric
           </p>
         </div>
@@ -806,14 +928,14 @@ function StateFabricEditForm({
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Settings className="w-5 h-5 text-brand-500" />
+              <Settings className="w-5 h-5 text-[var(--status-ok)]" />
               Basic info
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-name">
-                Name <span className="text-red-500">*</span>
+                Name <span className="text-[var(--status-revoked)]">*</span>
               </Label>
               <Input
                 id="edit-name"
@@ -824,10 +946,10 @@ function StateFabricEditForm({
                 }}
                 placeholder="Fabric name"
                 disabled={isSubmitting}
-                className={errors.name ? "border-red-500 focus-visible:ring-red-500" : ""}
+                className={errors.name ? "border-[var(--status-revoked)] focus-visible:shadow-[0_0_0_1px_var(--status-revoked)_inset]" : ""}
               />
               {errors.name && (
-                <p className="text-sm text-red-500">{errors.name}</p>
+                <p className="text-sm text-[var(--status-revoked)]">{errors.name}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -848,18 +970,18 @@ function StateFabricEditForm({
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Database className="w-5 h-5 text-brand-500" />
+              <Database className="w-5 h-5 text-[var(--status-ok)]" />
               Settings
             </CardTitle>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-[var(--text-dim)]">
               Snapshot, retention, and replication options
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border border-border-subtle p-4">
+            <div className="flex items-center justify-between rounded-lg border border-[var(--panel-edge)] p-4">
               <div>
                 <Label htmlFor="edit-autoSnapshot">Auto snapshot</Label>
-                <p className="text-xs text-text-muted">Create snapshots automatically</p>
+                <p className="text-xs text-[var(--text-faint)]">Create snapshots automatically</p>
               </div>
               <Switch
                 id="edit-autoSnapshot"
@@ -904,10 +1026,10 @@ function StateFabricEditForm({
                 disabled={isSubmitting}
               />
             </div>
-            <div className="flex items-center justify-between rounded-lg border border-border-subtle p-4">
+            <div className="flex items-center justify-between rounded-lg border border-[var(--panel-edge)] p-4">
               <div>
                 <Label htmlFor="edit-enableReplication">Enable replication</Label>
-                <p className="text-xs text-text-muted">Replicate across regions</p>
+                <p className="text-xs text-[var(--text-faint)]">Replicate across regions</p>
               </div>
               <Switch
                 id="edit-enableReplication"

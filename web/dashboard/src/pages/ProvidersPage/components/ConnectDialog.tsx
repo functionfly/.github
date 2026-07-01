@@ -115,29 +115,29 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
       <DialogTrigger asChild>
         <Button
           variant="outline"
-          className="w-full gap-2 border-border-default hover:border-border-subtle hover:bg-bg-secondary transition-all duration-200"
+          className="w-full gap-2"
           onClick={() => setIsOpen(true)}
         >
           <Plus className="w-4 h-4" />
           Connect
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-bg-tertiary border-border-subtle sm:max-w-md">
+      <DialogContent className="sm:max-w-md" style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-chamber)' }}>
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${accent.border}15` }}
+              className="w-10 h-10 rounded-[var(--radius-lg)] flex items-center justify-center"
+              style={{ background: `${accent.border}15` }}
             >
               <ProviderIcon provider={provider.id} size="md" />
             </div>
             <div>
-              <DialogTitle className="text-text-primary text-lg">
+              <DialogTitle className="text-lg" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
                 {isFunctionFly ? 'Enable' : 'Connect'} {provider.name}
               </DialogTitle>
             </div>
           </div>
-          <DialogDescription className="text-text-secondary">
+          <DialogDescription style={{ color: 'var(--text-dim)' }}>
             {isFunctionFly
               ? 'Enable FunctionFly Edge to deploy to our managed infrastructure. No external account required.'
               : `Enter your API credentials to connect ${provider.name}. Credentials are encrypted with AES-256.`}
@@ -146,24 +146,24 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
 
         <div className="space-y-4 pt-2">
           {validationError && (
-            <div className="p-3 rounded-lg bg-error/10 border border-error/20 animate-in slide-in-from-top-1 duration-200">
+            <div className="p-3 rounded-[var(--radius)]" style={{ background: 'rgba(255, 107, 107, 0.06)', border: '1px solid rgba(255, 107, 107, 0.2)' }}>
               <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-error mt-0.5 shrink-0" />
-                <p className="text-sm text-error">{validationError}</p>
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'var(--status-revoked)' }} />
+                <p className="text-sm" style={{ color: 'var(--status-revoked)' }}>{validationError}</p>
               </div>
             </div>
           )}
 
           {generatedApiKey ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50">
+              <div className="p-4 rounded-[var(--radius)]" style={{ background: 'rgba(143, 255, 208, 0.04)', border: '1px solid rgba(143, 255, 208, 0.15)' }}>
                 <div className="flex items-center gap-2 mb-2">
-                  <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                  <Check className="w-4 h-4" style={{ color: 'var(--status-ok)' }} />
+                  <span className="text-sm font-medium" style={{ color: 'var(--status-ok)' }}>
                     {isFunctionFly ? 'Provider Enabled' : 'Provider Connected'}
                   </span>
                 </div>
-                <p className="text-xs text-emerald-700 dark:text-emerald-400">
+                <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
                   {vaultStoreSuccess
                     ? 'Your API key has been securely stored in your vault.'
                     : 'Your API key has been generated. Store it in your vault for safekeeping.'}
@@ -171,12 +171,13 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
               </div>
 
               <div className="space-y-2">
-                <Label className="text-text-primary">Your API Key</Label>
+                <Label style={{ color: 'var(--text)' }}>Your API Key</Label>
                 <div className="flex gap-2">
                   <Input
                     value={generatedApiKey}
                     readOnly
-                    className="bg-bg-secondary border-border-subtle font-mono text-sm"
+                    className="font-mono text-sm"
+                    style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)' }}
                   />
                   <Button
                     variant="outline"
@@ -189,9 +190,9 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
                 </div>
               </div>
 
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-amber-950 dark:text-amber-100">
+              <div className="flex items-start gap-2 p-3 rounded-[var(--radius)]" style={{ background: 'rgba(232, 196, 104, 0.04)', border: '1px solid rgba(232, 196, 104, 0.15)' }}>
+                <Shield className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'var(--status-pending)' }} />
+                <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
                   This key will only be shown once. Store it in your vault or keep it safe. You can
                   always find it again in your vault at /api-keys.
                 </p>
@@ -205,24 +206,23 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
                   setApiKey('');
                 }}
                 className="w-full"
-                style={{ backgroundColor: accent.border, color: 'white' }}
               >
                 Done
               </Button>
             </div>
           ) : isFunctionFly ? (
             <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-bg-secondary border border-border-subtle">
+              <div className="p-4 rounded-[var(--radius)]" style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}>
                 <div className="flex items-start gap-3">
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${accent.border}15` }}
+                    className="w-8 h-8 rounded-[var(--radius)] flex items-center justify-center shrink-0"
+                    style={{ background: `${accent.border}15` }}
                   >
                     <Zap className="w-4 h-4" style={{ color: accent.text }} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-medium text-text-primary mb-1">Ready to Deploy</h4>
-                    <p className="text-sm text-text-secondary">
+                    <h4 className="text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>Ready to Deploy</h4>
+                    <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
                       FunctionFly Edge is our managed hosting. Select your preferred regions and
                       deploy immediately.
                     </p>
@@ -230,15 +230,10 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
                 </div>
               </div>
 
-              <button
-                type="button"
+              <Button
                 onClick={handleConnect}
                 disabled={isConnecting}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  backgroundColor: accent.border,
-                  color: 'white',
-                }}
+                className="w-full gap-2"
               >
                 {isConnecting ? (
                   <>
@@ -251,12 +246,12 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
                     Enable Provider
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor={`apiKey-${provider.id}`} className="text-text-primary">
+                <Label htmlFor={`apiKey-${provider.id}`} style={{ color: 'var(--text)' }}>
                   API Key
                 </Label>
                 <Input
@@ -268,7 +263,6 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
                     setApiKey(e.target.value);
                     if (validationError) setValidationError(null);
                   }}
-                  className="bg-bg-secondary border-border-subtle focus:border-border-default"
                   disabled={isConnecting}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !isConnecting) {
@@ -278,23 +272,18 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
                   }}
                 />
               </div>
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                <Shield className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-amber-950 dark:text-amber-100">
+              <div className="flex items-start gap-2 p-3 rounded-[var(--radius)]" style={{ background: 'rgba(232, 196, 104, 0.04)', border: '1px solid rgba(232, 196, 104, 0.15)' }}>
+                <Shield className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'var(--status-pending)' }} />
+                <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
                   This allows FunctionFly to deploy to your {provider.name} account. You can revoke
                   access anytime. API keys are encrypted with AES-256-GCM.
                 </p>
               </div>
 
-              <button
-                type="button"
+              <Button
                 onClick={handleConnect}
                 disabled={!apiKey.trim() || isConnecting}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-md font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  backgroundColor: accent.border,
-                  color: 'white',
-                }}
+                className="w-full gap-2"
               >
                 {isConnecting ? (
                   <>
@@ -307,7 +296,7 @@ export function ConnectDialog({ provider, accent, onConnect }: ConnectDialogProp
                     Connect Provider
                   </>
                 )}
-              </button>
+              </Button>
             </>
           )}
         </div>

@@ -5,6 +5,7 @@
  * Includes visibility preferences, notification settings, and privacy controls.
  */
 
+import { privacyApi, type PrivacySettings as PrivacyApiSettings } from '@/api/privacy';
 import { usersApi, type UpdateProfileRequest } from '@/api/users';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,20 +20,28 @@ import type { UserProfile } from '@/types';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
+  AlertTriangle,
   Award,
   Bell,
   Check,
   CircleDot,
+  Database,
+  Download,
   Eye,
+  FileWarning,
   Globe,
+  HardDrive,
   Link as LinkIcon,
   Loader2,
   Lock,
   Save,
   Shield,
+  Timer,
+  Trash2,
   User,
   Users,
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -87,6 +96,7 @@ const defaultSettings: ProfileSettings = {
 
 export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
   const currentUser = useAuthStore((state) => state.user);
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const username = profile?.username || currentUser?.username || '';
   const { status: customStatus, isLoading: isLoadingCustomStatus, setStatus } = useCustomStatus();
@@ -99,6 +109,30 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
       return response.settings as unknown as ProfileSettings;
     },
   });
+
+  // Fetch privacy/data processing settings
+  const { data: privacyData, isLoading: isLoadingPrivacy } = useQuery({
+    queryKey: ['privacy-settings'],
+    queryFn: async () => {
+      const response = await privacyApi.getSettings();
+      return response as unknown as PrivacyApiSettings;
+    },
+  });
+
+  // Data processing local state
+  const [dataProcessing, setDataProcessing] = useState({
+    anonymize_ip: false,
+    anonymize_user_agent: false,
+    store_input_output: true,
+    retention_days: 90,
+    auto_delete_enabled: false,
+  });
+
+  // Export/deletion state
+  const [exportRequestId, setExportRequestId] = useState<string | null>(null);
+  const [deletionRequestId, setDeletionRequestId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isQuickExporting, setIsQuickExporting] = useState(false);
 
   // Local state for settings
   const [settings, setSettings] = useState<ProfileSettings>(defaultSettings);
@@ -128,33 +162,46 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
     }
   }, [profile]);
 
+  // Update data processing state when privacy data is fetched
+  useEffect(() => {
+    if (privacyData) {
+      setDataProcessing({
+        anonymize_ip: privacyData.anonymize_ip ?? false,
+        anonymize_user_agent: privacyData.anonymize_user_agent ?? false,
+        store_input_output: privacyData.store_input_output ?? true,
+        retention_days: privacyData.retention_days ?? 90,
+        auto_delete_enabled: privacyData.auto_delete_enabled ?? false,
+      });
+    }
+  }, [privacyData]);
+
   // Mutations
   const updateVisibilityMutation = useMutation({
     mutationFn: (data: Partial<ProfileSettings>) => usersApi.updateMyVisibilitySettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-settings'] });
       queryClient.invalidateQueries({ queryKey: ['enhanced-profile', username] });
-      toast.success('Visibility settings saved');
+      toast.success(t('privacySettings.toastVisibilitySaved'));
     },
-    onError: () => toast.error('Failed to save visibility settings'),
+    onError: () => toast.error(t('privacySettings.toastVisibilityFailed')),
   });
 
   const updateNotificationsMutation = useMutation({
     mutationFn: (data: Record<string, boolean>) => usersApi.updateMyNotificationSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-settings'] });
-      toast.success('Notification settings saved');
+      toast.success(t('privacySettings.toastNotificationsSaved'));
     },
-    onError: () => toast.error('Failed to save notification settings'),
+    onError: () => toast.error(t('privacySettings.toastNotificationsFailed')),
   });
 
   const updatePrivacyMutation = useMutation({
     mutationFn: (data: Record<string, boolean>) => usersApi.updateMyPrivacySettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-settings'] });
-      toast.success('Privacy settings saved');
+      toast.success(t('privacySettings.toastPrivacySaved'));
     },
-    onError: () => toast.error('Failed to save privacy settings'),
+    onError: () => toast.error(t('privacySettings.toastPrivacyFailed')),
   });
 
   const updateSocialLinksMutation = useMutation({
@@ -179,9 +226,71 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enhanced-profile', username] });
-      toast.success('Social links saved');
+      toast.success(t('privacySettings.toastSocialLinksSaved'));
     },
-    onError: () => toast.error('Failed to save social links'),
+    onError: () => toast.error(t('privacySettings.toastSocialLinksFailed')),
+  });
+
+  const updateDataProcessingMutation = useMutation({
+    mutationFn: (data: Partial<PrivacyApiSettings>) => privacyApi.updateSettings(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['privacy-settings'] });
+      toast.success(t('privacySettings.toastDataProcessingSaved'));
+    },
+    onError: () => toast.error(t('privacySettings.toastDataProcessingFailed')),
+  });
+
+  const requestExportMutation = useMutation({
+    mutationFn: () => privacyApi.requestDataExport('full'),
+    onSuccess: (data) => {
+      const result = data as unknown as { id: string };
+      setExportRequestId(result.id);
+      toast.success(t('privacySettings.toastExportRequested'));
+    },
+    onError: () => toast.error(t('privacySettings.toastExportFailed')),
+  });
+
+  const requestDeletionMutation = useMutation({
+    mutationFn: () => privacyApi.requestDataDeletion('full'),
+    onSuccess: (data) => {
+      const result = data as unknown as { id: string };
+      setDeletionRequestId(result.id);
+      setShowDeleteConfirm(false);
+      toast.success(t('privacySettings.toastDeletionRequested'));
+    },
+    onError: () => toast.error(t('privacySettings.toastDeletionFailed')),
+  });
+
+  // Export status polling
+  const { data: exportStatus } = useQuery({
+    queryKey: ['export-status', exportRequestId],
+    queryFn: async () => {
+      if (!exportRequestId) return null;
+      const response = await privacyApi.getExportStatus(exportRequestId);
+      return response as unknown as { id: string; status: string; download_url?: string; download_token?: string; file_size?: number; error_message?: string };
+    },
+    enabled: !!exportRequestId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'completed' || status === 'failed') return false;
+      return 3000;
+    },
+  });
+
+  // Deletion status polling
+  const { data: deletionStatus } = useQuery({
+    queryKey: ['deletion-status', deletionRequestId],
+    queryFn: async () => {
+      if (!deletionRequestId) return null;
+      const response = await privacyApi.getDeletionStatus(deletionRequestId);
+      return response as unknown as { id: string; status: string; records_deleted?: number; error_message?: string };
+    },
+    enabled: !!deletionRequestId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === 'completed' || status === 'failed') return false;
+      return 3000;
+    },
   });
 
   const updateSetting = <K extends keyof ProfileSettings>(key: K, value: ProfileSettings[K]) => {
@@ -228,32 +337,93 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
     updateSocialLinksMutation.mutate();
   };
 
+  const handleSaveDataProcessing = () => {
+    updateDataProcessingMutation.mutate({
+      anonymize_ip: dataProcessing.anonymize_ip,
+      anonymize_user_agent: dataProcessing.anonymize_user_agent,
+      store_input_output: dataProcessing.store_input_output,
+      retention_days: dataProcessing.retention_days,
+      auto_delete_enabled: dataProcessing.auto_delete_enabled,
+    });
+  };
+
+  const handleQuickExport = async () => {
+    setIsQuickExporting(true);
+    try {
+      const [me, mySettings, activeSessions] = await Promise.all([
+        usersApi.getMe(),
+        usersApi.getMySettings(),
+        usersApi.listSessions(),
+      ]);
+
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        account: me,
+        settings: mySettings.settings ?? {},
+        sessions: activeSessions.sessions ?? [],
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      anchor.href = url;
+      anchor.download = `functionfly-data-export-${date}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      toast.success(t('privacySettings.toastQuickExportReady'));
+    } catch {
+      toast.error(t('privacySettings.toastQuickExportFailed'));
+    } finally {
+      setIsQuickExporting(false);
+    }
+  };
+
   const handleSaveAll = async () => {
-    await updateVisibilityMutation.mutateAsync({
-      profileVisibility: settings.profileVisibility,
-      showEmail: settings.showEmail,
-      showLocation: settings.showLocation,
-      showCompany: settings.showCompany,
-      showActivity: settings.showActivity,
-      showAnalytics: settings.showAnalytics,
-      showFounderBadge: settings.showFounderBadge,
-    });
-    await updateNotificationsMutation.mutateAsync({
-      emailNotifications: settings.emailNotifications,
-      pushNotifications: settings.pushNotifications,
-      notifyOnFollow: settings.notifyOnFollow,
-      notifyOnMention: settings.notifyOnMention,
-      notifyOnFunctionUsage: settings.notifyOnFunctionUsage,
-      notifyOnReviews: settings.notifyOnReviews,
-      weeklyDigest: settings.weeklyDigest,
-    });
-    await updatePrivacyMutation.mutateAsync({
-      allowTagging: settings.allowTagging,
-      allowIndexing: settings.allowIndexing,
-      showLastActive: settings.showLastActive,
-    });
-    await updateSocialLinksMutation.mutateAsync();
-    toast.success('All settings saved successfully');
+    const results = await Promise.allSettled([
+      updateVisibilityMutation.mutateAsync({
+        profileVisibility: settings.profileVisibility,
+        showEmail: settings.showEmail,
+        showLocation: settings.showLocation,
+        showCompany: settings.showCompany,
+        showActivity: settings.showActivity,
+        showAnalytics: settings.showAnalytics,
+        showFounderBadge: settings.showFounderBadge,
+      }),
+      updateNotificationsMutation.mutateAsync({
+        emailNotifications: settings.emailNotifications,
+        pushNotifications: settings.pushNotifications,
+        notifyOnFollow: settings.notifyOnFollow,
+        notifyOnMention: settings.notifyOnMention,
+        notifyOnFunctionUsage: settings.notifyOnFunctionUsage,
+        notifyOnReviews: settings.notifyOnReviews,
+        weeklyDigest: settings.weeklyDigest,
+      }),
+      updatePrivacyMutation.mutateAsync({
+        allowTagging: settings.allowTagging,
+        allowIndexing: settings.allowIndexing,
+        showLastActive: settings.showLastActive,
+      }),
+      updateSocialLinksMutation.mutateAsync(),
+      updateDataProcessingMutation.mutateAsync({
+        anonymize_ip: dataProcessing.anonymize_ip,
+        anonymize_user_agent: dataProcessing.anonymize_user_agent,
+        store_input_output: dataProcessing.store_input_output,
+        retention_days: dataProcessing.retention_days,
+        auto_delete_enabled: dataProcessing.auto_delete_enabled,
+      }),
+    ]);
+
+    const failed = results.filter((r) => r.status === 'rejected');
+    if (failed.length === 0) {
+      toast.success(t('privacySettings.toastAllSaved'));
+    } else if (failed.length < results.length) {
+      toast.warning(t('privacySettings.toastPartialSave', { failed: failed.length, total: results.length, defaultValue: `${results.length - failed.length} of ${results.length} settings saved. ${failed.length} failed.` }));
+    } else {
+      toast.error(t('privacySettings.toastAllFailed', { defaultValue: 'Failed to save settings' }));
+    }
   };
 
   const getVisibilityIcon = (visibility: string) => {
@@ -273,7 +443,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
     updateVisibilityMutation.isPending ||
     updateNotificationsMutation.isPending ||
     updatePrivacyMutation.isPending ||
-    updateSocialLinksMutation.isPending;
+    updateSocialLinksMutation.isPending ||
+    updateDataProcessingMutation.isPending;
 
   if (isLoadingSettings) {
     return (
@@ -305,9 +476,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
         {/* Header with save button */}
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display text-xl font-semibold text-white">Profile Settings</h2>
+            <h2 className="font-display text-xl font-semibold text-white">{t('privacySettings.title')}</h2>
             <p className="text-sm text-gray-400">
-              Manage your profile visibility, notifications, and privacy preferences
+              {t('privacySettings.description')}
             </p>
           </div>
           <Button
@@ -325,7 +496,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            {isSaving ? 'Saving...' : 'Save All'}
+            {isSaving ? t('privacySettings.saving') : t('privacySettings.saveAll')}
           </Button>
         </div>
 
@@ -334,16 +505,16 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Eye className="w-5 h-5 text-brand-500" />
-              Profile Visibility
+              {t('privacySettings.profileVisibility')}
             </CardTitle>
             <CardDescription>
-              Control who can see your profile and what information is displayed
+              {t('privacySettings.profileVisibilityDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Visibility Level */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Profile Visibility Level</Label>
+              <Label className="text-sm font-medium">{t('privacySettings.visibilityLevel')}</Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {(['public', 'followers', 'private'] as const).map((level) => (
                   <button
@@ -372,12 +543,12 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                             : 'text-text-primary'
                         }`}
                       >
-                        {level}
+                        {t(`privacySettings.${level}`)}
                       </p>
                       <p className="text-xs text-text-muted">
-                        {level === 'public' && 'Everyone can see'}
-                        {level === 'followers' && 'Followers only'}
-                        {level === 'private' && 'Only you'}
+                        {level === 'public' && t('privacySettings.publicDesc')}
+                        {level === 'followers' && t('privacySettings.followersDesc')}
+                        {level === 'private' && t('privacySettings.privateDesc')}
                       </p>
                     </div>
                     {settings.profileVisibility === level && (
@@ -392,7 +563,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
 
             {/* Field Visibility Toggles */}
             <div className="space-y-4">
-              <Label className="text-sm font-medium">Field Visibility</Label>
+              <Label className="text-sm font-medium">{t('privacySettings.fieldVisibility')}</Label>
 
               <div className="flex items-center justify-between py-2">
                 <div className="flex items-center gap-3">
@@ -400,8 +571,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                     <User className="w-4 h-4 text-text-secondary" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-primary">Email Address</p>
-                    <p className="text-sm text-text-muted">Show email on your profile</p>
+                    <p className="font-medium text-text-primary">{t('privacySettings.emailAddress')}</p>
+                    <p className="text-sm text-text-muted">{t('privacySettings.emailDesc')}</p>
                   </div>
                 </div>
                 <Switch
@@ -416,8 +587,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                     <Globe className="w-4 h-4 text-text-secondary" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-primary">Location</p>
-                    <p className="text-sm text-text-muted">Show your location</p>
+                    <p className="font-medium text-text-primary">{t('privacySettings.location')}</p>
+                    <p className="text-sm text-text-muted">{t('privacySettings.locationDesc')}</p>
                   </div>
                 </div>
                 <Switch
@@ -432,8 +603,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                     <Users className="w-4 h-4 text-text-secondary" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-primary">Company</p>
-                    <p className="text-sm text-text-muted">Show your company/organization</p>
+                    <p className="font-medium text-text-primary">{t('privacySettings.company')}</p>
+                    <p className="text-sm text-text-muted">{t('privacySettings.companyDesc')}</p>
                   </div>
                 </div>
                 <Switch
@@ -448,8 +619,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                     <Eye className="w-4 h-4 text-text-secondary" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-primary">Activity Status</p>
-                    <p className="text-sm text-text-muted">Show your recent activity</p>
+                    <p className="font-medium text-text-primary">{t('privacySettings.activityStatus')}</p>
+                    <p className="text-sm text-text-muted">{t('privacySettings.activityDesc')}</p>
                   </div>
                 </div>
                 <Switch
@@ -464,8 +635,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                     <Shield className="w-4 h-4 text-text-secondary" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-primary">Analytics</p>
-                    <p className="text-sm text-text-muted">Show function usage analytics</p>
+                    <p className="font-medium text-text-primary">{t('privacySettings.analytics')}</p>
+                    <p className="text-sm text-text-muted">{t('privacySettings.analyticsDesc')}</p>
                   </div>
                 </div>
                 <Switch
@@ -480,8 +651,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                     <Award className="w-4 h-4 text-text-secondary" />
                   </div>
                   <div>
-                    <p className="font-medium text-text-primary">Founders Badge</p>
-                    <p className="text-sm text-text-muted">Show your founders badge on your profile</p>
+                    <p className="font-medium text-text-primary">{t('privacySettings.foundersBadge')}</p>
+                    <p className="text-sm text-text-muted">{t('privacySettings.foundersBadgeDesc')}</p>
                   </div>
                 </div>
                 <Switch
@@ -504,7 +675,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 {updateVisibilityMutation.isPending && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Save Visibility
+                {t('privacySettings.saveVisibility')}
               </Button>
             </div>
           </CardContent>
@@ -515,15 +686,15 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <LinkIcon className="w-5 h-5 text-brand-500" />
-              Social Links
+              {t('privacySettings.socialLinks')}
             </CardTitle>
-            <CardDescription>Connect your social profiles to help others find you</CardDescription>
+            <CardDescription>{t('privacySettings.socialLinksDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             {/* Personal Website */}
             <div className="group">
               <Label htmlFor="website" className="text-sm font-medium mb-2 block">
-                Personal Website
+                {t('privacySettings.personalWebsite')}
               </Label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-md bg-bg-tertiary text-text-secondary group-hover:bg-brand-500/10 group-hover:text-brand-500 transition-colors">
@@ -543,7 +714,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             {/* GitHub Profile */}
             <div className="group">
               <Label htmlFor="github" className="text-sm font-medium mb-2 block">
-                GitHub Profile
+                {t('privacySettings.githubProfile')}
               </Label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-md bg-bg-tertiary text-text-secondary group-hover:bg-[#333] group-hover:text-white transition-colors">
@@ -565,7 +736,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             {/* Twitter/X Profile */}
             <div className="group">
               <Label htmlFor="twitter" className="text-sm font-medium mb-2 block">
-                Twitter/X Profile
+                {t('privacySettings.twitterProfile')}
               </Label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-md bg-bg-tertiary text-text-secondary group-hover:bg-black group-hover:text-white transition-colors">
@@ -587,7 +758,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             {/* LinkedIn Profile */}
             <div className="group">
               <Label htmlFor="linkedin" className="text-sm font-medium mb-2 block">
-                LinkedIn Profile
+                {t('privacySettings.linkedinProfile')}
               </Label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-md bg-bg-tertiary text-text-secondary group-hover:bg-[#0077b5] group-hover:text-white transition-colors">
@@ -619,7 +790,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 {updateSocialLinksMutation.isPending && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                {updateSocialLinksMutation.isPending ? 'Saving...' : 'Save Links'}
+                {updateSocialLinksMutation.isPending ? t('privacySettings.saving') : t('privacySettings.saveLinks')}
               </Button>
             </div>
           </CardContent>
@@ -630,18 +801,17 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <CircleDot className="w-5 h-5 text-brand-500" />
-              Presence Status
+              {t('privacySettings.presenceStatus')}
             </CardTitle>
             <CardDescription>
-              Set how you appear to others. Choose "Auto" to let your activity determine your
-              status.
+              {t('privacySettings.presenceStatusDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoadingCustomStatus ? (
               <div className="flex items-center gap-2 text-text-muted">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Loading status...</span>
+                <span className="text-sm">{t('privacySettings.loadingStatus')}</span>
               </div>
             ) : (
               <>
@@ -672,7 +842,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 </div>
                 {customStatus.customStatusEmoji && (
                   <div className="flex items-center gap-2 text-sm text-text-muted">
-                    <span>Current status:</span>
+                    <span>{t('privacySettings.currentStatus')}</span>
                     <span className="text-lg">{customStatus.customStatusEmoji}</span>
                     <span className="font-medium capitalize">{customStatus.customStatus}</span>
                   </div>
@@ -687,9 +857,15 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Bell className="w-5 h-5 text-brand-500" />
-              Notification Preferences
+              {t('privacySettings.notificationPreferences')}
             </CardTitle>
-            <CardDescription>Choose what notifications you want to receive</CardDescription>
+            <CardDescription>
+              {t('privacySettings.notificationPreferencesDesc')}
+              {' '}
+              <span className="text-text-muted">
+                {t('privacySettings.forOperationalAlerts', 'For deployment and system alerts, see the Notifications tab.')}
+              </span>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Master Toggles */}
@@ -699,14 +875,14 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   checked={settings.emailNotifications}
                   onCheckedChange={(checked) => updateSetting('emailNotifications', checked)}
                 />
-                <Label className="text-sm font-medium cursor-pointer">Email Notifications</Label>
+                <Label className="text-sm font-medium cursor-pointer">{t('privacySettings.emailNotifications')}</Label>
               </div>
               <div className="flex items-center gap-2">
                 <Switch
                   checked={settings.pushNotifications}
                   onCheckedChange={(checked) => updateSetting('pushNotifications', checked)}
                 />
-                <Label className="text-sm font-medium cursor-pointer">Push Notifications</Label>
+                <Label className="text-sm font-medium cursor-pointer">{t('privacySettings.pushNotifications')}</Label>
               </div>
             </div>
 
@@ -714,12 +890,12 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
 
             {/* Notification Types */}
             <div className="space-y-4">
-              <Label className="text-sm font-medium">Notification Types</Label>
+              <Label className="text-sm font-medium">{t('privacySettings.notificationTypes')}</Label>
 
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-text-primary">New Followers</p>
-                  <p className="text-sm text-text-muted">When someone follows you</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.newFollowers')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.newFollowersDesc')}</p>
                 </div>
                 <Switch
                   checked={settings.notifyOnFollow}
@@ -730,8 +906,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
 
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-text-primary">Mentions</p>
-                  <p className="text-sm text-text-muted">When you're mentioned in comments</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.mentions')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.mentionsDesc')}</p>
                 </div>
                 <Switch
                   checked={settings.notifyOnMention}
@@ -742,8 +918,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
 
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-text-primary">Function Usage</p>
-                  <p className="text-sm text-text-muted">When someone uses your functions</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.functionUsage')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.functionUsageDesc')}</p>
                 </div>
                 <Switch
                   checked={settings.notifyOnFunctionUsage}
@@ -754,8 +930,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
 
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-text-primary">Reviews</p>
-                  <p className="text-sm text-text-muted">When someone reviews your functions</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.reviews')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.reviewsDesc')}</p>
                 </div>
                 <Switch
                   checked={settings.notifyOnReviews}
@@ -766,8 +942,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
 
               <div className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-text-primary">Weekly Digest</p>
-                  <p className="text-sm text-text-muted">Weekly summary of your activity</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.weeklyDigest')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.weeklyDigestDesc')}</p>
                 </div>
                 <Switch
                   checked={settings.weeklyDigest}
@@ -790,7 +966,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 {updateNotificationsMutation.isPending && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Save Notifications
+                {t('privacySettings.saveNotifications')}
               </Button>
             </div>
           </CardContent>
@@ -801,9 +977,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
           <CardHeader>
             <CardTitle className="font-display text-lg flex items-center gap-2">
               <Shield className="w-5 h-5 text-brand-500" />
-              Privacy & Security
+              {t('privacySettings.privacySecurity')}
             </CardTitle>
-            <CardDescription>Control your privacy and security preferences</CardDescription>
+            <CardDescription>{t('privacySettings.privacySecurityDesc')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between py-2">
@@ -812,9 +988,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   <Users className="w-4 h-4 text-text-secondary" />
                 </div>
                 <div>
-                  <p className="font-medium text-text-primary">Allow Tagging</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.allowTagging')}</p>
                   <p className="text-sm text-text-muted">
-                    Let others tag you in posts and comments
+                    {t('privacySettings.allowTaggingDesc')}
                   </p>
                 </div>
               </div>
@@ -830,9 +1006,9 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   <Globe className="w-4 h-4 text-text-secondary" />
                 </div>
                 <div>
-                  <p className="font-medium text-text-primary">Search Engine Indexing</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.searchEngineIndexing')}</p>
                   <p className="text-sm text-text-muted">
-                    Allow search engines to index your profile
+                    {t('privacySettings.searchEngineIndexingDesc')}
                   </p>
                 </div>
               </div>
@@ -848,8 +1024,8 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                   <Eye className="w-4 h-4 text-text-secondary" />
                 </div>
                 <div>
-                  <p className="font-medium text-text-primary">Last Active Status</p>
-                  <p className="text-sm text-text-muted">Show when you were last active</p>
+                  <p className="font-medium text-text-primary">{t('privacySettings.lastActiveStatus')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.lastActiveStatusDesc')}</p>
                 </div>
               </div>
               <Switch
@@ -871,8 +1047,358 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
                 {updatePrivacyMutation.isPending && (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 )}
-                Save Privacy
+                {t('privacySettings.savePrivacy')}
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Data Processing Section */}
+        <Card className="settings-panel border-border-subtle">
+          <CardHeader>
+            <CardTitle className="font-display text-lg flex items-center gap-2">
+              <Database className="w-5 h-5 text-brand-500" />
+              {t('privacySettings.dataProcessing')}
+            </CardTitle>
+            <CardDescription>{t('privacySettings.dataProcessingDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-bg-tertiary">
+                  <Lock className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div>
+                  <p className="font-medium text-text-primary">{t('privacySettings.anonymizeIp')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.anonymizeIpDesc')}</p>
+                </div>
+              </div>
+              <Switch
+                checked={dataProcessing.anonymize_ip}
+                onCheckedChange={(checked) =>
+                  setDataProcessing((prev) => ({ ...prev, anonymize_ip: checked }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-bg-tertiary">
+                  <Shield className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div>
+                  <p className="font-medium text-text-primary">{t('privacySettings.anonymizeUA')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.anonymizeUADesc')}</p>
+                </div>
+              </div>
+              <Switch
+                checked={dataProcessing.anonymize_user_agent}
+                onCheckedChange={(checked) =>
+                  setDataProcessing((prev) => ({ ...prev, anonymize_user_agent: checked }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-bg-tertiary">
+                  <HardDrive className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div>
+                  <p className="font-medium text-text-primary">{t('privacySettings.storeInputOutput')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.storeInputOutputDesc')}</p>
+                </div>
+              </div>
+              <Switch
+                checked={dataProcessing.store_input_output}
+                onCheckedChange={(checked) =>
+                  setDataProcessing((prev) => ({ ...prev, store_input_output: checked }))
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-bg-tertiary">
+                  <Trash2 className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div>
+                  <p className="font-medium text-text-primary">{t('privacySettings.autoDelete')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.autoDeleteDesc')}</p>
+                </div>
+              </div>
+              <Switch
+                checked={dataProcessing.auto_delete_enabled}
+                onCheckedChange={(checked) =>
+                  setDataProcessing((prev) => ({ ...prev, auto_delete_enabled: checked }))
+                }
+              />
+            </div>
+
+            <div className="ff-divider-flame" />
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-bg-tertiary">
+                  <Timer className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div>
+                  <p className="font-medium text-text-primary">{t('privacySettings.dataRetention')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.dataRetentionDesc')}</p>
+                </div>
+              </div>
+              <div className="pl-12 space-y-2">
+                <div className="flex items-center gap-4">
+                  <input
+                    type="range"
+                    min={30}
+                    max={365}
+                    step={30}
+                    value={dataProcessing.retention_days}
+                    onChange={(e) =>
+                      setDataProcessing((prev) => ({
+                        ...prev,
+                        retention_days: Number(e.target.value),
+                      }))
+                    }
+                    className="flex-1 accent-brand-500"
+                  />
+                  <span className="text-sm font-medium text-text-primary min-w-[80px] text-right">
+                    {dataProcessing.retention_days} {t('privacySettings.days')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs text-text-muted">
+                  <span>30</span>
+                  <span>90</span>
+                  <span>180</span>
+                  <span>365</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                onClick={handleSaveDataProcessing}
+                disabled={updateDataProcessingMutation.isPending}
+                style={{
+                  background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
+                  color: 'var(--text-on-light)',
+                  boxShadow: 'var(--shadow-btn-primary-rest)',
+                }}
+              >
+                {updateDataProcessingMutation.isPending && (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                )}
+                {t('privacySettings.saveDataProcessing')}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Your Data Section (GDPR) */}
+        <Card className="settings-panel border-border-subtle">
+          <CardHeader>
+            <CardTitle className="font-display text-lg flex items-center gap-2">
+              <Download className="w-5 h-5 text-brand-500" />
+              {t('privacySettings.yourData')}
+            </CardTitle>
+            <CardDescription>{t('privacySettings.yourDataDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Data Export */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-bg-tertiary">
+                  <Download className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-text-primary">{t('privacySettings.exportData')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.exportDataDesc')}</p>
+                </div>
+              </div>
+              <div className="pl-12 space-y-3">
+                <Button
+                  variant="outline"
+                  onClick={() => requestExportMutation.mutate()}
+                  disabled={requestExportMutation.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {requestExportMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  {t('privacySettings.requestExport')}
+                </Button>
+
+                {exportStatus && (
+                  <div className="rounded-lg border border-border-subtle bg-bg-secondary p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          exportStatus.status === 'completed'
+                            ? 'bg-green-500'
+                            : exportStatus.status === 'failed'
+                            ? 'bg-red-500'
+                            : 'bg-yellow-500 animate-pulse'
+                        }`}
+                      />
+                      <span className="text-sm font-medium capitalize">{exportStatus.status}</span>
+                    </div>
+                    {exportStatus.status === 'completed' && exportStatus.download_url && (
+                      <a
+                        href={`/v1/privacy/export/${exportStatus.id}/download?token=${exportStatus.download_token}`}
+                        className="inline-flex items-center gap-1 text-sm text-brand-400 hover:text-brand-300 underline"
+                      >
+                        <Download className="w-3 h-3" />
+                        {t('privacySettings.downloadExport')}
+                        {exportStatus.file_size && (
+                          <span className="text-text-muted">
+                            ({(exportStatus.file_size / 1024 / 1024).toFixed(1)} MB)
+                          </span>
+                        )}
+                      </a>
+                    )}
+                    {exportStatus.status === 'failed' && exportStatus.error_message && (
+                      <p className="text-sm text-red-400">{exportStatus.error_message}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="ff-divider-flame" />
+
+            {/* Quick Export (client-side) */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-bg-tertiary">
+                  <FileWarning className="w-4 h-4 text-text-secondary" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-text-primary">{t('privacySettings.quickExport')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.quickExportDesc')}</p>
+                </div>
+              </div>
+              <div className="pl-12">
+                <Button
+                  variant="outline"
+                  onClick={handleQuickExport}
+                  disabled={isQuickExporting}
+                  className="w-full sm:w-auto"
+                >
+                  {isQuickExporting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  {isQuickExporting ? t('privacySettings.preparingExport') : t('privacySettings.quickExportButton')}
+                </Button>
+              </div>
+            </div>
+
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="settings-panel border-red-500/30">
+          <CardHeader>
+            <CardTitle className="font-display text-lg flex items-center gap-2 text-red-400">
+              <AlertTriangle className="w-5 h-5" />
+              {t('privacySettings.dangerZoneTitle')}
+            </CardTitle>
+            <CardDescription>{t('privacySettings.dangerZoneDesc')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-md bg-red-500/10">
+                  <Trash2 className="w-4 h-4 text-red-400" />
+                </div>
+                <div>
+                  <p className="font-medium text-text-primary">{t('privacySettings.deleteAccount')}</p>
+                  <p className="text-sm text-text-muted">{t('privacySettings.deleteAccountDesc')}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {!showDeleteConfirm && !deletionRequestId && (
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  style={{
+                    background: 'var(--status-revoked)',
+                    borderColor: 'var(--status-revoked)',
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  {t('privacySettings.requestDeletion')}
+                </Button>
+              )}
+
+              {showDeleteConfirm && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="font-medium text-red-300">{t('privacySettings.deleteConfirmTitle')}</p>
+                      <p className="text-sm text-text-muted mt-1">
+                        {t('privacySettings.deleteConfirmDesc')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => requestDeletionMutation.mutate()}
+                      disabled={requestDeletionMutation.isPending}
+                      className="border-red-500/50 bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                    >
+                      {requestDeletionMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4 mr-2" />
+                      )}
+                      {t('privacySettings.confirmDelete')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setShowDeleteConfirm(false)}
+                    >
+                      {t('privacySettings.cancel')}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {deletionStatus && (
+                <div className="rounded-lg border border-border-subtle bg-bg-secondary p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-2 h-2 rounded-full ${
+                        deletionStatus.status === 'completed'
+                          ? 'bg-green-500'
+                          : deletionStatus.status === 'failed'
+                          ? 'bg-red-500'
+                          : 'bg-yellow-500 animate-pulse'
+                      }`}
+                    />
+                    <span className="text-sm font-medium capitalize">{deletionStatus.status}</span>
+                  </div>
+                  {deletionStatus.status === 'completed' && (
+                    <p className="text-sm text-text-muted">
+                      {t('privacySettings.deletionComplete', {
+                        count: deletionStatus.records_deleted ?? 0,
+                        defaultValue: `${deletionStatus.records_deleted ?? 0} records deleted`,
+                      })}
+                    </p>
+                  )}
+                  {deletionStatus.status === 'failed' && deletionStatus.error_message && (
+                    <p className="text-sm text-red-400">{deletionStatus.error_message}</p>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -895,7 +1421,7 @@ export function PrivacySettingsTab({ profile }: PrivacySettingsTabProps = {}) {
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            {isSaving ? 'Saving...' : 'Save All Changes'}
+            {isSaving ? t('privacySettings.saving') : t('privacySettings.saveAllChanges')}
           </Button>
         </div>
       </motion.div>

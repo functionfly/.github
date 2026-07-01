@@ -22,24 +22,20 @@ import {
   Dna,
   Gauge,
   GitBranch,
-  Info,
   Loader2,
   Server,
   Shield,
   Zap,
 } from 'lucide-react';
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// PlatformSettingsTab — Function DNA, runtime defaults, canary, and security
-// ──────────────────────────────────────────────────────────────────────────────
-
 export function PlatformSettingsTab() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  // Load platform settings
   const { data: settingsData, isLoading } = useQuery({
     queryKey: ['platform-settings'],
     queryFn: async () => {
@@ -56,7 +52,6 @@ export function PlatformSettingsTab() {
   const platformSettings = (settingsData as Record<string, unknown>) ?? {};
   const dna = (platformSettings.dna as Record<string, unknown>) ?? {};
 
-  // Update settings mutation
   const updateSettings = useMutation({
     mutationFn: async (patch: Record<string, unknown>) => {
       const current = (settingsData as Record<string, unknown>) ?? {};
@@ -69,52 +64,50 @@ export function PlatformSettingsTab() {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['platform-settings'] });
 
-      // Build a summary of what changed
       const changes: string[] = [];
       if ('auto_evolve' in variables)
-        changes.push(`Auto-Evolution ${variables.auto_evolve ? 'enabled' : 'disabled'}`);
+        changes.push(t('platformSettings.autoEvolution') + ' ' + (variables.auto_evolve ? t('platformSettings.autoEvolutionEnabled') : t('platformSettings.autoEvolutionDisabled')));
       if ('require_approval' in variables)
         changes.push(
-          `Manual approval ${variables.require_approval ? 'required' : 'auto-approved'}`
+          variables.require_approval ? t('platformSettings.manualApprovalRequired') : t('platformSettings.mutationsAutoApproved')
         );
       if ('sandbox_validation' in variables)
-        changes.push(`Sandbox validation ${variables.sandbox_validation ? 'enabled' : 'disabled'}`);
+        changes.push(t('platformSettings.sandboxValidation') + ' ' + (variables.sandbox_validation ? t('platformSettings.sandboxEnabled') : t('platformSettings.sandboxDisabled')));
       if ('default_canary_pct' in variables)
-        changes.push(`Canary default: ${variables.default_canary_pct}%`);
+        changes.push(t('platformSettings.defaultCanaryPct') + ': ' + variables.default_canary_pct + '%');
       if ('max_mutations_per_day' in variables)
-        changes.push(`Max mutations: ${variables.max_mutations_per_day}/day`);
+        changes.push(t('platformSettings.maxMutationsPerDay') + ': ' + variables.max_mutations_per_day + '/day');
       if ('notify_on_proposal' in variables)
-        changes.push(`Proposal notifications ${variables.notify_on_proposal ? 'on' : 'off'}`);
+        changes.push(t('platformSettings.newMutationProposed') + ' ' + (variables.notify_on_proposal ? t('platformSettings.toastEnabled', { label: '' }).trim() : t('platformSettings.toastDisabled', { label: '' }).trim()));
       if ('notify_on_deploy' in variables)
-        changes.push(`Deploy notifications ${variables.notify_on_deploy ? 'on' : 'off'}`);
+        changes.push(t('platformSettings.mutationDeployed') + ' ' + (variables.notify_on_deploy ? t('platformSettings.toastEnabled', { label: '' }).trim() : t('platformSettings.toastDisabled', { label: '' }).trim()));
       if ('notify_on_rollback' in variables)
-        changes.push(`Rollback notifications ${variables.notify_on_rollback ? 'on' : 'off'}`);
+        changes.push(t('platformSettings.mutationRolledBack') + ' ' + (variables.notify_on_rollback ? t('platformSettings.toastEnabled', { label: '' }).trim() : t('platformSettings.toastDisabled', { label: '' }).trim()));
       if ('auto_rollback_on_error' in variables)
-        changes.push(`Auto-rollback ${variables.auto_rollback_on_error ? 'enabled' : 'disabled'}`);
+        changes.push(t('platformSettings.autoRollback') + ' ' + (variables.auto_rollback_on_error ? t('platformSettings.autoRollbackEnabled') : t('platformSettings.autoRollbackDisabled')));
       if ('auto_rollback_error_threshold' in variables)
-        changes.push(`Rollback threshold: ${variables.auto_rollback_error_threshold}%`);
+        changes.push(t('platformSettings.errorRateThreshold') + ': ' + variables.auto_rollback_error_threshold + '%');
 
       if (changes.length > 0) {
-        toast.success('Platform settings saved', {
+        toast.success(t('platformSettings.toastSaved'), {
           description:
             changes.slice(0, 5).join(' · ') +
-            (changes.length > 5 ? ` · +${changes.length - 5} more` : ''),
+            (changes.length > 5 ? ' · ' + t('platformSettings.toastSavedDescMore', { count: changes.length - 5 }) : ''),
           icon: <CheckCircle2 className="h-4 w-4 text-success" />,
           duration: 4000,
         });
       } else {
-        toast.success('Platform settings saved');
+        toast.success(t('platformSettings.toastSaved'));
       }
     },
     onError: (error: Error) => {
-      toast.error('Failed to save platform settings', {
-        description: error?.message || 'Please try again',
+      toast.error(t('platformSettings.toastFailed'), {
+        description: error?.message || t('platformSettings.toastFailed'),
         icon: <AlertTriangle className="h-4 w-4 text-error" />,
       });
     },
   });
 
-  // Local state for optimistic updates
   const [autoEvolve, setAutoEvolve] = useState((dna.auto_evolve as boolean) ?? true);
   const [requireApproval, setRequireApproval] = useState((dna.require_approval as boolean) ?? true);
   const [defaultCanaryPct, setDefaultCanaryPct] = useState(
@@ -163,124 +156,84 @@ export function PlatformSettingsTab() {
 
   return (
     <div className="settings-page space-y-6">
-      {/* ─── Function DNA: Evolution ─── */}
       <Card className="settings-panel">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Dna className="h-5 w-5 text-brand-500" />
-            Function DNA
+            {t('platformSettings.functionDNA')}
           </CardTitle>
           <CardDescription>
-            Control how your functions evolve. Function DNA tracks execution patterns and proposes
-            AI-powered code optimizations.
+            {t('platformSettings.functionDNADesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Auto-evolve master switch */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base flex items-center gap-2">
                 <Zap className="h-4 w-4 text-velocity-500" />
-                Auto-Evolution
+                {t('platformSettings.autoEvolution')}
               </Label>
               <p className="text-sm text-text-muted">
-                Allow DNA to propose code mutations based on execution patterns
+                {t('platformSettings.autoEvolutionDesc')}
               </p>
             </div>
             <Switch
               checked={autoEvolve}
-              onCheckedChange={(val) => {
-                setAutoEvolve(val);
-                toast.info(val ? 'Auto-evolution enabled' : 'Auto-evolution disabled', {
-                  description: val
-                    ? 'DNA will analyze functions and propose optimizations'
-                    : 'DNA analysis paused — manual trigger still works',
-                  icon: <Info className="h-4 w-4 text-info" />,
-                  duration: 3000,
-                });
-              }}
+              onCheckedChange={(val) => setAutoEvolve(val)}
             />
           </div>
 
           <Separator />
 
-          {/* Require approval */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base flex items-center gap-2">
                 <Shield className="h-4 w-4 text-info" />
-                Require Manual Approval
+                {t('platformSettings.requireApproval')}
               </Label>
               <p className="text-sm text-text-muted">
-                Mutations stay in proposed state until you accept or reject them
+                {t('platformSettings.requireApprovalDesc')}
               </p>
             </div>
             <Switch
               checked={requireApproval}
-              onCheckedChange={(val) => {
-                setRequireApproval(val);
-                toast.info(val ? 'Manual approval required' : 'Mutations auto-approved', {
-                  description: val
-                    ? 'All proposed mutations require your review before deployment'
-                    : 'Accepted mutations will automatically trigger canary deployment',
-                  icon: <Info className="h-4 w-4 text-info" />,
-                  duration: 3000,
-                });
-              }}
+              onCheckedChange={(val) => setRequireApproval(val)}
             />
           </div>
 
           <Separator />
 
-          {/* Sandbox validation */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base flex items-center gap-2">
                 <Shield className="h-4 w-4 text-success" />
-                Sandbox Validation
+                {t('platformSettings.sandboxValidation')}
               </Label>
               <p className="text-sm text-text-muted">
-                Run mutations in a sandbox before acceptance to verify behavioral equivalence
+                {t('platformSettings.sandboxValidationDesc')}
               </p>
             </div>
             <Switch
               checked={sandboxValidation}
-              onCheckedChange={(val) => {
-                setSandboxValidation(val);
-                toast.info(val ? 'Sandbox validation enabled' : 'Sandbox validation disabled', {
-                  description: val
-                    ? 'Mutations will be tested in a sandbox before acceptance'
-                    : 'Mutations will be accepted without sandbox testing',
-                  icon: <Info className="h-4 w-4 text-info" />,
-                  duration: 3000,
-                });
-              }}
+              onCheckedChange={(val) => setSandboxValidation(val)}
             />
           </div>
 
           <Separator />
 
-          {/* Default canary percentage */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-warning" />
-                Default Canary Percentage
+                {t('platformSettings.defaultCanaryPct')}
               </Label>
               <p className="text-sm text-text-muted">
-                Percentage of traffic routed to the mutated code during canary deployment
+                {t('platformSettings.defaultCanaryPctDesc')}
               </p>
             </div>
             <Select
               value={defaultCanaryPct}
-              onValueChange={(val) => {
-                setDefaultCanaryPct(val);
-                toast.success(`Canary default set to ${val}%`, {
-                  description: `${val}% of traffic will route to new mutations during canary`,
-                  icon: <GitBranch className="h-4 w-4 text-success" />,
-                  duration: 2500,
-                });
-              }}
+              onValueChange={(val) => setDefaultCanaryPct(val)}
             >
               <SelectTrigger className="w-24">
                 <SelectValue />
@@ -297,27 +250,19 @@ export function PlatformSettingsTab() {
 
           <Separator />
 
-          {/* Max mutations per day */}
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label className="text-base flex items-center gap-2">
                 <Clock className="h-4 w-4 text-text-muted" />
-                Max Mutations Per Day
+                {t('platformSettings.maxMutationsPerDay')}
               </Label>
               <p className="text-sm text-text-muted">
-                Limit how many mutations the AI can propose per function per day
+                {t('platformSettings.maxMutationsPerDayDesc')}
               </p>
             </div>
             <Select
               value={maxMutationsPerDay}
-              onValueChange={(val) => {
-                setMaxMutationsPerDay(val);
-                toast.success(`Max mutations set to ${val}/day`, {
-                  description: `AI will propose at most ${val} mutations per function per day`,
-                  icon: <Clock className="h-4 w-4 text-success" />,
-                  duration: 2500,
-                });
-              }}
+              onValueChange={(val) => setMaxMutationsPerDay(val)}
             >
               <SelectTrigger className="w-24">
                 <SelectValue />
@@ -334,15 +279,14 @@ export function PlatformSettingsTab() {
         </CardContent>
       </Card>
 
-      {/* ─── Auto-Rollback ─── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-warning" />
-            Auto-Rollback
+            {t('platformSettings.autoRollback')}
           </CardTitle>
           <CardDescription>
-            Automatically revert mutations if the canary deployment shows elevated error rates
+            {t('platformSettings.autoRollbackDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -350,24 +294,15 @@ export function PlatformSettingsTab() {
             <div className="space-y-0.5">
               <Label className="text-base flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                Enable Auto-Rollback
+                {t('platformSettings.enableAutoRollback')}
               </Label>
               <p className="text-sm text-text-muted">
-                Cancel canary and revert to original code when error rate exceeds threshold
+                {t('platformSettings.enableAutoRollbackDesc')}
               </p>
             </div>
             <Switch
               checked={autoRollback}
-              onCheckedChange={(val) => {
-                setAutoRollback(val);
-                toast.info(val ? 'Auto-rollback enabled' : 'Auto-rollback disabled', {
-                  description: val
-                    ? 'Mutations will automatically roll back if error rate exceeds threshold'
-                    : 'Manual rollback required — errors will not auto-revert',
-                  icon: <Info className="h-4 w-4 text-info" />,
-                  duration: 3000,
-                });
-              }}
+              onCheckedChange={(val) => setAutoRollback(val)}
             />
           </div>
 
@@ -376,21 +311,14 @@ export function PlatformSettingsTab() {
               <Separator />
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-base">Error Rate Threshold</Label>
+                  <Label className="text-base">{t('platformSettings.errorRateThreshold')}</Label>
                   <p className="text-sm text-text-muted">
-                    Roll back when canary error rate exceeds this percentage
+                    {t('platformSettings.errorRateThresholdDesc')}
                   </p>
                 </div>
                 <Select
                   value={autoRollbackThreshold}
-                  onValueChange={(val) => {
-                    setAutoRollbackThreshold(val);
-                    toast.success(`Rollback threshold set to ${val}%`, {
-                      description: `Canary will auto-rollback if error rate exceeds ${val}%`,
-                      icon: <AlertTriangle className="h-4 w-4 text-success" />,
-                      duration: 2500,
-                    });
-                  }}
+                  onValueChange={(val) => setAutoRollbackThreshold(val)}
                 >
                   <SelectTrigger className="w-24">
                     <SelectValue />
@@ -409,37 +337,36 @@ export function PlatformSettingsTab() {
         </CardContent>
       </Card>
 
-      {/* ─── Notifications ─── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-brand-500" />
-            DNA Notifications
+            {t('platformSettings.dnaNotifications')}
           </CardTitle>
-          <CardDescription>Choose which DNA events trigger notifications</CardDescription>
+          <CardDescription>{t('platformSettings.dnaNotificationsDesc')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {[
             {
               key: 'notify_on_proposal',
-              label: 'New Mutation Proposed',
-              description: 'When AI proposes a new code optimization',
+              label: t('platformSettings.newMutationProposed'),
+              description: t('platformSettings.newMutationProposedDesc'),
               state: notifyOnProposal,
               setter: setNotifyOnProposal,
               icon: '✨',
             },
             {
               key: 'notify_on_deploy',
-              label: 'Mutation Deployed',
-              description: 'When a canary deployment succeeds and code goes live',
+              label: t('platformSettings.mutationDeployed'),
+              description: t('platformSettings.mutationDeployedDesc'),
               state: notifyOnDeploy,
               setter: setNotifyOnDeploy,
               icon: '🚀',
             },
             {
               key: 'notify_on_rollback',
-              label: 'Mutation Rolled Back',
-              description: 'When a deployment is automatically or manually rolled back',
+              label: t('platformSettings.mutationRolledBack'),
+              description: t('platformSettings.mutationRolledBackDesc'),
               state: notifyOnRollback,
               setter: setNotifyOnRollback,
               icon: '↩️',
@@ -452,36 +379,25 @@ export function PlatformSettingsTab() {
               </div>
               <Switch
                 checked={state}
-                onCheckedChange={(val) => {
-                  setter(val);
-                  const action = val ? 'enabled' : 'disabled';
-                  toast.success(`${label} ${action}`, {
-                    description: val
-                      ? `You'll be notified when ${label.toLowerCase()}`
-                      : `Notifications disabled for ${label.toLowerCase()}`,
-                    icon: <Bell className="h-4 w-4 text-success" />,
-                    duration: 2500,
-                  });
-                }}
+                onCheckedChange={(val) => setter(val)}
               />
             </div>
           ))}
         </CardContent>
       </Card>
 
-      {/* ─── Quick Links ─── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Server className="h-5 w-5 text-brand-500" />
-            Quick Links
+            {t('platformSettings.quickLinks')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {[
-            { label: 'View Function DNA Dashboard', href: '/dna/overview', icon: Dna },
-            { label: 'Evolution History', href: '/dna/overview', icon: GitBranch },
-            { label: 'Performance Analytics', href: '/analytics', icon: Gauge },
+            { label: t('platformSettings.viewDNADashboard'), href: '/dna/overview', icon: Dna },
+            { label: t('platformSettings.evolutionHistory'), href: '/dna/overview', icon: GitBranch },
+            { label: t('platformSettings.performanceAnalytics'), href: '/analytics', icon: Gauge },
           ].map(({ label, href, icon: Icon }) => (
             <Link
               key={label}
@@ -498,30 +414,26 @@ export function PlatformSettingsTab() {
         </CardContent>
       </Card>
 
-      {/* ─── Cost Indicator ─── */}
       <div className="rounded-xl border border-border-subtle bg-bg-secondary/50 p-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-velocity-500/10">
             <Zap className="h-4 w-4 text-velocity-500" />
           </div>
           <div>
-            <p className="text-sm font-medium text-text-primary">Mutation Cost</p>
+            <p className="text-sm font-medium text-text-primary">{t('platformSettings.mutationCost')}</p>
             <p className="text-xs text-text-muted">
-              Each accepted mutation costs{' '}
-              <span className="font-mono text-velocity-500">50 credits</span> from your wallet.
-              Rejected mutations are free.
+              <Trans i18nKey="platformSettings.mutationCostDesc" components={{ 1: <span className="font-mono text-velocity-500" /> }} values={{ cost: '50 credits' }} />
             </p>
           </div>
           <Badge
             variant="outline"
             className="ml-auto font-mono text-velocity-500 border-velocity-500/30"
           >
-            50 cr
+            {t('platformSettings.mutationCostBadge')}
           </Badge>
         </div>
       </div>
 
-      {/* ─── Save Button ─── */}
       <div className="flex justify-end">
         <Button
           onClick={handleSave}
@@ -536,12 +448,12 @@ export function PlatformSettingsTab() {
           {updateSettings.isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Saving...
+              {t('platformSettings.saving')}
             </>
           ) : (
             <>
               <CheckCircle2 className="h-4 w-4" />
-              Save Platform Settings
+              {t('platformSettings.savePlatformSettings')}
             </>
           )}
         </Button>

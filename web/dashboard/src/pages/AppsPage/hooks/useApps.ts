@@ -1,5 +1,5 @@
 import type { App, CreateAppRequest } from '@/types';
-import { useApps as useAppsQuery, useCreateApp } from '@/hooks';
+import { useApps as useAppsQuery, useCreateApp, useDeleteApp } from '@/hooks';
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 
@@ -14,9 +14,9 @@ export function useApps({ initialSearch = '', initialSort = 'created-desc' }: Us
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
 
-  // Use the main hooks instead of raw queries
   const { data, isLoading, error, refetch } = useAppsQuery();
   const createMutation = useCreateApp();
+  const deleteMutation = useDeleteApp();
 
   const sortApps = useCallback(
     (apps: App[]): App[] => {
@@ -61,6 +61,13 @@ export function useApps({ initialSearch = '', initialSort = 'created-desc' }: Us
     [createMutation]
   );
 
+  const deleteApp = useCallback(
+    (appId: string) => {
+      deleteMutation.mutate(appId);
+    },
+    [deleteMutation]
+  );
+
   return {
     apps: filteredApps,
     allApps: apps,
@@ -74,11 +81,7 @@ export function useApps({ initialSearch = '', initialSort = 'created-desc' }: Us
     createApp,
     createAppAsync: createMutation.mutateAsync,
     isCreating: createMutation.isPending,
-    // Note: delete endpoint not yet implemented in the API
-    deleteApp: (_appId: string) => {
-      toast.error('Delete not yet implemented');
-      throw new Error('Delete not yet implemented');
-    },
-    isDeleting: false,
+    deleteApp,
+    isDeleting: deleteMutation.isPending,
   };
 }

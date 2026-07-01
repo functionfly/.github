@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { usePageTitle } from '@/hooks';
+import { useAgents, useDeleteAgent } from '@/hooks/useAgent';
 import { agentApi, type AgentIdentity } from '@/api/agent';
 import {
   Bot, Plus, Puzzle, Search, Settings, Trash2, MoreVertical,
-  Loader2, Copy, Check, LayoutGrid, List, Edit3, Eye,
+  Loader2, Copy, Check, LayoutGrid, List, Edit3, Eye, RefreshCw,
 } from 'lucide-react';
 import { ROUTES } from '@/lib/constants';
 import { canCreateAgent, getAgentsLimit, hasFeature } from '@/lib/plan-utils';
@@ -15,6 +16,10 @@ import {
   PageGrid, Chamber, CornerBrace, TrustSeal,
   SealedButton, FrameButton, StatusPill, AnnotationTag, Card,
 } from '@/components/containment';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import './AgentsPage/styles.css';
 
 const statusToPill = (status: string): 'live' | 'pending' | 'revoked' => {
@@ -29,9 +34,11 @@ export function AgentsPage() {
   const navigate = useNavigate();
   const { username } = useParams();
   const { plan } = usePlan();
-  const [agents, setAgents] = useState<AgentIdentity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const { data, isLoading, error, refetch } = useAgents({ limit: 100 });
+  const deleteAgent = useDeleteAgent();
+  const agents = data?.agents ?? [];
+
   const [searchQuery, setSearchQuery] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [createSubmitting, setCreateSubmitting] = useState(false);
@@ -54,14 +61,6 @@ export function AgentsPage() {
   const [agentIdTakenFromSubmit, setAgentIdTakenFromSubmit] = useState(false);
   const showAgentIdTaken = agentIdTaken || agentIdTakenFromSubmit;
 
-  useEffect(() => { loadAgents(); }, []);
-
-  const loadAgents = async () => {
-    try { setLoading(true); const response = await agentApi.listAgents({ limit: 100 }); setAgents(response.agents); }
-    catch (err) { console.error('Failed to load agents:', err); setError(t('agents.failedToLoad')); }
-    finally { setLoading(false); }
-  };
-
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const agentId = (createForm.agentId ?? '').trim().toLowerCase().replace(/\s+/g, '-');
@@ -82,7 +81,7 @@ export function AgentsPage() {
   };
 
   const handleCreateClose = (open: boolean) => {
-    if (!open) { setCreatedApiKey(null); setApiKeyCopied(false); setAgentIdTakenFromSubmit(false); setCreateForm({ agentId: '', name: '', description: '' }); loadAgents(); }
+    if (!open) { setCreatedApiKey(null); setApiKeyCopied(false); setAgentIdTakenFromSubmit(false); setCreateForm({ agentId: '', name: '', description: '' }); refetch(); }
     setCreateOpen(open);
   };
 
@@ -99,11 +98,10 @@ export function AgentsPage() {
 
   const handleDelete = async (agent: AgentIdentity) => {
     if (!confirm(t('agents.confirmDelete', { name: agent.name ?? agent.agentId }))) return;
-    try { await agentApi.deleteAgent(agent.id); toast.success(t('agents.agentDeleted')); loadAgents(); }
-    catch { toast.error(t('agents.failedToDelete')); }
+    try { await deleteAgent.mutateAsync(agent.id); } catch { /* toast handled by mutation */ }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="ag-page">
         <PageGrid />
@@ -206,7 +204,16 @@ export function AgentsPage() {
         </div>
       </div>
 
-      {error && <Chamber className="ag-error-chamber"><p className="ag-error-text">{error}</p></Chamber>}
+      {error && (
+        <Chamber className="ag-error-chamber">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <p className="ag-error-text">{error instanceof Error ? error.message : t('agents.failedToLoad')}</p>
+            <FrameButton size="sm" onClick={() => refetch()} iconLeft={<RefreshCw className="ag-icon-xs" />}>
+              {t('agents.retry') ?? 'Retry'}
+            </FrameButton>
+          </div>
+        </Chamber>
+      )}
 
       {/* Empty State */}
       {filteredAgents.length === 0 ? (
@@ -224,7 +231,26 @@ export function AgentsPage() {
                   <h3 className="ag-agent-card__name">{agent.name ?? '—'}</h3>
                   <p className="ag-agent-card__id">{agent.agentId ?? '—'}</p>
                 </div>
-                <button className="ag-icon-btn" aria-label="Agent options"><MoreVertical className="ag-icon-sm" /></button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="ag-icon-btn" aria-label="Agent options"><MoreVertical className="ag-icon-sm" /></button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => navigate(ROUTES.agentPath(agent.agentId))} className="gap-2">
+                      <Eye className="h-4 w-4" /> {t('agents.view')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate(ROUTES.agentEditPath(agent.agentId))} className="gap-2">
+                      <Edit3 className="h-4 w-4" /> {t('agents.edit')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { navigator.clipboard.writeText(agent.agentId ?? ''); toast.success(t('agents.agentIdCopied')); }} className="gap-2">
+                      <Copy className="h-4 w-4" /> {t('agents.copyId')}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => handleDelete(agent)} className="gap-2 text-destructive focus:text-destructive">
+                      <Trash2 className="h-4 w-4" /> {t('agents.delete')}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="ag-agent-card__body">
                 <div className="ag-agent-card__badges">

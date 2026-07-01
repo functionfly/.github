@@ -26,10 +26,12 @@ import {
 import { useNamespaces } from "@/api/vault";
 import { SecretList } from "@/components/SecretsVault/SecretList";
 import { QuotaSummaryBar } from "@/components/VaultPage/components/QuotaSummaryBar";
+import { hasFeature } from "@/lib/vaultPlans";
 import type { VaultPlan, VaultNamespace } from "@/types/vault-enterprise";
 
 interface SecretsTabProps {
   plan: VaultPlan;
+  platformPlan?: string;
 }
 
 interface TreeNode {
@@ -100,7 +102,7 @@ function TreeView({
                 if (c.children.length) onToggle(c.fullPath);
               }}
               className={`flex w-full items-center gap-1 rounded px-1.5 py-1 text-left ${
-                isSel ? "bg-accent" : "hover:bg-muted/50"
+                isSel ? "bg-accent" : "hover:bg-[var(--panel-raised)]/50"
               }`}
               style={{ paddingLeft: `${depth * 12 + 6}px` }}
             >
@@ -112,9 +114,9 @@ function TreeView({
                 <span className="w-3" />
               )}
               {open ? (
-                <FolderOpen className="h-4 w-4 text-amber-500" />
+                <FolderOpen className="h-4 w-4 text-[var(--status-pending)]" />
               ) : (
-                <Folder className="h-4 w-4 text-amber-500" />
+                <Folder className="h-4 w-4 text-[var(--status-pending)]" />
               )}
               <span className="truncate flex-1">{c.name}</span>
               {c.namespace && (
@@ -140,7 +142,7 @@ function TreeView({
   );
 }
 
-export function SecretsTab({ plan }: SecretsTabProps) {
+export function SecretsTab({ plan, platformPlan }: SecretsTabProps) {
   const { data: nsResp, isLoading } = useNamespaces();
   const [selectedPath, setSelectedPath] = useState<string>("default");
   const [filter, setFilter] = useState<string>("");
@@ -163,7 +165,7 @@ export function SecretsTab({ plan }: SecretsTabProps) {
 
   return (
     <div className="space-y-4">
-      <QuotaSummaryBar plan={plan} />
+      <QuotaSummaryBar plan={plan} platformPlan={platformPlan} />
 
       <div className="block md:hidden space-y-3">
         <Select value={selectedPath} onValueChange={setSelectedPath}>
@@ -206,26 +208,28 @@ export function SecretsTab({ plan }: SecretsTabProps) {
                 onToggle={toggle}
               />
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                const path = window.prompt("New namespace path (lowercase, dash/underscore, /-separated):");
-                if (path) {
-                  console.log("create namespace", path);
-                }
-              }}
-            >
-              + New namespace
-            </Button>
+            {hasFeature(plan, 'namespaces') && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  const path = window.prompt("New namespace path (lowercase, dash/underscore, /-separated):");
+                  if (path) {
+                    console.log("create namespace", path);
+                  }
+                }}
+              >
+                + New namespace
+              </Button>
+            )}
           </div>
 
           <div className="p-3 space-y-2">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-medium">{selectedPath || "default"}</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-[var(--text-faint)]">
                   Secrets in this namespace
                 </div>
               </div>

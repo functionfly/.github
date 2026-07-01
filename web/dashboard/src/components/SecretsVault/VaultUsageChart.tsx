@@ -155,7 +155,7 @@ function TrendIndicator({
 }) {
   const config = {
     up: { icon: TrendingUp, color: "text-green-500", bg: "bg-green-500/10" },
-    down: { icon: TrendingDown, color: "text-red-500", bg: "bg-red-500/10" },
+    down: { icon: TrendingDown, color: "text-[var(--status-revoked)]", bg: "rgba(255,107,107,0.06)" },
     neutral: { icon: Minus, color: "text-(--color-text-muted)", bg: "bg-(--color-bg-tertiary)" },
   };
 

@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useAIKeys, useSupportedProviders, useConnectAIKey, useDisconnectAIKey, useTestAIKey, useRotateAIKey } from '@/api/ai-keys';
 import type { AIProviderKey, SupportedProvider } from '@/types/ai-keys';
 import { Button } from '@/components/ui/button';
@@ -7,34 +9,33 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Eye, EyeOff, Key, Plus, RefreshCw, Shield, TestTube, Trash2 } from 'lucide-react';
+import { ProviderIcon } from '@/components/common/ProviderIcon';
+import { Eye, EyeOff, Key, Loader2, Plus, RefreshCw, Shield, TestTube, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const PROVIDER_LOGOS: Record<string, string> = {
-  openai: '🤖',
-  anthropic: '🧠',
-  openrouter: '🔀',
-  fireworks: '🎆',
-  groq: '⚡',
-  deepinfra: '🌊',
-  together: '🤝',
-  mimo: '📱',
-  stepfun: '🚶',
-};
+const TOKEN_PLAN_REGIONS = [
+  { id: 'cn', label: 'China', flag: 'CN' },
+  { id: 'sgp', label: 'Singapore (US/APAC)', flag: 'SG' },
+  { id: 'eu', label: 'Europe', flag: 'EU' },
+];
 
 function StatusBadge({ status }: { status: string }) {
-  const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-    active: 'default',
-    degraded: 'secondary',
-    expired: 'destructive',
-    revoked: 'destructive',
+  const styles: Record<string, { bg: string; color: string; border: string }> = {
+    active: { bg: 'rgba(143,255,208,0.06)', color: 'var(--status-ok)', border: 'rgba(143,255,208,0.3)' },
+    degraded: { bg: 'rgba(232,196,104,0.06)', color: 'var(--status-pending)', border: 'rgba(232,196,104,0.3)' },
+    expired: { bg: 'rgba(255,107,107,0.06)', color: 'var(--status-revoked)', border: 'rgba(255,107,107,0.3)' },
+    revoked: { bg: 'rgba(255,107,107,0.06)', color: 'var(--status-revoked)', border: 'rgba(255,107,107,0.3)' },
   };
+  const s = styles[status] ?? styles.active;
   return (
-    <Badge variant={variants[status] ?? 'outline'} className="capitalize">
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-medium capitalize"
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}`, fontFamily: 'var(--font-mono)', letterSpacing: '0.04em' }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
       {status}
-    </Badge>
+    </span>
   );
 }
 
@@ -51,19 +52,37 @@ function ConnectedKeyCard({
   onDisconnect: () => void;
   isTesting: boolean;
 }) {
+  const { t } = useTranslation();
   const [showRotate, setShowRotate] = useState(false);
   const [newKey, setNewKey] = useState('');
+
+  const isTokenPlan = keyEntry.provider === 'mimo-token-plan' || keyEntry.provider === 'minimax-token-plan';
+  const keyPrefix = keyEntry.provider === 'mimo-token-plan' ? 'tp-' : 'sk-';
+  const regionLabel = TOKEN_PLAN_REGIONS.find((r) => r.id === keyEntry.token_plan_region);
+  const displayName: Record<string, string> = {
+    'mimo-token-plan': 'MiMo Token Plan',
+    'minimax-token-plan': 'MiniMax Token Plan',
+  };
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{PROVIDER_LOGOS[keyEntry.provider] ?? '🔑'}</span>
+            <span className="w-10 h-10 rounded-lg flex items-center justify-center bg-muted">
+              <ProviderIcon provider={keyEntry.provider} size="xl" />
+            </span>
             <div>
-              <CardTitle className="text-base capitalize">{keyEntry.provider}</CardTitle>
+              <CardTitle className="text-base capitalize flex items-center gap-2">
+                {displayName[keyEntry.provider] ?? keyEntry.provider}
+                {regionLabel && (
+                  <Badge variant="outline" className="text-xs font-normal">
+                    {regionLabel.flag} {regionLabel.label}
+                  </Badge>
+                )}
+              </CardTitle>
               <p className="text-sm text-muted-foreground font-mono">
-                sk-...{keyEntry.key_last4}
+                {keyPrefix}...{keyEntry.key_last4}
               </p>
             </div>
           </div>
@@ -72,9 +91,9 @@ function ConnectedKeyCard({
       </CardHeader>
       <CardContent className="space-y-3">
         {keyEntry.health_message && keyEntry.status !== 'active' && (
-          <p className="text-sm text-yellow-600 dark:text-yellow-400">{keyEntry.health_message}</p>
+          <p className="text-sm" style={{ color: 'var(--status-pending)' }}>{keyEntry.health_message}</p>
         )}
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-faint)' }}>
           {keyEntry.last_health_check && (
             <span>Checked {formatDistanceToNow(new Date(keyEntry.last_health_check), { addSuffix: true })}</span>
           )}
@@ -87,7 +106,7 @@ function ConnectedKeyCard({
           <div className="flex gap-2">
             <Input
               type="password"
-              placeholder="New API key"
+              placeholder={t('aiKeysSettings.newApiKey')}
               value={newKey}
               onChange={(e) => setNewKey(e.target.value)}
               className="font-mono text-sm"
@@ -101,10 +120,10 @@ function ConnectedKeyCard({
               }}
               disabled={!newKey}
             >
-              Save
+              {t('aiKeysSettings.save')}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setShowRotate(false)}>
-              Cancel
+              {t('aiKeysSettings.cancel')}
             </Button>
           </div>
         )}
@@ -112,29 +131,29 @@ function ConnectedKeyCard({
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={onTest} disabled={isTesting}>
             <TestTube className="h-3.5 w-3.5 mr-1" />
-            {isTesting ? 'Testing...' : 'Test'}
+            {isTesting ? t('aiKeysSettings.testing') : t('aiKeysSettings.test')}
           </Button>
           <Button size="sm" variant="outline" onClick={() => setShowRotate(!showRotate)}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
-            Rotate
+            {t('aiKeysSettings.rotate')}
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button size="sm" variant="destructive">
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Disconnect
+                {t('aiKeysSettings.disconnect')}
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
               <AlertDialogHeader>
-                <AlertDialogTitle>Disconnect {keyEntry.provider} key?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will remove your BYOK key. Future AI calls to {keyEntry.provider} will use platform keys and incur platform pricing.
+                <AlertDialogTitle style={{ fontFamily: 'var(--font-display)' }}>{t('aiKeysSettings.disconnectTitle', { provider: keyEntry.provider })}</AlertDialogTitle>
+                <AlertDialogDescription style={{ color: 'var(--text-dim)' }}>
+                  {t('aiKeysSettings.disconnectDesc', { provider: keyEntry.provider })}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onDisconnect}>Disconnect</AlertDialogAction>
+                <AlertDialogCancel>{t('aiKeysSettings.cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={onDisconnect}>{t('aiKeysSettings.disconnect')}</AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
@@ -152,22 +171,26 @@ function ConnectKeyDialog({
 }: {
   providers: SupportedProvider[];
   connectedProviders: Set<string>;
-  onConnect: (provider: string, apiKey: string) => void;
+  onConnect: (provider: string, apiKey: string, region?: string) => void;
   isConnecting: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [region, setRegion] = useState('');
 
   const available = providers.filter((p) => !connectedProviders.has(p.id));
   const selectedProvider = providers.find((p) => p.id === selected);
 
   const handleSubmit = () => {
     if (selected && apiKey) {
-      onConnect(selected, apiKey);
+      if (selected === 'mimo-token-plan' && !region) return;
+      onConnect(selected, apiKey, region || undefined);
       setApiKey('');
       setSelected('');
+      setRegion('');
       setOpen(false);
     }
   };
@@ -177,31 +200,48 @@ function ConnectKeyDialog({
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Connect AI Key
+          {t('aiKeysSettings.connectKey')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg" style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-chamber)' }}>
         <DialogHeader>
-          <DialogTitle>Connect AI Provider Key</DialogTitle>
+          <DialogTitle style={{ fontFamily: 'var(--font-display)', fontSize: '18px' }}>{t('aiKeysSettings.connectDialogTitle')}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-5 pt-1">
+          {/* Provider grid */}
           <div>
-            <Label>Provider</Label>
+            <Label style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              {t('aiKeysSettings.provider')}
+            </Label>
             <div className="grid grid-cols-3 gap-2 mt-2">
-              {available.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelected(p.id)}
-                  className={`p-2 rounded-lg border text-center text-sm transition-colors ${
-                    selected === p.id
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border hover:border-primary/50'
-                  }`}
-                >
-                  <span className="text-lg">{PROVIDER_LOGOS[p.id] ?? '🔑'}</span>
-                  <p className="text-xs mt-1 capitalize">{p.name}</p>
-                </button>
-              ))}
+              {available.map((p) => {
+                const isActive = selected === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelected(p.id)}
+                    className="flex flex-col items-center gap-2 p-3 rounded-[var(--radius)] transition-all"
+                    style={{
+                      background: isActive ? 'rgba(143,255,208,0.06)' : 'var(--panel-raised)',
+                      border: isActive ? '1px solid rgba(143,255,208,0.3)' : '1px solid var(--panel-edge)',
+                      boxShadow: isActive ? '0 0 0 1px rgba(143,255,208,0.1)' : 'none',
+                    }}
+                  >
+                    <span
+                      className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center"
+                      style={{
+                        background: isActive ? 'rgba(143,255,208,0.08)' : 'var(--panel)',
+                        border: '1px solid var(--panel-edge)',
+                      }}
+                    >
+                      <ProviderIcon provider={p.id} size="xl" />
+                    </span>
+                    <p className="text-xs font-medium capitalize" style={{ color: isActive ? 'var(--status-ok)' : 'var(--text-dim)' }}>
+                      {p.name}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -209,12 +249,40 @@ function ConnectKeyDialog({
             <>
               {selectedProvider.is_meta_provider && (
                 <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3 text-sm text-blue-700 dark:text-blue-300">
-                  <strong>{selectedProvider.name}</strong> gives you access to 100+ models through a single key.
+                  <Trans i18nKey="aiKeysSettings.metaProviderDesc" components={{ 1: <strong /> }} values={{ name: selectedProvider.name }} />
                 </div>
               )}
-              <div>
-                <Label htmlFor="api-key">API Key</Label>
-                <div className="relative mt-1">
+              {selected === 'mimo-token-plan' && (
+                <div>
+                  <Label>{t('aiKeysSettings.region', { defaultValue: 'Region' })}</Label>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {TOKEN_PLAN_REGIONS.map((r) => (
+                      <button
+                        key={r.id}
+                        onClick={() => setRegion(r.id)}
+                        className={`p-2 rounded-lg border text-center text-sm transition-colors ${
+                          region === r.id
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <span className="text-xs font-bold">{r.flag}</span>
+                        <p className="text-xs mt-1">{r.label}</p>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {t('aiKeysSettings.regionHint', { defaultValue: 'Select the cluster matching your Token Plan subscription.' })}
+                  </p>
+                </div>
+              )}
+
+              {/* API Key input */}
+              <div className="space-y-2">
+                <Label htmlFor="api-key" style={{ color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                  {t('aiKeysSettings.apiKey')}
+                </Label>
+                <div className="relative">
                   <Input
                     id="api-key"
                     type={showKey ? 'text' : 'password'}
@@ -222,24 +290,48 @@ function ConnectKeyDialog({
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     className="font-mono text-sm pr-10"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && apiKey && !isConnecting) {
+                        e.preventDefault();
+                        handleSubmit();
+                      }
+                    }}
                   />
                   <button
                     type="button"
                     onClick={() => setShowKey(!showKey)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                    style={{ color: 'var(--text-faint)' }}
                   >
                     {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
-              </div>
-              <div className="flex items-start gap-2 rounded-lg bg-muted p-3 text-sm">
-                <Shield className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
-                <p className="text-muted-foreground">
-                  Your key is encrypted with AES-256-GCM. We never store plaintext.
+                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                  Format: <code className="font-mono" style={{ color: 'var(--text-dim)' }}>{selectedProvider.key_format}</code>
                 </p>
               </div>
-              <Button onClick={handleSubmit} disabled={!apiKey || isConnecting} className="w-full">
-                {isConnecting ? 'Validating...' : 'Test & Connect'}
+
+              {/* Security note */}
+              <div className="flex items-start gap-2.5 p-3 rounded-[var(--radius)]" style={{ background: 'rgba(143,255,208,0.03)', border: '1px solid rgba(143,255,208,0.1)' }}>
+                <Shield className="h-4 w-4 mt-0.5 shrink-0" style={{ color: 'var(--status-ok)' }} />
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-dim)' }}>
+                  {t('aiKeysSettings.keyEncrypted')}
+                </p>
+              </div>
+
+              {/* Submit */}
+              <Button onClick={handleSubmit} disabled={!apiKey || isConnecting || (selected === 'mimo-token-plan' && !region)} className="w-full gap-2">
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t('aiKeysSettings.validating')}
+                  </>
+                ) : (
+                  <>
+                    <Key className="h-4 w-4" />
+                    {t('aiKeysSettings.testAndConnect')}
+                  </>
+                )}
               </Button>
             </>
           )}
@@ -250,12 +342,14 @@ function ConnectKeyDialog({
 }
 
 export function AIKeysSettingsTab() {
+  const { t } = useTranslation();
   const { data: keys = [], isLoading: keysLoading } = useAIKeys();
   const { data: providers = [] } = useSupportedProviders();
   const connectMutation = useConnectAIKey();
   const disconnectMutation = useDisconnectAIKey();
   const testMutation = useTestAIKey();
   const rotateMutation = useRotateAIKey();
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
 
   const connectedProviders = new Set(keys.map((k) => k.provider));
 
@@ -263,29 +357,29 @@ export function AIKeysSettingsTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">AI Provider Keys</h3>
-          <p className="text-sm text-muted-foreground">
-            Bring your own API keys to avoid platform AI costs. You pay the provider directly.
+          <h3 className="text-lg font-semibold" style={{ fontFamily: 'var(--font-display)' }}>{t('aiKeysSettings.title')}</h3>
+          <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
+            {t('aiKeysSettings.description')}
           </p>
         </div>
         <ConnectKeyDialog
           providers={providers}
           connectedProviders={connectedProviders}
-          onConnect={(provider, apiKey) => connectMutation.mutate({ provider, apiKey })}
+          onConnect={(provider, apiKey, region) => connectMutation.mutate({ provider, apiKey, region })}
           isConnecting={connectMutation.isPending}
         />
       </div>
 
-      <Separator />
+      <div className="h-px" style={{ background: 'var(--panel-edge)' }} />
 
       {keysLoading ? (
-        <div className="text-center py-8 text-muted-foreground">Loading keys...</div>
+        <div className="text-center py-8" style={{ color: 'var(--text-faint)' }}>{t('aiKeysSettings.loadingKeys')}</div>
       ) : keys.length === 0 ? (
         <div className="text-center py-12">
-          <Key className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-          <p className="text-muted-foreground">No AI provider keys connected yet.</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Connect your own keys to save on AI costs.
+          <Key className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-faint)', opacity: 0.4 }} />
+          <p style={{ color: 'var(--text-dim)' }}>{t('aiKeysSettings.noKeysTitle')}</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-faint)' }}>
+            {t('aiKeysSettings.noKeysDesc')}
           </p>
         </div>
       ) : (
@@ -294,10 +388,21 @@ export function AIKeysSettingsTab() {
             <ConnectedKeyCard
               key={key.id}
               keyEntry={key}
-              onTest={() => testMutation.mutate(key.provider)}
+              onTest={() => {
+                setTestingProvider(key.provider);
+                testMutation.mutate(key.provider, {
+                  onSuccess: () => {
+                    toast.success(t('aiKeysSettings.testSuccess', { provider: key.provider, defaultValue: `${key.provider} key is working` }));
+                  },
+                  onError: (err: Error) => {
+                    toast.error(err.message || t('aiKeysSettings.testFailed', { defaultValue: 'Key test failed' }));
+                  },
+                  onSettled: () => setTestingProvider(null),
+                });
+              }}
               onRotate={(newKey) => rotateMutation.mutate({ provider: key.provider, apiKey: newKey })}
               onDisconnect={() => disconnectMutation.mutate(key.provider)}
-              isTesting={testMutation.isPending}
+              isTesting={testingProvider === key.provider}
             />
           ))}
         </div>

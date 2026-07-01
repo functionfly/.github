@@ -100,9 +100,9 @@ const securityLevelConfig: Record<
   low: {
     icon: ShieldX,
     label: "Low Security",
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
-    progressColor: "bg-red-500",
+    color: "text-[var(--status-revoked)]",
+    bgColor: "rgba(255,107,107,0.06)",
+    progressColor: "bg-[var(--status-revoked)]",
     description: "Basic protection with minimal security measures",
     recommendation: "Enable MFA and configure key rotation immediately",
     score: 25,

@@ -39,8 +39,11 @@ export interface Vote {
   my_vote?: string;
   results?: Record<string, number>;
   total_votes?: number;
+  change_diff?: Record<string, unknown>;
+  quorum?: number;
   starts_at?: string;
   ends_at?: string;
+  created_at?: string;
 }
 
 export interface EarlyAccessFeature {

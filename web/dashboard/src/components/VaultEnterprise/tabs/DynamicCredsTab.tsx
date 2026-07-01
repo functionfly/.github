@@ -146,7 +146,7 @@ function TargetsCard({ plan }: { plan: VaultPlan }) {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center text-[var(--text-faint)]">
                         No targets configured.
                       </TableCell>
                     </TableRow>
@@ -326,7 +326,7 @@ function CredentialsCard({ plan }: { plan: VaultPlan }) {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground">
+                    <TableCell colSpan={4} className="text-center text-[var(--text-faint)]">
                       No credential templates.
                     </TableCell>
                   </TableRow>
@@ -375,12 +375,12 @@ function LeasesMonitorCard({ plan }: { plan: VaultPlan }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--text-faint)]">
             Open a credential template's "Generate" action to mint a lease; the
             resulting lease_id is then listed here. The monitor polls every 5s
             and re-validates expiry.
           </p>
-          <p className="text-xs text-muted-foreground mt-2">
+          <p className="text-xs text-[var(--text-faint)] mt-2">
             Plan: <strong>{formatPlan(plan)}</strong> · Phase 2.2
           </p>
         </CardContent>

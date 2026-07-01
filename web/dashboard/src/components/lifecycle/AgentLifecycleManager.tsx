@@ -89,24 +89,23 @@ export function AgentLifecycleManager({
           await agentApi.triggerKillSwitch(agentId, 'User requested stop');
           break;
         case 'pause':
-          // Pause is implemented via policy update
           await agentApi.updatePolicy(agentId, { agentId, maxExecutionDepth: 0 });
           break;
         case 'restart':
-          // Restart by stopping then triggering heartbeat
           await agentApi.triggerKillSwitch(agentId, 'User requested restart');
+          await agentApi.startSession(agentId);
           break;
         case 'start':
-          // Start session
           await agentApi.startSession(agentId);
           break;
       }
-      onStatusChange?.(action === 'stop' ? 'stopped' : action === 'pause' ? 'paused' : currentStatus);
+      setState({ isLoading: false, lastAction: null, error: null });
+      onStatusChange?.(action === 'stop' ? 'stopped' : action === 'pause' ? 'paused' : 'active');
     } catch (err) {
-      setState({ 
-        isLoading: false, 
-        lastAction: null, 
-        error: err instanceof Error ? err.message : 'Action failed' 
+      setState({
+        isLoading: false,
+        lastAction: null,
+        error: err instanceof Error ? err.message : 'Action failed'
       });
     }
   };

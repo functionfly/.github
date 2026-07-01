@@ -548,7 +548,7 @@ export function SecretRotationModal({
       <DialogContent className={cn("sm:max-w-2xl max-h-[90vh] overflow-y-auto", className)}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-brand-500" />
+            <RefreshCw className="h-5 w-5 text-[var(--status-ok)]" />
             Rotate Secret
           </DialogTitle>
           <DialogDescription>
@@ -569,7 +569,7 @@ export function SecretRotationModal({
                 className={cn(
                   "h-2 flex-1 rounded-full transition-colors",
                   step === s || (i < ["options", "confirm", "processing", "success"].indexOf(step))
-                    ? "bg-brand-500"
+                    ? "rgba(143,255,208,0.15)"
                     : "bg-(--color-bg-tertiary)"
                 )}
               />
@@ -617,14 +617,14 @@ export function SecretRotationModal({
                   className={cn(
                     "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
                     rotationType === "immediate"
-                      ? "border-brand-500 bg-brand-500/5"
+                      ? "border-[rgba(143,255,208,0.3)] rgba(143,255,208,0.15)/5"
                       : "border-(--border-subtle) hover:border-(--border-default)"
                   )}
                 >
                   <RadioGroupItem value="immediate" className="mt-1" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-brand-500" />
+                      <Zap className="h-4 w-4 text-[var(--status-ok)]" />
                       <span className="font-medium">Immediate Rotation</span>
                     </div>
                     <p className="text-xs text-(--color-text-muted) mt-1">
@@ -638,7 +638,7 @@ export function SecretRotationModal({
                     className={cn(
                       "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
                       rotationType === "scheduled"
-                        ? "border-brand-500 bg-brand-500/5"
+                        ? "border-[rgba(143,255,208,0.3)] rgba(143,255,208,0.15)/5"
                         : "border-(--border-subtle) hover:border-(--border-default)"
                     )}
                   >
@@ -670,7 +670,7 @@ export function SecretRotationModal({
                     className={cn(
                       "flex items-start gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
                       rotationType === "automatic"
-                        ? "border-brand-500 bg-brand-500/5"
+                        ? "border-[rgba(143,255,208,0.3)] rgba(143,255,208,0.15)/5"
                         : "border-(--border-subtle) hover:border-(--border-default)"
                     )}
                   >
@@ -741,7 +741,7 @@ export function SecretRotationModal({
                     className={cn(
                       "px-2 py-1 rounded text-xs transition-colors",
                       gracePeriodHours === preset.value
-                        ? "bg-brand-500 text-white"
+                        ? "rgba(143,255,208,0.15) text-white"
                         : "bg-(--color-bg-tertiary) text-(--color-text-muted) hover:bg-(--color-bg-secondary)"
                     )}
                   >
@@ -868,7 +868,7 @@ export function SecretRotationModal({
           <div className="py-12 flex flex-col items-center text-center space-y-4">
             <div className="relative">
               <div className="h-16 w-16 rounded-full border-4 border-(--border-subtle) border-t-brand-500 animate-spin" />
-              <RefreshCw className="h-6 w-6 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-brand-500" />
+              <RefreshCw className="h-6 w-6 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[var(--status-ok)]" />
             </div>
             <div className="space-y-1">
               <h4 className="font-medium text-(--color-text-primary)">Rotating Secret...</h4>

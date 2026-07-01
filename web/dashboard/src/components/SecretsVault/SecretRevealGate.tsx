@@ -127,7 +127,7 @@ const securityLevelConfig: Record<
   { label: string; color: string; icon: typeof Shield }
 > = {
   low: { label: 'Low Security', color: 'text-warning', icon: Shield },
-  medium: { label: 'Medium Security', color: 'text-brand-500', icon: ShieldCheck },
+  medium: { label: 'Medium Security', color: 'text-[var(--status-ok)]', icon: ShieldCheck },
   high: { label: 'High Security', color: 'text-success', icon: ShieldCheck },
   critical: { label: 'Critical Security', color: 'text-error', icon: ShieldAlert },
 };

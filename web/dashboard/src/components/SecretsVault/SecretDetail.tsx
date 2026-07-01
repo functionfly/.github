@@ -148,7 +148,7 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
       <Dialog open onOpenChange={onClose}>
         <DialogContent className="secrets-dialog-content">
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--status-ok)]" />
           </div>
         </DialogContent>
       </Dialog>
@@ -220,23 +220,23 @@ export function SecretDetail({ secretId, onClose }: SecretDetailProps) {
 
             {/* Passphrase Recovery Warning */}
             {showPassphraseWarning && !decryptedValue && (
-              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-4">
+              <div className="rounded-lg rgba(232,196,104,0.04)  border border-[rgba(232,196,104,0.15)]  p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <AlertCircle className="w-5 h-5 text-[var(--status-pending)] mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      <p className="text-sm font-medium text-[var(--status-pending)] ">
                         Zero-Knowledge Encryption
                       </p>
                       <button
                         onClick={() => setShowPassphraseWarning(false)}
-                        className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200"
+                        className="text-[var(--status-pending)] hover:text-[var(--status-pending)] "
                         aria-label="Dismiss warning"
                       >
                         <X className="h-4 w-4" />
                       </button>
                     </div>
-                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    <p className="text-sm text-[var(--status-pending)]  mt-1">
                       Your passphrase is never sent to the server. We cannot recover your passphrase if you lose it.
                       Store it securely in a password manager.
                     </p>

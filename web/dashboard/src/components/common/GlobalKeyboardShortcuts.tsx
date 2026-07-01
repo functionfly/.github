@@ -18,7 +18,7 @@ export function GlobalKeyboardShortcuts() {
         target.tagName === 'INPUT' ||
         target.tagName === 'TEXTAREA' ||
         target.contentEditable === 'true' ||
-        target.closest('[role="dialog"]');
+        (target instanceof Element && target.closest('[role="dialog"]'));
 
       // Handle ? key for help (allow even in some contexts, but not in text inputs)
       if (e.key === '?' && e.shiftKey) {

@@ -1,4 +1,14 @@
 import { apiClient } from '@/api/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +34,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Building, Copy, Eye, EyeOff, Key, Shield, Trash2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 
 interface OAuthProviderInput {
@@ -96,6 +106,7 @@ function PasswordPolicyEditor({
   policy: PasswordPolicy;
   onSave: (policy: PasswordPolicy) => void;
 }) {
+  const { t } = useTranslation();
   const [localPolicy, setLocalPolicy] = useState(policy);
   const [saving, setSaving] = useState(false);
 
@@ -103,9 +114,9 @@ function PasswordPolicyEditor({
     setSaving(true);
     try {
       await onSave(localPolicy);
-      toast.success('Password policy updated');
+      toast.success(t('authSettings.toastPolicyUpdated'));
     } catch {
-      toast.error('Failed to update policy');
+      toast.error(t('authSettings.toastPolicyFailed'));
     } finally {
       setSaving(false);
     }
@@ -115,7 +126,7 @@ function PasswordPolicyEditor({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="min_length">Minimum Length</Label>
+          <Label htmlFor="min_length">{t('authSettings.minLength')}</Label>
           <Input
             id="min_length"
             type="number"
@@ -138,7 +149,7 @@ function PasswordPolicyEditor({
               setLocalPolicy({ ...localPolicy, require_uppercase: checked })
             }
           />
-          <Label htmlFor="require_uppercase">Require uppercase letter</Label>
+          <Label htmlFor="require_uppercase">{t('authSettings.requireUppercase')}</Label>
         </div>
         <div className="flex items-center gap-3">
           <Switch
@@ -148,7 +159,7 @@ function PasswordPolicyEditor({
               setLocalPolicy({ ...localPolicy, require_lowercase: checked })
             }
           />
-          <Label htmlFor="require_lowercase">Require lowercase letter</Label>
+          <Label htmlFor="require_lowercase">{t('authSettings.requireLowercase')}</Label>
         </div>
         <div className="flex items-center gap-3">
           <Switch
@@ -158,7 +169,7 @@ function PasswordPolicyEditor({
               setLocalPolicy({ ...localPolicy, require_digit: checked })
             }
           />
-          <Label htmlFor="require_digit">Require digit</Label>
+          <Label htmlFor="require_digit">{t('authSettings.requireDigit')}</Label>
         </div>
         <div className="flex items-center gap-3">
           <Switch
@@ -168,7 +179,7 @@ function PasswordPolicyEditor({
               setLocalPolicy({ ...localPolicy, require_special: checked })
             }
           />
-          <Label htmlFor="require_special">Require special character</Label>
+          <Label htmlFor="require_special">{t('authSettings.requireSpecial')}</Label>
         </div>
       </div>
 
@@ -181,7 +192,7 @@ function PasswordPolicyEditor({
           boxShadow: 'var(--shadow-btn-primary-rest)',
         }}
       >
-        {saving ? 'Saving...' : 'Save Policy'}
+        {saving ? t('authSettings.saving') : t('authSettings.savePolicy')}
       </Button>
     </div>
   );
@@ -197,6 +208,7 @@ function OAuthProviderCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   const providerIcons: Record<string, string> = {
     github: '🐙',
     google: '🔵',
@@ -214,11 +226,11 @@ function OAuthProviderCard({
             </div>
             <div>
               <CardTitle className="text-base capitalize">{provider.provider}</CardTitle>
-              <CardDescription>{provider.enabled ? 'Connected' : 'Disabled'}</CardDescription>
+              <CardDescription>{provider.enabled ? t('authSettings.connected') : t('authSettings.disabled')}</CardDescription>
             </div>
           </div>
           <Badge variant={provider.enabled ? 'default' : 'secondary'}>
-            {provider.enabled ? 'Active' : 'Inactive'}
+            {provider.enabled ? t('authSettings.active') : t('authSettings.inactive')}
           </Badge>
         </div>
       </CardHeader>
@@ -230,7 +242,7 @@ function OAuthProviderCard({
             onClick={onEdit}
             style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
           >
-            Edit
+            {t('authSettings.edit')}
           </Button>
           <Button
             variant="ghost"
@@ -256,6 +268,7 @@ function OAuthProviderForm({
   onSave: (config: OAuthProviderInput) => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<OAuthProviderInput>(
     provider || {
       provider: 'github',
@@ -268,7 +281,7 @@ function OAuthProviderForm({
 
   const handleSave = () => {
     if (!formData.client_id || !formData.client_secret) {
-      toast.error('Client ID and Secret are required');
+      toast.error(t('authSettings.toastClientRequired'));
       return;
     }
     onSave(formData);
@@ -295,24 +308,24 @@ function OAuthProviderForm({
       </div>
 
       <div>
-        <Label htmlFor="client_id">Client ID</Label>
+        <Label htmlFor="client_id">{t('authSettings.clientID')}</Label>
         <Input
           id="client_id"
           value={formData.client_id}
           onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}
-          placeholder="Enter OAuth client ID"
+          placeholder={t('authSettings.enterClientID')}
         />
       </div>
 
       <div>
-        <Label htmlFor="client_secret">Client Secret</Label>
+        <Label htmlFor="client_secret">{t('authSettings.clientSecret')}</Label>
         <div className="relative">
           <Input
             id="client_secret"
             type={showSecret ? 'text' : 'password'}
             value={formData.client_secret}
             onChange={(e) => setFormData({ ...formData, client_secret: e.target.value })}
-            placeholder={provider ? '••••••••' : 'Enter OAuth client secret'}
+            placeholder={provider ? '••••••••' : t('authSettings.enterClientSecret')}
           />
           <button
             type="button"
@@ -323,7 +336,7 @@ function OAuthProviderForm({
           </button>
         </div>
         {provider && (
-          <p className="text-xs text-text-muted mt-1">Leave blank to keep existing secret</p>
+          <p className="text-xs text-text-muted mt-1">{t('authSettings.keepSecretHint')}</p>
         )}
       </div>
 
@@ -333,7 +346,7 @@ function OAuthProviderForm({
           checked={formData.enabled}
           onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
         />
-        <Label htmlFor="enabled">Enable this provider</Label>
+        <Label htmlFor="enabled">{t('authSettings.enableProvider')}</Label>
       </div>
 
       <div className="flex justify-end gap-2">
@@ -352,7 +365,7 @@ function OAuthProviderForm({
             boxShadow: 'var(--shadow-btn-primary-rest)',
           }}
         >
-          Save Provider
+          {t('authSettings.saveProvider')}
         </Button>
       </div>
     </div>
@@ -371,6 +384,7 @@ function MemberRow({
   onRemove: () => void;
   canManage: boolean;
 }) {
+  const { t } = useTranslation();
   const roleColors: Record<string, string> = {
     team_owner: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
     team_admin: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
@@ -398,10 +412,10 @@ function MemberRow({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="team_owner">Owner</SelectItem>
-              <SelectItem value="team_admin">Admin</SelectItem>
-              <SelectItem value="team_member">Member</SelectItem>
-              <SelectItem value="team_viewer">Viewer</SelectItem>
+              <SelectItem value="team_owner">{t('authSettings.roles.owner')}</SelectItem>
+              <SelectItem value="team_admin">{t('authSettings.roles.admin')}</SelectItem>
+              <SelectItem value="team_member">{t('authSettings.roles.member')}</SelectItem>
+              <SelectItem value="team_viewer">{t('authSettings.roles.viewer')}</SelectItem>
             </SelectContent>
           </Select>
         ) : (
@@ -427,6 +441,7 @@ function InviteRow({
   onRevoke: () => void;
   onCopy: () => void;
 }) {
+  const { t } = useTranslation();
   const expiresAt = new Date(invite.expires_at);
   const isExpired = expiresAt < new Date();
 
@@ -435,7 +450,7 @@ function InviteRow({
       <div>
         <p className="font-medium text-text-primary">{invite.email}</p>
         <p className="text-sm text-text-muted">
-          {isExpired ? 'Expired' : `Expires ${expiresAt.toLocaleDateString()}`} ·{' '}
+          {isExpired ? t('authSettings.expired') : t('authSettings.expires', { date: expiresAt.toLocaleDateString() })} ·{' '}
           {invite.role.replace('_', ' ')}
         </p>
       </div>
@@ -463,6 +478,9 @@ export function AuthSettingsTab() {
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('team_member');
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [confirmRemoveMember, setConfirmRemoveMember] = useState<string | null>(null);
+  const [confirmDeleteProvider, setConfirmDeleteProvider] = useState<string | null>(null);
+  const [confirmRevokeInvite, setConfirmRevokeInvite] = useState<string | null>(null);
 
   // Fetch auth settings
   const { data: settings, isLoading: settingsLoading } = useQuery({
@@ -494,6 +512,17 @@ export function AuthSettingsTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auth-settings'] });
     },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to update settings');
+    },
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: revokeInvite,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
+      toast.success(t('authSettings.toastInviteRevoked'));
+    },
   });
 
   const oauthMutation = useMutation({
@@ -502,7 +531,7 @@ export function AuthSettingsTab() {
       queryClient.invalidateQueries({ queryKey: ['oauth-providers'] });
       setShowOAuthForm(false);
       setEditingProvider(null);
-      toast.success('OAuth provider saved');
+      toast.success(t('authSettings.toastOAuthSaved'));
     },
   });
 
@@ -510,7 +539,7 @@ export function AuthSettingsTab() {
     mutationFn: deleteOAuthProvider,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['oauth-providers'] });
-      toast.success('Provider removed');
+      toast.success(t('authSettings.toastProviderRemoved'));
     },
   });
 
@@ -520,7 +549,7 @@ export function AuthSettingsTab() {
       queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
       setShowInviteForm(false);
       setInviteEmail('');
-      toast.success('Invitation sent');
+      toast.success(t('authSettings.toastInviteSent'));
     },
   });
 
@@ -529,7 +558,7 @@ export function AuthSettingsTab() {
       updateMemberRole(userId, role),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
-      toast.success('Role updated');
+      toast.success(t('authSettings.toastRoleUpdated'));
     },
   });
 
@@ -537,15 +566,7 @@ export function AuthSettingsTab() {
     mutationFn: (userId: string) => removeMember(userId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team-members'] });
-      toast.success('Member removed');
-    },
-  });
-
-  const revokeInviteMutation = useMutation({
-    mutationFn: revokeInvite,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pending-invites'] });
-      toast.success('Invitation revoked');
+      toast.success(t('authSettings.toastMemberRemoved'));
     },
   });
 
@@ -554,7 +575,27 @@ export function AuthSettingsTab() {
   );
 
   if (settingsLoading) {
-    return <div className="animate-pulse space-y-4">{/* Loading skeleton */}</div>;
+    return (
+      <div className="settings-page space-y-6 animate-pulse">
+        <div className="flex gap-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-9 w-24 rounded-md bg-bg-secondary" />
+          ))}
+        </div>
+        <div className="rounded-lg p-5 space-y-4" style={{ background: 'var(--panel)', border: '1px solid var(--panel-edge)' }}>
+          <div className="h-5 w-32 rounded bg-bg-secondary" />
+          <div className="h-4 w-64 rounded bg-bg-secondary/60" />
+          <div className="space-y-3 pt-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="h-4 w-40 rounded bg-bg-secondary" />
+                <div className="h-6 w-10 rounded-full bg-bg-secondary" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -563,15 +604,15 @@ export function AuthSettingsTab() {
         <TabsList>
           <TabsTrigger value="security">
             <Shield className="w-4 h-4 mr-2" />
-            Security
+            {t('authSettings.security')}
           </TabsTrigger>
           <TabsTrigger value="oauth">
             <Key className="w-4 h-4 mr-2" />
-            OAuth
+            {t('authSettings.oauth')}
           </TabsTrigger>
           <TabsTrigger value="team">
             <Building className="w-4 h-4 mr-2" />
-            Team
+            {t('authSettings.team')}
           </TabsTrigger>
         </TabsList>
 
@@ -587,10 +628,10 @@ export function AuthSettingsTab() {
           >
             <div className="mb-4">
               <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-                Password Policy
+                {t('authSettings.passwordPolicy')}
               </h3>
               <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-                Configure minimum password requirements
+                {t('authSettings.passwordPolicyDesc')}
               </p>
             </div>
             <div className="space-y-4">
@@ -619,18 +660,18 @@ export function AuthSettingsTab() {
           >
             <div className="mb-4">
               <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-                Session Settings
+                {t('authSettings.sessionSettings')}
               </h3>
               <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-                Configure session timeout and security
+                {t('authSettings.sessionSettingsDesc')}
               </p>
             </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label style={{ color: 'var(--text)' }}>Session Timeout</Label>
+                  <Label style={{ color: 'var(--text)' }}>{t('authSettings.sessionTimeout')}</Label>
                   <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
-                    How long until a session expires
+                    {t('authSettings.sessionTimeoutDesc')}
                   </p>
                 </div>
                 <Select
@@ -643,11 +684,11 @@ export function AuthSettingsTab() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="60">1 hour</SelectItem>
-                    <SelectItem value="240">4 hours</SelectItem>
-                    <SelectItem value="480">8 hours</SelectItem>
-                    <SelectItem value="1440">24 hours</SelectItem>
-                    <SelectItem value="10080">1 week</SelectItem>
+                    <SelectItem value="60">{t('authSettings.sessionTimeouts.1hour')}</SelectItem>
+                    <SelectItem value="240">{t('authSettings.sessionTimeouts.4hours')}</SelectItem>
+                    <SelectItem value="480">{t('authSettings.sessionTimeouts.8hours')}</SelectItem>
+<SelectItem value="1440">{t('authSettings.sessionTimeouts.24hours')}</SelectItem>
+                    <SelectItem value="10080">{t('authSettings.sessionTimeouts.1week')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -655,10 +696,10 @@ export function AuthSettingsTab() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label style={{ color: 'var(--text)' }}>
-                    Require Multi-Factor Authentication
+                    {t('authSettings.requireMFA')}
                   </Label>
                   <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
-                    Require MFA for all users in your organization
+                    {t('authSettings.requireMFADesc')}
                   </p>
                 </div>
                 <Select
@@ -673,9 +714,9 @@ export function AuthSettingsTab() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="optional">Optional</SelectItem>
-                    <SelectItem value="required">Required</SelectItem>
-                    <SelectItem value="enforced">Enforced</SelectItem>
+                    <SelectItem value="optional">{t('authSettings.mfaModes.optional')}</SelectItem>
+                    <SelectItem value="required">{t('authSettings.mfaModes.required')}</SelectItem>
+                    <SelectItem value="enforced">{t('authSettings.mfaModes.enforced')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -692,18 +733,18 @@ export function AuthSettingsTab() {
           >
             <div className="mb-4">
               <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-                Login Methods
+                {t('authSettings.loginMethods')}
               </h3>
               <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-                Configure how users can sign in
+                {t('authSettings.loginMethodsDesc')}
               </p>
             </div>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <Label style={{ color: 'var(--text)' }}>Password Login</Label>
+                  <Label style={{ color: 'var(--text)' }}>{t('authSettings.passwordLogin')}</Label>
                   <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
-                    Allow users to sign in with email and password
+                    {t('authSettings.passwordLoginDesc')}
                   </p>
                 </div>
                 <Switch
@@ -716,9 +757,9 @@ export function AuthSettingsTab() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label style={{ color: 'var(--text)' }}>Magic Link</Label>
+                  <Label style={{ color: 'var(--text)' }}>{t('authSettings.magicLink')}</Label>
                   <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
-                    Allow passwordless sign-in via email link
+                    {t('authSettings.magicLinkDesc')}
                   </p>
                 </div>
                 <Switch
@@ -731,9 +772,9 @@ export function AuthSettingsTab() {
 
               <div className="flex items-center justify-between">
                 <div>
-                  <Label style={{ color: 'var(--text)' }}>Email Verification</Label>
+                  <Label style={{ color: 'var(--text)' }}>{t('authSettings.emailVerification')}</Label>
                   <p className="text-sm" style={{ color: 'var(--text-dim)' }}>
-                    Require users to verify their email
+                    {t('authSettings.emailVerificationDesc')}
                   </p>
                 </div>
                 <Switch
@@ -760,10 +801,10 @@ export function AuthSettingsTab() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-                  Social Login
+                  {t('authSettings.socialLogin')}
                 </h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-                  Configure OAuth providers for social login
+                  {t('authSettings.socialLoginDesc')}
                 </p>
               </div>
               <Button
@@ -775,7 +816,7 @@ export function AuthSettingsTab() {
                 }}
               >
                 <Key className="w-4 h-4 mr-2" />
-                Add Provider
+                {t('authSettings.addProvider')}
               </Button>
             </div>
             <div>
@@ -804,7 +845,7 @@ export function AuthSettingsTab() {
                         });
                         setShowOAuthForm(true);
                       }}
-                      onDelete={() => deleteOAuthMutation.mutate(provider.provider)}
+                      onDelete={() => setConfirmDeleteProvider(provider.provider)}
                     />
                   ))}
                   {oauthProviders.length === 0 && (
@@ -812,7 +853,7 @@ export function AuthSettingsTab() {
                       className="col-span-2 text-center py-8"
                       style={{ color: 'var(--text-dim)' }}
                     >
-                      No OAuth providers configured. Click "Add Provider" to get started.
+                      {t('authSettings.noProviders')}
                     </div>
                   )}
                 </div>
@@ -834,10 +875,10 @@ export function AuthSettingsTab() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-                  Team Members
+                  {t('authSettings.teamMembers')}
                 </h3>
                 <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-                  Manage who has access to your organization
+                  {t('authSettings.teamMembersDesc')}
                 </p>
               </div>
               {canManageTeam && (
@@ -850,7 +891,7 @@ export function AuthSettingsTab() {
                   }}
                 >
                   <UserPlus className="w-4 h-4 mr-2" />
-                  Invite
+                  {t('authSettings.invite')}
                 </Button>
               )}
             </div>
@@ -865,7 +906,7 @@ export function AuthSettingsTab() {
                 >
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <Label style={{ color: 'var(--text)' }}>Email</Label>
+                      <Label style={{ color: 'var(--text)' }}>{t('authSettings.inviteEmail')}</Label>
                       <Input
                         type="email"
                         value={inviteEmail}
@@ -874,15 +915,15 @@ export function AuthSettingsTab() {
                       />
                     </div>
                     <div className="w-40">
-                      <Label style={{ color: 'var(--text)' }}>Role</Label>
+                      <Label style={{ color: 'var(--text)' }}>{t('authSettings.inviteRole')}</Label>
                       <Select value={inviteRole} onValueChange={setInviteRole}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="team_admin">Admin</SelectItem>
-                          <SelectItem value="team_member">Member</SelectItem>
-                          <SelectItem value="team_viewer">Viewer</SelectItem>
+                          <SelectItem value="team_admin">{t('authSettings.roles.admin')}</SelectItem>
+                          <SelectItem value="team_member">{t('authSettings.roles.member')}</SelectItem>
+                          <SelectItem value="team_viewer">{t('authSettings.roles.viewer')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -896,7 +937,7 @@ export function AuthSettingsTab() {
                       }}
                       style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
                     >
-                      Cancel
+                      {t('billingSettings.cancelBtn')}
                     </Button>
                     <Button
                       onClick={() =>
@@ -909,7 +950,7 @@ export function AuthSettingsTab() {
                         boxShadow: 'var(--shadow-btn-primary-rest)',
                       }}
                     >
-                      Send Invite
+                      {t('authSettings.sendInvite')}
                     </Button>
                   </div>
                 </div>
@@ -923,13 +964,13 @@ export function AuthSettingsTab() {
                     onRoleChange={(role) =>
                       updateRoleMutation.mutate({ userId: member.user_id, role })
                     }
-                    onRemove={() => removeMemberMutation.mutate(member.user_id)}
+                    onRemove={() => setConfirmRemoveMember(member.user_id)}
                     canManage={canManageTeam}
                   />
                 ))}
                 {members.length === 0 && (
                   <div className="text-center py-8" style={{ color: 'var(--text-dim)' }}>
-                    No team members found
+                    {t('authSettings.noMembers')}
                   </div>
                 )}
               </div>
@@ -946,10 +987,10 @@ export function AuthSettingsTab() {
           >
             <div className="mb-4">
               <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-                Pending Invitations
+                {t('authSettings.pendingInvitations')}
               </h3>
               <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-                Invitations that haven't been accepted yet
+                {t('authSettings.pendingInvitationsDesc')}
               </p>
             </div>
             <div>
@@ -962,14 +1003,14 @@ export function AuthSettingsTab() {
                       navigator.clipboard.writeText(
                         `${window.location.origin}/invite/${invite.code}`
                       );
-                      toast.success('Link copied');
+                      toast.success(t('authSettings.toastLinkCopied'));
                     }}
-                    onRevoke={() => revokeInviteMutation.mutate(invite.code)}
+                    onRevoke={() => setConfirmRevokeInvite(invite.code)}
                   />
                 ))}
                 {pendingInvites.length === 0 && (
                   <div className="text-center py-8" style={{ color: 'var(--text-dim)' }}>
-                    No pending invitations
+                    {t('authSettings.noPendingInvites')}
                   </div>
                 )}
               </div>
@@ -977,6 +1018,81 @@ export function AuthSettingsTab() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={!!confirmRemoveMember} onOpenChange={() => setConfirmRemoveMember(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('authSettings.removeMemberTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('authSettings.removeMemberDesc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('billingSettings.cancelBtn')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmRemoveMember) {
+                  removeMemberMutation.mutate(confirmRemoveMember);
+                  setConfirmRemoveMember(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('authSettings.remove')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!confirmDeleteProvider} onOpenChange={() => setConfirmDeleteProvider(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('authSettings.deleteProviderTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('authSettings.deleteProviderDesc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('billingSettings.cancelBtn')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDeleteProvider) {
+                  deleteOAuthMutation.mutate(confirmDeleteProvider);
+                  setConfirmDeleteProvider(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('authSettings.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!confirmRevokeInvite} onOpenChange={() => setConfirmRevokeInvite(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('authSettings.revokeInviteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('authSettings.revokeInviteDesc')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('billingSettings.cancelBtn')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmRevokeInvite) {
+                  revokeInviteMutation.mutate(confirmRevokeInvite);
+                  setConfirmRevokeInvite(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {t('authSettings.revoke')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

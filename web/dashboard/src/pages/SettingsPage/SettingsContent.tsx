@@ -1,6 +1,6 @@
 /**
  * Shared settings content: Account, Billing, Developer, Notifications, Security, Privacy.
- * Uses Sealed Containment design system.
+ * Uses Sealed Containment design system with sidebar navigation.
  *
  * URL STRUCTURE (Hash-based routing - long term):
  *   /u/:username/settings#account       → Account tab (default)
@@ -22,7 +22,19 @@ import { useApiReachableStore } from '@/stores/apiReachableStore';
 import { useAuthStore } from '@/stores/authStore';
 import type { UserProfile } from '@/types';
 import { useQuery } from '@tanstack/react-query';
-import { Bell, Brain, Code, CreditCard, Dna, Link2, Shield, ShieldCheck, User } from 'lucide-react';
+import {
+  Bell,
+  Brain,
+  Code,
+  CreditCard,
+  Dna,
+  Link2,
+  Settings,
+  Shield,
+  ShieldCheck,
+  Terminal,
+  User,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useSearchParams } from 'react-router-dom';
@@ -66,19 +78,57 @@ function getInitialTab(
   return 'account';
 }
 
-const TABS: { id: SettingsTabValue; label: string; icon: typeof User }[] = [
-  { id: 'account', label: 'Account', icon: User },
-  { id: 'billing', label: 'Billing', icon: CreditCard },
-  { id: 'developer', label: 'Developer', icon: Code },
-  { id: 'ai-keys', label: 'AI Keys', icon: Brain },
-  { id: 'notifications', label: 'Notifications', icon: Bell },
-  { id: 'security', label: 'Security', icon: ShieldCheck },
-  { id: 'privacy', label: 'Privacy', icon: Shield },
-  { id: 'platform', label: 'Platform', icon: Dna },
-  { id: 'integrations', label: 'Integrations', icon: Link2 },
-  { id: 'github', label: 'GitHub', icon: Code },
-  { id: 'trust-api', label: 'Trust API', icon: Shield },
+type TabDef = { id: SettingsTabValue; label: string; icon: typeof User };
+
+const TAB_GROUPS: { label: string; icon: typeof Settings; tabs: TabDef[] }[] = [
+  {
+    label: 'General',
+    icon: Settings,
+    tabs: [
+      { id: 'account', label: 'Account', icon: User },
+      { id: 'billing', label: 'Billing', icon: CreditCard },
+      { id: 'notifications', label: 'Notifications', icon: Bell },
+      { id: 'privacy', label: 'Privacy', icon: Shield },
+    ],
+  },
+  {
+    label: 'Security & Access',
+    icon: ShieldCheck,
+    tabs: [
+      { id: 'security', label: 'Security', icon: ShieldCheck },
+      { id: 'github', label: 'GitHub', icon: Code },
+    ],
+  },
+  {
+    label: 'Developer',
+    icon: Terminal,
+    tabs: [
+      { id: 'developer', label: 'API & Webhooks', icon: Code },
+      { id: 'ai-keys', label: 'AI Keys', icon: Brain },
+      { id: 'trust-api', label: 'Trust API', icon: Shield },
+    ],
+  },
+  {
+    label: 'Platform',
+    icon: Dna,
+    tabs: [
+      { id: 'platform', label: 'Platform', icon: Dna },
+      { id: 'integrations', label: 'Integrations', icon: Link2 },
+    ],
+  },
 ];
+
+function getTabLabel(tabId: SettingsTabValue, fallback: string, t: (k: string) => string): string {
+  const map: Partial<Record<SettingsTabValue, string>> = {
+    account: t('settings.account'),
+    billing: t('settings.billing'),
+    developer: t('settings.developer'),
+    notifications: t('settings.notifications'),
+    security: t('settings.security'),
+    privacy: t('settings.privacy'),
+  };
+  return map[tabId] ?? fallback;
+}
 
 export function SettingsContent({
   showHeader = true,
@@ -175,52 +225,56 @@ export function SettingsContent({
         </div>
       )}
 
-      {/* Tab Navigation — containment-style tabs */}
-      <div className="settings-page-tabs" role="tablist">
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          const tabLabel = tab.id === 'account' ? t('settings.account')
-            : tab.id === 'billing' ? t('settings.billing')
-            : tab.id === 'developer' ? t('settings.developer')
-            : tab.id === 'notifications' ? t('settings.notifications')
-            : tab.id === 'security' ? t('settings.security')
-            : tab.id === 'privacy' ? t('settings.privacy')
-            : tab.label;
-          return (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={isActive}
-              className="settings-page-tab"
-              data-state={isActive ? 'active' : 'inactive'}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <Icon style={{ width: 14, height: 14 }} />
-              <span>{tabLabel}</span>
-            </button>
-          );
-        })}
-      </div>
+      <div className="settings-layout">
+        {/* Sidebar Navigation */}
+        <nav className="settings-sidebar" role="tablist" aria-orientation="vertical">
+          {TAB_GROUPS.map((group, groupIdx) => (
+            <div className="settings-sidebar-group" key={group.label}>
+              {groupIdx > 0 && <div className="settings-sidebar-divider" />}
+              <div className="settings-sidebar-group-label">
+                <group.icon style={{ width: 12, height: 12 }} />
+                {group.label}
+              </div>
+              {group.tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={isActive}
+                    className="settings-sidebar-item"
+                    data-state={isActive ? 'active' : 'inactive'}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    <Icon className="settings-sidebar-item-icon" />
+                    <span>{getTabLabel(tab.id, tab.label, t)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
 
-      {/* Tab Content */}
-      <div className="settings-tab-content" style={{ paddingTop: 'var(--space-6)' }}>
-        {activeTab === 'account' && <AccountSettingsTab />}
-        {activeTab === 'billing' && <BillingSettingsTab returnUrl={returnUrl} displayPlan={displayPlan} />}
-        {activeTab === 'developer' && (
-          <>
-            <DeveloperSettingsTab />
-            <AuthSettingsTab />
-          </>
-        )}
-        {activeTab === 'notifications' && <NotificationsSettingsTab />}
-        {activeTab === 'security' && <SecuritySettingsTab />}
-        {activeTab === 'privacy' && <PrivacySettingsTab profile={profile ?? undefined} />}
-        {activeTab === 'platform' && <PlatformSettingsTab />}
-        {activeTab === 'ai-keys' && <AIKeysSettingsTab />}
-        {activeTab === 'integrations' && <IntegrationsSettingsTab />}
-        {activeTab === 'github' && <GitHubSettingsPage />}
-        {activeTab === 'trust-api' && <TrustAPISettingsTab returnUrl={returnUrl} />}
+        {/* Tab Content */}
+        <div className="settings-tab-content">
+          {activeTab === 'account' && <AccountSettingsTab />}
+          {activeTab === 'billing' && <BillingSettingsTab returnUrl={returnUrl} displayPlan={displayPlan} />}
+          {activeTab === 'developer' && (
+            <>
+              <DeveloperSettingsTab />
+              <AuthSettingsTab />
+            </>
+          )}
+          {activeTab === 'notifications' && <NotificationsSettingsTab />}
+          {activeTab === 'security' && <SecuritySettingsTab />}
+          {activeTab === 'privacy' && <PrivacySettingsTab profile={profile ?? undefined} />}
+          {activeTab === 'platform' && <PlatformSettingsTab />}
+          {activeTab === 'ai-keys' && <AIKeysSettingsTab />}
+          {activeTab === 'integrations' && <IntegrationsSettingsTab />}
+          {activeTab === 'github' && <GitHubSettingsPage />}
+          {activeTab === 'trust-api' && <TrustAPISettingsTab returnUrl={returnUrl} />}
+        </div>
       </div>
     </div>
   );

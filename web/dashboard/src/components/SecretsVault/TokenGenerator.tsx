@@ -145,7 +145,7 @@ export function TokenGenerator({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5 text-brand-500" />
+            <Key className="h-5 w-5 text-[var(--status-ok)]" />
             Generate Access Token
           </DialogTitle>
           <DialogDescription>
@@ -155,7 +155,7 @@ export function TokenGenerator({
           {canCreateTokens && (
             <div className={cn(
               "mt-2 flex items-center gap-2 text-sm",
-              hasReachedTokenLimit ? "text-warning" : "text-muted-foreground"
+              hasReachedTokenLimit ? "text-warning" : "text-[var(--text-faint)]"
             )}>
               <span>
                 {currentTokenCount} of {tokenLimit} tokens used
@@ -179,7 +179,7 @@ export function TokenGenerator({
                 onChange={(e) => setName(e.target.value)}
                 maxLength={100}
               />
-              <p className="text-xs text-text-muted">
+              <p className="text-xs text-[var(--text-faint)]">
                 A descriptive name to help identify this token later
               </p>
             </div>
@@ -199,7 +199,7 @@ export function TokenGenerator({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-text-muted flex items-center gap-1">
+              <p className="text-xs text-[var(--text-faint)] flex items-center gap-1">
                 <Clock className="h-3 w-3" />
                 Token will expire on {format(expirationTime, "MMM d, yyyy HH:mm")}
               </p>
@@ -217,8 +217,8 @@ export function TokenGenerator({
                     className={cn(
                       "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
                       selectedScopes.includes(scope.value)
-                        ? "bg-brand-500/20 text-brand-600 border border-brand-500/30"
-                        : "bg-bg-tertiary text-text-muted border border-border-subtle hover:border-border-default"
+                        ? "rgba(143,255,208,0.15) text-[var(--accent)] border border-[rgba(143,255,208,0.3)]"
+                        : "bg-bg-tertiary text-[var(--text-faint)] border border-[var(--panel-edge)]-subtle hover:border-[var(--panel-edge)]-default"
                     )}
                   >
                     {scope.label}
@@ -228,13 +228,13 @@ export function TokenGenerator({
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-text-muted">
+              <p className="text-xs text-[var(--text-faint)]">
                 Select the permissions this token will have
               </p>
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-border-subtle">
+            <div className="flex justify-end gap-3 pt-4 border-t border-[var(--panel-edge)]-subtle">
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
@@ -352,21 +352,21 @@ export function TokenGenerator({
             {/* Token Details */}
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-text-muted">Token ID</span>
+                <span className="text-[var(--text-faint)]">Token ID</span>
                 <span className="font-mono text-card-foreground">
                   {generatedToken.token_id}
                 </span>
               </div>
               {generatedToken.name && (
                 <div className="flex justify-between">
-                  <span className="text-text-muted">Name</span>
+                  <span className="text-[var(--text-faint)]">Name</span>
                   <span className="text-card-foreground">
                     {generatedToken.name}
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-text-muted">Scopes</span>
+                <span className="text-[var(--text-faint)]">Scopes</span>
                 <div className="flex gap-1">
                   {generatedToken.scopes?.map((scope) => (
                     <Badge key={scope} variant="outline" className="text-xs">
@@ -378,7 +378,7 @@ export function TokenGenerator({
             </div>
 
             {/* Close Button */}
-            <div className="pt-4 border-t border-border-subtle">
+            <div className="pt-4 border-t border-[var(--panel-edge)]-subtle">
               <Button onClick={onClose} className="w-full">
                 I've Copied My Token
               </Button>

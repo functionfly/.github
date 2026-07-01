@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Chamber, CornerBrace, FrameButton, StatusPill } from '@/components/sc';
 import { CreditCard, Download } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface InvoicesSectionProps {
   invoices: Invoice[];
@@ -20,16 +21,17 @@ export function InvoicesSection({
   formatCurrency,
   formatDate,
 }: InvoicesSectionProps) {
+  const { t } = useTranslation();
   return (
     <Chamber>
       <CornerBrace position="tl" />
       <CornerBrace position="br" />
       <div className="mb-4">
         <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-          Invoices
+          {t('billingSettings.invoices.title')}
         </h3>
         <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-          View and download your past invoices
+          {t('billingSettings.invoices.description')}
         </p>
       </div>
       <div>
@@ -56,9 +58,9 @@ export function InvoicesSection({
         ) : invoices.length === 0 ? (
           <div className="text-center p-6">
             <CreditCard className="w-12 h-12 mx-auto mb-3" style={{ color: 'var(--text-faint)' }} />
-            <p style={{ color: 'var(--text-dim)' }}>No invoices yet</p>
+            <p style={{ color: 'var(--text-dim)' }}>{t('billingSettings.invoices.noInvoices')}</p>
             <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
-              Your invoices will appear here after your first payment
+              {t('billingSettings.invoices.noInvoicesDesc')}
             </p>
           </div>
         ) : (
@@ -100,7 +102,7 @@ export function InvoicesSection({
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Download
+                        {t('billingSettings.invoices.download')}
                       </a>
                     </FrameButton>
                   ) : invoice.status === 'paid' ? (
@@ -109,7 +111,7 @@ export function InvoicesSection({
                       style={{ color: 'var(--text-faint)' }}
                       title="Invoice PDF will be available shortly"
                     >
-                      Processing...
+                      {t('billingSettings.invoices.processing')}
                     </span>
                   ) : null}
                 </div>

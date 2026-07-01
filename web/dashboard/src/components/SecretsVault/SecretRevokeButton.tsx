@@ -253,7 +253,7 @@ function ImpactAnalysis({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-text-primary flex items-center gap-2">
+        <h4 className="text-sm font-medium text-[var(--text)] flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-warning" />
           Impact Analysis
         </h4>
@@ -273,12 +273,12 @@ function ImpactAnalysis({
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-2 text-sm">
-        <div className="flex items-center gap-2 text-text-secondary">
+        <div className="flex items-center gap-2 text-[var(--text-dim)]">
           <Server className="h-4 w-4" />
           <span>{services.length} services affected</span>
         </div>
         {tokenCount > 0 && (
-          <div className="flex items-center gap-2 text-text-secondary">
+          <div className="flex items-center gap-2 text-[var(--text-dim)]">
             <Key className="h-4 w-4" />
             <span>{tokenCount} tokens revoked</span>
           </div>
@@ -287,7 +287,7 @@ function ImpactAnalysis({
 
       {/* Service list */}
       {services.length > 0 && (
-        <div className="space-y-2 max-h-40 overflow-y-auto rounded-lg border border-border-subtle p-2">
+        <div className="space-y-2 max-h-40 overflow-y-auto rounded-lg border border-[var(--panel-edge)]-subtle p-2">
           {services.map((service) => (
             <div
               key={service.id}
@@ -305,7 +305,7 @@ function ImpactAnalysis({
                   {service.criticality}
                 </Badge>
                 {service.estimatedDowntime && (
-                  <span className="text-text-muted">~{service.estimatedDowntime}</span>
+                  <span className="text-[var(--text-faint)]">~{service.estimatedDowntime}</span>
                 )}
               </div>
             </div>
@@ -485,8 +485,8 @@ export function SecretRevokeButton({
               {/* Secret preview */}
               {secretPreview && (
                 <div className="rounded-lg bg-bg-secondary p-3">
-                  <Label className="text-xs text-text-muted">Secret Preview</Label>
-                  <code className="block mt-1 text-sm font-mono text-text-primary">
+                  <Label className="text-xs text-[var(--text-faint)]">Secret Preview</Label>
+                  <code className="block mt-1 text-sm font-mono text-[var(--text)]">
                     {secretPreview}
                   </code>
                 </div>
@@ -518,7 +518,7 @@ export function SecretRevokeButton({
                       <Label
                         htmlFor="immediate"
                         className={cn(
-                          "flex flex-col items-center justify-center rounded-lg border-2 border-border-subtle p-3 cursor-pointer transition-colors hover:border-border-hover",
+                          "flex flex-col items-center justify-center rounded-lg border-2 border-[var(--panel-edge)]-subtle p-3 cursor-pointer transition-colors hover:border-[var(--panel-edge)]-hover",
                           revokeMode === "immediate" && "border-error bg-error/5"
                         )}
                       >
@@ -537,11 +537,11 @@ export function SecretRevokeButton({
                       <Label
                         htmlFor="scheduled"
                         className={cn(
-                          "flex flex-col items-center justify-center rounded-lg border-2 border-border-subtle p-3 cursor-pointer transition-colors hover:border-border-hover",
-                          revokeMode === "scheduled" && "border-brand-500 bg-brand-500/5"
+                          "flex flex-col items-center justify-center rounded-lg border-2 border-[var(--panel-edge)]-subtle p-3 cursor-pointer transition-colors hover:border-[var(--panel-edge)]-hover",
+                          revokeMode === "scheduled" && "border-[rgba(143,255,208,0.3)] rgba(143,255,208,0.15)/5"
                         )}
                       >
-                        <Calendar className="h-5 w-5 mb-1 text-brand-500" />
+                        <Calendar className="h-5 w-5 mb-1 text-[var(--status-ok)]" />
                         <span className="text-xs font-medium">Scheduled</span>
                       </Label>
                     </div>
@@ -556,7 +556,7 @@ export function SecretRevokeButton({
                       <Label
                         htmlFor="graceful"
                         className={cn(
-                          "flex flex-col items-center justify-center rounded-lg border-2 border-border-subtle p-3 cursor-pointer transition-colors hover:border-border-hover",
+                          "flex flex-col items-center justify-center rounded-lg border-2 border-[var(--panel-edge)]-subtle p-3 cursor-pointer transition-colors hover:border-[var(--panel-edge)]-hover",
                           revokeMode === "graceful" && "border-warning bg-warning/5"
                         )}
                       >
@@ -596,7 +596,7 @@ export function SecretRevokeButton({
                     max={options.maxGracePeriodHours ?? 168}
                     step={1}
                   />
-                  <div className="flex justify-between text-xs text-text-muted">
+                  <div className="flex justify-between text-xs text-[var(--text-faint)]">
                     <span>Immediate</span>
                     <span>{options.maxGracePeriodHours} hours max</span>
                   </div>
@@ -626,7 +626,7 @@ export function SecretRevokeButton({
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-sm">Revoke Dependent Tokens</Label>
-                      <p className="text-xs text-text-muted">
+                      <p className="text-xs text-[var(--text-faint)]">
                         Also revoke {dependentTokens} access token
                         {dependentTokens !== 1 ? "s" : ""}
                       </p>
@@ -638,7 +638,7 @@ export function SecretRevokeButton({
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-sm">Notify Stakeholders</Label>
-                    <p className="text-xs text-text-muted">
+                    <p className="text-xs text-[var(--text-faint)]">
                       Send notifications to affected users
                     </p>
                   </div>
@@ -694,11 +694,11 @@ export function SecretRevokeButton({
 
           {step === "processing" && (
             <div className="py-12 text-center">
-              <Loader2 className="h-12 w-12 animate-spin text-brand-500 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-text-primary mb-2">
+              <Loader2 className="h-12 w-12 animate-spin text-[var(--status-ok)] mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-[var(--text)] mb-2">
                 Processing Revocation...
               </h3>
-              <p className="text-text-secondary">
+              <p className="text-[var(--text-dim)]">
                 {revokeMode === "immediate"
                   ? "Revoking secret access..."
                   : revokeMode === "scheduled"
@@ -713,10 +713,10 @@ export function SecretRevokeButton({
               <div className="mx-auto h-12 w-12 rounded-full bg-success-glow flex items-center justify-center mb-4">
                 <CheckCircle className="h-6 w-6 text-success" />
               </div>
-              <h3 className="text-lg font-semibold text-text-primary mb-2">
+              <h3 className="text-lg font-semibold text-[var(--text)] mb-2">
                 Secret Revoked Successfully
               </h3>
-              <p className="text-text-secondary mb-4">
+              <p className="text-[var(--text-dim)] mb-4">
                 {revokeMode === "immediate"
                   ? "The secret has been immediately revoked."
                   : revokeMode === "scheduled"
@@ -724,7 +724,7 @@ export function SecretRevokeButton({
                   : `Grace period started. Secret will be revoked in ${gracePeriodHours} hours.`}
               </p>
               {cascadeRevoke && dependentTokens > 0 && (
-                <p className="text-sm text-text-muted">
+                <p className="text-sm text-[var(--text-faint)]">
                   {dependentTokens} access token{dependentTokens !== 1 ? "s" : ""} also
                   revoked.
                 </p>
@@ -743,7 +743,7 @@ export function SecretRevokeButton({
               <h3 className="text-lg font-semibold text-error mb-2">
                 Revocation Failed
               </h3>
-              <p className="text-text-secondary mb-4">
+              <p className="text-[var(--text-dim)] mb-4">
                 {localError || revokeResult?.errorMessage || "An unexpected error occurred."}
               </p>
               <div className="flex justify-center gap-2">

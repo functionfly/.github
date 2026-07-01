@@ -163,7 +163,7 @@ export function VaultOverviewCard({
               className={cn("h-4 w-4", {
                 "text-green-500": healthStatus === "healthy",
                 "text-yellow-500": healthStatus === "warning",
-                "text-red-500": healthStatus === "error",
+                "text-[var(--status-revoked)]": healthStatus === "error",
                 "text-(--color-text-muted)": healthStatus === "unknown",
               })}
             />

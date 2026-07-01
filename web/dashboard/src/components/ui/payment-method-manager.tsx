@@ -16,7 +16,8 @@ import { Loader2, Plus, Trash2, Star, CreditCard, AlertCircle } from 'lucide-rea
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '')
+const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY
+const stripePromise = stripeKey ? loadStripe(stripeKey) : null
 
 interface PaymentMethodManagerProps {
   returnUrl?: string

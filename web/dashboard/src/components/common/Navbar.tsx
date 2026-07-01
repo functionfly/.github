@@ -2,9 +2,9 @@ import { Logo } from '@/components/common/Logo';
 import { MarketplaceDropdown } from '@/components/common/MarketplaceDropdown';
 import { ProvidersDropdown } from '@/components/common/ProvidersDropdown';
 import { ThemeToggle } from '@/components/common/ThemeToggle';
+import { FrameButton, SealedButton } from '@/components/containment';
 import { UserMenu } from '@/components/layout/UserMenu';
 import { NotificationBell } from '@/components/notifications';
-import { FrameButton, SealedButton } from '@/components/sc';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DOCS_SITE_URL, getMarketingRedirectOrigin, PROVIDERS } from '@/lib/constants';
@@ -15,7 +15,20 @@ import { useProvidersStore } from '@/stores/providersStore';
 import { useThemeStore } from '@/stores/themeStore';
 import '@/styles/sc-navbar.css';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, Cloud, Command, CreditCard, FunctionSquare, Home, Menu, MessageCircle, ShoppingBag, Sparkles, X, Zap } from 'lucide-react';
+import {
+  Bot,
+  Cloud,
+  Command,
+  CreditCard,
+  FunctionSquare,
+  Home,
+  Menu,
+  MessageCircle,
+  ShoppingBag,
+  Sparkles,
+  X,
+  Zap,
+} from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 
@@ -30,33 +43,36 @@ interface QuickAction {
   key: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  action: (navigate: ReturnType<typeof useNavigate>, setShowCommandPalette: (show: boolean) => void) => void;
+  action: (
+    navigate: ReturnType<typeof useNavigate>,
+    setShowCommandPalette: (show: boolean) => void
+  ) => void;
 }
 
 const QUICK_ACTIONS: QuickAction[] = [
-  { 
-    key: 'g', 
-    label: 'Go to...', 
+  {
+    key: 'g',
+    label: 'Go to...',
     icon: Command,
-    action: (_, setShow) => setShow(true)
+    action: (_, setShow) => setShow(true),
   },
-  { 
-    key: 'n', 
-    label: 'New Function', 
+  {
+    key: 'n',
+    label: 'New Function',
     icon: Sparkles,
     action: (navigate, setShow) => {
       setShow(false);
       navigate('/functions/new');
-    }
+    },
   },
-  { 
-    key: 'a', 
-    label: 'Agents', 
+  {
+    key: 'a',
+    label: 'Agents',
     icon: Zap,
     action: (navigate, setShow) => {
       setShow(false);
       navigate('/marketplace/agents');
-    }
+    },
   },
 ];
 
@@ -90,7 +106,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
     (e: KeyboardEvent) => {
       // Skip if focus is in an interactive element (search, code editor, etc.)
       const target = e.target as HTMLElement;
-      const isInteractive = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      const isInteractive =
+        target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
 
       // Command palette: Cmd/Ctrl + K (skip if in an input)
       if ((e.metaKey || e.ctrlKey) && e.key === 'k' && !isInteractive) {
@@ -164,7 +181,10 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       <Menu className="w-5 h-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
+                  <TooltipContent
+                    side="bottom"
+                    className="bg-bg-secondary border border-border-subtle shadow-lg"
+                  >
                     <p className="text-text-primary">Open sidebar</p>
                   </TooltipContent>
                 </Tooltip>
@@ -174,10 +194,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               {isAuthenticated ? (
                 <Link
                   to="/dashboard"
-                  className={cn(
-                    'shrink-0 mr-4 md:mr-6',
-                    variant === 'dashboard' && 'lg:hidden'
-                  )}
+                  className={cn('shrink-0 mr-4 md:mr-6', variant === 'dashboard' && 'lg:hidden')}
                   aria-label="FunctionFly home"
                 >
                   <Logo />
@@ -185,10 +202,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               ) : (
                 <a
                   href={marketingHomeUrl}
-                  className={cn(
-                    'shrink-0 mr-4 md:mr-6',
-                    variant === 'dashboard' && 'lg:hidden'
-                  )}
+                  className={cn('shrink-0 mr-4 md:mr-6', variant === 'dashboard' && 'lg:hidden')}
                   aria-label="FunctionFly home"
                 >
                   <Logo />
@@ -196,22 +210,38 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
               )}
 
               {/* Breadcrumbs - shown on nested pages */}
-              {variant === 'dashboard' && location.pathname.split('/').filter(Boolean).length > 1 && (
-                <nav className="hidden lg:flex items-center gap-2 text-sm text-text-muted ml-2">
-                  <Link to="/dashboard" className="hover:text-text-primary transition-colors">Home</Link>
-                  {location.pathname.split('/').filter(Boolean).slice(0, -1).map((segment, i) => {
-                    const path = '/' + location.pathname.split('/').filter(Boolean).slice(0, i + 1).join('/');
-                    return (
-                      <span key={i} className="flex items-center gap-2">
-                        <span className="text-text-muted">/</span>
-                        <Link to={path} className="hover:text-text-primary transition-colors capitalize">
-                          {segment}
-                        </Link>
-                      </span>
-                    );
-                  })}
-                </nav>
-              )}
+              {variant === 'dashboard' &&
+                location.pathname.split('/').filter(Boolean).length > 1 && (
+                  <nav className="hidden lg:flex items-center gap-2 text-sm text-text-muted ml-2">
+                    <Link to="/dashboard" className="hover:text-text-primary transition-colors">
+                      Home
+                    </Link>
+                    {location.pathname
+                      .split('/')
+                      .filter(Boolean)
+                      .slice(0, -1)
+                      .map((segment, i) => {
+                        const path =
+                          '/' +
+                          location.pathname
+                            .split('/')
+                            .filter(Boolean)
+                            .slice(0, i + 1)
+                            .join('/');
+                        return (
+                          <span key={i} className="flex items-center gap-2">
+                            <span className="text-text-muted">/</span>
+                            <Link
+                              to={path}
+                              className="hover:text-text-primary transition-colors capitalize"
+                            >
+                              {segment}
+                            </Link>
+                          </span>
+                        );
+                      })}
+                  </nav>
+                )}
             </div>
 
             {/* Desktop Navigation - Authenticated */}
@@ -227,9 +257,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     )}
                   >
                     Dashboard
-                    {location.pathname === '/dashboard' && (
-                      <span className="active-bar" />
-                    )}
+                    {location.pathname === '/dashboard' && <span className="active-bar" />}
                   </Link>
 
                   {/* Functions - direct link */}
@@ -237,11 +265,14 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     to="/functions/my"
                     className={cn(
                       'sc-navbar-link-indicator',
-                      (location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && 'active'
+                      (location.pathname === '/functions' ||
+                        location.pathname.startsWith('/functions/')) &&
+                        'active'
                     )}
                   >
                     Functions
-                    {(location.pathname === '/functions' || location.pathname.startsWith('/functions/')) && (
+                    {(location.pathname === '/functions' ||
+                      location.pathname.startsWith('/functions/')) && (
                       <span className="active-bar" />
                     )}
                   </Link>
@@ -263,9 +294,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     )}
                   >
                     Home
-                    {location.pathname === '/' && (
-                      <span className="active-bar" />
-                    )}
+                    {location.pathname === '/' && <span className="active-bar" />}
                   </Link>
 
                   {/* Functions - direct link */}
@@ -293,9 +322,7 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     )}
                   >
                     Pricing
-                    {location.pathname === '/pricing' && (
-                      <span className="active-bar" />
-                    )}
+                    {location.pathname === '/pricing' && <span className="active-bar" />}
                   </Link>
                   <a
                     href={DOCS_SITE_URL}
@@ -325,14 +352,19 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                       </span>
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
+                  <TooltipContent
+                    side="bottom"
+                    className="bg-bg-secondary border border-border-subtle shadow-lg"
+                  >
                     <p className="text-text-primary font-medium">
                       {connectedCount === totalProviders
                         ? 'All providers connected'
                         : `${connectedCount} of ${totalProviders} providers connected`}
                     </p>
                     <p className="text-xs text-text-muted mt-1">
-                      {Object.values(PROVIDERS).map((p) => p.name).join(' • ')}
+                      {Object.values(PROVIDERS)
+                        .map((p) => p.name)
+                        .join(' • ')}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -352,9 +384,12 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                     </kbd>
                   </button>
                 </TooltipTrigger>
-                  <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
-                    <p className="text-text-primary">Command Palette</p>
-                  </TooltipContent>
+                <TooltipContent
+                  side="bottom"
+                  className="bg-bg-secondary border border-border-subtle shadow-lg"
+                >
+                  <p className="text-text-primary">Command Palette</p>
+                </TooltipContent>
               </Tooltip>
 
               {isAuthenticated ? (
@@ -381,12 +416,13 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           )}
                         </Link>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom" className="bg-bg-secondary border border-border-subtle shadow-lg">
+                      <TooltipContent
+                        side="bottom"
+                        className="bg-bg-secondary border border-border-subtle shadow-lg"
+                      >
                         <p className="text-text-primary">Messages</p>
                         {messagesUnread > 0 && (
-                          <p className="text-xs text-text-muted">
-                            {messagesUnread} unread
-                          </p>
+                          <p className="text-xs text-text-muted">{messagesUnread} unread</p>
                         )}
                       </TooltipContent>
                     </Tooltip>
@@ -495,7 +531,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-2 py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                          location.pathname.startsWith('/functions') && 'text-text-primary bg-bg-secondary'
+                          location.pathname.startsWith('/functions') &&
+                            'text-text-primary bg-bg-secondary'
                         )}
                       >
                         <FunctionSquare className="w-4 h-4" /> Functions
@@ -511,7 +548,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/functions/discovery' && 'text-text-primary bg-bg-secondary'
+                            location.pathname === '/functions/discovery' &&
+                              'text-text-primary bg-bg-secondary'
                           )}
                         >
                           <FunctionSquare className="w-4 h-4" /> Browse Functions
@@ -521,7 +559,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/marketplace/agents' && 'text-text-primary bg-bg-secondary'
+                            location.pathname === '/marketplace/agents' &&
+                              'text-text-primary bg-bg-secondary'
                           )}
                         >
                           <Bot className="w-4 h-4" /> Browse Agents
@@ -531,7 +570,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/marketplace/purchases' && 'text-text-primary bg-bg-secondary'
+                            location.pathname === '/marketplace/purchases' &&
+                              'text-text-primary bg-bg-secondary'
                           )}
                         >
                           <ShoppingBag className="w-4 h-4" /> My Purchases
@@ -548,7 +588,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/providers' && 'text-text-primary bg-bg-secondary'
+                            location.pathname === '/providers' &&
+                              'text-text-primary bg-bg-secondary'
                           )}
                         >
                           <Cloud className="w-4 h-4" /> Connected Providers
@@ -558,7 +599,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/providers/billing' && 'text-text-primary bg-bg-secondary'
+                            location.pathname === '/providers/billing' &&
+                              'text-text-primary bg-bg-secondary'
                           )}
                         >
                           <CreditCard className="w-4 h-4" /> Usage & Billing
@@ -579,7 +621,8 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-2 py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                          location.pathname === '/functions/discovery' && 'text-text-primary bg-bg-secondary'
+                          location.pathname === '/functions/discovery' &&
+                            'text-text-primary bg-bg-secondary'
                         )}
                       >
                         <FunctionSquare className="w-4 h-4" /> Functions
@@ -619,7 +662,9 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         </FrameButton>
                       </Link>
                       <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                        <SealedButton size="sm" className="w-full">Get Started</SealedButton>
+                        <SealedButton size="sm" className="w-full">
+                          Get Started
+                        </SealedButton>
                       </Link>
                     </div>
                   )}

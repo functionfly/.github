@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ import {
   getVaultPassphrase,
   markVaultApiKeyStored,
 } from "@/services/vault-api-key-storage";
+import { teamsApi } from "@/api/teams";
 import { toast } from "sonner";
 import { usePlan } from "@/hooks";
 
@@ -51,16 +53,29 @@ export function CreateAPIKeyModal({
 }: CreateAPIKeyModalProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isEnterprise } = usePlan();
+  const { data: teamsData } = useQuery({ queryKey: ['teams'], queryFn: () => teamsApi.list() });
+  const teams = teamsData?.teams ?? [];
   const [isLoading, setIsLoading] = useState(false);
   const [showKey, setShowKey] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState(20);
   const [copied, setCopied] = useState(false);
 
+  const resolveInitialKeyType = (): APIKeyType => {
+    const param = searchParams.get("type");
+    if (param && param in API_KEY_TYPE_LABELS) {
+      if (param === "micropython" && !isEnterprise) return "platform";
+      return param as APIKeyType;
+    }
+    return "platform";
+  };
+
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [keyType, setKeyType] = useState<APIKeyType>("platform");
+  const [keyType, setKeyType] = useState<APIKeyType>(resolveInitialKeyType);
+  const [teamId, setTeamId] = useState<string>("");
   const [rotationDays, setRotationDays] = useState(DEFAULT_ROTATION_DAYS);
   const [rpm, setRpm] = useState(DEFAULT_RATE_LIMIT.rpm);
   const [rph, setRph] = useState(DEFAULT_RATE_LIMIT.rph);
@@ -73,7 +88,8 @@ export function CreateAPIKeyModal({
   const resetForm = () => {
     setName("");
     setDescription("");
-    setKeyType("platform");
+    setKeyType(resolveInitialKeyType());
+    setTeamId("");
     setRotationDays(DEFAULT_ROTATION_DAYS);
     setRpm(DEFAULT_RATE_LIMIT.rpm);
     setRph(DEFAULT_RATE_LIMIT.rph);
@@ -129,6 +145,7 @@ export function CreateAPIKeyModal({
         name: name.trim(),
         description: description.trim() || undefined,
         key_type: keyType,
+        team_id: teamId || undefined,
         rotation_frequency_days: safeInt(rotationDays, DEFAULT_ROTATION_DAYS),
         // Send rate_limit as a nested object — this matches the backend
         // apikey.CreateAPIKeyRequest.RateLimit field. Sending flat fields
@@ -222,17 +239,17 @@ export function CreateAPIKeyModal({
   if (showKey) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px]" style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-chamber)' }}>
           <DialogHeader>
-            <DialogTitle>{t("createApiKey.keyCreatedTitle")}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle style={{ fontFamily: 'var(--font-display)' }}>{t("createApiKey.keyCreatedTitle")}</DialogTitle>
+            <DialogDescription style={{ color: 'var(--text-dim)' }}>
               {t("createApiKey.keyCreatedDescription")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="bg-muted p-4 rounded-lg">
+            <div className="p-4 rounded-[var(--radius)]" style={{ background: 'var(--panel-raised)' }}>
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-muted-foreground">{t("createApiKey.apiKey")}</Label>
+                <Label style={{ color: 'var(--text-faint)' }}>{t("createApiKey.apiKey")}</Label>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -243,16 +260,16 @@ export function CreateAPIKeyModal({
                   {copied ? t("createApiKey.copied") : t("createApiKey.copy")}
                 </Button>
               </div>
-              <code className="text-sm break-all font-mono">{showKey}</code>
+              <code className="text-sm break-all font-mono" style={{ color: 'var(--status-ok)' }}>{showKey}</code>
             </div>
-            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="p-4 rounded-[var(--radius)]" style={{ background: 'rgba(232, 196, 104, 0.04)', border: '1px solid rgba(232, 196, 104, 0.15)' }}>
+              <p className="text-sm" style={{ color: 'var(--status-pending)' }}>
                 <strong>{t("createApiKey.important")}</strong> {t("createApiKey.importantDescription")}
               </p>
             </div>
           </div>
           <DialogFooter>
-              <p className="text-xs text-muted-foreground mr-auto">
+              <p className="text-xs mr-auto" style={{ color: 'var(--text-faint)' }}>
                 {t("createApiKey.closesAutomatically", { countdownSeconds })}
               </p>
             <Button onClick={handleClose}>{t("createApiKey.done")}</Button>
@@ -264,22 +281,22 @@ export function CreateAPIKeyModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]" style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-chamber)' }}>
         <DialogHeader>
-          <DialogTitle>{t("createApiKey.createTitle")}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle style={{ fontFamily: 'var(--font-display)' }}>{t("createApiKey.createTitle")}</DialogTitle>
+          <DialogDescription style={{ color: 'var(--text-dim)' }}>
             {t("createApiKey.createDescription")}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-600 dark:text-red-400">
+            <div className="p-3 text-sm rounded-[var(--radius)]" style={{ background: 'rgba(255, 107, 107, 0.06)', border: '1px solid rgba(255, 107, 107, 0.2)', color: 'var(--status-revoked)' }}>
               {error}
             </div>
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="name">{t("createApiKey.name")}</Label>
+            <Label htmlFor="name" style={{ color: 'var(--text)' }}>{t("createApiKey.name")}</Label>
             <Input
               id="name"
               placeholder={t("createApiKey.namePlaceholder")}
@@ -289,7 +306,7 @@ export function CreateAPIKeyModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">{t("createApiKey.description")}</Label>
+            <Label htmlFor="description" style={{ color: 'var(--text)' }}>{t("createApiKey.description")}</Label>
             <Textarea
               id="description"
               placeholder={t("createApiKey.descriptionPlaceholder")}
@@ -299,21 +316,20 @@ export function CreateAPIKeyModal({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="keyType">{t("createApiKey.keyType")}</Label>
+            <Label htmlFor="keyType" style={{ color: 'var(--text)' }}>{t("createApiKey.keyType")}</Label>
             <Select value={keyType} onValueChange={(v) => setKeyType(v as APIKeyType)}>
-              <SelectTrigger className="create-api-key-key-type-trigger">
+              <SelectTrigger>
                 <SelectValue placeholder={t("createApiKey.selectKeyType")} />
               </SelectTrigger>
-              <SelectContent className="create-api-key-key-type-dropdown">
+              <SelectContent>
                 {(Object.keys(API_KEY_TYPE_LABELS) as APIKeyType[]).filter((type) => {
-                  // MicroPython runtime keys are Enterprise-only
                   if (type === 'micropython' && !isEnterprise) return false;
                   return true;
                 }).map((type) => (
                   <SelectItem key={type} value={type}>
                     <div className="flex flex-col">
                       <span>{API_KEY_TYPE_LABELS[type]}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
                         {API_KEY_TYPE_DESCRIPTIONS[type]}
                       </span>
                     </div>
@@ -321,13 +337,33 @@ export function CreateAPIKeyModal({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
               {t("createApiKey.keyTypeHelp")}
             </p>
           </div>
 
+          {teams.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="teamId" style={{ color: 'var(--text)' }}>Team (optional)</Label>
+              <Select value={teamId} onValueChange={(v) => setTeamId(v === "__none__" ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="No team — personal key" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No team — personal key</SelectItem>
+                  {teams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                Scope this key to a team for shared access and audit tracking.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="rotationDays">{t("createApiKey.rotationFrequency")}</Label>
+            <Label htmlFor="rotationDays" style={{ color: 'var(--text)' }}>{t("createApiKey.rotationFrequency")}</Label>
             <Input
               id="rotationDays"
               type="number"
@@ -336,101 +372,75 @@ export function CreateAPIKeyModal({
               value={rotationDays}
               onChange={(e) => {
                 const n = parseInt(e.target.value, 10);
-                // Guard against NaN, negative numbers, and oversized values.
                 setRotationDays(
                   Number.isFinite(n) && n >= 1 && n <= 365 ? n : DEFAULT_ROTATION_DAYS
                 );
               }}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
               {t("createApiKey.rotationHelp")}
             </p>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="rpm">RPM</Label>
-              <Input
-                id="rpm"
-                type="number"
-                min={1}
-                value={rpm}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10);
-                  setRpm(
-                    Number.isFinite(n) && n >= 1 ? n : DEFAULT_RATE_LIMIT.rpm
-                  );
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rph">RPH</Label>
-              <Input
-                id="rph"
-                type="number"
-                min={1}
-                value={rph}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10);
-                  setRph(
-                    Number.isFinite(n) && n >= 1 ? n : DEFAULT_RATE_LIMIT.rph
-                  );
-                }}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rpd">RPD</Label>
-              <Input
-                id="rpd"
-                type="number"
-                min={1}
-                value={rpd}
-                onChange={(e) => {
-                  const n = parseInt(e.target.value, 10);
-                  setRpd(
-                    Number.isFinite(n) && n >= 1 ? n : DEFAULT_RATE_LIMIT.rpd
-                  );
-                }}
-              />
-            </div>
+            {[
+              { id: 'rpm', label: 'RPM', value: rpm, set: setRpm },
+              { id: 'rph', label: 'RPH', value: rph, set: setRph },
+              { id: 'rpd', label: 'RPD', value: rpd, set: setRpd },
+            ].map(({ id, label, value, set }) => (
+              <div key={id} className="space-y-2">
+                <Label htmlFor={id} style={{ color: 'var(--text)' }}>{label}</Label>
+                <Input
+                  id={id}
+                  type="number"
+                  min={1}
+                  value={value}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10);
+                    set(Number.isFinite(n) && n >= 1 ? n : DEFAULT_RATE_LIMIT[id as keyof typeof DEFAULT_RATE_LIMIT]);
+                  }}
+                />
+              </div>
+            ))}
           </div>
 
           {hasVaultPassphrase ? (
-            <div className="flex items-start space-x-3 p-4 rounded-lg bg-muted/50 border border-border-subtle">
+            <div className="flex items-start space-x-3 p-4 rounded-[var(--radius)]" style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}>
               <input
                 type="checkbox"
                 id="saveToVault"
                 checked={saveToVault}
                 onChange={(e) => setSaveToVault(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-border text-brand-500 focus:ring-brand-500"
+                className="mt-1 h-4 w-4 rounded-[var(--radius-sm)]"
+                style={{ borderColor: 'var(--steel)', accentColor: 'var(--accent)' }}
               />
               <div className="flex-1">
-                <Label htmlFor="saveToVault" className="text-sm font-medium cursor-pointer">
+                <Label htmlFor="saveToVault" className="text-sm font-medium cursor-pointer" style={{ color: 'var(--text)' }}>
                   Encrypt and store in Vault
                 </Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
                   Your API key will be encrypted client-side and stored securely in your vault.
                   {vaultSaveStatus === 'saved' && (
-                    <span className="text-green-600 ml-1">Saved</span>
+                    <span className="ml-1" style={{ color: 'var(--status-ok)' }}>Saved</span>
                   )}
                   {vaultSaveStatus === 'saving' && (
-                    <span className="text-amber-600 ml-1">Saving...</span>
+                    <span className="ml-1" style={{ color: 'var(--status-pending)' }}>Saving...</span>
                   )}
                   {vaultSaveStatus === 'failed' && (
-                    <span className="text-red-600 ml-1">Failed - key created but not stored in vault</span>
+                    <span className="ml-1" style={{ color: 'var(--status-revoked)' }}>Failed - key created but not stored in vault</span>
                   )}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="p-4 rounded-[var(--radius)]" style={{ background: 'rgba(232, 196, 104, 0.04)', border: '1px solid rgba(232, 196, 104, 0.15)' }}>
+              <p className="text-sm" style={{ color: 'var(--status-pending)' }}>
                 <strong>Want to secure your API keys?</strong>{" "}
                 <button
                   type="button"
                   onClick={() => {
                     onOpenChange(false);
-                    window.dispatchEvent(new CustomEvent('openVaultSetup'));
+                    navigate('/vault');
                   }}
                   className="underline hover:no-underline"
                 >

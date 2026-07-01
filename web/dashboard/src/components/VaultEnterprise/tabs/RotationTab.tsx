@@ -78,7 +78,7 @@ function RotationScheduleCard({ schedule }: { schedule: RotationSchedule }) {
             Active
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-muted-foreground text-sm">
+          <span className="flex items-center gap-1 text-[var(--text-faint)] text-sm">
             <ToggleLeft className="h-4 w-4" />
             Paused
           </span>
@@ -197,7 +197,7 @@ export function RotationTab({ plan }: RotationTabProps) {
               </TableBody>
             </Table>
           ) : schedules.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-12 text-[var(--text-faint)]">
               <RefreshCw className="h-12 w-12 mx-auto mb-4 opacity-20" />
               <p className="text-lg font-medium">No rotation schedules</p>
               <p className="text-sm mt-1">
@@ -226,7 +226,7 @@ export function RotationTab({ plan }: RotationTabProps) {
             </Table>
           )}
           {schedules.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-4">
+            <p className="text-xs text-[var(--text-faint)] mt-4">
               {schedules.length} schedule{schedules.length !== 1 ? "s" : ""} configured
             </p>
           )}

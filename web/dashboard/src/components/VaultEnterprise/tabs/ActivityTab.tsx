@@ -116,7 +116,7 @@ function AuditCard({ plan }: { plan: VaultPlan }) {
           </PlanGate>
         </div>
         {exportMutation.isSuccess && exportMutation.data && (
-          <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2">
+          <div className="text-xs text-[var(--text-faint)] flex flex-wrap items-center gap-2">
             <ShieldCheck className="h-3 w-3" />
             Exported {exportMutation.data.row_count} row(s) · signature
             <code className="font-mono">{exportMutation.data.hmac_sha256.slice(0, 16)}…</code>
@@ -172,13 +172,13 @@ function Bucket({
     <div
       className={`rounded-md border p-4 ${
         variant === "danger"
-          ? "border-red-300 bg-red-50/40"
+          ? "border-[rgba(255,107,107,0.3)] rgba(255,107,107,0.04)"
           : variant === "warning"
-          ? "border-amber-300 bg-amber-50/40"
+          ? "border-[rgba(232,196,104,0.3)] rgba(232,196,104,0.04)"
           : ""
       }`}
     >
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 text-sm text-[var(--text-faint)]">
         {icon}
         {title}
       </div>
@@ -206,7 +206,7 @@ function TokenMonitorCard({ plan }: { plan: VaultPlan }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--text-faint)]">
             Open any secret's <em>Tokens</em> drawer to see per-token activity.
             Plan: <strong>{formatPlan(plan)}</strong>
           </p>
@@ -236,7 +236,7 @@ function DependencyGraphCard({ plan }: { plan: VaultPlan }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="border rounded-md p-12 text-center text-muted-foreground">
+          <div className="border rounded-md p-12 text-center text-[var(--text-faint)]">
             <GitBranch className="h-10 w-10 mx-auto mb-2" />
             <p>Interactive graph renders here. (Phase 6.2)</p>
             <p className="text-xs mt-1">Data source: secret dependency table · visualized with a force-directed layout.</p>

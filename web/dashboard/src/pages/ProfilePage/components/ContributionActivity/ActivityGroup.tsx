@@ -22,7 +22,9 @@ function groupByTimePeriod(activities: UserActivity[]): TimeGroup[] {
   const groups = new Map<string, UserActivity[]>();
 
   for (const activity of activities) {
+    if (!activity.timestamp) continue;
     const date = new Date(activity.timestamp);
+    if (isNaN(date.getTime())) continue;
     let key: string;
 
     if (isToday(date)) {
@@ -98,21 +100,17 @@ export function ActivityGroup({
           {/* Group header */}
           <div className="flex items-center gap-2 mb-3">
             <Calendar
-              className={cn(
-                "w-4 h-4",
-                ACTIVE_GROUPS.has(group.label)
-                  ? "text-brand-400 ca-group-header-icon-active"
-                  : "text-text-muted ca-group-header-icon"
-              )}
+              className="w-4 h-4"
+              style={{ color: ACTIVE_GROUPS.has(group.label) ? 'var(--status-ok)' : 'var(--text-faint)' }}
             />
-            <h3 className="text-sm font-semibold text-text-secondary ca-group-header-text">
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-dim)' }}>
               {group.label}
             </h3>
-            <span className="text-xs text-text-muted font-mono tabular-nums ca-group-header-count">
+            <span className="text-xs font-mono tabular-nums" style={{ color: 'var(--text-faint)' }}>
               {group.activities.length}{" "}
               {group.activities.length === 1 ? "event" : "events"}
             </span>
-            <div className="flex-1 h-px bg-border-subtle/50 ml-2 ca-group-divider" />
+            <div className="flex-1 h-px ml-2" style={{ background: 'var(--panel-edge)' }} />
           </div>
 
           {/* Activity cards */}

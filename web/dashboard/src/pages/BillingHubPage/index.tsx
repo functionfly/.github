@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useBillingHub } from './useBillingHub';
+import { usePageTitle } from '@/hooks';
 import { OverviewTab } from './components/OverviewTab';
 import { PlansTab } from './components/PlansTab';
 import { AddOnsTab } from './components/AddOnsTab';
@@ -59,6 +60,7 @@ function BillingHubSkeleton() {
 }
 
 export function BillingHubPage() {
+  usePageTitle('Billing');
   const { state, actions, isLoading, errors, projectedBilling, usageMetrics, planLimits } = useBillingHub();
   const [activeTab, setActiveTab] = useState<BillingTab>('overview');
 

@@ -18,6 +18,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { API_KEY_TYPE_LABELS, APIKey, APIKeyFilters, APIKeyType } from '@/types/api-key';
+import { useQuery } from '@tanstack/react-query';
+import { teamsApi } from '@/api/teams';
 import {
   AlertCircle,
   CheckSquare,
@@ -149,6 +151,18 @@ export function APIKeyList({
     const newFilters: APIKeyFilters = {
       ...filters,
       is_active: value === 'all' ? undefined : value === 'active',
+      page: 1,
+    };
+    onFiltersChange?.(newFilters);
+  };
+
+  const { data: teamsData } = useQuery({ queryKey: ['teams'], queryFn: () => teamsApi.list() });
+  const teams = teamsData?.teams ?? [];
+
+  const handleTeamFilter = (value: string) => {
+    const newFilters: APIKeyFilters = {
+      ...filters,
+      team_id: value === 'all' ? undefined : value,
       page: 1,
     };
     onFiltersChange?.(newFilters);
@@ -355,6 +369,20 @@ export function APIKeyList({
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
+          {teams.length > 0 && (
+            <Select value={filters?.team_id || 'all'} onValueChange={handleTeamFilter}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Team" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Teams</SelectItem>
+                <SelectItem value="personal">Personal</SelectItem>
+                {teams.map((team) => (
+                  <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 

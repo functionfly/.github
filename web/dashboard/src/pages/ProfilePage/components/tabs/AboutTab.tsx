@@ -32,6 +32,10 @@ export interface AboutTabProps {
 }
 
 export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemoveSkill, isSkillsLoading }: AboutTabProps) {
+  const cardStyle = { background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' };
+  const iconOk = { color: 'var(--status-ok)' };
+  const iconFoil = { color: 'var(--foil-b)' };
+
   return (
     <motion.div
       variants={tabContentVariants}
@@ -44,15 +48,15 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Bio */}
-          <Card className="border-border-subtle">
+          <Card style={cardStyle}>
             <CardHeader>
-              <CardTitle className="text-lg font-display flex items-center gap-2">
-                <User className="w-5 h-5 text-brand-500" />
+              <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                <User className="w-5 h-5" style={iconOk} />
                 About
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-text-secondary whitespace-pre-wrap">
+              <p className="whitespace-pre-wrap" style={{ color: 'var(--text-dim)' }}>
                 {profile.bio || "No bio provided yet."}
               </p>
             </CardContent>
@@ -60,28 +64,28 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
 
           {/* Experience */}
           {profile.experience && profile.experience.length > 0 && (
-            <Card className="border-border-subtle">
+            <Card style={cardStyle}>
               <CardHeader>
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-brand-500" />
+                <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                  <Briefcase className="w-5 h-5" style={iconOk} />
                   Experience
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {profile.experience.map((exp, index) => (
                   <div key={index} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-brand-500/10 flex items-center justify-center shrink-0">
-                      <Building2 className="w-5 h-5 text-brand-500" />
+                    <div className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center shrink-0" style={{ background: 'rgba(143, 255, 208, 0.06)' }}>
+                      <Building2 className="w-5 h-5" style={iconOk} />
                     </div>
                     <div>
-                      <h4 className="font-medium text-text-primary">{exp.title}</h4>
-                      <p className="text-sm text-text-secondary">{exp.company}</p>
-                      <p className="text-xs text-text-muted mt-1">
+                      <h4 className="font-medium" style={{ color: 'var(--text)' }}>{exp.title}</h4>
+                      <p className="text-sm" style={{ color: 'var(--text-dim)' }}>{exp.company}</p>
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
                         {format(new Date(exp.startDate), "MMM yyyy")} -{" "}
                         {exp.current ? "Present" : exp.endDate ? format(new Date(exp.endDate), "MMM yyyy") : ""}
                       </p>
                       {exp.description && (
-                        <p className="text-sm text-text-muted mt-2">{exp.description}</p>
+                        <p className="text-sm mt-2" style={{ color: 'var(--text-faint)' }}>{exp.description}</p>
                       )}
                     </div>
                   </div>
@@ -92,23 +96,23 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
 
           {/* Education */}
           {profile.education && profile.education.length > 0 && (
-            <Card className="border-border-subtle">
+            <Card style={cardStyle}>
               <CardHeader>
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-brand-500" />
+                <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                  <GraduationCap className="w-5 h-5" style={iconFoil} />
                   Education
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {profile.education.map((edu, index) => (
                   <div key={index} className="flex gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
-                      <GraduationCap className="w-5 h-5 text-purple-500" />
+                    <div className="w-10 h-10 rounded-[var(--radius)] flex items-center justify-center shrink-0" style={{ background: 'rgba(217, 196, 255, 0.08)' }}>
+                      <GraduationCap className="w-5 h-5" style={iconFoil} />
                     </div>
                     <div>
-                      <h4 className="font-medium text-text-primary">{edu.institution}</h4>
-                      <p className="text-sm text-text-secondary">{edu.degree} in {edu.field}</p>
-                      <p className="text-xs text-text-muted mt-1">
+                      <h4 className="font-medium" style={{ color: 'var(--text)' }}>{edu.institution}</h4>
+                      <p className="text-sm" style={{ color: 'var(--text-dim)' }}>{edu.degree} in {edu.field}</p>
+                      <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
                         {format(new Date(edu.startDate), "yyyy")} -{" "}
                         {edu.endDate ? format(new Date(edu.endDate), "yyyy") : "Present"}
                       </p>
@@ -121,10 +125,10 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
 
           {/* Open Source */}
           {profile.openSourceContributions && profile.openSourceContributions.length > 0 && (
-            <Card className="border-border-subtle">
+            <Card style={cardStyle}>
               <CardHeader>
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Icon icon="simple-icons:github" className="w-5 h-5 text-brand-500" />
+                <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                  <Icon icon="simple-icons:github" className="w-5 h-5" style={iconOk} />
                   Open Source Contributions
                 </CardTitle>
               </CardHeader>
@@ -136,12 +140,13 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                       href={contrib.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-colors group"
+                      className="flex items-center justify-between p-3 rounded-[var(--radius)] transition-colors"
+                      style={{ background: 'var(--panel)' }}
                     >
-                      <span className="font-medium text-text-primary group-hover:text-brand-400 transition-colors">
+                      <span className="font-medium" style={{ color: 'var(--text)' }}>
                         {contrib.project}
                       </span>
-                      <span className="text-sm text-text-muted">
+                      <span className="text-sm" style={{ color: 'var(--text-faint)' }}>
                         {contrib.contributions} contributions
                       </span>
                     </a>
@@ -155,9 +160,9 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Contact Info */}
-          <Card className="border-border-subtle">
+          <Card style={cardStyle}>
             <CardHeader>
-              <CardTitle className="text-lg font-display">Contact</CardTitle>
+              <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Contact</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {profile.socialLinks.github && (
@@ -165,7 +170,8 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                   href={profile.socialLinks.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
+                  className="flex items-center gap-3 transition-colors"
+                  style={{ color: 'var(--text-dim)' }}
                 >
                   <Icon icon="simple-icons:github" className="w-5 h-5" />
                   <span className="text-sm">GitHub</span>
@@ -176,7 +182,8 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                   href={profile.socialLinks.twitter}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
+                  className="flex items-center gap-3 transition-colors"
+                  style={{ color: 'var(--text-dim)' }}
                 >
                   <Icon icon="simple-icons:x" className="w-5 h-5" />
                   <span className="text-sm">Twitter</span>
@@ -187,7 +194,8 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                   href={profile.socialLinks.linkedin}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
+                  className="flex items-center gap-3 transition-colors"
+                  style={{ color: 'var(--text-dim)' }}
                 >
                   <Icon icon="simple-icons:linkedin" className="w-5 h-5" />
                   <span className="text-sm">LinkedIn</span>
@@ -198,7 +206,8 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
                   href={profile.website}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-text-secondary hover:text-text-primary transition-colors"
+                  className="flex items-center gap-3 transition-colors"
+                  style={{ color: 'var(--text-dim)' }}
                 >
                   <Globe className="w-5 h-5" />
                   <span className="text-sm">Website</span>
@@ -209,9 +218,9 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
 
           {/* Languages */}
           {profile.languages && profile.languages.length > 0 && (
-            <Card className="border-border-subtle">
+            <Card style={cardStyle}>
               <CardHeader>
-                <CardTitle className="text-lg font-display">Languages</CardTitle>
+                <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Languages</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
@@ -225,7 +234,7 @@ export function AboutTab({ profile, isOwnProfile, userSkills, onAddSkill, onRemo
             </Card>
           )}
 
-          {/* Skills - Show SkillsManager for own profile, SkillsSection for others */}
+          {/* Skills */}
           {isOwnProfile ? (
             <SkillsManager
               skills={userSkills || []}

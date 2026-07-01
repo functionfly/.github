@@ -1,17 +1,6 @@
 import { authApi, type MFASetupResponse, type MFAStatusResponse } from '@/api/auth';
 import { usersApi, type SessionItem, type LoginHistoryItem } from '@/api/users';
 import { useLoginHistory } from '@/hooks';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +24,8 @@ import {
   CheckCircle2,
   Clock,
   Download,
+  Eye,
+  EyeOff,
   Globe,
   KeyRound,
   Laptop,
@@ -47,11 +38,10 @@ import {
   ShieldCheck,
   Smartphone,
   Tablet,
-  Trash2,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useMemo, useState } from 'react';
-import { Trans, useTranslation } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
 function detectCurrentDeviceLabel(): string {
@@ -137,15 +127,13 @@ export function SecuritySettingsTab() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [revokingOthers, setRevokingOthers] = useState(false);
-  const [exportingData, setExportingData] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
-  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [downloadingHistory, setDownloadingHistory] = useState(false);
   const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
 
   const [disablePassword, setDisablePassword] = useState('');
   const [disableCode, setDisableCode] = useState('');
   const [showMfaSecret, setShowMfaSecret] = useState(false);
+  const [showRecoveryCodes, setShowRecoveryCodes] = useState(false);
 
   const [timeoutModalOpen, setTimeoutModalOpen] = useState(false);
   const [selectedTimeout, setSelectedTimeout] = useState<string>('7d');
@@ -332,66 +320,41 @@ export function SecuritySettingsTab() {
     }
   };
 
-  const handleExportData = async () => {
-    setExportingData(true);
+  const handleDownloadHistory = async () => {
+    setDownloadingHistory(true);
     try {
-      const [me, settings, activeSessions] = await Promise.all([
-        usersApi.getMe(),
-        usersApi.getMySettings(),
-        usersApi.listSessions(),
-      ]);
-
-      const payload = {
-        exportedAt: new Date().toISOString(),
-        account: me,
-        settings: settings.settings ?? {},
-        sessions: activeSessions.sessions ?? [],
-      };
-
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const data = await usersApi.listLoginHistory({ limit: 1000 });
+      const history = data.history ?? [];
+      if (history.length === 0) {
+        toast.error(t('securitySettings.noHistoryToDownload', 'No sign-in history to download'));
+        return;
+      }
+      const header = 'Date,Event,Device,IP,Location,Method\n';
+      const rows = history.map((item: LoginHistoryItem) =>
+        [
+          item.createdAt,
+          item.eventType,
+          `"${item.device}"`,
+          item.ip,
+          `"${item.location || ''}"`,
+          item.loginMethod || '',
+        ].join(',')
+      ).join('\n');
+      const blob = new Blob([header + rows], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       const date = new Date().toISOString().slice(0, 10);
-      const username = user?.username || 'account';
       anchor.href = url;
-      anchor.download = `functionfly-${username}-data-export-${date}.json`;
+      anchor.download = `sign-in-history-${date}.csv`;
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
-      toast.success(t('securitySettings.toastDataExportReady'));
+      toast.success(t('securitySettings.historyDownloaded', 'Sign-in history downloaded'));
     } catch {
       toast.error(t('securitySettings.toastFailedToExportData'));
     } finally {
-      setExportingData(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (deleteConfirmation !== 'DELETE') {
-      toast.error(t('securitySettings.toastTypeDeleteToConfirm'));
-      return;
-    }
-
-    setDeletingAccount(true);
-    try {
-      await usersApi.deleteMe();
-      toast.success(t('securitySettings.toastAccountDeleted'));
-      await logout();
-      window.location.href = '/';
-      return;
-    } catch {
-      const subject = encodeURIComponent('Account deletion request');
-      const body = encodeURIComponent(
-        `Please delete my FunctionFly account.\n\nUsername: ${user?.username || 'unknown'}\nEmail: ${
-          user?.email || 'unknown'
-        }\n\nI understand this action is permanent.`
-      );
-      window.location.href = `mailto:support@functionfly.com?subject=${subject}&body=${body}`;
-      toast.info(t('securitySettings.toastDirectDeleteUnavailable'));
-    } finally {
-      setDeletingAccount(false);
-      setDeleteConfirmation('');
+      setDownloadingHistory(false);
     }
   };
 
@@ -639,7 +602,20 @@ export function SecuritySettingsTab() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-3 flex items-center justify-end">
+            <div className="mb-3 flex items-center justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRecoveryCodes(!showRecoveryCodes)}
+                style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+              >
+                {showRecoveryCodes ? (
+                  <EyeOff className="h-4 w-4 mr-2" />
+                ) : (
+                  <Eye className="h-4 w-4 mr-2" />
+                )}
+                {showRecoveryCodes ? t('securitySettings.hideCodes', 'Hide') : t('securitySettings.showCodes', 'Show')}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -655,7 +631,7 @@ export function SecuritySettingsTab() {
                   key={code}
                   className="rounded border border-border-default bg-bg-secondary px-3 py-2 text-xs font-mono"
                 >
-                  {code}
+                  {showRecoveryCodes ? code : '\u2022\u2022\u2022\u2022-\u2022\u2022\u2022\u2022'}
                 </code>
               ))}
             </div>
@@ -811,7 +787,7 @@ export function SecuritySettingsTab() {
                           onClick={() => handleRevokeSession(session.id)}
                           disabled={revokingSessionId === session.id}
                           style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
-                          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-xs h-8"
+                          className="shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 active:opacity-100 transition-opacity text-xs h-8"
                         >
                           {revokingSessionId === session.id ? (
                             t('securitySettings.revoking')
@@ -864,9 +840,11 @@ export function SecuritySettingsTab() {
                   size="sm"
                   className="text-xs"
                   style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+                  onClick={() => void handleDownloadHistory()}
+                  disabled={downloadingHistory}
                 >
                   <Download className="h-3 w-3 mr-1" />
-                  {t('securitySettings.downloadHistory', 'Download')}
+                  {downloadingHistory ? t('securitySettings.downloading', 'Downloading...') : t('securitySettings.downloadHistory', 'Download')}
                 </Button>
               </div>
               <SignInHistoryPanel />
@@ -945,206 +923,106 @@ export function SecuritySettingsTab() {
         </CardContent>
       </Card>
 
-      <Card className="settings-panel">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2">
-            <Download className="h-5 w-5 text-brand-500" />
-            {t('securitySettings.dataExportTitle')}
-          </CardTitle>
-          <CardDescription className="text-text-secondary">
-            {t('securitySettings.dataExportDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-text-secondary">{t('securitySettings.dataExportBody')}</p>
-          <Button
-            onClick={handleExportData}
-            disabled={exportingData}
-            style={{
-              background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
-              color: 'var(--text-on-light)',
-              boxShadow: 'var(--shadow-btn-primary-rest)',
+      {/* Session Timeout Modal (opened from Sessions & Devices section) */}
+      <Dialog open={timeoutModalOpen} onOpenChange={setTimeoutModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500/10">
+                <Clock className="h-5 w-5 text-brand-500" />
+              </div>
+              <div>
+                <DialogTitle>
+                  {t('securitySettings.sessionTimeoutTitle', 'Session Timeout')}
+                </DialogTitle>
+                <DialogDescription className="text-xs mt-0.5">
+                  {t(
+                    'securitySettings.sessionTimeoutModalDescription',
+                    'Choose how long before your session expires due to inactivity'
+                  )}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSaveTimeout();
             }}
           >
-            {exportingData
-              ? t('securitySettings.preparingExport')
-              : t('securitySettings.exportMyData')}
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="settings-panel border-red-500/30">
-        <CardHeader>
-          <CardTitle className="font-display flex items-center gap-2 text-red-600 dark:text-red-400">
-            <ShieldAlert className="h-5 w-5" />
-            {t('securitySettings.dangerZoneTitle')}
-          </CardTitle>
-          <CardDescription className="text-text-secondary">
-            {t('securitySettings.dangerZoneDescription')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-text-secondary">
-            {t('securitySettings.deleteAccountWarning')}
-          </p>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                style={{
-                  background: 'var(--status-revoked)',
-                  borderColor: 'var(--status-revoked)',
-                }}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {t('securitySettings.deleteAccount')}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('securitySettings.deleteAccountConfirm')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  <Trans i18nKey="securitySettings.deleteAccountDescription">
-                    This action is permanent. Type <strong>DELETE</strong> to confirm.
-                  </Trans>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <div className="space-y-2">
-                <Label htmlFor="delete-confirmation">{t('securitySettings.confirmation')}</Label>
-                <Input
-                  id="delete-confirmation"
-                  placeholder={t('securitySettings.typeDelete')}
-                  value={deleteConfirmation}
-                  onChange={(e) => setDeleteConfirmation(e.target.value)}
-                />
-              </div>
-              <AlertDialogFooter>
-                <AlertDialogCancel
-                  onClick={() => setDeleteConfirmation('')}
-                  style={{ borderColor: 'var(--steel)', color: 'var(--text)' }}
+            <div className="space-y-2">
+              {timeoutOptions.map((option) => (
+                <button
+                  type="button"
+                  key={option.value}
+                  onClick={() => setSelectedTimeout(option.value)}
+                  className={`w-full flex items-start gap-3 rounded-lg border p-3 text-left transition-all ${
+                    selectedTimeout === option.value
+                      ? 'border-brand-500/50 bg-brand-500/5 ring-1 ring-brand-500/30'
+                      : 'border-border-default bg-bg-secondary hover:border-brand-500/30'
+                  }`}
                 >
-                  {t('securitySettings.cancel')}
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  style={{
-                    background: 'var(--status-revoked)',
-                    borderColor: 'var(--status-revoked)',
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    void handleDeleteAccount();
-                  }}
-                  disabled={deletingAccount || deleteConfirmation !== 'DELETE'}
-                >
-                  {deletingAccount
-                    ? t('securitySettings.deleting')
-                    : t('securitySettings.permanentlyDelete')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-
-          <Dialog open={timeoutModalOpen} onOpenChange={setTimeoutModalOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-500/10">
-                    <Clock className="h-5 w-5 text-brand-500" />
-                  </div>
-                  <div>
-                    <DialogTitle>
-                      {t('securitySettings.sessionTimeoutTitle', 'Session Timeout')}
-                    </DialogTitle>
-                    <DialogDescription className="text-xs mt-0.5">
-                      {t(
-                        'securitySettings.sessionTimeoutModalDescription',
-                        'Choose how long before your session expires due to inactivity'
-                      )}
-                    </DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void handleSaveTimeout();
-                }}
-              >
-                <div className="space-y-2">
-                  {timeoutOptions.map((option) => (
-                    <button
-                      type="button"
-                      key={option.value}
-                      onClick={() => setSelectedTimeout(option.value)}
-                      className={`w-full flex items-start gap-3 rounded-lg border p-3 text-left transition-all ${
-                        selectedTimeout === option.value
-                          ? 'border-brand-500/50 bg-brand-500/5 ring-1 ring-brand-500/30'
-                          : 'border-border-default bg-bg-secondary hover:border-brand-500/30'
-                      }`}
-                    >
-                      <div
-                        className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${
-                          selectedTimeout === option.value
-                            ? 'border-brand-500 bg-brand-500'
-                            : 'border-border-default'
-                        }`}
-                      >
-                        {selectedTimeout === option.value && (
-                          <div className="flex items-center justify-center">
-                            <CheckCircle2 className="h-2.5 w-2.5 text-white" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="space-y-0.5 min-w-0">
-                        <p className="text-sm font-medium text-text-primary">{option.label}</p>
-                        <p className="text-xs text-text-muted">{option.description}</p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setTimeoutModalOpen(false)}
-                    className="text-xs"
+                  <div
+                    className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${
+                      selectedTimeout === option.value
+                        ? 'border-brand-500 bg-brand-500'
+                        : 'border-border-default'
+                    }`}
                   >
-                    {t('securitySettings.cancel', 'Cancel')}
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={savingTimeout}
-                    className="ff-btn-velocity text-xs gap-1.5"
-                  >
-                    {savingTimeout ? (
-                      <>
-                        <RefreshCw className="h-3 w-3 animate-spin" />
-                        {t('securitySettings.saving', 'Saving...')}
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 className="h-3 w-3" />
-                        {t('securitySettings.saveTimeout', 'Save')}
-                      </>
+                    {selectedTimeout === option.value && (
+                      <div className="flex items-center justify-center">
+                        <CheckCircle2 className="h-2.5 w-2.5 text-white" />
+                      </div>
                     )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </CardContent>
-      </Card>
+                  </div>
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="text-sm font-medium text-text-primary">{option.label}</p>
+                    <p className="text-xs text-text-muted">{option.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0 mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setTimeoutModalOpen(false)}
+                className="text-xs"
+              >
+                {t('securitySettings.cancel', 'Cancel')}
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={savingTimeout}
+                className="ff-btn-velocity text-xs gap-1.5"
+              >
+                {savingTimeout ? (
+                  <>
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                    {t('securitySettings.saving', 'Saving...')}
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-3 w-3" />
+                    {t('securitySettings.saveTimeout', 'Save')}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function SignInHistoryPanel() {
   const { t } = useTranslation();
-  const { data, isLoading, error, refetch } = useLoginHistory({ limit: 100 });
   const [page, setPage] = useState(0);
   const pageSize = 20;
+  const { data, isLoading, error, refetch } = useLoginHistory({ limit: pageSize, offset: page * pageSize });
 
   const history = data?.history ?? [];
   const total = data?.total ?? 0;
@@ -1194,8 +1072,6 @@ function SignInHistoryPanel() {
     return <Globe className="h-4 w-4" />;
   };
 
-  const paginatedHistory = history.slice(page * pageSize, (page + 1) * pageSize);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -1232,7 +1108,7 @@ function SignInHistoryPanel() {
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        {paginatedHistory.map((item: LoginHistoryItem) => (
+        {history.map((item: LoginHistoryItem) => (
           <div
             key={item.id}
             className="flex items-start gap-3 p-3 rounded-lg border border-border-default bg-bg-secondary hover:border-brand-500/30 transition-colors"

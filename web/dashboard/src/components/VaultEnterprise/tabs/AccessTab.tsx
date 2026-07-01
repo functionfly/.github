@@ -110,7 +110,7 @@ function RolesCard() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center text-[var(--text-faint)]">
                       No roles yet.
                     </TableCell>
                   </TableRow>
@@ -215,7 +215,7 @@ function AssignmentsCard() {
             </TableBody>
           </Table>
         ) : (
-          <p className="text-sm text-muted-foreground">No role assignments yet.</p>
+          <p className="text-sm text-[var(--text-faint)]">No role assignments yet.</p>
         )}
       </CardContent>
     </Card>

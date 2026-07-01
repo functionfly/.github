@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,7 +11,7 @@ import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
 import { SealedButton, FrameButton } from "@/components/containment";
 import type { UserProfile } from "@/types";
-import type { UpdateProfileRequest } from "@/api/users";
+import { usersApi, type UpdateProfileRequest, type LocationResult } from "@/api/users";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -22,46 +22,46 @@ interface EditProfileModalProps {
 }
 
 const MAX_BIO_LENGTH = 500;
-const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-const LOCATION_DEBOUNCE_MS = 1000;
+const LOCATION_DEBOUNCE_MS = 300;
 const LOCATION_MIN_CHARS = 2;
-const LOCATION_MAX_RESULTS = 5;
+const LOCATION_CACHE_TTL_MS = 5 * 60 * 1000;
+const LOCATION_CACHE_MAX_ENTRIES = 100;
 
-interface NominatimAddress {
-  city?: string; town?: string; village?: string; municipality?: string;
-  state?: string; state_district?: string; country?: string; country_code?: string;
+interface CacheEntry {
+  results: LocationResult[];
+  timestamp: number;
 }
 
-interface NominatimResult {
-  place_id: number;
-  display_name: string;
-  address?: NominatimAddress;
+const locationCache = new Map<string, CacheEntry>();
+
+function getCachedLocations(query: string): LocationResult[] | null {
+  const key = query.toLowerCase();
+  const entry = locationCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > LOCATION_CACHE_TTL_MS) {
+    locationCache.delete(key);
+    return null;
+  }
+  return entry.results;
 }
 
-function formatLocationLabel(r: NominatimResult): string {
-  const a = r.address;
-  if (!a) return r.display_name;
-  const city = a.city || a.town || a.village || a.municipality;
-  const state = a.state || a.state_district;
-  const country = a.country;
-  const parts = [city, state, country].filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : r.display_name;
-}
-
-async function fetchLocationSuggestions(query: string): Promise<NominatimResult[]> {
-  if (!query || query.length < LOCATION_MIN_CHARS) return [];
-  const params = new URLSearchParams({ q: query, format: "json", limit: String(LOCATION_MAX_RESULTS), addressdetails: "1" });
-  const res = await fetch(`${NOMINATIM_URL}?${params}`, {
-    headers: { "Accept-Language": "en", "User-Agent": "FunctionFly-Profile-Edit/1.0" },
-  });
-  if (!res.ok) return [];
-  const data = await res.json();
-  return Array.isArray(data) ? data : [];
+function setCachedLocations(query: string, results: LocationResult[]) {
+  const key = query.toLowerCase();
+  if (locationCache.size >= LOCATION_CACHE_MAX_ENTRIES) {
+    const oldest = locationCache.keys().next().value;
+    if (oldest !== undefined) locationCache.delete(oldest);
+  }
+  locationCache.set(key, { results, timestamp: Date.now() });
 }
 
 const optionalUrl = z.string().optional().refine(
   (val) => !val || val === "" || /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/.test(val),
   "Please enter a valid URL"
+);
+
+const optionalSocialHandle = z.string().optional().refine(
+  (val) => !val || val === "" || /^[a-zA-Z0-9_.-]+$/.test(val),
+  "Only letters, numbers, dots, hyphens, and underscores"
 );
 
 const editProfileSchema = z.object({
@@ -77,13 +77,26 @@ const editProfileSchema = z.object({
   company: z.string().optional(),
   jobTitle: z.string().optional(),
   website: optionalUrl,
-  twitterUrl: optionalUrl,
-  githubUrl: optionalUrl,
-  linkedinUrl: optionalUrl,
+  githubHandle: optionalSocialHandle,
+  twitterHandle: optionalSocialHandle,
+  linkedinHandle: optionalSocialHandle,
   coverImageUrl: z.union([z.string().url(), z.literal("")]).optional(),
 });
 
 type EditProfileFormValues = z.infer<typeof editProfileSchema>;
+
+function extractSocialHandle(url: string | undefined, prefix: string): string {
+  if (!url) return "";
+  try {
+    const u = url.startsWith("http") ? url : `https://${url}`;
+    const parsed = new URL(u);
+    const path = parsed.pathname.replace(/^\/|\/$/g, "");
+    if (prefix && parsed.hostname.includes(prefix)) return path;
+    return path || "";
+  } catch {
+    return url.replace(/^https?:\/\/[^/]+\//, "").replace(/\/$/, "");
+  }
+}
 
 function getDefaultValues(profile: UserProfile): EditProfileFormValues {
   return {
@@ -94,9 +107,9 @@ function getDefaultValues(profile: UserProfile): EditProfileFormValues {
     company: profile.company || "",
     jobTitle: profile.jobTitle || "",
     website: profile.website || "",
-    twitterUrl: profile.socialLinks?.twitter || "",
-    githubUrl: profile.socialLinks?.github || "",
-    linkedinUrl: profile.socialLinks?.linkedin || "",
+    githubHandle: extractSocialHandle(profile.socialLinks?.github, "github.com"),
+    twitterHandle: extractSocialHandle(profile.socialLinks?.twitter, "twitter.com") || extractSocialHandle(profile.socialLinks?.twitter, "x.com"),
+    linkedinHandle: extractSocialHandle(profile.socialLinks?.linkedin, "linkedin.com"),
     coverImageUrl: profile.coverImage || "",
   };
 }
@@ -113,30 +126,73 @@ export function EditProfileModal({ isOpen, onClose, profile, onSave, isLoading =
   const coverImageUrl = watch("coverImageUrl");
   const name = watch("name");
 
-  const [locationSuggestions, setLocationSuggestions] = useState<NominatimResult[]>([]);
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationResult[]>([]);
   const [locationSuggestionsLoading, setLocationSuggestionsLoading] = useState(false);
   const [locationSuggestionsOpen, setLocationSuggestionsOpen] = useState(false);
   const locationAutocompleteRef = useRef<HTMLDivElement>(null);
+  const locationAbortRef = useRef<AbortController | null>(null);
+
+  const fetchLocations = useCallback(async (query: string) => {
+    const cached = getCachedLocations(query);
+    if (cached) {
+      setLocationSuggestions(cached);
+      setLocationSuggestionsOpen(cached.length > 0);
+      return;
+    }
+
+    if (locationAbortRef.current) {
+      locationAbortRef.current.abort();
+    }
+    const controller = new AbortController();
+    locationAbortRef.current = controller;
+
+    setLocationSuggestionsLoading(true);
+    try {
+      const res = await usersApi.searchLocations(query);
+      if (controller.signal.aborted) return;
+      const results = res.locations ?? [];
+      setCachedLocations(query, results);
+      setLocationSuggestions(results);
+      setLocationSuggestionsOpen(results.length > 0);
+    } catch {
+      if (!controller.signal.aborted) {
+        setLocationSuggestions([]);
+        setLocationSuggestionsOpen(false);
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setLocationSuggestionsLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const trimmed = (location ?? "").trim();
-    if (trimmed.length < LOCATION_MIN_CHARS) { setLocationSuggestions([]); setLocationSuggestionsOpen(false); return; }
-    const t = setTimeout(() => {
-      setLocationSuggestionsLoading(true);
-      fetchLocationSuggestions(trimmed)
-        .then((results) => { setLocationSuggestions(results); setLocationSuggestionsOpen(results.length > 0); })
-        .catch(() => { setLocationSuggestions([]); setLocationSuggestionsOpen(false); })
-        .finally(() => setLocationSuggestionsLoading(false));
-    }, LOCATION_DEBOUNCE_MS);
+    if (trimmed.length < LOCATION_MIN_CHARS) {
+      setLocationSuggestions([]);
+      setLocationSuggestionsOpen(false);
+      return;
+    }
+    const t = setTimeout(() => fetchLocations(trimmed), LOCATION_DEBOUNCE_MS);
     return () => clearTimeout(t);
-  }, [location]);
+  }, [location, fetchLocations]);
 
   useEffect(() => {
-    if (isOpen) { reset(getDefaultValues(profile)); setLocationSuggestions([]); setLocationSuggestionsOpen(false); }
+    if (isOpen) {
+      reset(getDefaultValues(profile));
+      setLocationSuggestions([]);
+      setLocationSuggestionsOpen(false);
+    } else if (locationAbortRef.current) {
+      locationAbortRef.current.abort();
+    }
   }, [isOpen, profile, reset]);
 
   const onSubmit = async (data: EditProfileFormValues) => {
     try {
+      const handleToUrl = (handle: string | undefined, base: string) => {
+        const h = (handle ?? "").trim();
+        return h ? `${base}/${h}` : undefined;
+      };
       const payload: UpdateProfileRequest = {
         name: data.name.trim() || undefined,
         username: data.username.trim().toLowerCase() || undefined,
@@ -145,9 +201,9 @@ export function EditProfileModal({ isOpen, onClose, profile, onSave, isLoading =
         companyName: (data.company ?? "").trim() || undefined,
         jobTitle: (data.jobTitle ?? "").trim() || undefined,
         website: (data.website ?? "").trim() || undefined,
-        twitterUrl: (data.twitterUrl ?? "").trim() || undefined,
-        githubUrl: (data.githubUrl ?? "").trim() || undefined,
-        linkedinUrl: (data.linkedinUrl ?? "").trim() || undefined,
+        twitterUrl: handleToUrl(data.twitterHandle, "https://x.com"),
+        githubUrl: handleToUrl(data.githubHandle, "https://github.com"),
+        linkedinUrl: handleToUrl(data.linkedinHandle, "https://linkedin.com/in"),
       };
       await onSave(payload);
       toast.success("Profile updated successfully");
@@ -212,7 +268,7 @@ export function EditProfileModal({ isOpen, onClose, profile, onSave, isLoading =
                   <span className={cn("epm-counter", (bio?.length ?? 0) > MAX_BIO_LENGTH && "epm-counter--error")}>{bio?.length ?? 0}/{MAX_BIO_LENGTH}</span>
                 </div>
                 <textarea className="epm-textarea" {...register("bio")} placeholder="Tell others about yourself..." rows={4} disabled={isLoading}
-                  onChange={(e) => setValue("bio", e.target.value.slice(0, MAX_BIO_LENGTH), { shouldValidate: true })} />
+                  onChange={(e) => setValue("bio", e.target.value.slice(0, MAX_BIO_LENGTH), { shouldValidate: true, shouldDirty: true })} />
               </div>
             </div>
 
@@ -231,12 +287,15 @@ export function EditProfileModal({ isOpen, onClose, profile, onSave, isLoading =
                   {locationSuggestionsOpen && locationSuggestions.length > 0 && (
                     <ul className="epm-suggestions">
                       {locationSuggestions.map((item) => (
-                        <li key={item.place_id}>
-                          <button type="button" className="epm-suggestion" onMouseDown={(e) => { e.preventDefault(); setValue("location", formatLocationLabel(item), { shouldValidate: true }); setLocationSuggestionsOpen(false); }}>
-                            {formatLocationLabel(item)}
+                        <li key={item.placeId}>
+                          <button type="button" className="epm-suggestion" onMouseDown={(e) => { e.preventDefault(); setValue("location", item.label, { shouldValidate: true, shouldDirty: true }); setLocationSuggestionsOpen(false); }}>
+                            {item.label}
                           </button>
                         </li>
                       ))}
+                      <li className="epm-suggestions__attribution">
+                        <span>&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors</span>
+                      </li>
                     </ul>
                   )}
                 </div>
@@ -263,23 +322,26 @@ export function EditProfileModal({ isOpen, onClose, profile, onSave, isLoading =
               <div className="epm-field">
                 <div className="epm-input-wrap">
                   <Icon icon="simple-icons:github" className="epm-icon-xs epm-input-icon" />
-                  <input className={cn("epm-input epm-input--prefixed", errors.githubUrl && "epm-input--error")} {...register("githubUrl")} placeholder="https://github.com/username" disabled={isLoading} />
+                  <span className="epm-input-prefix epm-input-prefix--social">github.com/</span>
+                  <input className={cn("epm-input epm-input--social", errors.githubHandle && "epm-input--error")} {...register("githubHandle")} placeholder="username" disabled={isLoading} />
                 </div>
-                {errors.githubUrl && <p className="epm-error"><AlertCircle className="epm-icon-xs" /> {errors.githubUrl.message}</p>}
+                {errors.githubHandle && <p className="epm-error"><AlertCircle className="epm-icon-xs" /> {errors.githubHandle.message}</p>}
               </div>
               <div className="epm-field">
                 <div className="epm-input-wrap">
                   <Icon icon="simple-icons:x" className="epm-icon-xs epm-input-icon" />
-                  <input className={cn("epm-input epm-input--prefixed", errors.twitterUrl && "epm-input--error")} {...register("twitterUrl")} placeholder="https://twitter.com/username" disabled={isLoading} />
+                  <span className="epm-input-prefix epm-input-prefix--social">x.com/</span>
+                  <input className={cn("epm-input epm-input--social", errors.twitterHandle && "epm-input--error")} {...register("twitterHandle")} placeholder="username" disabled={isLoading} />
                 </div>
-                {errors.twitterUrl && <p className="epm-error"><AlertCircle className="epm-icon-xs" /> {errors.twitterUrl.message}</p>}
+                {errors.twitterHandle && <p className="epm-error"><AlertCircle className="epm-icon-xs" /> {errors.twitterHandle.message}</p>}
               </div>
               <div className="epm-field">
                 <div className="epm-input-wrap">
                   <Icon icon="simple-icons:linkedin" className="epm-icon-xs epm-input-icon" />
-                  <input className={cn("epm-input epm-input--prefixed", errors.linkedinUrl && "epm-input--error")} {...register("linkedinUrl")} placeholder="https://linkedin.com/in/username" disabled={isLoading} />
+                  <span className="epm-input-prefix epm-input-prefix--social">linkedin.com/in/</span>
+                  <input className={cn("epm-input epm-input--social", errors.linkedinHandle && "epm-input--error")} {...register("linkedinHandle")} placeholder="username" disabled={isLoading} />
                 </div>
-                {errors.linkedinUrl && <p className="epm-error"><AlertCircle className="epm-icon-xs" /> {errors.linkedinUrl.message}</p>}
+                {errors.linkedinHandle && <p className="epm-error"><AlertCircle className="epm-icon-xs" /> {errors.linkedinHandle.message}</p>}
               </div>
             </div>
 

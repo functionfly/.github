@@ -62,6 +62,10 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
     return result;
   }, [profile.publishedFunctions, filters]);
 
+  const cardStyle = { background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' };
+  const statValueStyle = { color: 'var(--text)' };
+  const statLabelStyle = { color: 'var(--text-faint)' };
+
   return (
     <motion.div
       variants={tabContentVariants}
@@ -71,11 +75,11 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
       className="space-y-6 px-4 md:px-8 pb-8"
     >
       {/* Filter Bar */}
-      <Card className="border-border-subtle">
+      <Card style={cardStyle}>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-faint)' }} />
               <Input
                 placeholder="Search functions..."
                 value={filters.search}
@@ -106,39 +110,39 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
 
       {/* Statistics Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-border-subtle">
+        <Card style={cardStyle}>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums" style={statValueStyle}>
               {profile.publishedFunctions.length}
             </p>
-            <p className="text-sm text-text-muted">Total Functions</p>
+            <p className="text-sm" style={statLabelStyle}>Total Functions</p>
           </CardContent>
         </Card>
-        <Card className="border-border-subtle">
+        <Card style={cardStyle}>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums" style={statValueStyle}>
               {formatNumber(profile.stats.totalExecutions)}
             </p>
-            <p className="text-sm text-text-muted">Total Executions</p>
+            <p className="text-sm" style={statLabelStyle}>Total Executions</p>
           </CardContent>
         </Card>
-        <Card className="border-border-subtle">
+        <Card style={cardStyle}>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums" style={statValueStyle}>
               {formatNumber(profile.stats.totalViews)}
             </p>
-            <p className="text-sm text-text-muted">Total Views</p>
+            <p className="text-sm" style={statLabelStyle}>Total Views</p>
           </CardContent>
         </Card>
-        <Card className="border-border-subtle">
+        <Card style={cardStyle}>
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold font-mono tabular-nums text-text-primary">
+            <p className="text-2xl font-bold font-mono tabular-nums" style={statValueStyle}>
               {(
                 profile.publishedFunctions.reduce((sum, f) => sum + (f.rating?.average || 0), 0) /
                   profile.publishedFunctions.length || 0
               ).toFixed(1)}
             </p>
-            <p className="text-sm text-text-muted">Avg Rating</p>
+            <p className="text-sm" style={statLabelStyle}>Avg Rating</p>
           </CardContent>
         </Card>
       </div>
@@ -152,9 +156,9 @@ export function FunctionsTab({ profile }: FunctionsTabProps) {
         </div>
       ) : (
         <div className="text-center py-16">
-          <Package className="w-16 h-16 mx-auto text-text-muted mb-4" />
-          <h3 className="text-lg font-medium text-text-primary mb-2">No functions found</h3>
-          <p className="text-text-muted">Try adjusting your search or filters</p>
+          <Package className="w-16 h-16 mx-auto mb-4" style={{ color: 'var(--text-faint)' }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text)' }}>No functions found</h3>
+          <p style={{ color: 'var(--text-faint)' }}>Try adjusting your search or filters</p>
         </div>
       )}
     </motion.div>

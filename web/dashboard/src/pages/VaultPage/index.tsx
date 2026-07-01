@@ -14,10 +14,12 @@
 
 import "@/styles/professional-dashboard.css";
 
+import { useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCurrentPlan } from "@/hooks/useCurrentPlan";
 import { usePageTitle } from "@/hooks";
-import { platformToVaultPlan } from "@/lib/vaultPlans";
+import { useVaultStatus } from "@/components/api-keys/VaultSetupDialog.hooks";
+import { VaultSetupWizard } from "@/components/VaultSetupWizard";
 import type { VaultPlan } from "@/types/vault-enterprise";
 import {
   PageGrid,
@@ -53,8 +55,12 @@ interface VaultPageProps {
 export function VaultPage({ deprecationBanner }: VaultPageProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = searchParams.get("tab") || "secrets";
-  const { plan: platformPlan, isLoading } = useCurrentPlan();
-  const plan = platformToVaultPlan(platformPlan) as VaultPlan;
+  const { plan, rawPlan, isLoading } = useCurrentPlan();
+  const { isVaultPassphraseSet } = useVaultStatus();
+  const [wizardDismissed, setWizardDismissed] = useState(false);
+
+  const showWizard = !isVaultPassphraseSet && !wizardDismissed;
+  const handleWizardComplete = useCallback(() => setWizardDismissed(true), []);
 
   const handleTabChange = (newTab: string) => {
     setSearchParams((prev) => {
@@ -69,6 +75,7 @@ export function VaultPage({ deprecationBanner }: VaultPageProps) {
 
   return (
     <div className="vault-page">
+      <VaultSetupWizard open={showWizard} onComplete={handleWizardComplete} />
       <PageGrid />
 
       {deprecationBanner}
@@ -110,7 +117,7 @@ export function VaultPage({ deprecationBanner }: VaultPageProps) {
 
       {/* Tab Content */}
       <div className="vault-tab-content">
-        {tab === "secrets" && <SecretsTab plan={plan} />}
+        {tab === "secrets" && <SecretsTab plan={plan} platformPlan={rawPlan} />}
         {tab === "security" && <SecurityTab plan={plan} />}
         {tab === "dynamic" && <DynamicCredsTab plan={plan} />}
         {tab === "access" && <AccessTab plan={plan} />}

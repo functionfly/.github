@@ -596,11 +596,22 @@
   font-size: 14px;
   color: var(--text-faint);
   pointer-events: none;
+  white-space: nowrap;
+}
+
+.epm-input-prefix--social {
+  left: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .epm-input-icon {
   position: absolute;
   left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--text-faint);
   pointer-events: none;
 }
@@ -629,6 +640,11 @@
 .epm-input--error { border-color: var(--status-revoked); }
 .epm-input--error:focus { box-shadow: var(--shadow-input-error); }
 .epm-input--prefixed { padding-left: calc(var(--space-3) + 20px + var(--space-2)); }
+
+.epm-input--social {
+  padding-left: 155px;
+  font-size: 13px;
+}
 
 .epm-textarea {
   width: 100%;
@@ -715,6 +731,23 @@
 }
 
 .epm-suggestion:hover { background: var(--panel-raised); }
+
+.epm-suggestions__attribution {
+  padding: var(--space-1) var(--space-3);
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--panel-edge);
+  margin-top: var(--space-1);
+}
+
+.epm-suggestions__attribution a {
+  color: var(--text-muted);
+  text-decoration: underline;
+}
+
+.epm-suggestions__attribution a:hover {
+  color: var(--text);
+}
 
 /* Footer */
 .epm-footer {

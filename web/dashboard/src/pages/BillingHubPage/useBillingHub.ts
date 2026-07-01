@@ -127,7 +127,17 @@ function useBillingHub(): {
     error: walletError,
   } = useQuery({
     queryKey: ['billing-wallet-info', user?.id],
-    queryFn: getWalletInfo,
+    queryFn: async () => {
+      try {
+        return await getWalletInfo();
+      } catch (e: unknown) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        if (status === 404 || status === 503) {
+          return null;
+        }
+        throw e;
+      }
+    },
     enabled: !!user,
     staleTime: 30_000,
     retry: false,
@@ -150,7 +160,17 @@ function useBillingHub(): {
     error: paymentMethodsError,
   } = useQuery({
     queryKey: ['billing', 'payment-methods'],
-    queryFn: listPaymentMethods,
+    queryFn: async () => {
+      try {
+        return await listPaymentMethods();
+      } catch (e: unknown) {
+        const status = (e as { response?: { status?: number } })?.response?.status;
+        if (status === 404 || status === 503) {
+          return { payment_methods: [] };
+        }
+        throw e;
+      }
+    },
     retry: false,
   });
 

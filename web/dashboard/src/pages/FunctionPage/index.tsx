@@ -1,16 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { apiClient } from '@/api/client';
 import { FunctionNotFound } from './FunctionNotFound';
+import { FunctionPageSkeleton } from './FunctionPageSkeleton';
 import { registryApi } from '@/api/registry';
 import { favoritesApi } from '@/api/favorites';
-import { ErrorMessage } from '@/components/common/ErrorMessage';
 import { Navbar } from '@/components/common/Navbar';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { FollowFunctionButton } from '@/components/follow';
 import {
   FunctionCard,
   FunctionEmbedSection,
   FunctionHeader,
-  TrustScoreBadge,
 } from '@/components/functions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { CodeBlock } from '@/components/common/CodeBlock';
 import { Footer } from '@/pages/LandingPage/components';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubmitRegistryRating } from '@/hooks/useRegistry';
+import { usePageTitle } from '@/hooks';
 import { Icon } from '@iconify/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
@@ -25,18 +26,17 @@ import { motion } from 'framer-motion';
 import {
   Activity,
   BarChart3,
-  ChevronRight,
   Clock,
   FileJson,
   Layers,
-  Package,
   Play,
   Shield,
-  Star,
   TrendingUp,
   Zap,
   AlertTriangle,
   AlertCircle,
+  AlertOctagon,
+  Gauge,
 } from 'lucide-react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -59,8 +59,8 @@ import { TrustHistory } from '@/components/trust/TrustHistory';
 import { ActivityFeed } from '@/components/common/ActivityFeed';
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
 import { TraceList } from '@/components/atlas';
-import type { TrustHistoryDataPoint } from '@/components/trust/TrustHistory';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { RelatedFunctionsSection } from './RelatedFunctionsSection';
 import {
   Dialog,
   DialogContent,
@@ -77,6 +77,32 @@ export default function FunctionPage() {
   const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const submitRating = useSubmitRegistryRating();
+
+  const {
+    data: functionInfo,
+    isLoading,
+    error,
+    isError,
+  } = useQuery<FunctionInfo>({
+    queryKey: ['function', author, name],
+    queryFn: async () => {
+      try {
+        return await apiClient.get<FunctionInfo>(`/v1/functions/${author}/${name}?expand=manifest`);
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 404) throw new Error('Function not found');
+        throw err;
+      }
+    },
+    enabled: !!author && !!name,
+    retry: (failureCount, error) => {
+      if ((error as Error)?.message === 'Function not found') return false;
+      return failureCount < 2;
+    },
+  });
+
+  const pageTitle = functionInfo?.title || functionInfo?.name || `${author}/${name}`;
+  usePageTitle(`${pageTitle} by ${author}`);
 
   const handleRate = (functionId: string, stars: number) => {
     if (!isAuthenticated) {
@@ -96,21 +122,6 @@ export default function FunctionPage() {
       },
     });
   };
-
-  const {
-    data: functionInfo,
-    isLoading,
-    error,
-  } = useQuery<FunctionInfo>({
-    queryKey: ['function', author, name],
-    queryFn: async () => {
-      const response = await fetch(`/v1/functions/${author}/${name}?expand=manifest`);
-      if (response.status === 404) throw new Error('Function not found');
-      if (!response.ok) throw new Error('Failed to fetch function');
-      return response.json();
-    },
-    enabled: !!author && !!name,
-  });
 
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [reportDescription, setReportDescription] = useState('');
@@ -286,26 +297,40 @@ export default function FunctionPage() {
   };
 
   if (isLoading) {
-    const isNotFound =
-      error != null &&
-      (error as any) instanceof Error &&
-      (error as Error).message === 'Function not found';
-    if (isNotFound || !functionInfo) {
-      return (
-        <div className="function-page">
-          <Navbar variant="landing" />
-          <main className="flex-1 pt-16">
-            <FunctionNotFound author={author} name={name} />
-          </main>
-          <Footer />
-        </div>
-      );
-    }
     return (
       <div className="function-page">
         <Navbar variant="landing" />
-        <main className="flex-1 pt-16 flex items-center justify-center">
-          <ErrorMessage error={error as Error} />
+        <main className="flex-1 pt-16">
+          <FunctionPageSkeleton />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (isError || !functionInfo) {
+    const isNotFound =
+      error instanceof Error && error.message === 'Function not found';
+    return (
+      <div className="function-page">
+        <Navbar variant="landing" />
+        <main className="flex-1 pt-16">
+          {isNotFound ? (
+            <FunctionNotFound author={author} name={name} />
+          ) : (
+            <div className="flex items-center justify-center min-h-[40vh]">
+              <div className="text-center space-y-4">
+                <AlertTriangle className="h-10 w-10 mx-auto" style={{ color: 'var(--status-pending)' }} />
+                <p className="text-lg font-medium" style={{ color: 'var(--text)' }}>Failed to load function</p>
+                <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
+                  {error instanceof Error ? error.message : 'An unexpected error occurred'}
+                </p>
+                <Button variant="outline" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              </div>
+            </div>
+          )}
         </main>
         <Footer />
       </div>
@@ -332,14 +357,18 @@ export default function FunctionPage() {
   ];
 
   return (
+    <ErrorBoundary>
     <>
       <Helmet>
-        <title>
-          {functionInfo.title || functionInfo.name} by {functionInfo.author} | FunctionFly
-        </title>
+        <title>{`${pageTitle} by ${author} | FunctionFly`}</title>
         <meta
           name="description"
           content={functionInfo.description || `Explore ${functionInfo.name} on FunctionFly`}
+        />
+        <meta name="robots" content="index, follow" />
+        <link
+          rel="canonical"
+          href={`https://functionfly.com/fx/${functionInfo.author}/${functionInfo.name}`}
         />
         <meta
           property="og:title"
@@ -352,7 +381,12 @@ export default function FunctionPage() {
           }
         />
         <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary" />
+        <meta
+          property="og:image"
+          content={`https://functionfly.com/api/og/function?author=${encodeURIComponent(functionInfo.author)}&name=${encodeURIComponent(functionInfo.name)}`}
+        />
+        <meta property="og:url" content={`https://functionfly.com/fx/${functionInfo.author}/${functionInfo.name}`} />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta
           name="twitter:title"
           content={`${functionInfo.title || functionInfo.name} | FunctionFly`}
@@ -363,6 +397,43 @@ export default function FunctionPage() {
             functionInfo.description || `Function ${functionInfo.name} by ${functionInfo.author}`
           }
         />
+        <meta
+          name="twitter:image"
+          content={`https://functionfly.com/api/og/function?author=${encodeURIComponent(functionInfo.author)}&name=${encodeURIComponent(functionInfo.name)}`}
+        />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareSourceCode',
+            name: functionInfo.title || functionInfo.name,
+            description: functionInfo.description || `Serverless function ${functionInfo.name} by ${functionInfo.author}`,
+            url: `https://functionfly.com/fx/${functionInfo.author}/${functionInfo.name}`,
+            codeRepository: functionInfo.repo_url || undefined,
+            programmingLanguage: functionInfo.runtime,
+            author: {
+              '@type': 'Organization',
+              name: functionInfo.author,
+            },
+            offers: {
+              '@type': 'Offer',
+              price: functionInfo.price_per_call ?? 0,
+              priceCurrency: 'USD',
+            },
+            aggregateRating: functionInfo.stars
+              ? {
+                  '@type': 'AggregateRating',
+                  ratingValue: Math.min(functionInfo.stars / 20, 5).toFixed(1),
+                  bestRating: '5',
+                  ratingCount: functionInfo.executions || 0,
+                }
+              : undefined,
+            dateCreated: functionInfo.created_at,
+            dateModified: functionInfo.updated_at,
+            version: functionInfo.version,
+            applicationCategory: functionInfo.category || 'DeveloperApplication',
+            isAccessibleForFree: (functionInfo.price_per_call ?? 0) === 0,
+          })}
+        </script>
       </Helmet>
       <div className="function-page">
         <Navbar variant="landing" />
@@ -391,47 +462,36 @@ export default function FunctionPage() {
                   transition={{ duration: 0.4 }}
                   className="function-page-cta"
                 >
-                  <Link to={`/run/${functionInfo.author}/${functionInfo.name}`}>
-                    <Button
-                      size="lg"
-                      className="function-page-cta-button function-page-cta-button--primary gap-2 px-8"
-                    >
-                      <Play className="w-4 h-4" />
-                      Try it Now
-                    </Button>
+                  <Link
+                    to={`/run/${functionInfo.author}/${functionInfo.name}`}
+                    className="function-page-cta-button function-page-cta-button--primary"
+                  >
+                    <Play className="w-4 h-4" />
+                    Try it Now
                   </Link>
-                  <Link to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}>
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="function-page-cta-button function-page-cta-button--secondary gap-2"
-                    >
-                      <Activity className="w-4 h-4" />
-                      Executions
-                    </Button>
+                  <Link
+                    to={`/registry/${functionInfo.author}/${functionInfo.name}/executions`}
+                    className="function-page-cta-button function-page-cta-button--secondary"
+                  >
+                    <Activity className="w-4 h-4" />
+                    Executions
                   </Link>
                   <Link
                     to={`/registry/${functionInfo.author}/${functionInfo.name}/executions?tab=certificates`}
+                    className="function-page-cta-button function-page-cta-button--secondary"
                   >
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="function-page-cta-button function-page-cta-button--secondary gap-2"
-                    >
-                      <Shield className="w-4 h-4" />
-                      Certificates
-                    </Button>
+                    <Shield className="w-4 h-4" />
+                    Certificates
                   </Link>
                   {functionInfo.repo_url ? (
-                    <a href={functionInfo.repo_url} target="_blank" rel="noopener noreferrer">
-                      <Button
-                        variant="outline"
-                        size="lg"
-                        className="function-page-cta-button function-page-cta-button--secondary gap-2"
-                      >
-                        <Icon icon="simple-icons:github" className="w-4 h-4" />
-                        View on GitHub
-                      </Button>
+                    <a
+                      href={functionInfo.repo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="function-page-cta-button function-page-cta-button--secondary"
+                    >
+                      <Icon icon="simple-icons:github" className="w-4 h-4" />
+                      View on GitHub
                     </a>
                   ) : null}
                   <ShareButton functionInfo={functionInfo} />
@@ -442,6 +502,52 @@ export default function FunctionPage() {
                   />
                 </motion.div>
               </motion.div>
+
+              {functionInfo.manifest?.deprecated && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="rounded-[var(--radius-lg)] p-4 flex items-start gap-3"
+                  style={{
+                    background: 'rgba(232, 196, 104, 0.06)',
+                    border: '1px solid rgba(232, 196, 104, 0.2)',
+                    marginBottom: '1.5rem',
+                  }}
+                >
+                  <AlertOctagon className="w-5 h-5 mt-0.5 shrink-0" style={{ color: 'var(--status-pending)' }} />
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--status-pending)' }}>
+                      This function is deprecated
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>
+                      {functionInfo.manifest.successor
+                        ? <>This function has been replaced. Consider using the successor instead.</>
+                        : <>This function may be removed in a future release. Use with caution.</>
+                      }
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+
+              {functionInfo.manifest?.rate_limit != null && functionInfo.manifest.rate_limit > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="rounded-[var(--radius-lg)] p-3 flex items-center gap-3"
+                  style={{
+                    background: 'var(--panel-raised)',
+                    border: '1px solid var(--panel-edge)',
+                    marginBottom: '1.5rem',
+                  }}
+                >
+                  <Gauge className="w-4 h-4 shrink-0" style={{ color: 'var(--foil-b)' }} />
+                  <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                    Rate limited to <strong style={{ color: 'var(--text)' }}>{functionInfo.manifest.rate_limit}</strong> requests per minute
+                  </p>
+                </motion.div>
+              )}
 
               <motion.div
                 id="fp-overview"
@@ -490,50 +596,50 @@ export default function FunctionPage() {
                 className="function-page-section function-page-section--delayed"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <BarChart3 className="h-6 w-6 text-brand-500" />
-                  <h2 className="text-2xl font-bold">Function Statistics</h2>
+                  <BarChart3 className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
+                  <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Function Statistics</h2>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card className="bg-gradient-to-br from-brand-500/10 to-brand-600/5 border-brand-500/20">
+                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
                     <CardContent className="p-4 text-center">
-                      <Activity className="h-8 w-8 text-brand-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-text-primary">
+                      <Activity className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--status-ok)' }} />
+                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
                         {statsData?.total_calls
                           ? formatNumber(statsData.total_calls)
                           : formatNumber(functionInfo.executions || 0)}
                       </p>
-                      <p className="text-xs text-text-muted">Total Executions</p>
+                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Total Executions</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border-emerald-500/20">
+                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
                     <CardContent className="p-4 text-center">
-                      <TrendingUp className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-text-primary">
-                        {statsData?.success_rate
+                      <TrendingUp className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--status-ok)' }} />
+                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                        {statsData?.success_rate != null
                           ? `${statsData.success_rate.toFixed(1)}%`
-                          : '99.9%'}
+                          : '—'}
                       </p>
-                      <p className="text-xs text-text-muted">Success Rate</p>
+                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Success Rate</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
+                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
                     <CardContent className="p-4 text-center">
-                      <Zap className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-text-primary">
-                        {statsData?.avg_latency_ms
+                      <Zap className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--status-pending)' }} />
+                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
+                        {statsData?.avg_latency_ms != null
                           ? `${Math.round(statsData.avg_latency_ms)}ms`
-                          : '<50ms'}
+                          : '—'}
                       </p>
-                      <p className="text-xs text-text-muted">Avg Latency</p>
+                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Avg Latency</p>
                     </CardContent>
                   </Card>
-                  <Card className="bg-gradient-to-br from-violet-500/10 to-violet-600/5 border-violet-500/20">
+                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
                     <CardContent className="p-4 text-center">
-                      <Shield className="h-8 w-8 text-violet-500 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-text-primary">
+                      <Shield className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--foil-b)' }} />
+                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
                         {functionInfo.trust_score ? `${functionInfo.trust_score}%` : 'N/A'}
                       </p>
-                      <p className="text-xs text-text-muted">Trust Score</p>
+                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Trust Score</p>
                     </CardContent>
                   </Card>
                 </div>
@@ -548,8 +654,8 @@ export default function FunctionPage() {
                   className="function-page-section function-page-section--delayed"
                 >
                   <div className="flex items-center gap-2 mb-4">
-                    <h2 className="text-2xl font-bold flex items-center gap-2">
-                      <span className="text-velocity-500">⚡</span>
+                    <h2 className="text-2xl font-bold flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                      <span style={{ color: 'var(--status-pending)' }}>⚡</span>
                       Function DNA
                     </h2>
                   </div>
@@ -572,8 +678,8 @@ export default function FunctionPage() {
                 className="function-page-section function-page-section--delayed-2"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <Shield className="h-6 w-6 text-brand-500" />
-                  <h2 className="text-2xl font-bold">Trust & Verification</h2>
+                  <Shield className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
+                  <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Trust & Verification</h2>
                 </div>
                 <TrustDashboardWidget
                   functionId={functionInfo.id}
@@ -620,8 +726,8 @@ export default function FunctionPage() {
                 className="function-page-section function-page-section--delayed-3"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <Activity className="h-6 w-6 text-brand-500" />
-                  <h2 className="text-2xl font-bold">Recent Activity</h2>
+                  <Activity className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
+                  <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Recent Activity</h2>
                 </div>
                 <ActivityFeed
                   activities={(executionsData?.executions || []).map(
@@ -655,8 +761,8 @@ export default function FunctionPage() {
                   className="function-page-section function-page-section--delayed-3"
                 >
                   <div className="flex items-center gap-2 mb-4">
-                    <Zap className="h-6 w-6 text-brand-500" />
-                    <h2 className="text-2xl font-bold">Latest Execution</h2>
+                    <Zap className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
+                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Latest Execution</h2>
                   </div>
                   <ExecutionTimeline
                     phases={getExecutionPhases(latestExecution, statsData?.avg_latency_ms)}
@@ -679,8 +785,8 @@ export default function FunctionPage() {
                 className="function-page-section function-page-section--delayed-3"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <Layers className="h-6 w-6 text-brand-500" />
-                  <h2 className="text-2xl font-bold">Execution Traces</h2>
+                  <Layers className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
+                  <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Execution Traces</h2>
                 </div>
                 <TraceList functionFilter={{ author: functionInfo.author, name: functionInfo.name }} />
               </motion.div>
@@ -694,8 +800,8 @@ export default function FunctionPage() {
                   className="function-page-section function-page-section--delayed-4"
                 >
                   <div className="flex items-center gap-2 mb-4">
-                    <Clock className="h-6 w-6 text-brand-500" />
-                    <h2 className="text-2xl font-bold">Version History</h2>
+                    <Clock className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
+                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Version History</h2>
                   </div>
                   <div className="space-y-3">
                     {versionsData.versions
@@ -707,33 +813,34 @@ export default function FunctionPage() {
                         ) => (
                           <Card
                             key={version.version}
-                            className={idx === 0 ? 'border-brand-500/50 bg-brand-500/5' : ''}
+                            style={idx === 0 ? { borderColor: 'rgba(143, 255, 208, 0.3)', background: 'rgba(143, 255, 208, 0.03)' } : { background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)' }}
                           >
                             <CardContent className="p-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                   <div
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${idx === 0 ? 'bg-brand-500 text-white' : 'bg-bg-secondary text-text-muted'}`}
+                                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                                    style={idx === 0 ? { background: 'var(--status-ok)', color: 'var(--bg)' } : { background: 'var(--panel)', color: 'var(--text-faint)' }}
                                   >
                                     v{version.version}
                                   </div>
                                   <div>
-                                    <p className="text-sm font-medium text-text-primary">
+                                    <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
                                       Version {version.version}
                                       {idx === 0 && (
-                                        <span className="ml-2 text-xs text-brand-400 font-normal">
+                                        <span className="ml-2 text-xs font-normal" style={{ color: 'var(--status-ok)' }}>
                                           (current)
                                         </span>
                                       )}
                                     </p>
-                                    <p className="text-xs text-text-muted">
+                                    <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
                                       Published{' '}
                                       {new Date(version.published_at).toLocaleDateString()}
                                     </p>
                                   </div>
                                 </div>
                                 {version.changelog && (
-                                  <p className="text-xs text-text-secondary line-clamp-1 max-w-xs">
+                                  <p className="text-xs line-clamp-1 max-w-xs" style={{ color: 'var(--text-dim)' }}>
                                     {version.changelog}
                                   </p>
                                 )}
@@ -755,8 +862,8 @@ export default function FunctionPage() {
                   className="function-page-section function-page-section--delayed-4"
                 >
                   <div className="flex items-center gap-2 mb-4">
-                    <FileJson className="h-6 w-6 text-brand-500" />
-                    <h2 className="text-2xl font-bold">README</h2>
+                    <FileJson className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
+                    <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>README</h2>
                   </div>
                   <Card>
                     <CardContent className="p-6">
@@ -797,16 +904,16 @@ export default function FunctionPage() {
               </div>
 
               <div id="fp-schema" className="function-page-section">
-                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                  <FileJson className="w-6 h-6 text-brand-500" />
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+                  <FileJson className="w-6 h-6" style={{ color: 'var(--status-ok)' }} />
                   Input / Output Schema
                 </h2>
                 <div className="function-page-schema-grid">
                   {functionInfo.manifest?.input ? (
-                    <Card className="function-page-schema-card">
+                    <Card className="function-page-schema-card" style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)' }}>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Input</CardTitle>
-                        <CardDescription>Expected input structure</CardDescription>
+                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Input</CardTitle>
+                        <CardDescription style={{ color: 'var(--text-dim)' }}>Expected input structure</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <CodeBlock
@@ -816,13 +923,13 @@ export default function FunctionPage() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <Card className="function-page-schema-card border-dashed border-border-muted">
+                    <Card className="function-page-schema-card" style={{ borderStyle: 'dashed', borderColor: 'var(--panel-edge)' }}>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Input</CardTitle>
-                        <CardDescription>No input schema defined</CardDescription>
+                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Input</CardTitle>
+                        <CardDescription style={{ color: 'var(--text-dim)' }}>No input schema defined</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-text-muted">
+                        <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
                           This function does not declare an input schema. Add an <code>input</code>{' '}
                           field to your function manifest to enable typed inputs.
                         </p>
@@ -830,10 +937,10 @@ export default function FunctionPage() {
                     </Card>
                   )}
                   {functionInfo.manifest?.output ? (
-                    <Card className="function-page-schema-card">
+                    <Card className="function-page-schema-card" style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)' }}>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Output</CardTitle>
-                        <CardDescription>Expected output structure</CardDescription>
+                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Output</CardTitle>
+                        <CardDescription style={{ color: 'var(--text-dim)' }}>Expected output structure</CardDescription>
                       </CardHeader>
                       <CardContent>
                         <CodeBlock
@@ -843,13 +950,13 @@ export default function FunctionPage() {
                       </CardContent>
                     </Card>
                   ) : (
-                    <Card className="function-page-schema-card border-dashed border-border-muted">
+                    <Card className="function-page-schema-card" style={{ borderStyle: 'dashed', borderColor: 'var(--panel-edge)' }}>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-lg">Output</CardTitle>
-                        <CardDescription>No output schema defined</CardDescription>
+                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Output</CardTitle>
+                        <CardDescription style={{ color: 'var(--text-dim)' }}>No output schema defined</CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-sm text-text-muted">
+                        <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
                           This function does not declare an output schema. Add an{' '}
                           <code>output</code> field to your function manifest to enable typed
                           outputs.
@@ -860,27 +967,12 @@ export default function FunctionPage() {
                 </div>
               </div>
 
-              <Card className="function-page-related-cta">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-brand-500/10 flex items-center justify-center">
-                      <Package className="w-6 h-6 text-brand-500" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg">Explore More Functions</h3>
-                      <p className="text-muted-foreground text-sm">
-                        Discover related functions in the registry to build powerful workflows
-                      </p>
-                    </div>
-                    <Link to="/registry">
-                      <Button variant="outline">
-                        Browse Registry
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
+              <RelatedFunctionsSection
+                author={functionInfo.author}
+                name={functionInfo.name}
+                category={functionInfo.category}
+                tags={functionInfo.tags}
+              />
             </div>
           </div>
         </main>
@@ -892,12 +984,12 @@ export default function FunctionPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader className="pb-2">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20">
-                <AlertTriangle className="h-6 w-6 text-amber-500" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]" style={{ background: 'rgba(232, 196, 104, 0.1)', border: '1px solid rgba(232, 196, 104, 0.2)' }}>
+                <AlertTriangle className="h-6 w-6" style={{ color: 'var(--status-pending)' }} />
               </div>
               <div>
                 <DialogTitle className="text-lg font-semibold">Report a Function Issue</DialogTitle>
-                <DialogDescription className="text-sm text-text-muted">
+                <DialogDescription className="text-sm" style={{ color: 'var(--text-faint)' }}>
                   Help @{functionInfo?.author} fix problems with {functionInfo?.name}
                 </DialogDescription>
               </div>
@@ -906,7 +998,7 @@ export default function FunctionPage() {
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label htmlFor="report-description" className="text-sm font-medium text-text-primary">
+              <label htmlFor="report-description" className="text-sm font-medium" style={{ color: 'var(--text)' }}>
                 Describe the issue
               </label>
               <textarea
@@ -914,18 +1006,19 @@ export default function FunctionPage() {
                 value={reportDescription}
                 onChange={(e) => setReportDescription(e.target.value)}
                 placeholder="The function returns an error when I send X input, or it doesn't work as described..."
-                className="w-full min-h-[100px] px-3 py-2.5 rounded-lg border border-border-subtle bg-bg-primary text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 resize-none text-sm"
+                className="w-full min-h-[100px] px-3 py-2.5 rounded-[var(--radius)] resize-none text-sm"
+                style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)', color: 'var(--text)' }}
                 autoFocus
               />
             </div>
 
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10 shrink-0">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
+            <div className="flex items-start gap-3 p-3 rounded-[var(--radius)]" style={{ background: 'rgba(232, 196, 104, 0.04)', border: '1px solid rgba(232, 196, 104, 0.1)' }}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] shrink-0" style={{ background: 'rgba(232, 196, 104, 0.08)' }}>
+                <AlertCircle className="h-4 w-4" style={{ color: 'var(--status-pending)' }} />
               </div>
               <div>
-                <p className="text-sm font-medium text-amber-400">What happens next</p>
-                <p className="text-xs text-text-muted mt-0.5">
+                <p className="text-sm font-medium" style={{ color: 'var(--status-pending)' }}>What happens next</p>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
                   The author will be notified and can investigate. You'll see updates in the
                   function's activity feed.
                 </p>
@@ -941,7 +1034,7 @@ export default function FunctionPage() {
               variant="default"
               onClick={submitReport}
               disabled={!reportDescription.trim()}
-              className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0 shadow-lg shadow-amber-500/20"
+              className="flex-1"
             >
               Submit Report
             </Button>
@@ -949,5 +1042,6 @@ export default function FunctionPage() {
         </DialogContent>
       </Dialog>
     </>
+    </ErrorBoundary>
   );
 }

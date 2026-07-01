@@ -96,14 +96,14 @@ function StatsGrid({ analytics, usage, isLoading }: StatsGridProps) {
     );
   }
 
-  const successRate = analytics.successRate ?? 0;
+  const successRate = (analytics.success_rate ?? 0) * 100;
   const successRateTrend = successRate >= 95 ? 'up' : successRate < 90 ? 'down' : 'neutral';
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
         title="Total Executions"
-        value={analytics.totalExecutions.toLocaleString()}
+        value={(analytics.total_calls ?? 0).toLocaleString()}
         icon={Activity}
       />
       <StatCard
@@ -116,12 +116,12 @@ function StatsGrid({ analytics, usage, isLoading }: StatsGridProps) {
       />
       <StatCard
         title="Avg Latency"
-        value={`${((analytics.avgLatencyMs ?? 0) / 1000).toFixed(2)}s`}
+        value={`${((analytics.avg_latency_ms ?? 0) / 1000).toFixed(2)}s`}
         icon={Clock}
       />
       <StatCard
         title="Avg Cost"
-        value={`$${(analytics.avgCostUsd ?? 0).toFixed(4)}`}
+        value={`$${(analytics.total_cost_usd ?? 0).toFixed(4)}`}
         icon={DollarSign}
       />
     </div>
@@ -404,7 +404,7 @@ export function AgentAnalyticsComponent({ agentId, className }: AgentAnalyticsPr
       </div>
 
       <StatsGrid
-        analytics={analytics ?? { totalExecutions: 0, successRate: 0, avgLatencyMs: 0, avgCostUsd: 0, period: '' }}
+        analytics={analytics ?? { agent_id: '', total_calls: 0, total_cost_usd: 0, avg_latency_ms: 0, p50_latency_ms: 0, p95_latency_ms: 0, success_count: 0, error_count: 0, timeout_count: 0, policy_violation_count: 0, success_rate: 0 }}
         usage={usage}
         isLoading={analyticsLoading}
       />

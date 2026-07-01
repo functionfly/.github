@@ -150,7 +150,7 @@ export function SecretBrowser({ plan }: SecretBrowserProps) {
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm font-medium">{selectedPath || "default"}</div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-[var(--text-faint)]">
                 Secrets in this namespace
               </div>
             </div>
@@ -205,7 +205,7 @@ function TreeView({
                 if (c.children.length) onToggle(c.fullPath);
               }}
               className={`flex w-full items-center gap-1 rounded px-1.5 py-1 text-left ${
-                isSel ? "bg-accent" : "hover:bg-muted/50"
+                isSel ? "bg-accent" : "hover:bg-[var(--panel-raised)]/50"
               }`}
               style={{ paddingLeft: `${depth * 12 + 6}px` }}
             >
@@ -217,9 +217,9 @@ function TreeView({
                 <span className="w-3" />
               )}
               {open ? (
-                <FolderOpen className="h-4 w-4 text-amber-500" />
+                <FolderOpen className="h-4 w-4 text-[var(--status-pending)]" />
               ) : (
-                <Folder className="h-4 w-4 text-amber-500" />
+                <Folder className="h-4 w-4 text-[var(--status-pending)]" />
               )}
               <span className="truncate flex-1">{c.name}</span>
               {c.namespace && (
@@ -269,7 +269,7 @@ function SecretListForNamespace({ path, plan }: { path: string; plan: VaultPlan 
 
   if (secrets.length === 0 && isDefaultNamespace) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
+      <div className="text-center py-8 text-[var(--text-faint)]">
         <KeyRound className="h-8 w-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No secrets yet</p>
         <p className="text-xs mt-1">
@@ -281,7 +281,7 @@ function SecretListForNamespace({ path, plan }: { path: string; plan: VaultPlan 
 
   if (secrets.length === 0) {
     return (
-      <div className="text-center py-8 text-muted-foreground">
+      <div className="text-center py-8 text-[var(--text-faint)]">
         <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
         <p className="text-sm">No secrets in this namespace</p>
         <p className="text-xs mt-1">
@@ -297,11 +297,11 @@ function SecretListForNamespace({ path, plan }: { path: string; plan: VaultPlan 
         <div key={s.id} className="flex items-center justify-between py-2 text-sm">
           <div className="flex items-center gap-2">
             {s.secret_type === "api_key" ? (
-              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <KeyRound className="h-4 w-4 text-[var(--text-faint)]" />
             ) : s.secret_type === "oauth_token" ? (
-              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+              <ShieldCheck className="h-4 w-4 text-[var(--text-faint)]" />
             ) : (
-              <FileKey className="h-4 w-4 text-muted-foreground" />
+              <FileKey className="h-4 w-4 text-[var(--text-faint)]" />
             )}
             <span className="font-mono">{s.name}</span>
           </div>

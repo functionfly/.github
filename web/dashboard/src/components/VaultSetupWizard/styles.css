@@ -1,0 +1,567 @@
+/**
+ * VaultSetupWizard — 3-step onboarding modal
+ *
+ * Uses sealed-containment tokens from sc-tokens.css.
+ * Designed to be simple and friendly for all ages.
+ */
+
+@import '@/styles/sc-tokens.css';
+
+/* ==========================================================================
+   Overlay
+   ========================================================================== */
+
+.vault-wizard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: var(--space-4);
+  animation: vw-fade-in 0.25s ease-out;
+}
+
+@keyframes vw-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==========================================================================
+   Modal card
+   ========================================================================== */
+
+.vault-wizard {
+  width: 100%;
+  max-width: 480px;
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-chamber), 0 0 80px rgba(143, 255, 208, 0.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: vw-slide-up 0.3s ease-out;
+}
+
+@keyframes vw-slide-up {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ==========================================================================
+   Step indicator
+   ========================================================================== */
+
+.vault-wizard__steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5) 0;
+}
+
+.vault-wizard__step-dot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.vault-wizard__step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  color: var(--text-faint);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.vault-wizard__step-dot--active .vault-wizard__step-number {
+  background: rgba(143, 255, 208, 0.12);
+  border-color: rgba(143, 255, 208, 0.35);
+  color: var(--status-ok);
+  box-shadow: 0 0 12px rgba(143, 255, 208, 0.15);
+}
+
+.vault-wizard__step-dot--done .vault-wizard__step-number {
+  background: rgba(143, 255, 208, 0.08);
+  border-color: rgba(143, 255, 208, 0.25);
+  color: var(--status-ok);
+}
+
+.vault-wizard__step-label {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-faint);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.vault-wizard__step-dot--active .vault-wizard__step-label {
+  color: var(--text);
+}
+
+.vault-wizard__step-dot--done .vault-wizard__step-label {
+  color: var(--text-dim);
+}
+
+/* Connector line between steps */
+.vault-wizard__step-dot:not(:last-child)::after {
+  content: '';
+  display: block;
+  width: 24px;
+  height: 1px;
+  background: var(--panel-edge);
+  margin: 0 var(--space-1);
+}
+
+.vault-wizard__step-dot--done:not(:last-child)::after {
+  background: rgba(143, 255, 208, 0.25);
+}
+
+/* ==========================================================================
+   Body
+   ========================================================================== */
+
+.vault-wizard__body {
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-5);
+}
+
+.vault-wizard__body--center {
+  padding-top: var(--space-6);
+}
+
+/* ==========================================================================
+   Icon ring
+   ========================================================================== */
+
+.vault-wizard__icon-ring {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(143, 255, 208, 0.06);
+  border: 1px solid rgba(143, 255, 208, 0.15);
+  flex-shrink: 0;
+}
+
+.vault-wizard__icon-ring--success {
+  background: rgba(143, 255, 208, 0.1);
+  border-color: rgba(143, 255, 208, 0.3);
+  box-shadow: 0 0 24px rgba(143, 255, 208, 0.12);
+}
+
+.vault-wizard__icon {
+  width: 28px;
+  height: 28px;
+  color: var(--status-ok);
+}
+
+/* ==========================================================================
+   Typography
+   ========================================================================== */
+
+.vault-wizard__title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.vault-wizard__desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  margin: 0;
+  max-width: 360px;
+}
+
+.vault-wizard__desc strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   Welcome info cards
+   ========================================================================== */
+
+.vault-wizard__card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  text-align: left;
+}
+
+.vault-wizard__card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.vault-wizard__card-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--status-ok);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.vault-wizard__card-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 2px;
+}
+
+.vault-wizard__card-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Link
+   ========================================================================== */
+
+.vault-wizard__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--status-ok);
+  text-decoration: none;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.vault-wizard__link:hover {
+  opacity: 0.8;
+}
+
+.vault-wizard__link-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ==========================================================================
+   Form fields
+   ========================================================================== */
+
+.vault-wizard__field {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.vault-wizard__label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  padding-left: 2px;
+}
+
+.vault-wizard__input-wrap {
+  position: relative;
+}
+
+.vault-wizard__input {
+  width: 100%;
+  height: 44px;
+  padding: 0 120px 0 var(--space-4);
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.vault-wizard__input::placeholder {
+  color: var(--text-faint);
+}
+
+.vault-wizard__input:focus {
+  border-color: var(--steel-light);
+  box-shadow: var(--shadow-input-focus);
+}
+
+.vault-wizard__input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vault-wizard__input-actions {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.vault-wizard__action-btn {
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--ease-out), background var(--duration-fast) var(--ease-out);
+}
+
+.vault-wizard__action-btn:hover:not(:disabled) {
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.vault-wizard__action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vault-wizard__action-check {
+  color: var(--status-ok);
+}
+
+.vault-wizard__strength {
+  margin-top: var(--space-1);
+}
+
+/* ==========================================================================
+   Error
+   ========================================================================== */
+
+.vault-wizard__error {
+  width: 100%;
+  padding: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--status-revoked);
+  background: rgba(255, 107, 107, 0.06);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: var(--radius);
+  text-align: left;
+}
+
+/* ==========================================================================
+   Warning
+   ========================================================================== */
+
+.vault-wizard__warning {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(232, 196, 104, 0.04);
+  border: 1px solid rgba(232, 196, 104, 0.15);
+  border-radius: var(--radius);
+  text-align: left;
+  margin-top: var(--space-1);
+}
+
+.vault-wizard__warning-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--status-pending);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.vault-wizard__warning-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--status-pending);
+  margin: 0;
+}
+
+/* ==========================================================================
+   Done checklist
+   ========================================================================== */
+
+.vault-wizard__checklist {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.vault-wizard__check-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.vault-wizard__check-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--status-ok);
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+
+.vault-wizard__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6) var(--space-6);
+  border-top: 1px solid var(--panel-edge);
+}
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+
+.vault-wizard__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  padding: 0 var(--space-5);
+  height: 40px;
+}
+
+.vault-wizard__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.vault-wizard__btn--primary {
+  background: linear-gradient(180deg, #ffffff, #d8dee2);
+  color: var(--text-on-light);
+  box-shadow: var(--shadow-btn-primary-rest);
+}
+
+.vault-wizard__btn--primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover);
+}
+
+.vault-wizard__btn--primary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active);
+  transform: translateY(1px);
+}
+
+.vault-wizard__btn--ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--steel);
+  box-shadow: var(--shadow-btn-secondary-rest);
+}
+
+.vault-wizard__btn--ghost:hover:not(:disabled) {
+  background: var(--panel-raised);
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+
+.vault-wizard__btn--wide {
+  width: 100%;
+}
+
+.vault-wizard__btn-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.vault-wizard__btn-icon--spin {
+  animation: vw-spin 1s linear infinite;
+}
+
+@keyframes vw-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 480px) {
+  .vault-wizard {
+    max-width: 100%;
+  }
+
+  .vault-wizard__body {
+    padding: var(--space-4) var(--space-4);
+  }
+
+  .vault-wizard__steps {
+    padding: var(--space-3) var(--space-4) 0;
+  }
+
+  .vault-wizard__step-label {
+    display: none;
+  }
+
+  .vault-wizard__title {
+    font-size: 19px;
+  }
+
+  .vault-wizard__footer {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    flex-direction: column;
+  }
+
+  .vault-wizard__btn {
+    width: 100%;
+  }
+}

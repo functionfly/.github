@@ -225,7 +225,7 @@ export function AuditLog({
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-10 w-32" />
         </div>
-        <div className="rounded-lg border border-border-subtle">
+        <div className="rounded-lg border border-[var(--panel-edge)]-subtle">
           <div className="space-y-2 p-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
@@ -249,7 +249,7 @@ export function AuditLog({
         <h3 className="text-lg font-semibold text-error mb-2">
           Failed to load audit log
         </h3>
-        <p className="text-text-secondary mb-4">
+        <p className="text-[var(--text-dim)] mb-4">
           {error instanceof Error ? error.message : "An unexpected error occurred"}
         </p>
         <Button onClick={() => window.location.reload()} variant="outline">
@@ -265,7 +265,7 @@ export function AuditLog({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
             <Input
               placeholder="Search audit log..."
               value={searchQuery}
@@ -307,14 +307,14 @@ export function AuditLog({
 
       {/* Empty state */}
       {filteredEntries?.length === 0 && (
-        <div className="rounded-lg border border-border-subtle bg-card p-12 text-center">
+        <div className="rounded-lg border border-[var(--panel-edge)]-subtle bg-[var(--panel-raised)] p-12 text-center">
           <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-brand-500/20 to-purple-500/20 flex items-center justify-center mb-4">
-            <Shield className="h-8 w-8 text-brand-500" />
+            <Shield className="h-8 w-8 text-[var(--status-ok)]" />
           </div>
           <h3 className="text-lg font-semibold text-card-foreground mb-2">
             No audit entries found
           </h3>
-          <p className="text-text-secondary max-w-sm mx-auto">
+          <p className="text-[var(--text-dim)] max-w-sm mx-auto">
             {searchQuery || actionFilter !== "all"
               ? "No entries match your current filters. Try adjusting your search criteria."
               : "Audit log entries will appear here when secrets are created, accessed, or modified."}
@@ -324,7 +324,7 @@ export function AuditLog({
 
       {/* Audit log table */}
       {filteredEntries && filteredEntries.length > 0 && (
-        <div className="rounded-lg border border-border-subtle overflow-hidden">
+        <div className="rounded-lg border border-[var(--panel-edge)]-subtle overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -358,7 +358,7 @@ export function AuditLog({
                             addSuffix: true,
                           })}
                         </span>
-                        <span className="text-xs text-text-muted">
+                        <span className="text-xs text-[var(--text-faint)]">
                           {format(new Date(entry.created_at), "HH:mm:ss")}
                         </span>
                       </div>
@@ -370,7 +370,7 @@ export function AuditLog({
                             "h-8 w-8 rounded-lg flex items-center justify-center",
                             {
                               "bg-success-glow": entry.action === "create",
-                              "bg-brand-500/10": entry.action === "read",
+                              "rgba(143,255,208,0.06)": entry.action === "read",
                               "bg-warning-glow": entry.action === "update",
                               "bg-error-glow":
                                 entry.action === "delete" ||
@@ -381,7 +381,7 @@ export function AuditLog({
                           <ActionIcon
                             className={cn("h-4 w-4", {
                               "text-success": entry.action === "create",
-                              "text-brand-500": entry.action === "read",
+                              "text-[var(--status-ok)]": entry.action === "read",
                               "text-warning": entry.action === "update",
                               "text-error":
                                 entry.action === "delete" ||
@@ -396,7 +396,7 @@ export function AuditLog({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <ActorIcon className="h-3.5 w-3.5 text-text-muted" />
+                        <ActorIcon className="h-3.5 w-3.5 text-[var(--text-faint)]" />
                         <div className="flex flex-col">
                           <span
                             className="text-sm text-card-foreground truncate max-w-[120px]"
@@ -404,7 +404,7 @@ export function AuditLog({
                           >
                             {entry.actor_id.slice(0, 8)}...
                           </span>
-                          <span className="text-xs text-text-muted">
+                          <span className="text-xs text-[var(--text-faint)]">
                             {actorTypeLabels[entry.actor_type]}
                           </span>
                         </div>
@@ -416,7 +416,7 @@ export function AuditLog({
                           {entry.secret_id.slice(0, 8)}...
                         </code>
                       ) : (
-                        <span className="text-text-muted">—</span>
+                        <span className="text-[var(--text-faint)]">—</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -434,7 +434,7 @@ export function AuditLog({
                     </TableCell>
                     <TableCell>
                       <button
-                        className="p-1 text-text-muted hover:text-text-primary"
+                        className="p-1 text-[var(--text-faint)] hover:text-[var(--text)]"
                         aria-label={isExpanded ? "Collapse audit log details" : "Expand audit log details"}
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent row click from firing
@@ -456,7 +456,7 @@ export function AuditLog({
 
           {/* Load more button */}
           {entriesArray && entriesArray.length >= limit && (
-            <div className="p-4 border-t border-border-subtle text-center">
+            <div className="p-4 border-t border-[var(--panel-edge)]-subtle text-center">
               <Button
                 variant="outline"
                 onClick={() => setLimit((prev) => prev + 50)}
@@ -469,7 +469,7 @@ export function AuditLog({
       )}
 
       {/* Entry count */}
-      <p className="text-sm text-text-muted text-center">
+      <p className="text-sm text-[var(--text-faint)] text-center">
         Showing {filteredEntries?.length || 0} of {entriesArray?.length || 0} entries
       </p>
     </div>

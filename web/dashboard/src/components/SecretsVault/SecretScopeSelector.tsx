@@ -225,7 +225,7 @@ function ScopeBadge({
             {!isInherited && onRemove && !disabled && (
               <button
                 onClick={onRemove}
-                className="ml-1 rounded-sm hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none"
+                className="ml-1 rounded-sm hover:bg-black/10 hover:bg-[rgba(255,255,255,0.04)] focus:outline-none"
                 aria-label={`Remove ${scope.name}`}
               >
                 <X className="h-3 w-3" />
@@ -235,7 +235,7 @@ function ScopeBadge({
         </TooltipTrigger>
         <TooltipContent side="bottom">
           <p className="text-xs">{scope.description || scope.name}</p>
-          <p className="text-xs text-muted-foreground capitalize">{scope.type} scope</p>
+          <p className="text-xs text-[var(--text-faint)] capitalize">{scope.type} scope</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -454,7 +454,7 @@ export function SecretScopeSelector({
                         </div>
                         <button
                           onClick={() => handleSelectAll(type)}
-                          className="text-xs text-brand-500 hover:text-brand-600"
+                          className="text-xs text-[var(--status-ok)] hover:text-[var(--accent)]"
                           disabled={disabled}
                         >
                           {allSelected ? "Deselect all" : "Select all"}
@@ -482,7 +482,7 @@ export function SecretScopeSelector({
                             className={cn(
                               "flex h-5 w-5 items-center justify-center rounded border",
                               isSelected || isInherited
-                                ? "bg-brand-500 border-brand-500"
+                                ? "rgba(143,255,208,0.15) border-[rgba(143,255,208,0.3)]"
                                 : "border-(--border-default)"
                             )}
                           >

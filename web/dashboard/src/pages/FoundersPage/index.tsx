@@ -7,7 +7,7 @@ import { usePlatformStream } from './hooks/usePlatformStream';
 import { useKeyboardNav } from './hooks/useKeyboardNav';
 import { HeroHeader } from './components/HeroHeader';
 import { ActivityTicker } from './components/ActivityTicker';
-import { GovernanceVotes } from './components/GovernanceVotes';
+import { VoteHub } from './components/VoteHub';
 import { PlatformState } from './components/PlatformState';
 import { FounderIdentity } from './components/FounderIdentity';
 import { EarningsReferrals } from './components/EarningsReferrals';
@@ -83,9 +83,8 @@ export default function FoundersPage() {
       <HeroHeader status={status} rank={rank} />
       <ActivityTicker status={status} votes={votes} />
 
-      <GovernanceVotes
+      <VoteHub
         votes={votes}
-        castVote={castVote}
         totalFounders={status.total_founders}
       />
 

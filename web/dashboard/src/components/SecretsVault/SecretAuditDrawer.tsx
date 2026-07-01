@@ -166,10 +166,10 @@ const actionVariants: Record<
 // Action color mapping for icons
 const actionColors: Record<AuditAction, string> = {
   create: "text-success bg-success-glow",
-  read: "text-brand-500 bg-brand-500/10",
+  read: "text-[var(--status-ok)] rgba(143,255,208,0.06)",
   update: "text-warning bg-warning-glow",
   delete: "text-error bg-error-glow",
-  use: "text-brand-500 bg-brand-500/10",
+  use: "text-[var(--status-ok)] rgba(143,255,208,0.06)",
   revoke: "text-error bg-error-glow",
   version: "text-warning bg-warning-glow",
   rollback: "text-error bg-error-glow",
@@ -424,7 +424,7 @@ export function SecretAuditDrawer({
           <div className="flex flex-col gap-3">
             {/* Search */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
               <Input
                 placeholder="Search by actor, secret ID, IP..."
                 value={searchQuery}
@@ -548,7 +548,7 @@ export function SecretAuditDrawer({
               <h3 className="text-lg font-semibold text-error mb-2">
                 Failed to load audit log
               </h3>
-              <p className="text-text-secondary mb-4">
+              <p className="text-[var(--text-dim)] mb-4">
                 {error.message || "An unexpected error occurred"}
               </p>
               <Button onClick={onRefresh} variant="outline">
@@ -557,14 +557,14 @@ export function SecretAuditDrawer({
             </div>
           ) : filteredEntries.length === 0 ? (
             // Empty state
-            <div className="rounded-lg border border-border-subtle bg-card p-12 text-center">
+            <div className="rounded-lg border border-[var(--panel-edge)]-subtle bg-[var(--panel-raised)] p-12 text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-brand-500/20 to-purple-500/20 flex items-center justify-center mb-4">
-                <Shield className="h-8 w-8 text-brand-500" />
+                <Shield className="h-8 w-8 text-[var(--status-ok)]" />
               </div>
               <h3 className="text-lg font-semibold text-card-foreground mb-2">
                 No audit entries found
               </h3>
-              <p className="text-text-secondary max-w-sm mx-auto">
+              <p className="text-[var(--text-dim)] max-w-sm mx-auto">
                 {hasActiveFilters
                   ? "No entries match your current filters. Try adjusting your search criteria."
                   : "Audit log entries will appear here when secrets are created, accessed, or modified."}
@@ -582,10 +582,10 @@ export function SecretAuditDrawer({
                   <div
                     key={entry.id}
                     className={cn(
-                      "rounded-lg border border-border-subtle p-3 transition-colors",
-                      "hover:border-border-hover cursor-pointer",
+                      "rounded-lg border border-[var(--panel-edge)]-subtle p-3 transition-colors",
+                      "hover:border-[var(--panel-edge)]-hover cursor-pointer",
                       !entry.success && "bg-error-glow/20 border-error/30",
-                      isExpanded && "border-border-hover"
+                      isExpanded && "border-[var(--panel-edge)]-hover"
                     )}
                     onClick={() => toggleRow(entry.id)}
                   >
@@ -607,7 +607,7 @@ export function SecretAuditDrawer({
                             <Badge variant={actionVariants[entry.action]}>
                               {actionLabels[entry.action]}
                             </Badge>
-                            <span className="text-sm text-text-muted">
+                            <span className="text-sm text-[var(--text-faint)]">
                               {formatDistanceToNow(new Date(entry.created_at), {
                                 addSuffix: true,
                               })}
@@ -621,7 +621,7 @@ export function SecretAuditDrawer({
                         </div>
 
                         <div className="mt-2 flex items-center gap-3 text-sm">
-                          <div className="flex items-center gap-1.5 text-text-secondary">
+                          <div className="flex items-center gap-1.5 text-[var(--text-dim)]">
                             <ActorIcon className="h-3.5 w-3.5" />
                             <span className="truncate max-w-[120px]" title={entry.actor_id}>
                               {entry.actor_id.slice(0, 12)}...
@@ -631,7 +631,7 @@ export function SecretAuditDrawer({
                             </Badge>
                           </div>
                           {entry.secret_id && (
-                            <div className="flex items-center gap-1.5 text-text-secondary">
+                            <div className="flex items-center gap-1.5 text-[var(--text-dim)]">
                               <Key className="h-3.5 w-3.5" />
                               <code className="text-xs bg-bg-secondary px-1.5 py-0.5 rounded">
                                 {entry.secret_id.slice(0, 8)}...
@@ -642,30 +642,30 @@ export function SecretAuditDrawer({
 
                         {/* Expanded details */}
                         {isExpanded && (
-                          <div className="mt-3 pt-3 border-t border-border-subtle space-y-2">
+                          <div className="mt-3 pt-3 border-t border-[var(--panel-edge)]-subtle space-y-2">
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
-                                <span className="text-text-muted">Timestamp:</span>
-                                <p className="text-text-primary">
+                                <span className="text-[var(--text-faint)]">Timestamp:</span>
+                                <p className="text-[var(--text)]">
                                   {format(new Date(entry.created_at), "MMM d, yyyy HH:mm:ss")}
                                 </p>
                               </div>
                               <div>
-                                <span className="text-text-muted">Request ID:</span>
-                                <p className="text-text-primary font-mono">
+                                <span className="text-[var(--text-faint)]">Request ID:</span>
+                                <p className="text-[var(--text)] font-mono">
                                   {entry.request_id || "—"}
                                 </p>
                               </div>
                               {entry.ip_address && (
                                 <div>
-                                  <span className="text-text-muted">IP Address:</span>
-                                  <p className="text-text-primary">{entry.ip_address}</p>
+                                  <span className="text-[var(--text-faint)]">IP Address:</span>
+                                  <p className="text-[var(--text)]">{entry.ip_address}</p>
                                 </div>
                               )}
                               {entry.user_agent && (
                                 <div className="col-span-2">
-                                  <span className="text-text-muted">User Agent:</span>
-                                  <p className="text-text-primary truncate">{entry.user_agent}</p>
+                                  <span className="text-[var(--text-faint)]">User Agent:</span>
+                                  <p className="text-[var(--text)] truncate">{entry.user_agent}</p>
                                 </div>
                               )}
                             </div>
@@ -676,7 +676,7 @@ export function SecretAuditDrawer({
                             )}
                             {entry.metadata && Object.keys(entry.metadata).length > 0 && (
                               <div>
-                                <span className="text-text-muted text-xs">Metadata:</span>
+                                <span className="text-[var(--text-faint)] text-xs">Metadata:</span>
                                 <pre className="mt-1 text-xs bg-bg-secondary p-2 rounded overflow-x-auto">
                                   {JSON.stringify(entry.metadata, null, 2)}
                                 </pre>
@@ -687,7 +687,7 @@ export function SecretAuditDrawer({
                       </div>
 
                       {/* Expand indicator */}
-                      <div className="shrink-0 text-text-muted">
+                      <div className="shrink-0 text-[var(--text-faint)]">
                         {isExpanded ? (
                           <ChevronUp className="h-4 w-4" />
                         ) : (
@@ -706,14 +706,14 @@ export function SecretAuditDrawer({
 
         {/* Footer with pagination and export */}
         <SheetFooter className="flex-col sm:flex-row gap-4 sm:justify-between shrink-0">
-          <div className="flex items-center gap-2 text-sm text-text-muted">
+          <div className="flex items-center gap-2 text-sm text-[var(--text-faint)]">
             <span>
               Showing {filteredEntries.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} -{" "}
               {Math.min(currentPage * pageSize, filteredEntries.length)} of{" "}
               {filteredEntries.length}
             </span>
             {entries.length !== filteredEntries.length && (
-              <span className="text-text-secondary">
+              <span className="text-[var(--text-dim)]">
                 (filtered from {entries.length})
               </span>
             )}
@@ -733,7 +733,7 @@ export function SecretAuditDrawer({
                 >
                   <ChevronDown className="h-4 w-4 rotate-90" />
                 </Button>
-                <span className="text-sm text-text-secondary px-2">
+                <span className="text-sm text-[var(--text-dim)] px-2">
                   {currentPage} / {totalPages}
                 </span>
                 <Button

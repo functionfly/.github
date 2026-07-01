@@ -28,6 +28,7 @@ import {
   useDeleteStateFabric,
 } from "@/hooks/useStateFabric";
 import { usePlan } from "@/hooks/usePlan";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import {
   canCreateStateFabric,
   getStateFabricsLimit,
@@ -66,6 +67,7 @@ const statusToPill = (status: string): "live" | "pending" | "revoked" => {
 export function StateFabricPage() {
   const navigate = useNavigate();
   const { plan } = usePlan();
+  usePageTitle('State Fabric');
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -73,15 +75,16 @@ export function StateFabricPage() {
   const [fabricToDelete, setFabricToDelete] = useState<StateFabric | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
-  const { data: fabrics, isLoading, error, refetch } = useStateFabrics();
+  const { data: fabricsData, isLoading, error, refetch } = useStateFabrics();
+  const fabrics = Array.isArray(fabricsData) ? fabricsData : [];
   const deleteFabric = useDeleteStateFabric();
 
-  const fabricCount = fabrics?.length ?? 0;
+  const fabricCount = fabrics.length;
   const canCreate = canCreateStateFabric(plan, fabricCount);
   const stateFabricUnlocked = hasFeature(plan, "STATE_FABRIC");
   const fabricLimit = getStateFabricsLimit(plan);
 
-  const filteredFabrics = fabrics?.filter((fabric) => {
+  const filteredFabrics = fabrics.filter((fabric) => {
     const matchesSearch =
       fabric.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fabric.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -91,10 +94,10 @@ export function StateFabricPage() {
   });
 
   const stats = {
-    total: fabrics?.length || 0,
-    active: fabrics?.filter((f) => f.status === "online").length || 0,
-    stores: fabrics?.reduce((acc, f) => acc + (f.stores?.length || 0), 0) || 0,
-    pipelines: fabrics?.reduce((acc, f) => acc + (f.pipelines?.length || 0), 0) || 0,
+    total: fabrics.length,
+    active: fabrics.filter((f) => f.status === "online").length,
+    stores: fabrics.reduce((acc, f) => acc + (f.stores?.length || 0), 0),
+    pipelines: fabrics.reduce((acc, f) => acc + (f.pipelines?.length || 0), 0),
   };
 
   const handleConfirmDelete = async () => {
@@ -145,7 +148,7 @@ export function StateFabricPage() {
           <h1 style={{ fontFamily: "var(--font-display)", fontSize: 36, fontWeight: 700, letterSpacing: "-0.005em", color: "var(--text)" }}>State Fabric</h1>
           <p style={{ color: "var(--text-dim)", marginTop: "var(--space-2)" }}>Manage state and data orchestration across your applications</p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "var(--space-1)" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "var(--space-2)" }}>
           <SealedButton
             onClick={() => navigate("/state-fabric/new")}
             disabled={!canCreate}
@@ -161,13 +164,28 @@ export function StateFabricPage() {
             Create State Fabric
           </SealedButton>
           {!canCreate && (
-            <p style={{ fontSize: 11, color: "var(--text-faint)", maxWidth: 280, textAlign: "right" }}>
-              {!stateFabricUnlocked ? (
-                <>Upgrade to use State Fabric. <Link to={ROUTES.PRICING} style={{ color: "var(--status-ok)" }}>View plans</Link></>
-              ) : (
-                <>Limit reached for your plan. <Link to={ROUTES.PRICING} style={{ color: "var(--status-ok)" }}>Upgrade</Link></>
-              )}
-            </p>
+            <div style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "var(--space-2)",
+              padding: "6px 12px",
+              borderRadius: 6,
+              background: "rgba(255, 122, 61, 0.08)",
+              border: "1px solid rgba(255, 122, 61, 0.2)",
+            }}>
+              <AlertTriangle style={{ width: 13, height: 13, color: "var(--accent)", flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: "var(--text-dim)", lineHeight: 1.3 }}>
+                {!stateFabricUnlocked ? (
+                  <>Upgrade to use State Fabric{" "}
+                    <Link to={ROUTES.PRICING} style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}>View plans</Link>
+                  </>
+                ) : (
+                  <>Limit reached ({fabricCount}/{fabricLimit >= 10000 ? "∞" : fabricLimit}){" "}
+                    <Link to={ROUTES.PRICING} style={{ color: "var(--accent)", fontWeight: 600, textDecoration: "none" }}>Upgrade</Link>
+                  </>
+                )}
+              </span>
+            </div>
           )}
         </div>
       </div>

@@ -13,6 +13,9 @@ import { BarChart } from "@/components/common/BarChart";
 import { tabContentVariants } from "../../animations";
 import type { ProfileAnalytics } from "@/types";
 
+const CHART_ACCENT = 'var(--accent)';
+const CHART_OK = 'var(--status-ok)';
+
 export interface AnalyticsTabProps {
   analytics: ProfileAnalytics;
 }
@@ -41,8 +44,8 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
       <LineChart
         data={executionChartData}
         series={[
-          { key: "executions", name: "Executions", color: "#6366f1" },
-          { key: "users", name: "Unique Users", color: "#10b981" },
+          { key: "executions", name: "Executions", color: CHART_ACCENT },
+          { key: "users", name: "Unique Users", color: CHART_OK },
         ]}
         title="Execution History"
         xAxisKey="date"
@@ -53,7 +56,7 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
         {/* Popular Functions */}
         <BarChart
           data={popularFunctionsData}
-          series={[{ key: "executions", name: "Executions", color: "#6366f1" }]}
+          series={[{ key: "executions", name: "Executions", color: CHART_ACCENT }]}
           title="Popular Functions"
           xAxisKey="name"
           height={300}
@@ -61,10 +64,10 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
         />
 
         {/* Geographic Distribution */}
-        <Card className="border-border-subtle">
+        <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-display flex items-center gap-2">
-              <Map className="w-5 h-5 text-brand-500" />
+            <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+              <Map className="w-5 h-5" style={{ color: 'var(--status-ok)' }} />
               Geographic Distribution
             </CardTitle>
           </CardHeader>
@@ -72,16 +75,16 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
             <div className="space-y-3">
               {analytics.geographicDistribution.slice(0, 6).map((country) => (
                 <div key={country.country} className="flex items-center gap-3">
-                  <span className="text-sm text-text-secondary w-24">{country.country}</span>
+                  <span className="text-sm w-24" style={{ color: 'var(--text-dim)' }}>{country.country}</span>
                   <div className="flex-1">
-                    <div className="h-2 bg-border-subtle rounded-full overflow-hidden">
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--panel-edge)' }}>
                       <div
-                        className="h-full bg-brand-500 rounded-full"
-                        style={{ width: `${country.percentage}%` }}
+                        className="h-full rounded-full"
+                        style={{ width: `${country.percentage}%`, background: 'var(--status-ok)' }}
                       />
                     </div>
                   </div>
-                  <span className="text-sm font-medium font-mono tabular-nums text-text-primary w-16 text-right">
+                  <span className="text-sm font-medium font-mono tabular-nums w-16 text-right" style={{ color: 'var(--text)' }}>
                     {country.percentage}%
                   </span>
                 </div>
@@ -93,10 +96,10 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
 
       {/* Device & Browser Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-border-subtle">
+        <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-display flex items-center gap-2">
-              <Monitor className="w-5 h-5 text-brand-500" />
+            <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+              <Monitor className="w-5 h-5" style={{ color: 'var(--status-ok)' }} />
               Device Distribution
             </CardTitle>
           </CardHeader>
@@ -104,18 +107,18 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
             <div className="space-y-3">
               {analytics.deviceStats.map((device) => (
                 <div key={device.device} className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">{device.device}</span>
-                  <span className="text-sm font-medium font-mono tabular-nums text-text-primary">{device.percentage}%</span>
+                  <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{device.device}</span>
+                  <span className="text-sm font-medium font-mono tabular-nums" style={{ color: 'var(--text)' }}>{device.percentage}%</span>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border-subtle">
+        <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
           <CardHeader>
-            <CardTitle className="text-lg font-display flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-brand-500" />
+            <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+              <BarChart3 className="w-5 h-5" style={{ color: 'var(--status-ok)' }} />
               Browser Distribution
             </CardTitle>
           </CardHeader>
@@ -123,8 +126,8 @@ export function AnalyticsTab({ analytics }: AnalyticsTabProps) {
             <div className="space-y-3">
               {analytics.browserStats.map((browser) => (
                 <div key={browser.browser} className="flex items-center justify-between">
-                  <span className="text-sm text-text-secondary">{browser.browser}</span>
-                  <span className="text-sm font-medium font-mono tabular-nums text-text-primary">{browser.percentage}%</span>
+                  <span className="text-sm" style={{ color: 'var(--text-dim)' }}>{browser.browser}</span>
+                  <span className="text-sm font-medium font-mono tabular-nums" style={{ color: 'var(--text)' }}>{browser.percentage}%</span>
                 </div>
               ))}
             </div>

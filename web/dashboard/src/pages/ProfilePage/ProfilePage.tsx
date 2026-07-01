@@ -123,15 +123,15 @@ export function ProfilePage({
           username: meResponse.username,
           name: meResponse.name,
           avatar: meResponse.avatar,
-          bio: undefined,
-          location: undefined,
-          website: undefined,
-          jobTitle: undefined,
+          bio: meResponse.bio,
+          location: meResponse.location,
+          website: meResponse.website,
+          jobTitle: meResponse.jobTitle,
           companyName: meResponse.companyName,
-          twitterUrl: undefined,
-          githubUrl: undefined,
-          linkedinUrl: undefined,
-          socialLinks: undefined,
+          twitterUrl: meResponse.twitterUrl,
+          githubUrl: meResponse.githubUrl,
+          linkedinUrl: meResponse.linkedinUrl,
+          socialLinks: meResponse.socialLinks,
           createdAt: meResponse.createdAt ?? meResponse.updatedAt,
           stats: meResponse.stats,
           publishedFunctions: [],
@@ -355,9 +355,15 @@ export function ProfilePage({
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: import('@/api/users').UpdateProfileRequest) => {
-      await usersApi.updateMe(data);
+      return usersApi.updateMe(data);
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
+      if (response?.user?.avatar !== undefined) {
+        queryClient.setQueryData<UserProfile>(
+          ['enhanced-profile', username, isOwnProfile],
+          (old) => old ? { ...old, avatar: response.user.avatar } : old,
+        );
+      }
       queryClient.invalidateQueries({ queryKey: ['enhanced-profile', username] });
       queryClient.invalidateQueries({ queryKey: ['my-profile'] });
       queryClient.invalidateQueries({ queryKey: ['my-settings'] });

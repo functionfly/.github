@@ -25,27 +25,27 @@ export interface ActivityHeatRingProps {
 }
 
 const LEVEL_COLORS = [
-  "fill-border-subtle/40",
-  "fill-brand-500/25",
-  "fill-brand-500/45",
-  "fill-brand-500/70",
-  "fill-brand-500",
+  "fill-panel-edge/40",
+  "fill-status-ok/25",
+  "fill-status-ok/45",
+  "fill-status-ok/70",
+  "fill-status-ok",
 ];
 
 const LEVEL_STROKE = [
-  "stroke-border-subtle/30",
-  "stroke-brand-500/30",
-  "stroke-brand-500/50",
-  "stroke-brand-500/75",
-  "stroke-brand-400",
+  "stroke-panel-edge/30",
+  "stroke-status-ok/30",
+  "stroke-status-ok/50",
+  "stroke-status-ok/75",
+  "stroke-status-ok",
 ];
 
 const LEGEND_COLORS = [
-  "bg-border-subtle",
-  "bg-brand-500/20",
-  "bg-brand-500/40",
-  "bg-brand-500/60",
-  "bg-brand-500",
+  "bg-panel-edge",
+  "bg-status-ok/20",
+  "bg-status-ok/40",
+  "bg-status-ok/60",
+  "bg-status-ok",
 ];
 
 const arcGenerator = d3arc();
@@ -130,7 +130,8 @@ export function ActivityHeatRing({ data, size = 220 }: ActivityHeatRingProps) {
                 <TooltipContent
                   side="top"
                   sideOffset={8}
-                  className="z-50 px-3 py-1.5 rounded-lg bg-surface-overlay border border-border-subtle shadow-lg text-xs text-text-primary pointer-events-none whitespace-nowrap ca-tooltip"
+                  className="z-50 px-3 py-1.5 rounded-[var(--radius)] text-xs pointer-events-none whitespace-nowrap"
+                  style={{ background: 'var(--panel)', border: '1px solid var(--panel-edge)', boxShadow: 'var(--shadow-chamber)', color: 'var(--text)' }}
                 >
                   {seg.count} contributions on {format(new Date(seg.date), "MMM d, yyyy")}
                 </TooltipContent>
@@ -143,8 +144,8 @@ export function ActivityHeatRing({ data, size = 220 }: ActivityHeatRingProps) {
             x={cx}
             y={cy - 6}
             textAnchor="middle"
-            className="fill-text-primary ca-heat-center-value font-mono"
-            style={{ fontSize: "14px", fontWeight: 700 }}
+            className="font-mono"
+            style={{ fontSize: "14px", fontWeight: 700, fill: 'var(--text)' }}
           >
             {data.reduce((s, d) => s + d.count, 0).toLocaleString()}
           </text>
@@ -152,15 +153,14 @@ export function ActivityHeatRing({ data, size = 220 }: ActivityHeatRingProps) {
             x={cx}
             y={cy + 10}
             textAnchor="middle"
-            className="fill-text-muted ca-heat-center-label"
-            style={{ fontSize: "9px" }}
+            style={{ fontSize: "9px", fill: 'var(--text-faint)' }}
           >
             contributions
           </text>
         </svg>
 
         {/* Legend */}
-        <div className="flex items-center gap-2 mt-1 text-xs text-text-muted">
+        <div className="flex items-center gap-2 mt-1 text-xs" style={{ color: 'var(--text-faint)' }}>
           <span>Less</span>
           {[0, 1, 2, 3, 4].map((level) => (
             <div

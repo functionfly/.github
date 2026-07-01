@@ -89,19 +89,19 @@ export function LineChart({
             {showGrid && (
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="var(--border-subtle)"
+                stroke="var(--panel-edge)"
                 opacity={0.5}
               />
             )}
             <XAxis
               dataKey={xAxisKey}
-              stroke="var(--text-secondary)"
+              stroke="var(--text-dim)"
               fontSize={12}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
-              stroke="var(--text-secondary)"
+              stroke="var(--text-dim)"
               fontSize={12}
               tickLine={false}
               axisLine={false}
@@ -121,7 +121,7 @@ export function LineChart({
                 stroke={line.color}
                 strokeWidth={line.strokeWidth || 2}
                 dot={{ fill: line.color, strokeWidth: 0, r: 4 }}
-                activeDot={{ r: 6, stroke: line.color, strokeWidth: 2, fill: "var(--bg-primary)" }}
+                activeDot={{ r: 6, stroke: line.color, strokeWidth: 2, fill: "var(--bg)" }}
                 name={line.name}
                 isAnimationActive={false}
               />

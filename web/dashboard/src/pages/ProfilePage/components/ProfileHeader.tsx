@@ -48,7 +48,7 @@ import {
   X,
 } from 'lucide-react';
 import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { cloneElement, isValidElement, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -90,9 +90,15 @@ function ShareDialog({ profile, children }: { profile: UserProfile; children: Re
 
   return (
     <>
-      <button type="button" className="ph-share-trigger" onClick={() => setOpen(true)} aria-label="Share profile">
-        {children}
-      </button>
+      {isValidElement(children)
+        ? cloneElement(children as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>, {
+            onClick: (e: React.MouseEvent) => {
+              e.stopPropagation();
+              setOpen(true);
+            },
+          })
+        : children
+      }
       {open && (
         <div className="ph-share-overlay" onClick={() => setOpen(false)}>
           <div className="ph-share-modal" onClick={(e) => e.stopPropagation()}>

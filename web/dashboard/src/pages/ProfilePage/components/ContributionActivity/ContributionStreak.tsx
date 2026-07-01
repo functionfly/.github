@@ -37,7 +37,8 @@ interface ParticleProps {
 function FireParticle({ delay, x }: ParticleProps) {
   return (
     <motion.div
-      className="absolute w-1 h-1 rounded-full bg-amber-400 ca-fire-particle"
+      className="absolute w-1 h-1 rounded-full"
+      style={{ background: 'var(--status-pending)' }}
       style={{ left: `${x}%`, bottom: "80%" }}
       initial={{ opacity: 0, y: 0, scale: 1 }}
       animate={{
@@ -73,13 +74,13 @@ export function ContributionStreak({
   );
 
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border-subtle bg-gradient-to-br from-surface-primary via-surface-primary to-amber-500/5 p-4 ca-streak-card">
+    <div className="relative overflow-hidden rounded-[var(--radius-lg)] p-4" style={{ border: '1px solid var(--panel-edge)', background: 'var(--panel-raised)' }}>
       {/* Background glow */}
       <div
-        className="absolute -top-8 -right-8 w-32 h-32 rounded-full blur-3xl pointer-events-none ca-streak-glow"
+        className="absolute -top-8 -right-8 w-32 h-32 rounded-full blur-3xl pointer-events-none"
         style={{
           opacity: current > 0 ? 0.15 + intensity * 0.05 : 0,
-          background: `radial-gradient(circle, rgb(245 158 11) 0%, transparent 70%)`,
+          background: `radial-gradient(circle, var(--status-pending) 0%, transparent 70%)`,
         }}
       />
 
@@ -87,12 +88,11 @@ export function ContributionStreak({
         {/* Fire icon with particles */}
         <div className="relative flex-shrink-0">
           <motion.div
-            className={cn(
-              "w-14 h-14 rounded-2xl flex items-center justify-center relative",
-              current > 0
-                ? "bg-gradient-to-br from-amber-500/20 to-red-500/20 border border-amber-500/30 ca-streak-icon-active"
-                : "bg-surface-secondary border border-border-subtle ca-streak-icon-idle"
-            )}
+            className="w-14 h-14 rounded-2xl flex items-center justify-center relative"
+            style={{
+              background: current > 0 ? 'rgba(232, 196, 104, 0.1)' : 'var(--panel)',
+              border: current > 0 ? '1px solid rgba(232, 196, 104, 0.3)' : '1px solid var(--panel-edge)',
+            }}
             animate={
               current > 0
                 ? { scale: [1, 1.05, 1] }
@@ -101,10 +101,8 @@ export function ContributionStreak({
             transition={{ duration: 2, repeat: Infinity }}
           >
             <Flame
-              className={cn(
-                "w-7 h-7 transition-colors",
-                current > 0 ? "text-amber-400" : "text-text-muted"
-              )}
+              className="w-7 h-7 transition-colors"
+              style={{ color: current > 0 ? 'var(--status-pending)' : 'var(--text-faint)' }}
             />
           </motion.div>
 
@@ -117,7 +115,8 @@ export function ContributionStreak({
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
             <motion.span
-              className="text-3xl font-bold font-mono text-text-primary tabular-nums ca-streak-count"
+              className="text-3xl font-bold font-mono tabular-nums"
+              style={{ color: 'var(--text)' }}
               key={current}
               initial={{ scale: 1.3, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -125,23 +124,24 @@ export function ContributionStreak({
             >
               {current}
             </motion.span>
-            <span className="text-sm text-text-muted ca-streak-label">day streak</span>
+            <span className="text-sm" style={{ color: 'var(--text-faint)' }}>day streak</span>
           </div>
 
           {/* Progress bar */}
           <div className="mt-2">
             <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-text-muted flex items-center gap-1 ca-streak-milestone-text">
-                <Zap className="w-3 h-3 text-amber-400" />
-                Next: <span className="font-medium text-text-secondary">{nextMilestone}</span> days
+              <span className="flex items-center gap-1" style={{ color: 'var(--text-faint)' }}>
+                <Zap className="w-3 h-3" style={{ color: 'var(--status-pending)' }} />
+                Next: <span className="font-medium" style={{ color: 'var(--text-dim)' }}>{nextMilestone}</span> days
               </span>
-              <span className="text-text-muted font-mono tabular-nums">
+              <span className="font-mono tabular-nums" style={{ color: 'var(--text-faint)' }}>
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="h-1.5 bg-surface-secondary rounded-full overflow-hidden ca-streak-progress-track">
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--panel)' }}>
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-amber-500 to-orange-500 ca-streak-progress-fill"
+                className="h-full rounded-full"
+                style={{ background: 'var(--status-pending)' }}
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
@@ -151,10 +151,10 @@ export function ContributionStreak({
 
           {/* Longest streak badge */}
           {longest > current && (
-            <div className="mt-2 flex items-center gap-1 text-xs text-text-muted ca-streak-best">
+            <div className="mt-2 flex items-center gap-1 text-xs" style={{ color: 'var(--text-faint)' }}>
               <ChevronRight className="w-3 h-3" />
               <span>
-                Best: <span className="font-medium text-text-secondary">{longest}</span> days
+                Best: <span className="font-medium" style={{ color: 'var(--text-dim)' }}>{longest}</span> days
               </span>
             </div>
           )}

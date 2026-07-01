@@ -1,4 +1,3 @@
-import '@/styles/aviation-dashboard.css';
 import { appsApi } from '@/api/apps';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +11,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 import type { App } from '@/types';
 import { AlertCircle, CheckCircle2, Edit3, Info, Loader2, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -27,9 +25,9 @@ interface CreateAppModalProps {
 function SlugPreview({ slug }: { slug: string }) {
   if (!slug) return null;
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-      <span className="text-xs text-muted-foreground">URL:</span>
-      <code className="font-mono text-xs text-emerald-600 dark:text-emerald-400">/apps/{slug}</code>
+    <div className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)]" style={{ background: 'rgba(143, 255, 208, 0.06)', border: '1px solid rgba(143, 255, 208, 0.2)' }}>
+      <span className="text-xs" style={{ color: 'var(--text-faint)' }}>URL:</span>
+      <code className="font-mono text-xs" style={{ color: 'var(--status-ok)' }}>/apps/{slug}</code>
     </div>
   );
 }
@@ -37,10 +35,8 @@ function SlugPreview({ slug }: { slug: string }) {
 function ValidationMessage({ message, type }: { message: string; type: 'error' | 'success' }) {
   return (
     <div
-      className={cn(
-        'flex items-center gap-2 text-xs',
-        type === 'error' ? 'text-destructive' : 'text-emerald-500'
-      )}
+      className="flex items-center gap-2 text-xs"
+      style={{ color: type === 'error' ? 'var(--status-revoked)' : 'var(--status-ok)' }}
     >
       {type === 'error' ? (
         <AlertCircle className="w-3 h-3 flex-shrink-0" />
@@ -56,10 +52,8 @@ function CharacterCounter({ current, max }: { current: number; max: number }) {
   const isNearLimit = current >= max * 0.8;
   return (
     <span
-      className={cn(
-        'text-xs tabular-nums',
-        isNearLimit ? 'text-amber-500' : 'text-muted-foreground'
-      )}
+      className="text-xs tabular-nums"
+      style={{ color: isNearLimit ? 'var(--status-pending)' : 'var(--text-faint)' }}
     >
       {current}/{max}
     </span>
@@ -193,12 +187,12 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" style={{ background: 'var(--panel)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-chamber)' }}>
         <TooltipProvider>
-        <div className="aviation-dashboard">
+        <div>
           <DialogHeader>
-            <DialogTitle className="text-xl">Create New App</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xl" style={{ fontFamily: 'var(--font-display)' }}>Create New App</DialogTitle>
+            <DialogDescription style={{ color: 'var(--text-dim)' }}>
               Apps organize your functions and manage multi-cloud deployments.
             </DialogDescription>
           </DialogHeader>
@@ -206,19 +200,19 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
           <form onSubmit={handleSubmit} className="space-y-5 mt-2">
             {/* General error */}
             {generalError && (
-              <div className="flex items-start gap-2.5 p-3.5 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg">
+              <div className="flex items-start gap-2.5 p-3.5 text-sm rounded-[var(--radius)]" style={{ color: 'var(--status-revoked)', background: 'rgba(255, 107, 107, 0.06)', border: '1px solid rgba(255, 107, 107, 0.2)' }}>
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 <span>{generalError}</span>
               </div>
             )}
 
             {/* Fields card */}
-            <div className="border border-border/50 rounded-xl p-4 space-y-5 bg-muted/20">
+            <div className="rounded-[var(--radius-lg)] p-4 space-y-5" style={{ border: '1px solid var(--panel-edge)', background: 'var(--panel-raised)' }}>
               {/* App Name */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="app-name" className="text-sm font-medium">
-                    App Name <span className="text-destructive">*</span>
+                  <Label htmlFor="app-name" className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                    App Name <span style={{ color: 'var(--status-revoked)' }}>*</span>
                   </Label>
                   <CharacterCounter current={name.length} max={50} />
                 </div>
@@ -228,10 +222,7 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
                   value={name}
                   onChange={(e) => handleNameChange(e.target.value)}
                   disabled={isSubmitting}
-                  className={cn(
-                    'transition-colors',
-                    nameError && 'border-destructive focus-visible:ring-destructive/30'
-                  )}
+                  style={nameError ? { borderColor: 'var(--status-revoked)' } : undefined}
                   autoFocus
                   maxLength={50}
                   aria-describedby={nameError ? 'name-error' : undefined}
@@ -247,14 +238,14 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="app-slug" className="text-sm font-medium">
-                      App Slug <span className="text-destructive">*</span>
+                    <Label htmlFor="app-slug" className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+                      App Slug <span style={{ color: 'var(--status-revoked)' }}>*</span>
                     </Label>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                        <Info className="w-3.5 h-3.5 cursor-help" style={{ color: 'var(--text-faint)' }} />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[200px]">
+                      <TooltipContent side="top" className="max-w-[200px]" style={{ background: 'var(--panel-raised)', borderColor: 'var(--steel)', borderRadius: 'var(--radius-sm)' }}>
                         {slugManuallyEdited
                           ? 'Slug is customized. Reset to auto-generate from name.'
                           : 'Slug is auto-generated from the app name.'}
@@ -270,18 +261,16 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
                     value={slug}
                     onChange={(e) => handleSlugChange(e.target.value)}
                     disabled={isSubmitting}
-                    className={cn(
-                      'font-mono transition-colors pr-10',
-                      slugError && 'border-destructive focus-visible:ring-destructive/30',
-                      isSlugValid &&
-                        !slugError &&
-                        'border-emerald-500/50 focus-visible:ring-emerald-500/30'
-                    )}
+                    className="font-mono pr-10"
+                    style={{
+                      ...(slugError ? { borderColor: 'var(--status-revoked)' } : {}),
+                      ...(isSlugValid && !slugError ? { borderColor: 'rgba(143, 255, 208, 0.5)' } : {}),
+                    }}
                     maxLength={63}
                     aria-describedby={slugError ? 'slug-error' : 'slug-hint'}
                   />
                   {isSlugValid && !slugError && (
-                    <CheckCircle2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                    <CheckCircle2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--status-ok)' }} />
                   )}
                   {!slugManuallyEdited && slug ? (
                     <Tooltip>
@@ -289,13 +278,14 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
                         <button
                           type="button"
                           onClick={handleEditSlug}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-[var(--radius-sm)] transition-colors"
+                          style={{ color: 'var(--text-faint)' }}
                           tabIndex={-1}
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top">Customize slug</TooltipContent>
+                      <TooltipContent side="top" style={{ background: 'var(--panel-raised)', borderColor: 'var(--steel)', borderRadius: 'var(--radius-sm)' }}>Customize slug</TooltipContent>
                     </Tooltip>
                   ) : slugManuallyEdited && name ? (
                     <Tooltip>
@@ -306,13 +296,14 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
                             setSlugManuallyEdited(false);
                             setSlug(generateSlug(name));
                           }}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-[var(--radius-sm)] transition-colors"
+                          style={{ color: 'var(--text-faint)' }}
                           tabIndex={-1}
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top">Reset to auto-generate</TooltipContent>
+                      <TooltipContent side="top" style={{ background: 'var(--panel-raised)', borderColor: 'var(--steel)', borderRadius: 'var(--radius-sm)' }}>Reset to auto-generate</TooltipContent>
                     </Tooltip>
                   ) : null}
                 </div>
@@ -326,8 +317,8 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
 
             {/* Keyboard hint */}
             {isFormValid && !isSubmitting && (
-              <p className="text-xs text-center text-muted-foreground">
-                Press <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs font-mono">Enter</kbd> to submit
+              <p className="text-xs text-center" style={{ color: 'var(--text-faint)' }}>
+                Press <kbd className="px-1.5 py-0.5 rounded-[var(--radius-sm)] text-xs font-mono" style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}>Enter</kbd> to submit
               </p>
             )}
 
@@ -344,10 +335,7 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
               <Button
                 type="submit"
                 disabled={isSubmitting || !name.trim() || !slug.trim()}
-                className={cn(
-                  'min-w-[120px] transition-all',
-                  showSuccess && 'scale-95 opacity-80'
-                )}
+                className="min-w-[120px]"
               >
                 {isSubmitting ? (
                   <>

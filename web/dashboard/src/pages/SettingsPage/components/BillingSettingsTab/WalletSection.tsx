@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Chamber, CornerBrace, FrameButton, SealedButton, StatusPill } from '@/components/sc';
 import { Loader2, Wallet } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   MAX_WALLET_TOP_UP_USD,
   MIN_WALLET_TOP_UP_USD,
@@ -34,6 +35,7 @@ export function WalletSection({
   onTopUpAmountChange,
   onWalletTopUp,
 }: WalletSectionProps) {
+  const { t } = useTranslation();
   return (
     <Chamber>
       <CornerBrace position="tl" />
@@ -44,11 +46,10 @@ export function WalletSection({
           style={{ color: 'var(--text)' }}
         >
           <Wallet className="h-5 w-5" style={{ color: 'var(--accent)' }} />
-          Registry credits
+          {t('billingSettings.wallet.title')}
         </h3>
         <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-          Prepaid balance for registry publish fees and platform charges. Top up with a card via
-          Stripe (test or live keys on the server).
+          {t('billingSettings.wallet.description')}
         </p>
       </div>
       <div className="space-y-4">
@@ -58,7 +59,7 @@ export function WalletSection({
             style={{ color: 'var(--text-dim)' }}
           >
             <Loader2 className="h-5 w-5 animate-spin" />
-            <span>Loading balance…</span>
+            <span>{t('billingSettings.wallet.loading')}</span>
           </div>
         ) : walletError ? (
           <div
@@ -84,7 +85,7 @@ export function WalletSection({
                   className="text-xs uppercase tracking-wide"
                   style={{ color: 'var(--text-faint)' }}
                 >
-                  Balance
+                  {t('billingSettings.wallet.balance')}
                 </p>
                 <p
                   className="text-lg font-semibold font-mono tabular-nums"
@@ -98,7 +99,7 @@ export function WalletSection({
                   className="text-xs uppercase tracking-wide"
                   style={{ color: 'var(--text-faint)' }}
                 >
-                  Lifetime earned
+                  {t('billingSettings.wallet.lifetimeEarned')}
                 </p>
                 <p
                   className="text-lg font-medium font-mono tabular-nums"
@@ -112,7 +113,7 @@ export function WalletSection({
                   className="text-xs uppercase tracking-wide"
                   style={{ color: 'var(--text-faint)' }}
                 >
-                  Fees paid
+                  {t('billingSettings.wallet.feesPaid')}
                 </p>
                 <p
                   className="text-lg font-medium font-mono tabular-nums"
@@ -124,7 +125,7 @@ export function WalletSection({
             </div>
             <div className="space-y-2">
               <Label htmlFor="wallet-top-up-amount" style={{ color: 'var(--text)' }}>
-                Add funds (USD)
+                {t('billingSettings.wallet.addFunds')}
               </Label>
               <div className="flex flex-wrap gap-2">
                 {WALLET_TOP_UP_PRESETS.map((n) => (
@@ -148,8 +149,10 @@ export function WalletSection({
                 className="max-w-[200px]"
               />
               <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                Minimum ${MIN_WALLET_TOP_UP_USD.toFixed(2)} · maximum $
-                {MAX_WALLET_TOP_UP_USD.toLocaleString()} per top-up.
+                {t('billingSettings.wallet.minMax', {
+                  min: `$${MIN_WALLET_TOP_UP_USD.toFixed(2)}`,
+                  max: `$${MAX_WALLET_TOP_UP_USD.toLocaleString()}`
+                })}
                 {import.meta.env.DEV && (
                   <>
                     {' '}
@@ -178,7 +181,7 @@ export function WalletSection({
               loading={topUpSubmitting}
               iconLeft={<Wallet className="h-4 w-4" />}
             >
-              Buy credits
+              {t('billingSettings.wallet.buyCredits')}
             </SealedButton>
           </>
         )}

@@ -286,18 +286,18 @@ export function SecretVersionHistory({
               <div className="rounded-lg border border-error/20 bg-error-glow p-8 text-center">
                 <AlertTriangle className="mx-auto h-12 w-12 text-error mb-4" />
                 <h3 className="text-lg font-semibold text-error mb-2">Failed to load versions</h3>
-                <p className="text-text-secondary mb-4">{error.message}</p>
+                <p className="text-[var(--text-dim)] mb-4">{error.message}</p>
                 <Button onClick={() => refetch()} variant="outline">
                   Retry
                 </Button>
               </div>
             ) : !versions || versions.length === 0 ? (
-              <div className="rounded-lg border border-border-subtle bg-card p-12 text-center">
+              <div className="rounded-lg border border-[var(--panel-edge)]-subtle bg-[var(--panel-raised)] p-12 text-center">
                 <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-brand-500/20 to-purple-500/20 flex items-center justify-center mb-4">
-                  <History className="h-8 w-8 text-brand-500" />
+                  <History className="h-8 w-8 text-[var(--status-ok)]" />
                 </div>
                 <h3 className="text-lg font-semibold text-card-foreground mb-2">No version history</h3>
-                <p className="text-text-secondary max-w-sm mx-auto">
+                <p className="text-[var(--text-dim)] max-w-sm mx-auto">
                   Version history will appear here when secrets are updated or rotated.
                 </p>
               </div>
@@ -316,9 +316,9 @@ export function SecretVersionHistory({
                       key={version.id}
                       className={cn(
                         "rounded-lg border p-3 transition-colors cursor-pointer",
-                        "hover:border-border-hover",
-                        isSelected && "border-brand-500 bg-brand-500/5",
-                        isExpanded && "border-border-hover",
+                        "hover:border-[var(--panel-edge)]-hover",
+                        isSelected && "border-[rgba(143,255,208,0.3)] rgba(143,255,208,0.15)/5",
+                        isExpanded && "border-[var(--panel-edge)]-hover",
                         isCurrent && "border-success/30 bg-success-glow/10"
                       )}
                       onClick={() => toggleRow(version.id)}
@@ -331,7 +331,7 @@ export function SecretVersionHistory({
                             version.change_type === "create" && "text-success bg-success-glow",
                             version.change_type === "update" && "text-warning bg-warning-glow",
                             version.change_type === "rollback" && "text-error bg-error-glow",
-                            version.change_type === "rotate" && "text-brand-500 bg-brand-500/10"
+                            version.change_type === "rotate" && "text-[var(--status-ok)] rgba(143,255,208,0.06)"
                           )}
                         >
                           <ChangeIcon className="h-5 w-5" />
@@ -344,13 +344,13 @@ export function SecretVersionHistory({
                               <Badge variant={changeTypeVariants[version.change_type]}>
                                 {changeTypeLabels[version.change_type]}
                               </Badge>
-                              <span className="text-sm font-mono text-text-muted">
+                              <span className="text-sm font-mono text-[var(--text-faint)]">
                                 v{version.version_number}
                               </span>
                               {isCurrent && (
                                 <Badge variant="success" className="text-[10px]">current</Badge>
                               )}
-                              <span className="text-sm text-text-muted">
+                              <span className="text-sm text-[var(--text-faint)]">
                                 {formatDistanceToNow(new Date(version.created_at), {
                                   addSuffix: true,
                                 })}
@@ -359,7 +359,7 @@ export function SecretVersionHistory({
                           </div>
 
                           <div className="mt-2 flex items-center gap-3 text-sm">
-                            <div className="flex items-center gap-1.5 text-text-secondary">
+                            <div className="flex items-center gap-1.5 text-[var(--text-dim)]">
                               <ActorIcon className="h-3.5 w-3.5" />
                               <span className="truncate max-w-[120px]" title={version.actor_id}>
                                 {version.actor_id.slice(0, 12)}...
@@ -369,7 +369,7 @@ export function SecretVersionHistory({
                               </Badge>
                             </div>
                             {version.change_summary && (
-                              <span className="text-text-secondary truncate">
+                              <span className="text-[var(--text-dim)] truncate">
                                 {version.change_summary}
                               </span>
                             )}
@@ -388,7 +388,7 @@ export function SecretVersionHistory({
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => handleVersionSelect(version.version_number)}
-                                className="rounded border-border"
+                                className="rounded border-[var(--panel-edge)]"
                               />
                               Select for comparison
                             </label>
@@ -460,33 +460,33 @@ export function SecretVersionHistory({
 
                           {/* Expanded details */}
                           {isExpanded && (
-                            <div className="mt-3 pt-3 border-t border-border-subtle space-y-2">
+                            <div className="mt-3 pt-3 border-t border-[var(--panel-edge)]-subtle space-y-2">
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                  <span className="text-text-muted">Version:</span>
-                                  <p className="text-text-primary font-mono">v{version.version_number}</p>
+                                  <span className="text-[var(--text-faint)]">Version:</span>
+                                  <p className="text-[var(--text)] font-mono">v{version.version_number}</p>
                                 </div>
                                 <div>
-                                  <span className="text-text-muted">Created:</span>
-                                  <p className="text-text-primary">
+                                  <span className="text-[var(--text-faint)]">Created:</span>
+                                  <p className="text-[var(--text)]">
                                     {format(new Date(version.created_at), "MMM d, yyyy HH:mm:ss")}
                                   </p>
                                 </div>
                                 {version.name && (
                                   <div>
-                                    <span className="text-text-muted">Name:</span>
-                                    <p className="text-text-primary">{version.name}</p>
+                                    <span className="text-[var(--text-faint)]">Name:</span>
+                                    <p className="text-[var(--text)]">{version.name}</p>
                                   </div>
                                 )}
                                 {version.description && (
                                   <div>
-                                    <span className="text-text-muted">Description:</span>
-                                    <p className="text-text-primary">{version.description}</p>
+                                    <span className="text-[var(--text-faint)]">Description:</span>
+                                    <p className="text-[var(--text)]">{version.description}</p>
                                   </div>
                                 )}
                                 {version.scopes && version.scopes.length > 0 && (
                                   <div className="col-span-2">
-                                    <span className="text-text-muted">Scopes:</span>
+                                    <span className="text-[var(--text-faint)]">Scopes:</span>
                                     <div className="flex flex-wrap gap-1 mt-1">
                                       {version.scopes.map((scope) => (
                                         <Badge key={scope} variant="outline" className="text-[10px]">
@@ -502,7 +502,7 @@ export function SecretVersionHistory({
                         </div>
 
                         {/* Expand indicator */}
-                        <div className="shrink-0 text-text-muted">
+                        <div className="shrink-0 text-[var(--text-faint)]">
                           {isExpanded ? (
                             <ChevronUp className="h-4 w-4" />
                           ) : (
@@ -520,7 +520,7 @@ export function SecretVersionHistory({
           <Separator className="my-4" />
 
           <SheetFooter className="shrink-0">
-            <div className="flex items-center gap-2 text-sm text-text-muted">
+            <div className="flex items-center gap-2 text-sm text-[var(--text-faint)]">
               <Clock className="h-4 w-4" />
               <span>{versions.length ?? 0} versions</span>
             </div>
@@ -548,13 +548,13 @@ export function SecretVersionHistory({
           <div className="flex-1 overflow-y-auto min-h-0">
             {diffQuery.isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-brand-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-[var(--status-ok)]" />
               </div>
             ) : diffQuery.error ? (
               <div className="rounded-lg border border-error/20 bg-error-glow p-8 text-center">
                 <AlertTriangle className="mx-auto h-12 w-12 text-error mb-4" />
                 <h3 className="text-lg font-semibold text-error mb-2">Failed to load diff</h3>
-                <p className="text-text-secondary">{diffQuery.error.message}</p>
+                <p className="text-[var(--text-dim)]">{diffQuery.error.message}</p>
               </div>
             ) : diffQuery.data ? (
               <VersionDiffView diff={diffQuery.data} />
@@ -588,32 +588,32 @@ function VersionDiffView({ diff }: { diff: SecretVersionDiff }) {
           </span>
         </div>
         {diff.change_summary && (
-          <p className="text-sm text-text-secondary mt-2">{diff.change_summary}</p>
+          <p className="text-sm text-[var(--text-dim)] mt-2">{diff.change_summary}</p>
         )}
       </div>
 
       {/* Changes list */}
       <div className="space-y-3">
-        <h4 className="text-sm font-medium text-text-muted uppercase tracking-wide">Changes</h4>
+        <h4 className="text-sm font-medium text-[var(--text-faint)] uppercase tracking-wide">Changes</h4>
 
         {/* Name change */}
-        <div className="rounded-lg border border-border-subtle p-3">
+        <div className="rounded-lg border border-[var(--panel-edge)]-subtle p-3">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant={diff.name_changed ? "warning" : "secondary"}>Name</Badge>
             {diff.name_changed ? (
               <span className="text-sm text-warning">Changed</span>
             ) : (
-              <span className="text-sm text-text-muted">Unchanged</span>
+              <span className="text-sm text-[var(--text-faint)]">Unchanged</span>
             )}
           </div>
           {diff.name_changed && diff.name_from !== undefined && diff.name_to !== undefined && (
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="p-2 rounded bg-error-glow/20">
-                <span className="text-text-muted text-xs">From:</span>
+                <span className="text-[var(--text-faint)] text-xs">From:</span>
                 <p className="font-mono truncate">{diff.name_from}</p>
               </div>
               <div className="p-2 rounded bg-success-glow/20">
-                <span className="text-text-muted text-xs">To:</span>
+                <span className="text-[var(--text-faint)] text-xs">To:</span>
                 <p className="font-mono truncate">{diff.name_to}</p>
               </div>
             </div>
@@ -621,23 +621,23 @@ function VersionDiffView({ diff }: { diff: SecretVersionDiff }) {
         </div>
 
         {/* Description change */}
-        <div className="rounded-lg border border-border-subtle p-3">
+        <div className="rounded-lg border border-[var(--panel-edge)]-subtle p-3">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant={diff.description_changed ? "warning" : "secondary"}>Description</Badge>
             {diff.description_changed ? (
               <span className="text-sm text-warning">Changed</span>
             ) : (
-              <span className="text-sm text-text-muted">Unchanged</span>
+              <span className="text-sm text-[var(--text-faint)]">Unchanged</span>
             )}
           </div>
           {diff.description_changed && diff.description_from !== undefined && diff.description_to !== undefined && (
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="p-2 rounded bg-error-glow/20">
-                <span className="text-text-muted text-xs">From:</span>
+                <span className="text-[var(--text-faint)] text-xs">From:</span>
                 <p className="truncate">{diff.description_from || "(empty)"}</p>
               </div>
               <div className="p-2 rounded bg-success-glow/20">
-                <span className="text-text-muted text-xs">To:</span>
+                <span className="text-[var(--text-faint)] text-xs">To:</span>
                 <p className="truncate">{diff.description_to || "(empty)"}</p>
               </div>
             </div>
@@ -645,38 +645,38 @@ function VersionDiffView({ diff }: { diff: SecretVersionDiff }) {
         </div>
 
         {/* Scopes change */}
-        <div className="rounded-lg border border-border-subtle p-3">
+        <div className="rounded-lg border border-[var(--panel-edge)]-subtle p-3">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant={diff.scopes_changed ? "warning" : "secondary"}>Scopes</Badge>
             {diff.scopes_changed ? (
               <span className="text-sm text-warning">Changed</span>
             ) : (
-              <span className="text-sm text-text-muted">Unchanged</span>
+              <span className="text-sm text-[var(--text-faint)]">Unchanged</span>
             )}
           </div>
           {diff.scopes_changed && diff.scopes_from !== undefined && diff.scopes_to !== undefined && (
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div className="p-2 rounded bg-error-glow/20">
-                <span className="text-text-muted text-xs">From:</span>
+                <span className="text-[var(--text-faint)] text-xs">From:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {diff.scopes_from.length > 0 ? (
                     diff.scopes_from.map((scope) => (
                       <Badge key={scope} variant="outline" className="text-[10px]">{scope}</Badge>
                     ))
                   ) : (
-                    <span className="text-text-muted">(none)</span>
+                    <span className="text-[var(--text-faint)]">(none)</span>
                   )}
                 </div>
               </div>
               <div className="p-2 rounded bg-success-glow/20">
-                <span className="text-text-muted text-xs">To:</span>
+                <span className="text-[var(--text-faint)] text-xs">To:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {diff.scopes_to.length > 0 ? (
                     diff.scopes_to.map((scope) => (
                       <Badge key={scope} variant="outline" className="text-[10px]">{scope}</Badge>
                     ))
                   ) : (
-                    <span className="text-text-muted">(none)</span>
+                    <span className="text-[var(--text-faint)]">(none)</span>
                   )}
                 </div>
               </div>
@@ -685,17 +685,17 @@ function VersionDiffView({ diff }: { diff: SecretVersionDiff }) {
         </div>
 
         {/* Encrypted value change */}
-        <div className="rounded-lg border border-border-subtle p-3">
+        <div className="rounded-lg border border-[var(--panel-edge)]-subtle p-3">
           <div className="flex items-center gap-2 mb-2">
             <Badge variant={diff.encrypted_value_changed ? "warning" : "secondary"}>Secret Value</Badge>
             {diff.encrypted_value_changed ? (
               <span className="text-sm text-warning">Changed</span>
             ) : (
-              <span className="text-sm text-text-muted">Unchanged</span>
+              <span className="text-sm text-[var(--text-faint)]">Unchanged</span>
             )}
           </div>
           {diff.encrypted_value_changed && (
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-[var(--text-dim)]">
               The encrypted secret value was modified between these versions.
             </p>
           )}
@@ -703,19 +703,19 @@ function VersionDiffView({ diff }: { diff: SecretVersionDiff }) {
       </div>
 
       {/* Metadata */}
-      <div className="rounded-lg border border-border-subtle p-3 text-sm">
+      <div className="rounded-lg border border-[var(--panel-edge)]-subtle p-3 text-sm">
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <span className="text-text-muted">Compared by:</span>
-            <p className="text-text-primary">{diff.actor_id.slice(0, 12)}...</p>
+            <span className="text-[var(--text-faint)]">Compared by:</span>
+            <p className="text-[var(--text)]">{diff.actor_id.slice(0, 12)}...</p>
           </div>
           <div>
-            <span className="text-text-muted">Actor type:</span>
-            <p className="text-text-primary">{diff.actor_type}</p>
+            <span className="text-[var(--text-faint)]">Actor type:</span>
+            <p className="text-[var(--text)]">{diff.actor_type}</p>
           </div>
           <div className="col-span-2">
-            <span className="text-text-muted">Compared at:</span>
-            <p className="text-text-primary">
+            <span className="text-[var(--text-faint)]">Compared at:</span>
+            <p className="text-[var(--text)]">
               {format(new Date(diff.created_at), "MMM d, yyyy HH:mm:ss")}
             </p>
           </div>

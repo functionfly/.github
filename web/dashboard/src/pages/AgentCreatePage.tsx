@@ -115,17 +115,17 @@ export function AgentCreatePage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to={ROUTES.AGENT_LIST}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Agents
+            {t('agentDetail.backToAgents')}
           </Link>
         </Button>
         <Card className="border-green-500/30 bg-green-500/5">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Check className="h-5 w-5 text-green-500" />
-              Agent Created Successfully
+              {t('agentDetail.createdSuccess')}
             </CardTitle>
             <CardDescription>
-              Copy your API key below — it won't be shown again.
+              {t('agentDetail.createdCopyKey')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -140,7 +140,7 @@ export function AgentCreatePage() {
               trackEvent('agent_created_go_to_list');
               navigate(ROUTES.AGENT_LIST);
             }} className="w-full">
-              Go to Agents
+              {t('agentDetail.goToAgents')}
             </Button>
           </CardContent>
         </Card>

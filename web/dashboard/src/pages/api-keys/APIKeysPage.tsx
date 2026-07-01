@@ -1,6 +1,6 @@
 import { APIKeyList, APIKeyRotationModal, CreateAPIKeyModal } from '@/components/api-keys';
-import { VaultSetupDialog } from '@/components/api-keys/VaultSetupDialog';
 import { Chamber } from '@/components/ui/Chamber';
+import { usePageTitle } from '@/hooks';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +35,7 @@ const PAGE_SIZE = 10;
 const EXPIRING_DAYS = 30;
 
 export function APIKeysPage() {
+  usePageTitle('API Keys');
   const queryClient = useQueryClient();
   // Default to active keys only so soft-deleted (revoked) keys don't reappear after refresh
   const [filters, setFilters] = useState<APIKeyFilters>({ is_active: true });
@@ -47,16 +48,9 @@ export function APIKeysPage() {
   const [usageOpen, setUsageOpen] = useState(false);
   const [securityOpen, setSecurityOpen] = useState(true);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
-  const [showVaultSetup, setShowVaultSetup] = useState(false);
 
   const toggleUsage = () => setUsageOpen((v) => !v);
   const toggleSecurity = () => setSecurityOpen((v) => !v);
-
-  useEffect(() => {
-    const handleOpenVaultSetup = () => setShowVaultSetup(true);
-    window.addEventListener('openVaultSetup', handleOpenVaultSetup);
-    return () => window.removeEventListener('openVaultSetup', handleOpenVaultSetup);
-  }, []);
 
   // Check for stored newly created API key
   useEffect(() => {
@@ -410,18 +404,6 @@ export function APIKeysPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <VaultSetupDialog
-        open={showVaultSetup}
-        onOpenChange={setShowVaultSetup}
-        mode="setup"
-        onSuccess={() => {
-          toast.success('Vault set up successfully', {
-            description: 'You can now encrypt and store API keys securely',
-          });
-          setShowCreateModal(true);
-        }}
-      />
     </div>
   );
 }

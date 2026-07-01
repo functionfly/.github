@@ -78,10 +78,10 @@ export function UpgradePrompt({
   feature,
 }: UpgradePromptProps) {
   return (
-    <Card className="border-dashed bg-muted/30">
+    <Card className="border-dashed bg-[var(--panel-raised)]/30">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Lock className="h-5 w-5 text-muted-foreground" />
+          <Lock className="h-5 w-5 text-[var(--text-faint)]" />
           <CardTitle className="text-base">{title}</CardTitle>
           <Badge variant="secondary" className="ml-auto">
             {PLAN_META[minPlan].name}+
@@ -97,7 +97,7 @@ export function UpgradePrompt({
               Upgrade to {PLAN_META[minPlan].name}
             </Link>
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-[var(--text-faint)]">
             You're on {PLAN_META[currentPlan].name}
           </span>
         </div>

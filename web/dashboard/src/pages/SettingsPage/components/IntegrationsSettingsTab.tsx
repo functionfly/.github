@@ -38,6 +38,7 @@ import {
   Unlink,
   Zap,
 } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/constants';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { siGithub, siLinear } from 'simple-icons';
@@ -141,11 +142,11 @@ function formatRelativeTime(dateStr?: string): string {
   const diff = now.getTime() - date.getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 60) return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(-mins, 'minute');
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(-hours, 'hour');
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(-days, 'day');
 }
 
 function openOAuthPopup(url: string, width = 500, height = 700): Window | null {
@@ -370,15 +371,15 @@ function ConfigDrawer({
 
   const [displayName, setDisplayName] = useState(userConnector?.display_name || connector.name);
   const [syncFrequency, setSyncFrequency] = useState<SyncFrequency>(
-    (userConnector as any)?.sync_frequency || '1h'
+    (userConnector?.sync_frequency as SyncFrequency) || '1h'
   );
-  const [autoSync, setAutoSync] = useState((userConnector as any)?.auto_sync ?? true);
+  const [autoSync, setAutoSync] = useState(userConnector?.auto_sync ?? true);
 
   // Reset form when userConnector changes
   useEffect(() => {
     setDisplayName(userConnector?.display_name || connector.name);
-    setSyncFrequency((userConnector as any)?.sync_frequency || '1h');
-    setAutoSync((userConnector as any)?.auto_sync ?? true);
+    setSyncFrequency((userConnector?.sync_frequency as SyncFrequency) || '1h');
+    setAutoSync(userConnector?.auto_sync ?? true);
   }, [userConnector, connector.name]);
 
   const handleSave = async () => {
@@ -710,7 +711,21 @@ export function IntegrationsSettingsTab() {
   // The backend callback page sends a postMessage when OAuth completes,
   // allowing instant feedback without waiting for popup.close polling.
   useEffect(() => {
+    const allowedOrigins = [window.location.origin];
+    if (API_BASE_URL && API_BASE_URL.startsWith('http')) {
+      try {
+        const apiOrigin = new URL(API_BASE_URL).origin;
+        if (apiOrigin !== window.location.origin) {
+          allowedOrigins.push(apiOrigin);
+        }
+      } catch {
+        // invalid URL, ignore
+      }
+    }
+
     const handleMessage = (event: MessageEvent) => {
+      if (!allowedOrigins.includes(event.origin)) return;
+
       // Validate the message is an OAuth callback
       const data = event.data as OAuthCallbackMessage;
       if (!data || data.type !== 'oauth_callback') return;

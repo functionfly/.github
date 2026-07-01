@@ -33,6 +33,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Trash2, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '../../settings-utils';
 import { BundleStatusSection } from './BundleStatusSection';
@@ -57,6 +58,7 @@ interface UsageMetric {
 }
 
 export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTabProps) {
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -70,7 +72,6 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
     company: '',
     message: '',
   });
-  const [contactSubmitting, setContactSubmitting] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelSubmitting, setCancelSubmitting] = useState(false);
 
@@ -153,7 +154,7 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
 
     if (requestsLimit > 0) {
       metrics.push({
-        label: 'API Requests',
+        label: t('billingSettings.apiRequests'),
         current: totalExecutions,
         limit: requestsLimit,
         unit: 'requests',
@@ -162,7 +163,7 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
     }
 
     return metrics;
-  }, [subscription?.plan, usageData]);
+  }, [t, subscription?.plan, usageData]);
 
   const projectedBilling = useMemo(() => {
     if (!subscription?.current_period_end) return null;
@@ -218,13 +219,12 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
 
     if (walletFlag) {
       if (walletFlag === 'success') {
-        toast.success('Payment completed', {
-          description:
-            'Your registry balance updates after Stripe confirms the payment (usually within a few seconds).',
+        toast.success(t('billingSettings.paymentCompleted'), {
+          description: t('billingSettings.paymentCompletedDesc'),
         });
         queryClient.invalidateQueries({ queryKey: ['billing-wallet-info'] });
       } else if (walletFlag === 'cancel') {
-        toast.message('Top-up cancelled');
+        toast.message(t('billingSettings.topUpCancelled'));
       }
       const next = new URLSearchParams(searchParams);
       next.delete('walletTopUp');
@@ -233,19 +233,19 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
 
     if (subscriptionFlag) {
       if (subscriptionFlag === 'success') {
-        toast.success('Subscription updated', {
-          description: 'Your subscription has been successfully updated.',
+        toast.success(t('billingSettings.subscriptionUpdated'), {
+          description: t('billingSettings.subscriptionUpdatedDesc'),
         });
         queryClient.invalidateQueries({ queryKey: ['billing', 'subscription'] });
         queryClient.invalidateQueries({ queryKey: ['billing', 'invoices'] });
       } else if (subscriptionFlag === 'cancel') {
-        toast.message('Checkout cancelled');
+        toast.message(t('billingSettings.checkoutCancelled'));
       }
       const next = new URLSearchParams(searchParams);
       next.delete('subscription');
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams, queryClient]);
+  }, [t, searchParams, setSearchParams, queryClient]);
 
   const parsedTopUpUsd = parseFloat(topUpAmountInput.replace(/,/g, ''));
   const topUpAmountValid =
@@ -268,7 +268,7 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
   const handleWalletTopUp = async () => {
     if (!topUpAmountValid) {
       toast.error(
-        `Enter an amount between $${MIN_WALLET_TOP_UP_USD} and $${MAX_WALLET_TOP_UP_USD.toLocaleString()}.`
+        t('billingSettings.wallet.topUpRangeError', { min: `$${MIN_WALLET_TOP_UP_USD}`, max: `$${MAX_WALLET_TOP_UP_USD.toLocaleString()}` })
       );
       return;
     }
@@ -288,34 +288,25 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
 
   const invoices = (invoicesData as { invoices: Invoice[] })?.invoices ?? [];
 
-  const handleContactSales = async () => {
+  const handleContactSales = () => {
     if (!contactForm.name || !contactForm.email || !contactForm.message) {
-      toast.error('Please fill in all required fields');
+      toast.error(t('billingSettings.fillRequiredFields'));
       return;
     }
-    setContactSubmitting(true);
-    try {
-      const subject = encodeURIComponent(`Enterprise Plan Inquiry from ${contactForm.name}`);
-      const body = encodeURIComponent(
-        `Name: ${contactForm.name}\nEmail: ${contactForm.email}\nCompany: ${contactForm.company || 'Not provided'}\n\nMessage:\n${contactForm.message}`
-      );
-      window.location.href = `mailto:sales@functionfly.com?subject=${subject}&body=${body}`;
-      setContactModalOpen(false);
-      toast.success('Thank you for your interest! Our sales team will contact you soon.');
-    } catch {
-      toast.error(
-        'Failed to submit contact request. Please email us directly at sales@functionfly.com'
-      );
-    } finally {
-      setContactSubmitting(false);
-    }
+    const subject = encodeURIComponent(`Enterprise Plan Inquiry from ${contactForm.name}`);
+    const body = encodeURIComponent(
+      `Name: ${contactForm.name}\nEmail: ${contactForm.email}\nCompany: ${contactForm.company || 'Not provided'}\n\nMessage:\n${contactForm.message}`
+    );
+    window.location.href = `mailto:sales@functionfly.com?subject=${subject}&body=${body}`;
+    setContactModalOpen(false);
+    toast.success(t('billingSettings.emailClientOpened', 'Your email client should open shortly'));
   };
 
   const handleCancelSubscription = async () => {
     setCancelSubmitting(true);
     try {
       await cancelSubscription(false);
-      toast.success('Subscription will be cancelled at the end of the billing period');
+      toast.success(t('billingSettings.cancelSuccess'));
       setCancelModalOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to cancel subscription');
@@ -344,10 +335,10 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
         <CornerBrace position="br" />
         <div className="mb-4">
           <h3 className="font-display text-lg font-semibold" style={{ color: 'var(--text)' }}>
-            Current Plan
+            {t('billingSettings.currentPlan')}
           </h3>
           <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
-            Manage your subscription
+            {t('billingSettings.currentPlanDesc')}
           </p>
         </div>
         <div>
@@ -400,70 +391,69 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
               disabled={billingPortalLoading}
               loading={billingPortalLoading}
             >
-              Manage billing
+              {t('billingSettings.manageBilling')}
             </SealedButton>
             <FrameButton
               disabled={billingPortalLoading}
               onClick={() => (window.location.href = '/pricing')}
             >
-              Upgrade Plan
+              {t('billingSettings.upgradePlan')}
             </FrameButton>
             <Dialog open={contactModalOpen} onOpenChange={setContactModalOpen}>
               <DialogTrigger asChild>
-                <FrameButton>Contact Sales</FrameButton>
+                <FrameButton>{t('billingSettings.contactSales')}</FrameButton>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Contact Sales</DialogTitle>
+                  <DialogTitle>{t('billingSettings.contactSales')}</DialogTitle>
                   <DialogDescription>
-                    Interested in our Enterprise plan? Fill out the form below and our team will get
-                    back to you within 24 hours.
+                    {t('billingSettings.contactSalesDesc')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="contact-name">Name *</Label>
+                    <Label htmlFor="contact-name">{t('billingSettings.name') + ' *'}</Label>
                     <Input
                       id="contact-name"
                       value={contactForm.name}
                       onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                      placeholder="Your name"
+                      placeholder={t('billingSettings.yourName')}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="contact-email">Email *</Label>
+                    <Label htmlFor="contact-email">{t('billingSettings.email') + ' *'}</Label>
                     <Input
                       id="contact-email"
                       type="email"
                       value={contactForm.email}
                       onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                      placeholder="your@email.com"
+                      placeholder={t('billingSettings.yourEmail')}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="contact-company">Company</Label>
+                    <Label htmlFor="contact-company">{t('billingSettings.company')}</Label>
                     <Input
                       id="contact-company"
                       value={contactForm.company}
                       onChange={(e) => setContactForm({ ...contactForm, company: e.target.value })}
-                      placeholder="Your company name"
+                      placeholder={t('billingSettings.yourCompany')}
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="contact-message">Message *</Label>
+                    <Label htmlFor="contact-message">{t('billingSettings.message') + ' *'}</Label>
                     <Textarea
                       id="contact-message"
                       value={contactForm.message}
                       onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                      placeholder="Tell us about your needs..."
+                      placeholder={t('billingSettings.messagePlaceholder')}
                       rows={4}
                     />
                   </div>
                 </div>
                 <DialogFooter>
-                  <FrameButton onClick={() => setContactModalOpen(false)}>Cancel</FrameButton>
-                  <SealedButton onClick={handleContactSales} disabled={contactSubmitting}>
-                    {contactSubmitting ? 'Sending...' : 'Send Message'}
+                  <FrameButton onClick={() => setContactModalOpen(false)}>{t('billingSettings.cancelBtn')}</FrameButton>
+                  <SealedButton onClick={handleContactSales}>
+                    {t('billingSettings.openInEmailClient', 'Open in Email Client')}
                   </SealedButton>
                 </DialogFooter>
               </DialogContent>
@@ -474,15 +464,14 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                 <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
                   <DialogTrigger asChild>
                     <FrameButton iconLeft={<Trash2 className="w-4 h-4" />}>
-                      Cancel Subscription
+                      {t('billingSettings.cancelSubscription')}
                     </FrameButton>
                   </DialogTrigger>
                   <DialogContent className="sm:max-w-[500px]">
                     <DialogHeader>
-                      <DialogTitle>Cancel Subscription</DialogTitle>
+                      <DialogTitle>{t('billingSettings.cancelSubscription')}</DialogTitle>
                       <DialogDescription>
-                        Are you sure you want to cancel your subscription? You'll lose access to
-                        premium features at the end of your billing period.
+                        {t('billingSettings.cancelSubscriptionDesc')}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="py-4">
@@ -494,21 +483,19 @@ export function BillingSettingsTab({ returnUrl, displayPlan }: BillingSettingsTa
                         }}
                       >
                         <p className="text-sm" style={{ color: 'var(--status-pending)' }}>
-                          Your subscription will remain active until{' '}
-                          {formatDate(subscription.current_period_end)}. After that, you'll be
-                          downgraded to the free plan.
+                          {t('billingSettings.cancelSubscriptionWarning', { date: formatDate(subscription.current_period_end) })}
                         </p>
                       </div>
                     </div>
                     <DialogFooter>
                       <FrameButton onClick={() => setCancelModalOpen(false)}>
-                        Keep Subscription
+                        {t('billingSettings.keepSubscription')}
                       </FrameButton>
                       <SealedButton
                         onClick={handleCancelSubscription}
                         disabled={cancelSubmitting}
                       >
-                        {cancelSubmitting ? 'Cancelling...' : 'Confirm Cancellation'}
+                        {cancelSubmitting ? t('billingSettings.cancelling') : t('billingSettings.confirmCancellation')}
                       </SealedButton>
                     </DialogFooter>
                   </DialogContent>

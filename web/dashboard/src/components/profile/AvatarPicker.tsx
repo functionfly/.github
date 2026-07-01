@@ -10,8 +10,8 @@ const DEFAULT_AVATARS = [
 
 const MAX_FILE_SIZE_MB = 5;
 const ACCEPT_IMAGES = 'image/jpeg,image/png,image/webp,image/gif';
-const AVATAR_MAX_DIM = 512;
-const AVATAR_QUALITY = 0.82;
+const AVATAR_MAX_DIM = 256;
+const AVATAR_QUALITY = 0.7;
 
 function compressImage(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -65,14 +65,14 @@ export function AvatarPicker({
       toast.error(`File is too large. Maximum size is ${MAX_FILE_SIZE_MB} MB.`);
       return;
     }
+    e.target.value = '';
     try {
       const dataUrl = await compressImage(file);
-      onSelect(dataUrl);
+      await onSelect(dataUrl);
       onOpenChange(false);
     } catch {
-      toast.error('Failed to process image');
+      toast.error('Failed to upload profile picture');
     }
-    e.target.value = '';
   };
 
   const handleDefault = (url: string) => {

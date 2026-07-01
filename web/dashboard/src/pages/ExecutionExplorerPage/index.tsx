@@ -148,7 +148,7 @@ export default function ExecutionExplorerPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-bg-primary">
+      <div className="min-h-screen flex flex-col bg-[var(--bg)]">
         <Navbar variant="landing" />
         <main className="flex-1 pt-16">
           <div className="container mx-auto px-4 py-8">
@@ -163,7 +163,7 @@ export default function ExecutionExplorerPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col bg-bg-primary">
+      <div className="min-h-screen flex flex-col bg-[var(--bg)]">
         <Navbar variant="landing" />
         <main className="flex-1 pt-16">
           <div className="container mx-auto px-4 py-8">
@@ -196,12 +196,12 @@ export default function ExecutionExplorerPage() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold flex items-center gap-3 executions-title">
-                  <Lock className="w-8 h-8 text-brand-500" />
+                  <Lock className="w-8 h-8 text-[var(--status-ok)]" />
                   {t("executionsPage.title")}
                 </h1>
-                <p className="text-muted-foreground mt-1 executions-subtitle">
+                <p className="text-[var(--text-faint)] mt-1 executions-subtitle">
                   {t("executionsPage.subtitle")}{" "}
-                  <span className="font-mono text-foreground">
+                  <span className="font-mono text-[var(--text)]">
                     {author}/{name}
                   </span>
                 </p>
@@ -209,7 +209,7 @@ export default function ExecutionExplorerPage() {
 
               {data && (
                 <div className="executions-stats-bar">
-                  <span className="text-sm text-muted-foreground">
+                  <span className="text-sm text-[var(--text-faint)]">
                     <strong className="executions-stat-value">{data.total}</strong>{" "}
                     {t("executionsPage.totalLabel")}
                   </span>
@@ -250,7 +250,7 @@ export default function ExecutionExplorerPage() {
               <CardContent className="p-4">
                 <div className="flex flex-wrap items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-muted-foreground" />
+                    <Filter className="w-4 h-4 text-[var(--text-faint)]" />
                     <span className="executions-filter-label">{t("executionsPage.filters.label")}:</span>
                   </div>
 
@@ -319,8 +319,8 @@ export default function ExecutionExplorerPage() {
                       {t("executionsPage.empty.description")}
                     </p>
                   </div>
-                  <div className="border-t border-border-subtle pt-8">
-                    <p className="text-sm font-medium text-foreground mb-3">
+                  <div className="border-t border-[var(--panel-edge)] pt-8">
+                    <p className="text-sm font-medium text-[var(--text)] mb-3">
                       {t("executionsPage.empty.whenExists")}
                     </p>
                     <ul className="executions-empty-list">
@@ -410,7 +410,7 @@ export default function ExecutionExplorerPage() {
         <DialogContent className="aviation-executions-dialog max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-brand-500" />
+              <Lock className="w-5 h-5 text-[var(--status-ok)]" />
               Execution Details
             </DialogTitle>
             <DialogDescription>
@@ -480,7 +480,7 @@ export default function ExecutionExplorerPage() {
         <DialogContent className="aviation-executions-dialog max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-brand-500" />
+              <Shield className="w-5 h-5 text-[var(--status-ok)]" />
               FXCERT
             </DialogTitle>
             <DialogDescription>
@@ -797,7 +797,7 @@ function ExecutionDetailView({
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 pt-2">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wide">
+                <Label className="text-[var(--text-faint)] text-xs uppercase tracking-wide">
                   {t("executionsPage.component.componentHash")}
                 </Label>
                 <HashBlock

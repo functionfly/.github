@@ -176,15 +176,15 @@ const eventTypeConfig: Record<TimelineEventType, {
   failed_access: {
     icon: AlertTriangle,
     label: "Failed Access",
-    color: "text-red-500",
-    bgColor: "bg-red-500/10",
+    color: "text-[var(--status-revoked)]",
+    bgColor: "rgba(255,107,107,0.06)",
     variant: "destructive"
   },
   create: {
     icon: ShieldCheck,
     label: "Created",
-    color: "text-emerald-500",
-    bgColor: "bg-emerald-500/10",
+    color: "text-[var(--status-ok)]",
+    bgColor: "rgba(143,255,208,0.06)",
     variant: "default"
   },
   delete: {
@@ -322,10 +322,10 @@ function TimelineEventItem({
           className={cn(
             "flex h-8 w-8 items-center justify-center rounded-full shrink-0",
             config.bgColor,
-            !event.success && "bg-red-500/10"
+            !event.success && "rgba(255,107,107,0.06)"
           )}
         >
-          <Icon className={cn("h-4 w-4", event.success ? config.color : "text-red-500")} />
+          <Icon className={cn("h-4 w-4", event.success ? config.color : "text-[var(--status-revoked)]")} />
         </div>
         {!isLast && (
           <div className="w-px flex-1 bg-(--border-subtle) mt-2 group-last:hidden" />
@@ -513,7 +513,7 @@ function TimelineFilters({
           size="sm"
           className={cn(
             "gap-2",
-            hasActiveFilters && "border-brand-500 text-brand-500"
+            hasActiveFilters && "border-[rgba(143,255,208,0.3)] text-[var(--status-ok)]"
           )}
         >
           <Filter className="h-4 w-4" />
@@ -590,7 +590,7 @@ function TimelineFilters({
                     className={cn(
                       "px-2 py-1 rounded-md text-xs font-medium transition-colors",
                       isSelected
-                        ? "bg-brand-500/10 text-brand-500"
+                        ? "rgba(143,255,208,0.06) text-[var(--status-ok)]"
                         : "bg-(--color-bg-tertiary) text-(--color-text-muted) hover:bg-(--color-bg-secondary)"
                     )}
                   >
@@ -697,7 +697,7 @@ export function SecretUsageTimeline({
         <div className="flex items-start justify-between gap-4">
           <div>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-brand-500" />
+              <Activity className="h-5 w-5 text-[var(--status-ok)]" />
               Secret Usage Timeline
             </CardTitle>
             <CardDescription>

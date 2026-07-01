@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 export interface TocItem {
   id: string;
@@ -11,6 +11,8 @@ interface TableOfContentsProps {
 
 export function TableOfContents({ items }: TableOfContentsProps) {
   const [activeId, setActiveId] = useState<string>('');
+
+  const itemIds = items.map((i) => i.id).join(',');
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -30,9 +32,14 @@ export function TableOfContents({ items }: TableOfContentsProps) {
     });
 
     return () => observer.disconnect();
-  }, [items]);
+  }, [itemIds]);
 
   if (items.length === 0) return null;
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
+    e.preventDefault();
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
 
   return (
     <nav
@@ -45,10 +52,8 @@ export function TableOfContents({ items }: TableOfContentsProps) {
             <a
               href={`#${id}`}
               className={`function-page-toc-link ${activeId === id ? 'function-page-toc-link--active' : ''}`}
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+              aria-current={activeId === id ? 'true' : undefined}
+              onClick={(e) => handleClick(e, id)}
             >
               {label}
             </a>

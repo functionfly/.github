@@ -20,8 +20,10 @@ import {
 import { APIKey } from "@/types/api-key";
 import { apiKeysService } from "@/services/api-keys";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePageTitle } from "@/hooks";
 
 export function APIKeyDetailPage() {
+  usePageTitle('API Key Detail');
   const { keyId } = useParams<{ keyId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();

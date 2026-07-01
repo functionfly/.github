@@ -95,6 +95,7 @@ const FRGEditorPage = lazyPage(() => import('@/pages/FRGEditorPage'), 'FRGEditor
 const FRGGraphsPage = lazyPage(() => import('@/pages/FRGGraphsPage'), 'FRGGraphsPage');
 const FRGShowcasePage = lazyPage(() => import('@/pages/FRGShowcasePage'), 'FRGShowcasePage');
 const FoundersPage = lazyPage(() => import('@/pages/FoundersPage'), 'FoundersPage');
+const ProposalDetailPage = lazyPage(() => import('@/pages/FoundersPage/ProposalDetailPage'), 'ProposalDetailPage');
 const FunctionDNAPage = lazyPage(() => import('@/pages/FunctionDNAPage'), 'FunctionDNAPage');
 const FunctionMarketplacePage = lazyPage(() => import('@/pages/FunctionMarketplacePage'), 'FunctionMarketplacePage');
 const FunctionPage = lazyPage(() => import('@/pages/FunctionPage'), 'FunctionPage');
@@ -159,6 +160,7 @@ const StudioPage = lazyPage(() => import('@/pages/StudioPage'), 'StudioPage');
 const UniversalRuntimePage = lazyPage(() => import('@/pages/UniversalRuntimePage'), 'UniversalRuntimePage');
 const UsagePage = lazyPage(() => import('@/pages/UsagePage'), 'UsagePage');
 const BillingHubPage = lazyPage(() => import('@/pages/BillingHubPage'), 'BillingHubPage');
+const TrustAPIRegisterPage = lazyPage(() => import('@/pages/TrustAPIRegisterPage'), 'TrustAPIRegisterPage');
 
 // Loading fallback for Suspense boundaries
 function PageLoader() {
@@ -643,6 +645,7 @@ function AppContent() {
             <Route path="bundles" element={<BundlePricingPage />} />
             <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
             <Route path="founders" element={<FoundersPage />} />
+            <Route path="founders/votes/:id" element={<ProposalDetailPage />} />
 
             {/* Time Machine Routes */}
             <Route path="time-machine" element={<TimeMachinePage />} />
@@ -718,6 +721,16 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <StudioPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Trust API Registration - Standalone page outside DashboardLayout */}
+          <Route
+            path="trust-api/register"
+            element={
+              <ProtectedRoute>
+                <TrustAPIRegisterPage />
               </ProtectedRoute>
             }
           />

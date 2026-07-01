@@ -8,8 +8,8 @@ import {
 } from '@/components/ui/select';
 import { useResponsivePageSize } from '@/hooks/useResponsivePageSize';
 import { cn } from '@/lib/utils';
-import { useQuery } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, Loader2, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 type Props = {
@@ -87,6 +87,10 @@ export function ModelPicker({
 
   const current = value ? `${value.provider}:${value.model_id}` : 'default';
 
+  const checkMutation = useMutation({
+    mutationFn: () => aiModelsApi.checkModel(value!.provider, value!.model_id),
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-10 items-center gap-2 rounded-md border border-border-subtle px-3 text-sm text-text-muted">
@@ -97,83 +101,145 @@ export function ModelPicker({
   }
 
   return (
-    <Select
-      open={open}
-      onOpenChange={(next) => {
-        setOpen(next);
-        if (next) {
-          jumpToSelectedPage();
-        }
-      }}
-      value={current}
-      onValueChange={(next) => {
-        if (next === 'default') {
-          onChange(undefined);
-          return;
-        }
-        const [provider, ...rest] = next.split(':');
-        onChange({ provider, model_id: rest.join(':') });
-      }}
-      disabled={disabled || (data.length === 0 && !showOrgDefaultOption)}
-    >
-      <SelectTrigger className={compact ? 'h-8 text-xs' : ''}>
-        <SelectValue
-          placeholder={
-            isError
-              ? 'Failed to load models'
-              : data.length === 0
-                ? 'No models available'
-                : 'Select model'
+    <div className="space-y-2">
+      <Select
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) {
+            jumpToSelectedPage();
           }
-        />
-      </SelectTrigger>
-      <SelectContent>
-        {showOrgDefaultOption && <SelectItem value="default">Using org default</SelectItem>}
-        {paginated.map((m) => (
-          <SelectItem key={`${m.provider}:${m.id}`} value={`${m.provider}:${m.id}`}>
-            {m.display_name} ({m.provider})
-          </SelectItem>
-        ))}
-        {data.length === 0 && !showOrgDefaultOption && (
-          <SelectItem value="default" disabled>
-            No models in catalog
-          </SelectItem>
-        )}
-        {data.length > pageSize && (
-          <div
-            className="flex items-center justify-between gap-2 border-t border-border-subtle px-2 py-1.5"
-            onPointerDown={(e) => e.preventDefault()}
-          >
+        }}
+        value={current}
+        onValueChange={(next) => {
+          if (next === 'default') {
+            onChange(undefined);
+            return;
+          }
+          const [provider, ...rest] = next.split(':');
+          onChange({ provider, model_id: rest.join(':') });
+          checkMutation.reset();
+        }}
+        disabled={disabled || (data.length === 0 && !showOrgDefaultOption)}
+      >
+        <SelectTrigger className={compact ? 'h-8 text-xs' : ''}>
+          <SelectValue
+            placeholder={
+              isError
+                ? 'Failed to load models'
+                : data.length === 0
+                  ? 'No models available'
+                  : 'Select model'
+            }
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {showOrgDefaultOption && <SelectItem value="default">Using org default</SelectItem>}
+          {paginated.map((m) => (
+            <SelectItem key={`${m.provider}:${m.id}`} value={`${m.provider}:${m.id}`}>
+              <span className="flex items-center gap-2">
+                <span>{m.display_name}</span>
+                <span className="text-text-muted">({m.provider_label || m.provider})</span>
+              </span>
+            </SelectItem>
+          ))}
+          {data.length === 0 && !showOrgDefaultOption && (
+            <SelectItem value="default" disabled>
+              No models in catalog
+            </SelectItem>
+          )}
+          {data.length > pageSize && (
+            <div
+              className="flex items-center justify-between gap-2 border-t border-border-subtle px-2 py-1.5"
+              onPointerDown={(e) => e.preventDefault()}
+            >
+              <button
+                type="button"
+                className={cn(
+                  'inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-text-muted hover:bg-bg-secondary hover:text-text-primary',
+                  page <= 1 && 'pointer-events-none opacity-40'
+                )}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                Prev
+              </button>
+              <span className="text-xs text-text-muted">
+                {page} / {totalPages}
+              </span>
+              <button
+                type="button"
+                className={cn(
+                  'inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-text-muted hover:bg-bg-secondary hover:text-text-primary',
+                  page >= totalPages && 'pointer-events-none opacity-40'
+                )}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+              >
+                Next
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </SelectContent>
+      </Select>
+
+      {value?.provider && value?.model_id && (() => {
+        const selectedModel = data.find((m) => m.provider === value.provider && m.id === value.model_id);
+        const isTokenPlan = selectedModel?.key_source === 'token-plan';
+        const isByok = selectedModel?.key_source === 'byok';
+        const providerLabel = selectedModel?.provider_label || value.provider;
+        return (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-text-muted">{providerLabel}</span>
+            {isTokenPlan && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 text-xs font-medium text-blue-400">
+                Token Plan
+              </span>
+            )}
+            {isByok && (
+              <span className="inline-flex items-center gap-1 rounded-md bg-green-500/10 border border-green-500/20 px-2 py-0.5 text-xs font-medium text-green-400">
+                BYOK
+              </span>
+            )}
             <button
               type="button"
-              className={cn(
-                'inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-text-muted hover:bg-bg-secondary hover:text-text-primary',
-                page <= 1 && 'pointer-events-none opacity-40'
-              )}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
+              onClick={() => checkMutation.mutate()}
+              disabled={checkMutation.isPending}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border-subtle px-2.5 py-1 text-xs text-text-muted hover:bg-bg-secondary hover:text-text-primary transition-colors disabled:opacity-50"
             >
-              <ChevronLeft className="h-3.5 w-3.5" />
-              Prev
-            </button>
-            <span className="text-xs text-text-muted">
-              {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className={cn(
-                'inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-text-muted hover:bg-bg-secondary hover:text-text-primary',
-                page >= totalPages && 'pointer-events-none opacity-40'
+              {checkMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-3 w-3" />
               )}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-            >
-              Next
-              <ChevronRight className="h-3.5 w-3.5" />
+              {checkMutation.isPending ? 'Checking…' : 'Check model'}
             </button>
+
+            {checkMutation.isSuccess && (
+              <span className={cn(
+                'inline-flex items-center gap-1 text-xs',
+                checkMutation.data.available ? 'text-green-500' : checkMutation.data.deprecated ? 'text-red-500' : 'text-yellow-500'
+              )}>
+                {checkMutation.data.available ? (
+                  <><CheckCircle className="h-3 w-3" /> Available {checkMutation.data.latency_ms ? `(${checkMutation.data.latency_ms}ms)` : ''}</>
+                ) : checkMutation.data.deprecated ? (
+                  <><XCircle className="h-3 w-3" /> Deprecated</>
+                ) : (
+                  <><AlertTriangle className="h-3 w-3" /> {checkMutation.data.message || 'Unavailable'}</>
+                )}
+              </span>
+            )}
+
+            {checkMutation.isError && (
+              <span className="inline-flex items-center gap-1 text-xs text-red-500">
+                <XCircle className="h-3 w-3" /> Check failed
+              </span>
+            )}
           </div>
-        )}
-      </SelectContent>
-    </Select>
+        );
+      })()}
+    </div>
   );
 }

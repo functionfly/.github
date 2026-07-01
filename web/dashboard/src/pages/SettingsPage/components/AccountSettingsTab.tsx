@@ -1,4 +1,5 @@
 import { usersApi } from '@/api/users';
+import { apiClient } from '@/api/client';
 import { MyFollowStats } from '@/components/follow';
 import { UsernameChangeField } from '@/components/UsernameChangeField';
 import { LanguagePicker } from '@/components/common/LanguagePicker';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '@/stores/authStore';
-import type { User } from '@/types';
+import type { User, PasswordPolicy, TenantAuthSettings } from '@/types';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { Globe, Play, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -32,6 +33,16 @@ export function AccountSettingsTab() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [passwordPolicy, setPasswordPolicy] = useState<PasswordPolicy | null>(null);
+
+  useEffect(() => {
+    apiClient
+      .get<TenantAuthSettings>('/v1/auth/settings')
+      .then((settings) => setPasswordPolicy(settings.password_policy))
+      .catch(() => {
+        // fallback: use default min 8
+      });
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -87,8 +98,26 @@ export function AccountSettingsTab() {
       toast.error('New passwords do not match');
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters');
+    const policy = passwordPolicy;
+    const minLen = policy?.min_length ?? 8;
+    if (newPassword.length < minLen) {
+      toast.error(`Password must be at least ${minLen} characters`);
+      return;
+    }
+    if (policy?.require_uppercase && !/[A-Z]/.test(newPassword)) {
+      toast.error('Password must contain at least one uppercase letter');
+      return;
+    }
+    if (policy?.require_lowercase && !/[a-z]/.test(newPassword)) {
+      toast.error('Password must contain at least one lowercase letter');
+      return;
+    }
+    if (policy?.require_digit && !/\d/.test(newPassword)) {
+      toast.error('Password must contain at least one digit');
+      return;
+    }
+    if (policy?.require_special && !/[^A-Za-z0-9]/.test(newPassword)) {
+      toast.error('Password must contain at least one special character');
       return;
     }
     setIsUpdatingPassword(true);
@@ -218,6 +247,7 @@ export function AccountSettingsTab() {
             <Input
               id="currentPassword"
               type="password"
+              autoComplete="current-password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               className="settings-input"
@@ -228,6 +258,7 @@ export function AccountSettingsTab() {
             <Input
               id="newPassword"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="settings-input"
@@ -238,6 +269,7 @@ export function AccountSettingsTab() {
             <Input
               id="confirmPassword"
               type="password"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="settings-input"

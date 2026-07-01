@@ -74,12 +74,12 @@ export function ContributionActivity({
   ];
 
   return (
-    <Card className="border-border-subtle overflow-hidden">
+    <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
       <CardHeader className="pb-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <CardTitle className="text-lg font-display flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500/20 to-amber-500/20 flex items-center justify-center ca-header-icon">
-              <Activity className="w-4 h-4 text-brand-400" />
+          <CardTitle className="text-lg flex items-center gap-2" style={{ fontFamily: 'var(--font-display)' }}>
+            <div className="w-8 h-8 rounded-[var(--radius)] flex items-center justify-center" style={{ background: 'rgba(143, 255, 208, 0.08)' }}>
+              <Activity className="w-4 h-4" style={{ color: 'var(--status-ok)' }} />
             </div>
             Contribution Activity
           </CardTitle>
@@ -105,27 +105,27 @@ export function ContributionActivity({
             )}
 
             {/* View mode toggle */}
-            <div className="flex items-center bg-surface-secondary rounded-lg p-0.5 border border-border-subtle ca-view-toggle">
+            <div className="flex items-center rounded-[var(--radius)] p-0.5" style={{ background: 'var(--panel)', border: '1px solid var(--panel-edge)' }}>
               <button
                 onClick={() => setViewMode("grouped")}
-                className={cn(
-                  "p-1.5 rounded-md transition-all text-xs",
-                  viewMode === "grouped"
-                    ? "bg-surface-primary text-text-primary shadow-sm ca-view-toggle-active"
-                    : "text-text-muted hover:text-text-secondary ca-view-toggle-inactive"
-                )}
+                className="p-1.5 rounded-[var(--radius-sm)] transition-all text-xs"
+                style={{
+                  background: viewMode === "grouped" ? 'var(--panel-raised)' : 'transparent',
+                  color: viewMode === "grouped" ? 'var(--text)' : 'var(--text-faint)',
+                  boxShadow: viewMode === "grouped" ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
+                }}
                 title="Grouped view"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => setViewMode("list")}
-                className={cn(
-                  "p-1.5 rounded-md transition-all text-xs",
-                  viewMode === "list"
-                    ? "bg-surface-primary text-text-primary shadow-sm ca-view-toggle-active"
-                    : "text-text-muted hover:text-text-secondary ca-view-toggle-inactive"
-                )}
+                className="p-1.5 rounded-[var(--radius-sm)] transition-all text-xs"
+                style={{
+                  background: viewMode === "list" ? 'var(--panel-raised)' : 'transparent',
+                  color: viewMode === "list" ? 'var(--text)' : 'var(--text-faint)',
+                  boxShadow: viewMode === "list" ? '0 1px 2px rgba(0,0,0,0.2)' : 'none',
+                }}
                 title="List view"
               >
                 <List className="w-3.5 h-3.5" />
@@ -165,11 +165,11 @@ export function ContributionActivity({
         {displayedActivities.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Flame className="w-4 h-4 text-amber-400/70 ca-section-icon" />
-              <h3 className="text-sm font-semibold text-text-secondary ca-section-title">
+              <Flame className="w-4 h-4" style={{ color: 'var(--status-pending)' }} />
+              <h3 className="text-sm font-semibold" style={{ color: 'var(--text-dim)' }}>
                 Recent Activity
               </h3>
-              <span className="text-xs text-text-muted font-mono tabular-nums ca-section-count">
+              <span className="text-xs font-mono tabular-nums" style={{ color: 'var(--text-faint)' }}>
                 {displayedActivities.length}{" "}
                 {displayedActivities.length === 1 ? "event" : "events"}
               </span>
@@ -202,8 +202,8 @@ export function ContributionActivity({
             animate={{ opacity: 1 }}
             className="text-center py-8"
           >
-            <Activity className="w-10 h-10 text-text-muted/30 mx-auto mb-2 ca-empty-icon" />
-            <p className="text-sm text-text-muted ca-empty-text">
+            <Activity className="w-10 h-10 mx-auto mb-2" style={{ color: 'var(--text-faint)', opacity: 0.3 }} />
+            <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
               No activity to display
             </p>
           </motion.div>

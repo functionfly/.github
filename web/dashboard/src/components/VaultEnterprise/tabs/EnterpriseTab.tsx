@@ -119,7 +119,7 @@ function NamespacesCard({ plan }: { plan: VaultPlan }) {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center text-[var(--text-faint)]">
                         No namespaces yet. The <code>default</code> namespace is implicit.
                       </TableCell>
                     </TableRow>
@@ -205,7 +205,7 @@ function SharesCard({ plan }: { plan: VaultPlan }) {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-sm text-muted-foreground">No shares with this tenant.</p>
+            <p className="text-sm text-[var(--text-faint)]">No shares with this tenant.</p>
           )}
         </CardContent>
       </Card>
@@ -352,7 +352,7 @@ function SIEMCard({ plan }: { plan: VaultPlan }) {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center text-[var(--text-faint)]">
                         No SIEM webhooks configured.
                       </TableCell>
                     </TableRow>
@@ -422,7 +422,7 @@ function BoolField({
     <div className="flex items-start justify-between gap-3 rounded-md border p-3">
       <div>
         <div className="font-medium text-sm">{label}</div>
-        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        <p className="text-xs text-[var(--text-faint)] mt-1">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>

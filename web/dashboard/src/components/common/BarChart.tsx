@@ -99,14 +99,14 @@ export function BarChart({
             {showGrid && (
               <CartesianGrid
                 strokeDasharray="3 3"
-                stroke="var(--border-subtle)"
+                stroke="var(--panel-edge)"
                 opacity={0.5}
               />
             )}
             <XAxis
               type={isHorizontal ? "number" : "category"}
               dataKey={isHorizontal ? undefined : xAxisKey}
-              stroke="var(--text-secondary)"
+              stroke="var(--text-dim)"
               fontSize={12}
               tickLine={false}
               axisLine={false}
@@ -114,7 +114,7 @@ export function BarChart({
             <YAxis
               type={isHorizontal ? "category" : "number"}
               dataKey={isHorizontal ? xAxisKey : undefined}
-              stroke="var(--text-secondary)"
+              stroke="var(--text-dim)"
               fontSize={12}
               tickLine={false}
               axisLine={false}

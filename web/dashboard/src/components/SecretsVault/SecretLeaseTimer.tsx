@@ -396,7 +396,7 @@ export function SecretLeaseTimer({
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <Clock className={cn("h-4 w-4", colors.text)} />
-              <span className="text-text-secondary">{label}</span>
+              <span className="text-[var(--text-dim)]">{label}</span>
             </div>
             <div className="flex items-center gap-2">
               <span
@@ -483,13 +483,13 @@ export function SecretLeaseTimer({
                           <span key={i} className={cn("font-bold tabular-nums", colors.text)}>
                             {part}
                             {i < timeParts.length - 1 && (
-                              <span className="text-text-muted">:</span>
+                              <span className="text-[var(--text-faint)]">:</span>
                             )}
                           </span>
                         ))}
                       </div>
                       {size !== "sm" && (
-                        <span className="text-[10px] text-text-muted">
+                        <span className="text-[10px] text-[var(--text-faint)]">
                           {timeParts.length > 2 ? "HH:MM:SS" : "MM:SS"}
                         </span>
                       )}
@@ -528,7 +528,7 @@ export function SecretLeaseTimer({
 
         {/* Label and renew button */}
         <div className="flex flex-col items-center gap-2">
-          <span className="text-sm text-text-secondary">{label}</span>
+          <span className="text-sm text-[var(--text-dim)]">{label}</span>
           {allowRenewal && (
             <Button
               variant="outline"
@@ -592,9 +592,9 @@ function LeaseDetails({ expiresAt, secondsRemaining, leaseState }: LeaseDetailsP
         </span>
       </div>
 
-      <p className="text-sm text-text-secondary">{stateDescriptions[leaseState]}</p>
+      <p className="text-sm text-[var(--text-dim)]">{stateDescriptions[leaseState]}</p>
 
-      <div className="space-y-1 text-xs text-text-muted">
+      <div className="space-y-1 text-xs text-[var(--text-faint)]">
         <div className="flex items-center gap-2">
           <Calendar className="h-3.5 w-3.5" />
           <span>Expires: {format(new Date(expiresAt), "MMM d, yyyy HH:mm")}</span>

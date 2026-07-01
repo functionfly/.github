@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { agentApi, type MarketplaceAgent } from '@/api/agent';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -141,10 +141,10 @@ export function AgentMarketplaceDetailPage() {
   if (error || !agent) {
     return (
       <div className="space-y-4">
-        <a href="/marketplace/agents" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
+        <Link to="/marketplace/agents" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Marketplace
-        </a>
+        </Link>
         <Card className="border-destructive/40">
           <CardHeader>
             <CardTitle>Agent Not Found</CardTitle>
@@ -160,10 +160,10 @@ export function AgentMarketplaceDetailPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <a href="/marketplace/agents" className="flex items-center text-sm text-muted-foreground hover:text-foreground w-fit">
+          <Link to="/marketplace/agents" className="flex items-center text-sm text-muted-foreground hover:text-foreground w-fit">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Marketplace
-          </a>
+          </Link>
           <div className="flex items-center gap-3">
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center">
               <Bot className="h-7 w-7 text-white" />

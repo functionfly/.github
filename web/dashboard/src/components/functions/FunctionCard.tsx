@@ -811,8 +811,8 @@ const FunctionCard = React.forwardRef<HTMLDivElement, FunctionCardProps>(
                   </Button>
                 )}
                 {onExecute && (
-                  <Button variant="outline" onClick={handleExecute} className="gap-2">
-                    <Play className="h-4 w-4" />
+                  <Button onClick={handleExecute} className="gap-2">
+                    <Play className="h-4 h-4" />
                     Execute
                   </Button>
                 )}

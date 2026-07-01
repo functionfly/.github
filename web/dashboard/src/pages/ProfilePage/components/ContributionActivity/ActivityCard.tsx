@@ -33,77 +33,77 @@ const TYPE_CONFIG: Record<
   ActivityType,
   {
     icon: React.ReactNode;
-    bgClass: string;
-    iconClass: string;
+    bgStyle: React.CSSProperties;
+    iconStyle: React.CSSProperties;
   }
 > = {
   joined: {
     icon: <UserPlus className="w-4 h-4" />,
-    bgClass: "bg-brand-500/10",
-    iconClass: "text-brand-400 ca-icon-joined",
+    bgStyle: { background: 'rgba(143, 255, 208, 0.08)' },
+    iconStyle: { color: 'var(--status-ok)' },
   },
   function_published: {
     icon: <Package className="w-4 h-4" />,
-    bgClass: "bg-blue-500/10",
-    iconClass: "text-blue-400 ca-icon-function_published",
+    bgStyle: { background: 'rgba(159, 216, 255, 0.08)' },
+    iconStyle: { color: 'var(--foil-a)' },
   },
   function_updated: {
     icon: <Edit3 className="w-4 h-4" />,
-    bgClass: "bg-yellow-500/10",
-    iconClass: "text-yellow-400 ca-icon-function_updated",
+    bgStyle: { background: 'rgba(232, 196, 104, 0.08)' },
+    iconStyle: { color: 'var(--status-pending)' },
   },
   function_deleted: {
     icon: <AlertCircle className="w-4 h-4" />,
-    bgClass: "bg-red-500/10",
-    iconClass: "text-red-400 ca-icon-function_deleted",
+    bgStyle: { background: 'rgba(255, 107, 107, 0.08)' },
+    iconStyle: { color: 'var(--status-revoked)' },
   },
   achievement_earned: {
     icon: <Award className="w-4 h-4" />,
-    bgClass: "bg-amber-500/10",
-    iconClass: "text-amber-400 ca-icon-achievement_earned",
+    bgStyle: { background: 'rgba(232, 196, 104, 0.08)' },
+    iconStyle: { color: 'var(--status-pending)' },
   },
   review_received: {
     icon: <Star className="w-4 h-4" />,
-    bgClass: "bg-purple-500/10",
-    iconClass: "text-purple-400 ca-icon-review_received",
+    bgStyle: { background: 'rgba(217, 196, 255, 0.08)' },
+    iconStyle: { color: 'var(--foil-b)' },
   },
   milestone_reached: {
     icon: <Target className="w-4 h-4" />,
-    bgClass: "bg-emerald-500/10",
-    iconClass: "text-emerald-400 ca-icon-milestone_reached",
+    bgStyle: { background: 'rgba(143, 255, 208, 0.08)' },
+    iconStyle: { color: 'var(--status-ok)' },
   },
   followed: {
     icon: <Users className="w-4 h-4" />,
-    bgClass: "bg-pink-500/10",
-    iconClass: "text-pink-400 ca-icon-followed",
+    bgStyle: { background: 'rgba(255, 217, 240, 0.08)' },
+    iconStyle: { color: 'var(--foil-d)' },
   },
   follower_gained: {
     icon: <Heart className="w-4 h-4" />,
-    bgClass: "bg-pink-500/10",
-    iconClass: "text-pink-400 ca-icon-follower_gained",
+    bgStyle: { background: 'rgba(255, 217, 240, 0.08)' },
+    iconStyle: { color: 'var(--foil-d)' },
   },
   contribution: {
     icon: <GitCommit className="w-4 h-4" />,
-    bgClass: "bg-brand-500/10",
-    iconClass: "text-brand-400 ca-icon-contribution",
+    bgStyle: { background: 'rgba(143, 255, 208, 0.08)' },
+    iconStyle: { color: 'var(--status-ok)' },
   },
   deployment: {
     icon: <Rocket className="w-4 h-4" />,
-    bgClass: "bg-green-500/10",
-    iconClass: "text-green-400 ca-icon-deployment",
+    bgStyle: { background: 'rgba(143, 255, 208, 0.08)' },
+    iconStyle: { color: 'var(--status-ok)' },
   },
   membership_upgraded: {
     icon: <Crown className="w-4 h-4" />,
-    bgClass: "bg-amber-500/15",
-    iconClass: "text-amber-300 ca-icon-membership_upgraded",
+    bgStyle: { background: 'rgba(232, 196, 104, 0.1)' },
+    iconStyle: { color: 'var(--status-pending)' },
   },
 };
 
-const PLAN_STYLES: Record<string, string> = {
-  free: "bg-slate-500/20 text-slate-400 border-slate-500/30 ca-plan-free",
-  starter: "bg-blue-500/20 text-blue-400 border-blue-500/30 ca-plan-starter",
-  professional: "bg-purple-500/20 text-purple-400 border-purple-500/30 ca-plan-professional",
-  enterprise: "bg-amber-500/20 text-amber-400 border-amber-500/30 ca-plan-enterprise",
+const PLAN_STYLES: Record<string, React.CSSProperties> = {
+  free: { background: 'rgba(74, 86, 95, 0.15)', color: 'var(--text-faint)', borderColor: 'rgba(74, 86, 95, 0.3)' },
+  starter: { background: 'rgba(159, 216, 255, 0.1)', color: 'var(--foil-a)', borderColor: 'rgba(159, 216, 255, 0.3)' },
+  professional: { background: 'rgba(217, 196, 255, 0.1)', color: 'var(--foil-b)', borderColor: 'rgba(217, 196, 255, 0.3)' },
+  enterprise: { background: 'rgba(232, 196, 104, 0.1)', color: 'var(--status-pending)', borderColor: 'rgba(232, 196, 104, 0.3)' },
 };
 
 function PlanBadge({ plan }: { plan?: string }) {
@@ -111,10 +111,8 @@ function PlanBadge({ plan }: { plan?: string }) {
 
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border",
-        PLAN_STYLES[plan.toLowerCase()] || PLAN_STYLES.free
-      )}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
+      style={PLAN_STYLES[plan.toLowerCase()] || PLAN_STYLES.free}
     >
       <Sparkles className="w-3 h-3" />
       {plan.charAt(0).toUpperCase() + plan.slice(1)}
@@ -141,32 +139,25 @@ export function ActivityCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.04, duration: 0.3 }}
       className={cn(
-        "group relative rounded-xl border transition-all duration-200",
-        "border-border-subtle",
-        "bg-surface-primary hover:bg-surface-secondary/50",
-        "hover:shadow-lg",
-        `ca-activity-card ca-accent-${activity.type}`,
+        "group relative rounded-[var(--radius-lg)] transition-all duration-200",
         compact ? "p-3" : "p-4"
       )}
+      style={{
+        border: '1px solid var(--panel-edge)',
+        background: 'var(--panel-raised)',
+      }}
     >
       {/* Accent line */}
       <div
-        className={cn(
-          "absolute left-0 top-3 bottom-3 w-0.5 rounded-full",
-          config.bgClass.replace("/10", "/40").replace("/15", "/40"),
-          `ca-accent-${activity.type}`
-        )}
+        className="absolute left-0 top-3 bottom-3 w-0.5 rounded-full"
+        style={{ ...config.bgStyle, opacity: 0.5 }}
       />
 
       <div className="flex gap-3 pl-2">
         {/* Icon */}
         <div
-          className={cn(
-            "flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-200 group-hover:scale-110",
-            config.bgClass,
-            config.iconClass,
-            `ca-icon-${activity.type}`
-          )}
+          className="flex-shrink-0 w-9 h-9 rounded-[var(--radius-lg)] flex items-center justify-center transition-transform duration-200 group-hover:scale-110"
+          style={{ ...config.bgStyle, ...config.iconStyle }}
         >
           {config.icon}
         </div>
@@ -176,36 +167,32 @@ export function ActivityCard({
           <div className="flex items-start justify-between gap-2">
             <h4
               className={cn(
-                "font-medium text-text-primary leading-snug ca-activity-title",
+                "font-medium leading-snug",
                 compact ? "text-sm" : "text-[15px]"
               )}
+              style={{ color: 'var(--text)' }}
             >
               {activity.title}
             </h4>
-            <span className="text-xs text-text-muted shrink-0 font-mono tabular-nums mt-0.5 ca-activity-time">
-              {formatDistanceToNow(new Date(activity.timestamp), {
+            <span className="text-xs shrink-0 font-mono tabular-nums mt-0.5" style={{ color: 'var(--text-faint)' }}>
+              {activity.timestamp ? formatDistanceToNow(new Date(activity.timestamp), {
                 addSuffix: true,
-              })}
+              }) : ''}
             </span>
           </div>
 
           {activity.description && !compact && (
-            <p className="text-sm text-text-muted mt-1 leading-relaxed ca-activity-desc">
+            <p className="text-sm mt-1 leading-relaxed" style={{ color: 'var(--text-faint)' }}>
               {activity.description}
             </p>
           )}
 
           {/* Type-specific inline context */}
-          {activity.relatedFunction && (
+          {activity.relatedFunction?.author && activity.relatedFunction?.name && (
             <Link
               to={`/fx/${activity.relatedFunction.author}/${activity.relatedFunction.name}`}
-              className={cn(
-                "inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors",
-                "bg-surface-secondary hover:bg-surface-tertiary",
-                "text-text-secondary hover:text-text-primary",
-                "border border-border-subtle",
-                "ca-function-link"
-              )}
+              className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-[var(--radius)] text-xs font-medium transition-colors"
+              style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)' }}
             >
               <Code2 className="w-3 h-3" />
               {activity.relatedFunction.name}
@@ -218,7 +205,7 @@ export function ActivityCard({
               <div className="flex items-center gap-2 mt-2">
                 <PlanBadge plan={activity.metadata.plan as string} />
                 {activity.metadata.previousPlan && (
-                  <span className="text-xs text-text-muted ca-activity-desc">
+                  <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
                     from{" "}
                     {String(activity.metadata.previousPlan).charAt(0).toUpperCase() +
                       String(activity.metadata.previousPlan).slice(1)}
@@ -233,12 +220,12 @@ export function ActivityCard({
                 {[...Array(3)].map((_, i) => (
                   <div
                     key={i}
-                    className="w-4 h-4 rounded-full bg-amber-500/20 border border-amber-500/30 ca-achievement-dots"
-                    style={{ zIndex: 3 - i }}
+                    className="w-4 h-4 rounded-full border"
+                    style={{ background: 'rgba(232, 196, 104, 0.15)', borderColor: 'rgba(232, 196, 104, 0.3)', zIndex: 3 - i }}
                   />
                 ))}
               </div>
-              <span className="text-xs text-amber-400/80 ca-achievement-text">Achievement unlocked</span>
+              <span className="text-xs" style={{ color: 'var(--status-pending)', opacity: 0.8 }}>Achievement unlocked</span>
             </div>
           )}
         </div>

@@ -189,7 +189,7 @@ function BoolField({
     <div className="flex items-start justify-between gap-3 rounded-md border p-3">
       <div>
         <div className="font-medium text-sm">{label}</div>
-        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        <p className="text-xs text-[var(--text-faint)] mt-1">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
@@ -223,7 +223,7 @@ function IPAllowlistCard({ plan }: { plan: VaultPlan }) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--text-faint)]">
             Open any secret and edit its tokens to set an IP policy. The runtime middleware
             denies requests whose source IP doesn't match the allow list and isn't on the deny
             list.
@@ -342,11 +342,11 @@ function BreakGlassCard({ plan }: { plan: VaultPlan }) {
                 {listResp.requests.map((r) => (
                   <div key={r.id} className="py-2 flex items-center justify-between text-sm">
                     <div>
-                      <span className="font-mono text-xs text-muted-foreground">
+                      <span className="font-mono text-xs text-[var(--text-faint)]">
                         {r.id.slice(0, 8)}…
                       </span>
                       <p className="text-sm">{r.reason}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-[var(--text-faint)]">
                         {formatRelativeTime(r.created_at)} ·{" "}
                         {r.duration_minutes}m · status{" "}
                         <Badge variant={statusColor(r.status)}>{r.status}</Badge>
@@ -388,7 +388,7 @@ function BreakGlassCard({ plan }: { plan: VaultPlan }) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No requests yet.</p>
+              <p className="text-sm text-[var(--text-faint)]">No requests yet.</p>
             )}
           </div>
         </CardContent>

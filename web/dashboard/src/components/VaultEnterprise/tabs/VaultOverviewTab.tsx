@@ -101,8 +101,8 @@ function PlanCard({ plan }: { plan: VaultPlan }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">{meta.tagline}</p>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-sm text-[var(--text-faint)]">{meta.tagline}</p>
+        <p className="text-xs text-[var(--text-faint)] mt-2">
           {limits.maxSecrets.toLocaleString()} secrets · {limits.maxDynamicCreds.toLocaleString()} dyn creds
         </p>
       </CardContent>
@@ -127,12 +127,12 @@ function QuotaCard({
       <CardHeader className="pb-2">
         <CardDescription>{label}</CardDescription>
         <CardTitle className="text-xl">
-          {used.toLocaleString()} <span className="text-muted-foreground text-sm">/ {limit.toLocaleString()}</span>
+          {used.toLocaleString()} <span className="text-[var(--text-faint)] text-sm">/ {limit.toLocaleString()}</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <Progress value={pct} className="h-1.5" />
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-[var(--text-faint)] mt-2">
           {pct}% of {unit} used
         </p>
       </CardContent>
@@ -164,7 +164,7 @@ function CacheCard({
         {loading ? (
           <Skeleton className="h-4 w-full" />
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-[var(--text-faint)]">
             {meta.toLocaleString()} metadata keys · {tokens.toLocaleString()} token keys
           </p>
         )}
@@ -187,7 +187,7 @@ function HACard({ plan }: { plan: VaultPlan }) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-[var(--text-faint)]">
           {available
             ? "Leader election via Redis SETNX; only the elected node runs sweepers."
             : "Upgrade to Enterprise to enable active-active leader election."}
@@ -208,7 +208,7 @@ function KDFCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-[var(--text-faint)]">
           OWASP 2023 parameters: 64 MiB, 3 iterations, 4 parallel.
         </p>
       </CardContent>

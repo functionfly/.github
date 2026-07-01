@@ -1,0 +1,1 @@
+export { TrustAPIRegisterPage } from './TrustAPIRegisterPage';

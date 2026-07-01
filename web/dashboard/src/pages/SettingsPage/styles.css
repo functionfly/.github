@@ -9,24 +9,16 @@
 .settings-page {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  padding: var(--space-7);
+  gap: var(--space-5);
   max-width: 1180px;
   margin: 0 auto;
-}
-
-@media (max-width: 480px) {
-  .settings-page {
-    padding: var(--space-4);
-    gap: var(--space-5);
-  }
 }
 
 /* ----------------------------------------
    Page Header
    ---------------------------------------- */
 .settings-page-header {
-  padding: var(--space-6) var(--space-7);
+  padding: var(--space-5) 0;
 }
 
 .settings-page-title {
@@ -54,81 +46,184 @@
 }
 
 /* ----------------------------------------
-   Tabs Container - SC Design
+   Settings Layout — Sidebar + Content
    ---------------------------------------- */
-.settings-page-tabs {
-  display: flex;
-  gap: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  position: relative;
-  border-bottom: 1px solid var(--panel-edge);
-  overflow-x: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--steel) transparent;
+.settings-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: var(--space-6);
+  align-items: start;
 }
 
-.settings-page-tabs::-webkit-scrollbar {
-  height: 4px;
-}
-
-.settings-page-tabs::-webkit-scrollbar-thumb {
-  background: var(--steel);
-  border-radius: 2px;
+@media (max-width: 768px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
 }
 
 /* ----------------------------------------
-   Tab Trigger - SC Design
+   Sidebar Navigation
    ---------------------------------------- */
-.settings-page-tab {
+.settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: var(--space-5);
+  border-right: 1px solid var(--panel-edge);
+  padding-right: var(--space-5);
+  min-height: 0;
+}
+
+@media (max-width: 768px) {
+  .settings-sidebar {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--panel-edge);
+    padding-right: 0;
+    padding-bottom: var(--space-3);
+    gap: var(--space-1);
+    scrollbar-width: thin;
+    scrollbar-color: var(--steel) transparent;
+  }
+
+  .settings-sidebar::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .settings-sidebar::-webkit-scrollbar-thumb {
+    background: var(--steel);
+    border-radius: 2px;
+  }
+}
+
+/* ----------------------------------------
+   Sidebar Group
+   ---------------------------------------- */
+.settings-sidebar-group {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .settings-sidebar-group {
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+  }
+}
+
+.settings-sidebar-divider {
+  height: 1px;
+  background: var(--panel-edge);
+  margin: var(--space-3) 0;
+}
+
+@media (max-width: 768px) {
+  .settings-sidebar-divider {
+    width: 1px;
+    height: 20px;
+    margin: 0 var(--space-2);
+    flex-shrink: 0;
+  }
+}
+
+/* ----------------------------------------
+   Sidebar Group Label
+   ---------------------------------------- */
+.settings-sidebar-group-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: var(--space-2) var(--space-3);
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .settings-sidebar-group-label {
+    display: none;
+  }
+}
+
+/* ----------------------------------------
+   Sidebar Item
+   ---------------------------------------- */
+.settings-sidebar-item {
   position: relative;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  border-radius: 0;
-  color: var(--text-dim);
-  transition: all var(--duration-fast) var(--ease-out);
-  padding: var(--space-3) var(--space-4);
-  margin-bottom: -1px;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
   border: none;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius);
   background: transparent;
-  box-shadow: none;
+  color: var(--text-dim);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
+  transition:
+    color var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+  text-align: left;
   white-space: nowrap;
 }
 
-.settings-page-tab:hover {
+.settings-sidebar-item:hover {
   color: var(--text);
-  background: transparent;
+  background: var(--panel-raised);
 }
 
-.settings-page-tab[data-state='active'] {
-  color: var(--status-ok);
-  background: transparent;
-  border-bottom: 2px solid var(--status-ok);
+.settings-sidebar-item[data-state='active'] {
+  color: var(--text);
+  background: var(--panel-raised);
+  box-shadow: inset 2px 0 0 var(--status-ok);
 }
 
-.settings-page-tab[data-state='active'] svg {
+.settings-sidebar-item[data-state='active'] .settings-sidebar-item-icon {
   color: var(--status-ok);
+}
+
+.settings-sidebar-item-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .settings-sidebar-item {
+    padding: var(--space-2) var(--space-3);
+    font-size: 12px;
+    border-radius: var(--radius);
+  }
+
+  .settings-sidebar-item[data-state='active'] {
+    box-shadow: inset 0 -2px 0 var(--status-ok);
+    background: transparent;
+  }
 }
 
 /* ----------------------------------------
    Tab Content
    ---------------------------------------- */
 .settings-tab-content {
+  min-width: 0;
   animation: settings-fade-in var(--duration-base) var(--ease-out) forwards;
 }
 
 @keyframes settings-fade-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;

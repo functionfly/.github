@@ -231,7 +231,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
       {/* Name field */}
       <div className="space-y-2">
         <Label htmlFor="name" className="secrets-form-label">
-          Name <span className="text-error">*</span>
+          Name <span className="text-[var(--status-revoked)]">*</span>
         </Label>
         <Input
           id="name"
@@ -239,7 +239,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
           value={formData.name}
           onChange={(e) => handleChange('name', e.target.value)}
           disabled={isEditMode} // Name cannot be changed in edit mode
-          className={cn("secrets-search-input", errors.name && 'border-error')}
+          className={cn("secrets-search-input", errors.name && 'border-[var(--status-revoked)]')}
         />
         {errors.name && <p className="secrets-form-error">{errors.name}</p>}
         <p className="secrets-form-hint">
@@ -250,14 +250,14 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
       {/* Secret Type field */}
       <div className="space-y-2">
         <Label htmlFor="secret_type" className="secrets-form-label">
-          Secret Type <span className="text-error">*</span>
+          Secret Type <span className="text-[var(--status-revoked)]">*</span>
         </Label>
         <Select
           value={formData.secret_type}
           onValueChange={(value) => handleChange('secret_type', value)}
           disabled={isEditMode} // Type cannot be changed in edit mode
         >
-          <SelectTrigger className={cn("secrets-search-input", errors.secret_type && 'border-error')}>
+          <SelectTrigger className={cn("secrets-search-input", errors.secret_type && 'border-[var(--status-revoked)]')}>
             <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
@@ -284,7 +284,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
           placeholder="What is this secret used for?"
           value={formData.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          className={cn("secrets-search-input", errors.description && 'border-error')}
+          className={cn("secrets-search-input", errors.description && 'border-[var(--status-revoked)]')}
           rows={3}
         />
         {errors.description && <p className="secrets-form-error">{errors.description}</p>}
@@ -319,7 +319,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
         <>
           <div className="space-y-2">
             <Label htmlFor="plaintext" className="secrets-form-label">
-              Secret Value <span className="text-error">*</span>
+              Secret Value <span className="text-[var(--status-revoked)]">*</span>
             </Label>
             <div className="relative">
               {showPlaintext ? (
@@ -328,7 +328,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                   placeholder="Enter the secret value to encrypt..."
                   value={formData.plaintext}
                   onChange={(e) => handleChange('plaintext', e.target.value)}
-                  className={cn("secrets-search-input font-mono text-sm", errors.plaintext && 'border-error')}
+                  className={cn("secrets-search-input font-mono text-sm", errors.plaintext && 'border-[var(--status-revoked)]')}
                   rows={4}
                 />
               ) : (
@@ -338,13 +338,13 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                   placeholder="Enter the secret value to encrypt..."
                   value={formData.plaintext}
                   onChange={(e) => handleChange('plaintext', e.target.value)}
-                  className={cn("secrets-search-input font-mono text-sm h-24", errors.plaintext && 'border-error')}
+                  className={cn("secrets-search-input font-mono text-sm h-24", errors.plaintext && 'border-[var(--status-revoked)]')}
                 />
               )}
               <button
                 type="button"
                 onClick={() => setShowPlaintext(!showPlaintext)}
-                className="absolute right-3 top-3 text-text-muted hover:text-text-primary secrets-toggle-btn"
+                className="absolute right-3 top-3 text-[var(--text-faint)] hover:text-[var(--text)] secrets-toggle-btn"
               >
                 {showPlaintext ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -356,7 +356,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="passphrase" className="secrets-form-label">
-                Encryption Passphrase <span className="text-error">*</span>
+                Encryption Passphrase <span className="text-[var(--status-revoked)]">*</span>
               </Label>
               <div className="flex items-center gap-1">
                 <button
@@ -375,7 +375,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                   >
                     {passphraseCopied ? (
                       <>
-                        <Check className="h-3 w-3 text-success" />
+                        <Check className="h-3 w-3 text-[var(--status-ok)]" />
                         Copied
                       </>
                     ) : (
@@ -395,12 +395,12 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
                 placeholder="Enter a strong passphrase to encrypt this secret"
                 value={formData.passphrase}
                 onChange={(e) => handleChange('passphrase', e.target.value)}
-                className={cn("secrets-search-input pr-10", errors.passphrase && 'border-error')}
+                className={cn("secrets-search-input pr-10", errors.passphrase && 'border-[var(--status-revoked)]')}
               />
               <button
                 type="button"
                 onClick={() => setShowPassphrase(!showPassphrase)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary secrets-toggle-btn"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-faint)] hover:text-[var(--text)] secrets-toggle-btn"
               >
                 {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -408,7 +408,7 @@ export function SecretForm({ onSubmit, onCancel, initialData }: SecretFormProps)
             {formData.passphrase && <PasswordStrengthIndicator password={formData.passphrase} />}
             {errors.passphrase && <p className="secrets-form-error">{errors.passphrase}</p>}
             <div className="secrets-warning-box">
-              <p className="text-sm text-warning">
+              <p className="text-sm text-[var(--status-pending)]">
                 <strong>Important:</strong> This passphrase will be used to encrypt your secret. You
                 will need this same passphrase to decrypt the secret later. Store it securely - we
                 cannot recover it if you lose it!

@@ -69,7 +69,7 @@ export function OverviewTab({
   errors,
   onOpenPortal,
 }: OverviewTabProps) {
-  const { displayName } = usePlan();
+  const { displayName, plan, isPaid } = usePlan();
   const defaultPayment = paymentMethods.find((pm) => pm.is_default) ?? paymentMethods[0];
 
   return (
@@ -139,8 +139,8 @@ export function OverviewTab({
           <div className="sc-billing-info sc-billing-info-warning">
             <AlertCircle style={{ width: 18, height: 18 }} />
             <div className="sc-billing-info-content">
-              <div className="sc-billing-info-title">Free Plan</div>
-              <div className="sc-billing-info-text">You are not subscribed to any paid plan.</div>
+              <div className="sc-billing-info-title">{isPaid ? displayName : 'Free Plan'}</div>
+              <div className="sc-billing-info-text">{isPaid ? 'Your plan is active.' : 'You are not subscribed to any paid plan.'}</div>
             </div>
           </div>
         )}

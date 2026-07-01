@@ -17,7 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CollapsibleSection } from '@/components/ui/collapsible-section';
 import { useQuery } from '@tanstack/react-query';
 import { Shield, Zap } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { formatDate } from '../../settings-utils';
 
@@ -36,7 +37,9 @@ interface TierOption {
 }
 
 export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const {
     data: tiersData,
@@ -112,10 +115,10 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
         <CardHeader>
           <CardTitle className="font-display flex items-center gap-2">
             <Shield className="h-5 w-5 text-brand-500" />
-            Trust API
+            {t('trustAPISettings.title')}
           </CardTitle>
           <CardDescription className="text-text-secondary">
-            Manage your Trust API partner account, billing, and API credentials
+            {t('trustAPISettings.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -134,7 +137,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
               <div className="flex items-center justify-between p-4 rounded-lg bg-linear-to-r from-brand-500/10 to-brand-600/10 border border-border-default">
                 <div>
                   <h3 className="font-semibold font-display text-text-primary capitalize">
-                    {billing.tier} Plan
+                    {billing.tier} {t('trustAPISettings.plan')}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge
@@ -145,20 +148,20 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                     </Badge>
                     {billing.is_founder_mode && (
                       <Badge variant="outline" className="border-purple-500/50 text-purple-400">
-                        Founder Mode
+                        {t('trustAPISettings.founderMode')}
                       </Badge>
                     )}
                   </div>
                 </div>
                 <Badge variant="success" className="ff-badge-primary font-semibold px-3 py-1">
-                  Current
+                  {t('trustAPISettings.current')}
                 </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-bg-secondary border border-border-default">
                 <div className="flex items-center gap-3">
                   <div>
-                    <p className="text-sm text-text-muted">Monthly Price</p>
+                    <p className="text-sm text-text-muted">{t('trustAPISettings.monthlyPrice')}</p>
                     <p className="text-text-primary font-medium">
                       {formatCurrency(billing.monthly_price_usd)}
                     </p>
@@ -166,7 +169,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                 </div>
                 <div className="flex items-center gap-3">
                   <div>
-                    <p className="text-sm text-text-muted">Billing Period</p>
+                    <p className="text-sm text-text-muted">{t('trustAPISettings.billingPeriod')}</p>
                     <p className="text-text-primary font-medium">
                       {formatDate(billing.billing_period_start)} -{' '}
                       {formatDate(billing.billing_period_end)}
@@ -176,7 +179,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
               </div>
 
               <CollapsibleSection
-                title="Usage This Period"
+                title={t('trustAPISettings.usageThisPeriod')}
                 icon={<Zap className="w-4 h-4" />}
                 defaultOpen={true}
                 variant="default"
@@ -185,7 +188,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 text-text-muted">
                       <Zap className="w-4 h-4" />
-                      <span>API Requests</span>
+                      <span>{t('trustAPISettings.apiRequests')}</span>
                     </div>
                     <span
                       className={`font-medium font-mono tabular-nums ${
@@ -219,8 +222,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                   </div>
                   {isOverLimit && (
                     <p className="text-xs text-red-400">
-                      Overage: {formatNumber(billing.overage_requests)} requests (
-                      {formatCurrency(billing.overage_charge_usd)})
+                      {t('trustAPISettings.overage', { count: formatNumber(billing.overage_requests), amount: formatCurrency(billing.overage_charge_usd) })}
                     </p>
                   )}
                 </div>
@@ -229,20 +231,19 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
           ) : (
             <div className="p-6 text-center">
               <Shield className="h-12 w-12 text-text-muted mx-auto mb-3" />
-              <h3 className="font-semibold text-text-primary mb-2">No Partner Account</h3>
+              <h3 className="font-semibold text-text-primary mb-2">{t('trustAPISettings.noPartnerAccount')}</h3>
               <p className="text-sm text-text-muted mb-4">
-                You don't have a Trust API partner account yet. Register to get API access for your
-                agents.
+                {t('trustAPISettings.noPartnerAccountDesc')}
               </p>
               <Button
-                onClick={() => (window.location.href = '/trust-api/register')}
+                onClick={() => navigate('/trust-api/register')}
                 style={{
                   background: 'linear-gradient(180deg, #ffffff, #d8dee2)',
                   color: 'var(--text-on-light)',
                   boxShadow: 'var(--shadow-btn-primary-rest)',
                 }}
               >
-                Register as Partner
+                {t('trustAPISettings.registerAsPartner')}
               </Button>
             </div>
           )}
@@ -252,9 +253,9 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
       {billing && (
         <Card className="ff-card-velocity">
           <CardHeader>
-            <CardTitle className="font-display">Change Plan</CardTitle>
+            <CardTitle className="font-display">{t('trustAPISettings.changePlan')}</CardTitle>
             <CardDescription className="text-text-secondary">
-              Upgrade or downgrade your Trust API tier
+              {t('trustAPISettings.changePlanDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -272,19 +273,19 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-medium">{tier.name}</span>
-                    {tier.isCurrent && <Badge variant="success">Current</Badge>}
+                    {tier.isCurrent && <Badge variant="success">{t('trustAPISettings.current')}</Badge>}
                   </div>
                   <div className="text-lg font-semibold text-text-primary mb-1">
-                    {tier.price === 0 ? 'Free' : formatCurrency(tier.price)}
+                    {tier.price === 0 ? t('trustAPISettings.free') : formatCurrency(tier.price)}
                     {tier.price > 0 && <span className="text-sm text-text-muted">/mo</span>}
                   </div>
                   <div className="text-xs text-text-muted">
-                    {formatNumber(tier.includedRequests)} requests/mo
+                    {t('trustAPISettings.requestsPerMonth', { count: formatNumber(tier.includedRequests) })}
                   </div>
                   {!tier.isCurrent && (
                     <div className="mt-2 text-xs">
-                      {tier.isUpgrade && <span className="text-green-400">Upgrade</span>}
-                      {tier.isDowngrade && <span className="text-amber-400">Downgrade</span>}
+                      {tier.isUpgrade && <span className="text-green-400">{t('trustAPISettings.upgrade')}</span>}
+                      {tier.isDowngrade && <span className="text-amber-400">{t('trustAPISettings.downgrade')}</span>}
                     </div>
                   )}
                 </button>
@@ -297,9 +298,9 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
       {billing && invoices.length > 0 && (
         <Card className="ff-card-velocity">
           <CardHeader>
-            <CardTitle className="font-display">Invoices</CardTitle>
+            <CardTitle className="font-display">{t('trustAPISettings.invoices')}</CardTitle>
             <CardDescription className="text-text-secondary">
-              Your Trust API billing history
+              {t('trustAPISettings.invoicesDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -322,8 +323,8 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                       </p>
                       <p className="text-xs text-text-muted">
                         {invoice.stripe_invoice_id
-                          ? `Invoice ${invoice.stripe_invoice_id}`
-                          : 'Trust API'}
+                          ? t('trustAPISettings.invoice', { id: invoice.stripe_invoice_id })
+                          : t('trustAPISettings.trustAPI')}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -343,7 +344,7 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
                           onClick={() => window.open(invoice.hosted_invoice_url!, '_blank')}
                           style={{ color: 'var(--text-dim)' }}
                         >
-                          View
+                          {t('trustAPISettings.view')}
                         </Button>
                       )}
                     </div>

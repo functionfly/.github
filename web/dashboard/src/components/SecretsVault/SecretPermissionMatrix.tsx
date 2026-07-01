@@ -363,7 +363,7 @@ export function SecretPermissionMatrix({
           <Skeleton className="h-10 w-64" />
           <Skeleton className="h-10 w-24" />
         </div>
-        <div className="border border-border-subtle rounded-lg overflow-hidden">
+        <div className="border border-[var(--panel-edge)]-subtle rounded-lg overflow-hidden">
           <div className="space-y-2 p-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="flex items-center gap-4">
@@ -389,7 +389,7 @@ export function SecretPermissionMatrix({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 flex-1">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-faint)]" />
               <Input
                 placeholder="Search users or roles..."
                 value={searchQuery}
@@ -477,13 +477,13 @@ export function SecretPermissionMatrix({
         )}
 
         {/* Permission matrix */}
-        <div className="border border-border-subtle rounded-lg overflow-hidden">
+        <div className="border border-[var(--panel-edge)]-subtle rounded-lg overflow-hidden">
           {/* Header row */}
-          <div className="bg-bg-secondary border-b border-border-subtle">
+          <div className="bg-bg-secondary border-b border-[var(--panel-edge)]-subtle">
             <div className="grid grid-cols-[1fr,repeat(5,auto)] gap-2 items-center p-3 text-sm">
-              <div className="font-medium text-text-primary">
+              <div className="font-medium text-[var(--text)]">
                 User / Role
-                <span className="text-text-muted ml-2">
+                <span className="text-[var(--text-faint)] ml-2">
                   ({filteredUsers.length + filteredRoles.length})
                 </span>
               </div>
@@ -491,8 +491,8 @@ export function SecretPermissionMatrix({
                 <Tooltip key={perm.type}>
                   <TooltipTrigger asChild>
                     <div className="flex flex-col items-center gap-1 w-16">
-                      <perm.icon className="h-4 w-4 text-text-secondary" />
-                      <span className="text-xs text-text-muted">{perm.label}</span>
+                      <perm.icon className="h-4 w-4 text-[var(--text-dim)]" />
+                      <span className="text-xs text-[var(--text-faint)]">{perm.label}</span>
                     </div>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -505,7 +505,7 @@ export function SecretPermissionMatrix({
             {/* Bulk actions row (only when editing) */}
             {isEditing && (
               <div className="grid grid-cols-[1fr,repeat(5,auto)] gap-2 items-center px-3 pb-3 text-sm">
-                <div className="text-xs text-text-muted">Bulk actions:</div>
+                <div className="text-xs text-[var(--text-faint)]">Bulk actions:</div>
                 {PERMISSIONS.map((perm) => (
                   <div key={perm.type} className="flex items-center justify-center w-16 gap-1">
                     <Button
@@ -536,12 +536,12 @@ export function SecretPermissionMatrix({
           {filteredUsers.length === 0 && filteredRoles.length === 0 && (
             <div className="p-12 text-center">
               <div className="mx-auto h-16 w-16 rounded-full bg-gradient-to-br from-brand-500/20 to-purple-500/20 flex items-center justify-center mb-4">
-                <Users className="h-8 w-8 text-brand-500" />
+                <Users className="h-8 w-8 text-[var(--status-ok)]" />
               </div>
               <h3 className="text-lg font-semibold text-card-foreground mb-2">
                 No users or roles found
               </h3>
-              <p className="text-text-secondary max-w-sm mx-auto">
+              <p className="text-[var(--text-dim)] max-w-sm mx-auto">
                 {searchQuery
                   ? "No results match your search. Try different keywords."
                   : "Users and roles with secret permissions will appear here."}
@@ -573,7 +573,7 @@ export function SecretPermissionMatrix({
                     </Avatar>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm text-text-primary truncate">
+                        <span className="font-medium text-sm text-[var(--text)] truncate">
                           {user.name}
                         </span>
                         {isAdmin && (
@@ -587,7 +587,7 @@ export function SecretPermissionMatrix({
                           </Tooltip>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-text-muted">
+                      <div className="flex items-center gap-2 text-xs text-[var(--text-faint)]">
                         <UserTypeIcon type={user.type} />
                         <span className="truncate">
                           {user.email || getUserTypeLabel(user.type)}
@@ -623,7 +623,7 @@ export function SecretPermissionMatrix({
                                 }
                                 className={cn(
                                   isGranted && "data-[state=checked]:bg-success data-[state=checked]:border-success",
-                                  isInherited && "data-[state=checked]:bg-brand-500 data-[state=checked]:border-brand-500"
+                                  isInherited && "data-[state=checked]:rgba(143,255,208,0.15) data-[state=checked]:border-[rgba(143,255,208,0.3)]"
                                 )}
                               />
                             </div>
@@ -639,7 +639,7 @@ export function SecretPermissionMatrix({
                           </TooltipContent>
                         </Tooltip>
                         {isInherited && (
-                          <Link className="h-3 w-3 text-brand-500 ml-1" />
+                          <Link className="h-3 w-3 text-[var(--status-ok)] ml-1" />
                         )}
                       </div>
                     );
@@ -665,12 +665,12 @@ export function SecretPermissionMatrix({
                   >
                     {/* Role info */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="h-9 w-9 rounded-full bg-brand-500/10 flex items-center justify-center shrink-0">
-                        <Users className="h-4 w-4 text-brand-500" />
+                      <div className="h-9 w-9 rounded-full rgba(143,255,208,0.06) flex items-center justify-center shrink-0">
+                        <Users className="h-4 w-4 text-[var(--status-ok)]" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm text-text-primary">
+                          <span className="font-medium text-sm text-[var(--text)]">
                             {role.name}
                           </span>
                           {role.isSystem && (
@@ -682,7 +682,7 @@ export function SecretPermissionMatrix({
                             <Crown className="h-3.5 w-3.5 text-warning" />
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-text-muted">
+                        <div className="flex items-center gap-2 text-xs text-[var(--text-faint)]">
                           <span>{role.userCount ?? 0} members</span>
                           {role.description && (
                             <span className="truncate">• {role.description}</span>
@@ -702,7 +702,7 @@ export function SecretPermissionMatrix({
                               <Check className="h-3 w-3 text-success" />
                             </div>
                           ) : (
-                            <div className="h-5 w-5 rounded border border-border-subtle" />
+                            <div className="h-5 w-5 rounded border border-[var(--panel-edge)]-subtle" />
                           )}
                         </div>
                       );
@@ -711,7 +711,7 @@ export function SecretPermissionMatrix({
 
                   {/* Expanded role members (placeholder) */}
                   {isExpanded && (
-                    <div className="bg-bg-secondary/30 px-12 py-3 text-sm text-text-muted">
+                    <div className="bg-bg-secondary/30 px-12 py-3 text-sm text-[var(--text-faint)]">
                       <div className="flex items-center gap-2">
                         <ChevronRight className="h-4 w-4" />
                         <span>Role members would be listed here</span>
@@ -725,7 +725,7 @@ export function SecretPermissionMatrix({
         </div>
 
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-[var(--text-faint)]">
           <div className="flex items-center gap-1.5">
             <div className="h-4 w-4 rounded bg-success/20 flex items-center justify-center">
               <Check className="h-2.5 w-2.5 text-success" />
@@ -733,13 +733,13 @@ export function SecretPermissionMatrix({
             <span>Granted</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded bg-brand-500/20 flex items-center justify-center">
-              <Link className="h-2.5 w-2.5 text-brand-500" />
+            <div className="h-4 w-4 rounded rgba(143,255,208,0.15) flex items-center justify-center">
+              <Link className="h-2.5 w-2.5 text-[var(--status-ok)]" />
             </div>
             <span>Inherited</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <div className="h-4 w-4 rounded border border-border-subtle" />
+            <div className="h-4 w-4 rounded border border-[var(--panel-edge)]-subtle" />
             <span>Not granted</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -748,7 +748,7 @@ export function SecretPermissionMatrix({
           </div>
           {showInheritance && (
             <div className="flex items-center gap-1.5">
-              <RotateCcw className="h-3.5 w-3.5 text-text-muted" />
+              <RotateCcw className="h-3.5 w-3.5 text-[var(--text-faint)]" />
               <span>Inheritance enabled</span>
             </div>
           )}

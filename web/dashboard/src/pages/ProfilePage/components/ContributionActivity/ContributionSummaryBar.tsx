@@ -30,7 +30,7 @@ interface StatItemProps {
   delay?: number;
 }
 
-function StatItem({ icon, label, value, iconClass = "text-brand-400 ca-summary-icon-brand", delay = 0 }: StatItemProps) {
+function StatItem({ icon, label, value, iconClass = "text-status-ok", delay = 0 }: StatItemProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -40,10 +40,10 @@ function StatItem({ icon, label, value, iconClass = "text-brand-400 ca-summary-i
     >
       <div className={cn("flex-shrink-0", iconClass)}>{icon}</div>
       <div className="min-w-0">
-        <div className="text-sm font-bold font-mono text-text-primary tabular-nums leading-tight ca-summary-value">
+        <div className="text-sm font-bold font-mono tabular-nums leading-tight" style={{ color: 'var(--text)' }}>
           {typeof value === "number" ? formatNumber(value) : value}
         </div>
-        <div className="text-[10px] text-text-muted uppercase tracking-wider ca-summary-label">
+        <div className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--text-faint)' }}>
           {label}
         </div>
       </div>
@@ -61,42 +61,42 @@ export function ContributionSummaryBar({
   const activityRate = totalDays > 0 ? Math.round((activeDays / totalDays) * 100) : 0;
 
   return (
-    <div className="flex items-center gap-1 p-1.5 rounded-xl bg-surface-secondary/50 border border-border-subtle overflow-x-auto ca-summary-bar">
+    <div className="flex items-center gap-1 p-1.5 rounded-[var(--radius-lg)] overflow-x-auto" style={{ background: 'var(--panel)', border: '1px solid var(--panel-edge)' }}>
       <StatItem
         icon={<Activity className="w-4 h-4" />}
         label="Total"
         value={totalContributions}
-        iconClass="text-brand-400 ca-summary-icon-brand"
+        iconClass="text-[var(--status-ok)]"
         delay={0}
       />
 
-      <div className="w-px h-8 bg-border-subtle/50 flex-shrink-0 ca-summary-divider" />
+      <div className="w-px h-8 flex-shrink-0" style={{ background: 'var(--panel-edge)' }} />
 
       <StatItem
         icon={<Flame className="w-4 h-4" />}
         label="Streak"
         value={`${currentStreak}d`}
-        iconClass="text-amber-400 ca-summary-icon-amber"
+        iconClass="text-[var(--status-pending)]"
         delay={0.05}
       />
 
-      <div className="w-px h-8 bg-border-subtle/50 flex-shrink-0 ca-summary-divider" />
+      <div className="w-px h-8 flex-shrink-0" style={{ background: 'var(--panel-edge)' }} />
 
       <StatItem
         icon={<TrendingUp className="w-4 h-4" />}
         label="Best"
         value={`${longestStreak}d`}
-        iconClass="text-emerald-400 ca-summary-icon-emerald"
+        iconClass="text-[var(--status-ok)]"
         delay={0.1}
       />
 
-      <div className="w-px h-8 bg-border-subtle/50 flex-shrink-0 ca-summary-divider" />
+      <div className="w-px h-8 flex-shrink-0" style={{ background: 'var(--panel-edge)' }} />
 
       <StatItem
         icon={<Calendar className="w-4 h-4" />}
         label="Active"
         value={`${activityRate}%`}
-        iconClass="text-blue-400 ca-summary-icon-blue"
+        iconClass="text-[var(--foil-a)]"
         delay={0.15}
       />
     </div>
