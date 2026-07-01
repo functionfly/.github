@@ -91,9 +91,18 @@ type createReplayRequest struct {
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload interface{}) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		logrus.WithError(err).Error("statefabric: failed to marshal JSON response")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"internal encoding error"}`))
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(payload)
+	_, _ = w.Write(data)
 }
 
 func writeErr(w http.ResponseWriter, status int, message string) {
@@ -225,6 +234,14 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, items)
 }
 
+var allowedFabricTypes = map[string]bool{
+	"session":  true,
+	"catalog":  true,
+	"cache":    true,
+	"workflow": true,
+	"custom":   true,
+}
+
 func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	tenantID, _, ok := tenantAndUser(r, w)
@@ -232,10 +249,20 @@ func (h *Handler) HandleCreate(w http.ResponseWriter, r *http.Request) {
 		monitoring.RecordStateFabricOperation("", "", "create", "unauthorized")
 		return
 	}
+	if !h.requireFabricQuota(w, r, tenantID) {
+		return
+	}
 	var req createFabricRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		monitoring.RecordStateFabricOperation(tenantID.String(), "", "create", "bad_request")
 		apierror.WriteError(w, apierror.NewBadRequest("invalid request body"))
+		return
+	}
+	if req.Type == "" {
+		req.Type = "custom"
+	}
+	if !allowedFabricTypes[req.Type] {
+		apierror.WriteError(w, apierror.NewBadRequest(fmt.Sprintf("invalid fabric type: %s (allowed: session, catalog, cache, workflow, custom)", req.Type)))
 		return
 	}
 	item, err := h.repo.CreateFabric(r.Context(), tenantID, req.Name, req.Description, req.Type, req.Settings)

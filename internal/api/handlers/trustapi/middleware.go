@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/apikey"
@@ -411,5 +412,95 @@ func (m *APIKeyAuthMiddleware) RequireTier(minTier string) func(http.Handler) ht
 
 			next.ServeHTTP(w, r)
 		})
+	}
+}
+
+// ============================================
+// Registration Rate Limiter (IP-based)
+// ============================================
+
+// RegistrationRateLimiter provides IP-based rate limiting for the public
+// partner registration endpoint. Limits each IP to a configurable number
+// of registrations per sliding window.
+type RegistrationRateLimiter struct {
+	mu       sync.Mutex
+	attempts map[string]*ipWindow
+	limit    int
+	window   time.Duration
+	logger   *logrus.Logger
+}
+
+type ipWindow struct {
+	count    int
+	resetAt  time.Time
+}
+
+// NewRegistrationRateLimiter creates a new IP-based registration rate limiter.
+// limit = max registrations per window per IP.
+func NewRegistrationRateLimiter(limit int, window time.Duration) *RegistrationRateLimiter {
+	rl := &RegistrationRateLimiter{
+		attempts: make(map[string]*ipWindow),
+		limit:    limit,
+		window:   window,
+		logger:   logrus.New(),
+	}
+	go rl.cleanup()
+	return rl
+}
+
+// RateLimit returns middleware that enforces per-IP rate limits on registration.
+func (rl *RegistrationRateLimiter) RateLimit() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ip := getClientIP(r)
+
+			rl.mu.Lock()
+			entry, exists := rl.attempts[ip]
+			now := time.Now()
+
+			if !exists || now.After(entry.resetAt) {
+				rl.attempts[ip] = &ipWindow{
+					count:   1,
+					resetAt: now.Add(rl.window),
+				}
+				rl.mu.Unlock()
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			entry.count++
+			if entry.count > rl.limit {
+				rl.mu.Unlock()
+				remaining := entry.resetAt.Sub(now).Seconds()
+				w.Header().Set("Retry-After", fmt.Sprintf("%.0f", remaining))
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error":       "Too many registration attempts. Please try again later.",
+					"code":        "registration_rate_limit_exceeded",
+					"retry_after": int(remaining),
+				})
+				return
+			}
+			rl.mu.Unlock()
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// cleanup periodically removes stale entries.
+func (rl *RegistrationRateLimiter) cleanup() {
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		rl.mu.Lock()
+		for ip, entry := range rl.attempts {
+			if now.After(entry.resetAt) {
+				delete(rl.attempts, ip)
+			}
+		}
+		rl.mu.Unlock()
 	}
 }

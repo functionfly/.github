@@ -16,14 +16,14 @@ type VoteOption struct {
 }
 
 type VotesHandler struct {
-	repo  storage.Repository
-	log   *logrus.Logger
+	repo storage.Repository
+	log  *logrus.Logger
 }
 
 func NewVotesHandler(repo storage.Repository, log *logrus.Logger) *VotesHandler {
 	return &VotesHandler{
-		repo:  repo,
-		log:   log,
+		repo: repo,
+		log:  log,
 	}
 }
 
@@ -45,7 +45,14 @@ func (h *VotesHandler) HandleListVotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	votes, err := h.repo.ListActiveFounderVotes(r.Context())
+	statusFilter := r.URL.Query().Get("status")
+
+	var votes []*storage.FounderVote
+	if statusFilter == "active" {
+		votes, err = h.repo.ListActiveFounderVotes(r.Context())
+	} else {
+		votes, err = h.repo.ListFounderVotes(r.Context())
+	}
 	if err != nil {
 		h.log.WithError(err).Error("Failed to list founder votes")
 		http.Error(w, "failed to list votes", http.StatusInternalServerError)
@@ -53,36 +60,52 @@ func (h *VotesHandler) HandleListVotes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type VoteResponse struct {
-		ID          uuid.UUID      `json:"id"`
-		Title       string         `json:"title"`
-		Description string         `json:"description"`
-		VoteType    string         `json:"vote_type"`
-		Status      string         `json:"status"`
-		Options     []VoteOption   `json:"options"`
-		HasVoted    bool          `json:"has_voted"`
-		MyVote      string        `json:"my_vote,omitempty"`
-		StartsAt    *interface{}   `json:"starts_at,omitempty"`
-		EndsAt      *interface{}   `json:"ends_at,omitempty"`
+		ID          uuid.UUID   `json:"id"`
+		Title       string      `json:"title"`
+		Description string      `json:"description"`
+		ChangeDiff  interface{} `json:"change_diff,omitempty"`
+		Status      string      `json:"status"`
+		Options     []VoteOption `json:"options"`
+		HasVoted    bool        `json:"has_voted"`
+		MyVote      string      `json:"my_vote,omitempty"`
+		TotalVotes  int         `json:"total_votes"`
+		Quorum      int         `json:"quorum"`
+		CreatedAt   string      `json:"created_at"`
 	}
 
 	responses := make([]VoteResponse, 0, len(votes))
 	for _, vote := range votes {
+		if statusFilter != "" && vote.Status != statusFilter {
+			continue
+		}
+
 		var opts []VoteOption
 		if err := json.Unmarshal([]byte(vote.Options), &opts); err != nil {
 			h.log.WithError(err).Warn("Failed to unmarshal vote options")
 			continue
 		}
 
+		var changeDiff interface{}
+		if vote.ChangeDiff != "" && vote.ChangeDiff != "{}" {
+			_ = json.Unmarshal([]byte(vote.ChangeDiff), &changeDiff)
+		}
+
 		existingResponse, _ := h.repo.GetFounderVoteResponse(r.Context(), vote.ID, claims.UserID)
 		hasVoted := existingResponse != nil
+
+		_, total, _ := h.repo.GetFounderVoteResults(r.Context(), vote.ID)
 
 		resp := VoteResponse{
 			ID:          vote.ID,
 			Title:       vote.Title,
 			Description: vote.Description,
+			ChangeDiff:  changeDiff,
 			Status:      vote.Status,
 			Options:     opts,
 			HasVoted:    hasVoted,
+			TotalVotes:  total,
+			Quorum:      vote.Quorum,
+			CreatedAt:   vote.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		}
 		if hasVoted {
 			resp.MyVote = existingResponse.OptionID
@@ -132,23 +155,35 @@ func (h *VotesHandler) HandleGetVote(w http.ResponseWriter, r *http.Request) {
 		h.log.WithError(err).Warn("Failed to unmarshal vote options")
 	}
 
+	var changeDiff interface{}
+	if vote.ChangeDiff != "" && vote.ChangeDiff != "{}" {
+		_ = json.Unmarshal([]byte(vote.ChangeDiff), &changeDiff)
+	}
+
 	results, total, _ := h.repo.GetFounderVoteResults(r.Context(), voteID)
 
 	existingResponse, _ := h.repo.GetFounderVoteResponse(r.Context(), voteID, claims.UserID)
 
+	voteData := map[string]interface{}{
+		"id":          vote.ID,
+		"title":       vote.Title,
+		"description": vote.Description,
+		"change_diff": changeDiff,
+		"status":      vote.Status,
+		"options":     opts,
+		"results":     results,
+		"total_votes": total,
+		"has_voted":   existingResponse != nil,
+		"quorum":      vote.Quorum,
+		"created_at":  vote.CreatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+	if existingResponse != nil {
+		voteData["my_vote"] = existingResponse.OptionID
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"vote": map[string]interface{}{
-			"id":          vote.ID,
-			"title":       vote.Title,
-			"description": vote.Description,
-			"status":      vote.Status,
-			"options":     opts,
-			"results":     results,
-			"total_votes": total,
-			"has_voted":   existingResponse != nil,
-			"my_vote":     existingResponse.OptionID,
-		},
+		"vote": voteData,
 	})
 }
 
@@ -261,10 +296,11 @@ func (h *VotesHandler) HandleGetResults(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"vote_id":     voteID,
-		"title":      vote.Title,
-		"status":     vote.Status,
-		"options":    opts,
-		"results":    results,
+		"title":       vote.Title,
+		"status":      vote.Status,
+		"options":     opts,
+		"results":     results,
 		"total_votes": total,
+		"quorum":      vote.Quorum,
 	})
 }

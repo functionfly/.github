@@ -6,6 +6,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -91,6 +92,14 @@ func (h *Handler) HandleMagicLinkVerify(w http.ResponseWriter, r *http.Request) 
 
 		writeJSONError(w, status, errMsg)
 		return
+	}
+
+	if response.User != nil {
+		if userID, parseErr := uuid.Parse(response.User.ID); parseErr == nil {
+			if _, historyErr := h.authSvc.Repo().CreateLoginHistory(r.Context(), userID, "login", req.IPAddress, req.UserAgent, "", "magic_link", false, nil); historyErr != nil {
+				logrus.WithError(historyErr).WithField("userID", userID).Warn("Failed to record magic link login history")
+			}
+		}
 	}
 
 	writeJSON(w, http.StatusOK, response)

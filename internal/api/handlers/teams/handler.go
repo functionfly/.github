@@ -2,6 +2,7 @@ package teams
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -29,8 +30,10 @@ type TeamCreateRequest struct {
 
 // TeamUpdateRequest represents a request to update a team
 type TeamUpdateRequest struct {
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
+	Name              *string `json:"name,omitempty"`
+	Description       *string `json:"description,omitempty"`
+	Visibility        *string `json:"visibility,omitempty"`
+	DefaultInviteRole *string `json:"default_invite_role,omitempty"`
 }
 
 // TeamMemberRequest represents a request to add/update a team member
@@ -111,7 +114,9 @@ func (h *Handler) HandleCreateTeam(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(team)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"team": team,
+	})
 }
 
 // HandleGetTeam handles getting a team by ID
@@ -156,6 +161,56 @@ func (h *Handler) HandleGetTeam(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(team)
+}
+
+// HandleListTeamMembers handles listing members of a team
+func (h *Handler) HandleListTeamMembers(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	teamIDStr := vars["teamId"]
+	teamID, err := uuid.Parse(teamIDStr)
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
+		return
+	}
+
+	team, err := h.repo.GetTeamByID(r.Context(), teamID)
+	if err != nil {
+		logrus.WithError(err).WithField("team_id", teamID).Error("Failed to get team")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get team"))
+		return
+	}
+	if team == nil {
+		apierror.WriteError(w, apierror.NewNotFound("Team not found"))
+		return
+	}
+
+	membership, err := h.repo.GetTeamMembership(r.Context(), teamID, user.UserID)
+	if err != nil && err.Error() != "record not found" {
+		logrus.WithError(err).Error("Failed to check team membership")
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
+		return
+	}
+
+	if membership == nil && team.TenantID != user.TenantID {
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
+		return
+	}
+
+	members := team.Members
+	if members == nil {
+		members = []storage.TeamMembership{}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"members": members,
+	})
 }
 
 // HandleListTeams handles listing teams for the current user's tenant
@@ -238,12 +293,34 @@ func (h *Handler) HandleUpdateTeam(w http.ResponseWriter, r *http.Request) {
 	if req.Description != nil {
 		team.Description = *req.Description
 	}
+	if req.Visibility != nil {
+		if *req.Visibility != "private" && *req.Visibility != "public" {
+			apierror.WriteError(w, apierror.NewBadRequest("Visibility must be 'private' or 'public'"))
+			return
+		}
+		team.Visibility = *req.Visibility
+	}
+	if req.DefaultInviteRole != nil {
+		validRoles := map[string]bool{auth.TeamRoleAdmin: true, auth.TeamRoleMember: true, auth.TeamRoleViewer: true}
+		if !validRoles[*req.DefaultInviteRole] {
+			apierror.WriteError(w, apierror.NewBadRequest("Invalid default invite role"))
+			return
+		}
+		team.DefaultInviteRole = *req.DefaultInviteRole
+	}
 
 	if err := h.repo.UpdateTeam(r.Context(), team); err != nil {
 		logrus.WithError(err).Error("Failed to update team")
 		apierror.WriteError(w, apierror.NewInternal("Failed to update team"))
 		return
 	}
+
+	h.repo.CreateTeamAuditLog(r.Context(), &storage.TeamAuditLog{
+		TeamID:    teamID,
+		ActorID:   user.UserID,
+		Action:    "team_updated",
+		IPAddress: r.RemoteAddr,
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(team)
@@ -815,5 +892,177 @@ func (h *Handler) HandleCheckUserResourcePermission(w http.ResponseWriter, r *ht
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"has_permission": hasPermission,
+	})
+}
+
+// HandleTransferOwnership handles transferring team ownership
+func (h *Handler) HandleTransferOwnership(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	teamID, err := uuid.Parse(vars["teamId"])
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
+		return
+	}
+
+	isOwner, err := h.repo.IsUserTeamOwner(r.Context(), user.UserID, teamID)
+	if err != nil || !isOwner {
+		apierror.WriteError(w, apierror.NewForbidden("Only the team owner can transfer ownership"))
+		return
+	}
+
+	var req struct {
+		NewOwnerID uuid.UUID `json:"new_owner_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+		return
+	}
+
+	newOwnerMembership, err := h.repo.GetTeamMembership(r.Context(), teamID, req.NewOwnerID)
+	if err != nil || newOwnerMembership == nil {
+		apierror.WriteError(w, apierror.NewBadRequest("New owner must be a team member"))
+		return
+	}
+
+	if err := h.repo.TransferTeamOwnership(r.Context(), teamID, user.UserID, req.NewOwnerID); err != nil {
+		logrus.WithError(err).Error("Failed to transfer ownership")
+		apierror.WriteError(w, apierror.NewInternal("Failed to transfer ownership"))
+		return
+	}
+
+	h.repo.CreateTeamAuditLog(r.Context(), &storage.TeamAuditLog{
+		TeamID:     teamID,
+		ActorID:    user.UserID,
+		Action:     "ownership_transferred",
+		TargetType: "user",
+		TargetID:   &req.NewOwnerID,
+		IPAddress:  r.RemoteAddr,
+	})
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleLeaveTeam handles a user leaving a team
+func (h *Handler) HandleLeaveTeam(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	teamID, err := uuid.Parse(vars["teamId"])
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
+		return
+	}
+
+	isOwner, err := h.repo.IsUserTeamOwner(r.Context(), user.UserID, teamID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to check team ownership")
+		apierror.WriteError(w, apierror.NewInternal("Failed to check permissions"))
+		return
+	}
+	if isOwner {
+		apierror.WriteError(w, apierror.NewBadRequest("Owners cannot leave a team. Transfer ownership first."))
+		return
+	}
+
+	if err := h.repo.LeaveTeam(r.Context(), teamID, user.UserID); err != nil {
+		logrus.WithError(err).Error("Failed to leave team")
+		apierror.WriteError(w, apierror.NewInternal("Failed to leave team"))
+		return
+	}
+
+	h.repo.CreateTeamAuditLog(r.Context(), &storage.TeamAuditLog{
+		TeamID:    teamID,
+		ActorID:   user.UserID,
+		Action:    "member_left",
+		IPAddress: r.RemoteAddr,
+	})
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// HandleGetTeamAuditLogs handles listing audit logs for a team
+func (h *Handler) HandleGetTeamAuditLogs(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	teamID, err := uuid.Parse(vars["teamId"])
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
+		return
+	}
+
+	membership, err := h.repo.GetTeamMembership(r.Context(), teamID, user.UserID)
+	if err != nil || membership == nil {
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
+		return
+	}
+
+	limit := 50
+	offset := 0
+	if l := r.URL.Query().Get("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+	if o := r.URL.Query().Get("offset"); o != "" {
+		fmt.Sscanf(o, "%d", &offset)
+	}
+
+	logs, err := h.repo.GetTeamAuditLogs(r.Context(), teamID, limit, offset)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get audit logs")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get audit logs"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"logs": logs,
+	})
+}
+
+// HandleGetTeamQuotas handles getting resource quotas for a team
+func (h *Handler) HandleGetTeamQuotas(w http.ResponseWriter, r *http.Request) {
+	user := middleware.GetUserFromContext(r)
+	if user == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("Unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	teamID, err := uuid.Parse(vars["teamId"])
+	if err != nil {
+		apierror.WriteError(w, apierror.NewBadRequest("Invalid team ID"))
+		return
+	}
+
+	membership, err := h.repo.GetTeamMembership(r.Context(), teamID, user.UserID)
+	if err != nil || membership == nil {
+		apierror.WriteError(w, apierror.NewForbidden("Access denied"))
+		return
+	}
+
+	quotas, err := h.repo.GetTeamQuotas(r.Context(), teamID)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to get team quotas")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get quotas"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"quotas": quotas,
 	})
 }

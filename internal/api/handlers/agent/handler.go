@@ -6,6 +6,7 @@ package agent
 import (
 	"encoding/json"
 	"errors"
+	"database/sql"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,6 +19,7 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/policy"
 	"github.com/functionfly/functionfly/internal/agent/quota"
 	"github.com/functionfly/functionfly/internal/agent/tools"
+	"github.com/functionfly/functionfly/internal/aikeys"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -43,6 +45,8 @@ type Handler struct {
 	notificationSvc *notification.Service
 	toolRegistry    tools.Registry
 	prefsRepo       *storage.AIModelPreferencesRepository
+	byokRepo        *aikeys.Repository
+	rawDB           *sql.DB
 }
 
 // NewHandler creates a new AEP handler
@@ -67,6 +71,8 @@ func NewHandler(
 		notificationSvc: notificationSvc,
 		toolRegistry:    tools.NewRegistry(),
 		prefsRepo:       storage.NewAIModelPreferencesRepository(sqlDB),
+		byokRepo:        aikeys.NewRepository(db),
+		rawDB:           sqlDB,
 	}
 }
 
@@ -787,6 +793,8 @@ func (h *Handler) HandleListModels(w http.ResponseWriter, r *http.Request) {
 		{"id": "openai/gpt-oss-120b", "name": "GPT-OSS 120B", "provider": "openrouter", "tier": "reasoning", "cost": "free"},
 		{"id": "nvidia/nemotron-3-super-120b-a12b:free", "name": "Nemotron 3 Super 120B", "provider": "openrouter", "tier": "reasoning", "cost": "free"},
 		{"id": "nvidia/nemotron-3-ultra-550b-a55b:free", "name": "Nemotron 3 Ultra 550B", "provider": "openrouter", "tier": "reasoning", "cost": "free"},
+		{"id": "poolside/laguna-m.1:free", "name": "Laguna M.1", "provider": "openrouter", "tier": "reasoning", "cost": "free"},
+		{"id": "poolside/laguna-xs.2:free", "name": "Laguna XS.2", "provider": "openrouter", "tier": "fast", "cost": "free"},
 		// OpenRouter — code
 		{"id": "qwen/qwen3-coder", "name": "Qwen3 Coder", "provider": "openrouter", "tier": "code", "cost": "$$"},
 		{"id": "openai/gpt-5-codex", "name": "GPT-5 Codex", "provider": "openrouter", "tier": "code", "cost": "$$$"},
@@ -802,6 +810,16 @@ func (h *Handler) HandleListModels(w http.ResponseWriter, r *http.Request) {
 		// Groq — low latency
 		{"id": "llama-3.3-70b-versatile", "name": "Llama 3.3 70B (Groq)", "provider": "groq", "tier": "fast", "cost": "$"},
 		{"id": "llama-3.1-8b-instant", "name": "Llama 3.1 8B Instant", "provider": "groq", "tier": "fast", "cost": "$"},
+		// MiMo (Xiaomi) — token plan
+		{"id": "MiMo-V2.5-Pro", "name": "MiMo V2.5 Pro", "provider": "mimo", "tier": "frontier", "cost": "$$$"},
+		{"id": "MiMo-V2.5-Pro-UltraSpeed", "name": "MiMo V2.5 Pro UltraSpeed", "provider": "mimo", "tier": "fast", "cost": "$$"},
+		{"id": "MiMo-V2.5", "name": "MiMo V2.5", "provider": "mimo", "tier": "frontier", "cost": "$$"},
+		{"id": "MiMo-Ultra", "name": "MiMo Ultra", "provider": "mimo", "tier": "frontier", "cost": "$$$"},
+		// MiniMax — token plan
+		{"id": "MiniMax-M2.5", "name": "MiniMax M2.5", "provider": "minimax", "tier": "fast", "cost": "$"},
+		{"id": "MiniMax-M2.7", "name": "MiniMax M2.7", "provider": "minimax", "tier": "reasoning", "cost": "$$"},
+		{"id": "MiniMax-M3", "name": "MiniMax M3", "provider": "minimax", "tier": "frontier", "cost": "$$$"},
+		{"id": "MiniMax-Text-01", "name": "MiniMax Text 01", "provider": "minimax", "tier": "fast", "cost": "$"},
 	}
 
 	if h.prefsRepo != nil {
@@ -833,6 +851,55 @@ func (h *Handler) HandleListModels(w http.ResponseWriter, r *http.Request) {
 						}
 					}
 					models = filtered
+				}
+			}
+		}
+	}
+
+	// Annotate models with BYOK key source and provider label
+	if h.byokRepo != nil {
+		if claims := middleware.GetUserFromContext(r); claims != nil {
+			keys, err := h.byokRepo.ListByTenant(r.Context(), claims.TenantID)
+			if err == nil {
+				providerKeySource := make(map[string]string)
+				for _, k := range keys {
+					if k.Status == "active" {
+						switch k.Provider {
+						case "mimo-token-plan":
+							providerKeySource["mimo"] = "token-plan"
+						case "minimax-token-plan":
+							providerKeySource["minimax"] = "token-plan"
+						default:
+							if _, exists := providerKeySource[k.Provider]; !exists {
+								providerKeySource[k.Provider] = "byok"
+							}
+						}
+					}
+				}
+				providerLabels := map[string]string{
+					"mimo":    "MiMo",
+					"minimax": "MiniMax",
+				}
+				for i := range models {
+					prov := models[i]["provider"]
+					cost := models[i]["cost"]
+
+					// If user has a BYOK key for this provider, label it
+					if src, ok := providerKeySource[prov]; ok {
+						models[i]["key_source"] = src
+						label := providerLabels[prov]
+						if label == "" {
+							label = prov
+						}
+						if src == "token-plan" {
+							models[i]["provider_label"] = label + " Token Plan"
+						} else if src == "byok" {
+							models[i]["provider_label"] = label + " (API Key)"
+						}
+					} else if prov == "openrouter" && cost == "free" {
+						// Free OpenRouter models are always available as fallback
+						models[i]["provider_label"] = "Free (OpenRouter)"
+					}
 				}
 			}
 		}

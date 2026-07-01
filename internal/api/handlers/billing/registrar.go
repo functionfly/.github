@@ -95,6 +95,7 @@ func (r *RouteRegistrar) Register(router *mux.Router, api *mux.Router, protected
 
 	// Wallet
 	billingRouter.HandleFunc("/wallet", r.handler.HandleGetWallet).Methods("GET", "OPTIONS")
+	billingRouter.HandleFunc("/wallet/transactions", r.handler.HandleListWalletTransactions).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/wallet/fees", r.handler.HandleListPlatformFees).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/wallet/top-up", r.handler.HandleWalletTopUp).Methods("POST", "OPTIONS")
 

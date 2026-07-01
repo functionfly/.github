@@ -422,6 +422,10 @@ func (h *WebAuthnHandler) HandleWebAuthnLoginComplete(w http.ResponseWriter, r *
 		"refresh_issued": refreshToken != "",
 	})
 
+	if _, historyErr := h.repo.CreateLoginHistory(r.Context(), user.ID, "login", clientIP, userAgent, "", "webauthn", false, nil); historyErr != nil {
+		logrus.WithError(historyErr).WithField("userID", user.ID).Warn("Failed to record WebAuthn login history")
+	}
+
 	// Build login user response (handling pointer fields from storage.User)
 	loginUser := &auth.LoginUser{
 		ID:            user.ID.String(),

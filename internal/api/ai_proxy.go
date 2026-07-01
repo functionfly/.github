@@ -327,11 +327,27 @@ func (h *AIProxyHandler) injectBYOKHeader(proxyReq *http.Request, tenantID strin
 		return
 	}
 
-	// Look up BYOK key
+	// Look up BYOK key — try exact provider first, then token plan fallbacks
 	key, err := h.byokRepo.GetByTenantAndProvider(proxyReq.Context(), tid, provider)
 	if err != nil || key == nil || key.Status != "active" {
-		proxyReq.Header.Set("X-Key-Source", "platform")
-		return
+		// For mimo requests, also check for mimo-token-plan key
+		if provider == "mimo" {
+			key, err = h.byokRepo.GetByTenantAndProvider(proxyReq.Context(), tid, "mimo-token-plan")
+			if err != nil || key == nil || key.Status != "active" {
+				proxyReq.Header.Set("X-Key-Source", "platform")
+				return
+			}
+		} else if provider == "minimax" {
+			// For minimax requests, also check for minimax-token-plan key
+			key, err = h.byokRepo.GetByTenantAndProvider(proxyReq.Context(), tid, "minimax-token-plan")
+			if err != nil || key == nil || key.Status != "active" {
+				proxyReq.Header.Set("X-Key-Source", "platform")
+				return
+			}
+		} else {
+			proxyReq.Header.Set("X-Key-Source", "platform")
+			return
+		}
 	}
 
 	// Decrypt the key
@@ -347,10 +363,30 @@ func (h *AIProxyHandler) injectBYOKHeader(proxyReq *http.Request, tenantID strin
 	proxyReq.Header.Set("X-BYOK-Provider", provider)
 	proxyReq.Header.Set("X-Key-Source", "byok")
 
+	// For token plan keys, inject the regional base URL and override provider
+	if key.Provider == "mimo-token-plan" {
+		region := extractRegionFromHealthMessage(key.HealthMessage)
+		if base, ok := aikeys.TokenPlanRegionURLs[region]; ok {
+			proxyReq.Header.Set("X-BYOK-Base-URL", base)
+		}
+		proxyReq.Header.Set("X-BYOK-Provider", "mimo")
+	} else if key.Provider == "minimax-token-plan" {
+		proxyReq.Header.Set("X-BYOK-Provider", "minimax")
+	}
+
 	// Update last_used_at in background
 	go func() {
 		_ = h.byokRepo.UpdateLastUsed(context.Background(), key.ID)
 	}()
+}
+
+// extractRegionFromHealthMessage extracts the region code from a health_message string.
+func extractRegionFromHealthMessage(healthMessage string) string {
+	const prefix = "region:"
+	if len(healthMessage) > len(prefix) && healthMessage[:len(prefix)] == prefix {
+		return healthMessage[len(prefix):]
+	}
+	return ""
 }
 
 // extractProviderFromBody tries to extract the "provider" field from a JSON request body.

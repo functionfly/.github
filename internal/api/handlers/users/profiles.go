@@ -523,23 +523,31 @@ func (h *Handler) HandleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	// Persist avatar URL in provider_data when client sends avatar (nil = no change, "" = clear)
 	var responseAvatar string
 	if req.Avatar != nil {
+		avatarVal := *req.Avatar
+		// Reject data-URL avatars that exceed a sane limit (256 KB).
+		// A 512×512 JPEG at q≈0.82 is ~40-80 KB; this leaves generous headroom.
+		if len(avatarVal) > 256*1024 && strings.HasPrefix(avatarVal, "data:") {
+			apierror.WriteError(w, apierror.NewBadRequest("Avatar image is too large. Please use a smaller image (max 256 KB)."))
+			return
+		}
 		currentUser, err := h.repo.GetUserByID(r.Context(), claims.UserID)
 		if err != nil || currentUser == nil {
-			// Continue without updating avatar if we can't load user
-		} else {
-			merged := make(map[string]interface{})
-			if currentUser.ProviderData != nil {
-				for k, v := range currentUser.ProviderData {
-					merged[k] = v
-				}
-			}
-			merged["avatar_url"] = *req.Avatar
-			if err := h.repo.UpdateUserProviderData(r.Context(), claims.UserID, merged); err != nil {
-				logrus.WithError(err).WithField("userID", claims.UserID).Warn("Failed to update avatar in provider_data")
-			} else {
-				responseAvatar = *req.Avatar
+			apierror.WriteError(w, apierror.NewInternal("Failed to load profile for avatar update"))
+			return
+		}
+		merged := make(map[string]interface{})
+		if currentUser.ProviderData != nil {
+			for k, v := range currentUser.ProviderData {
+				merged[k] = v
 			}
 		}
+		merged["avatar_url"] = avatarVal
+		if err := h.repo.UpdateUserProviderData(r.Context(), claims.UserID, merged); err != nil {
+			logrus.WithError(err).WithField("userID", claims.UserID).Error("Failed to update avatar in provider_data")
+			apierror.WriteError(w, apierror.NewInternal("Failed to save avatar. Please try a smaller image."))
+			return
+		}
+		responseAvatar = avatarVal
 	}
 
 	// No-op: no profile fields and no avatar change — return current user (200) instead of 400

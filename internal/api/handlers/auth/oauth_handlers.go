@@ -142,6 +142,10 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 		"refresh_issued": response.RefreshToken != "",
 	})
 
+	if _, historyErr := h.authSvc.Repo().CreateLoginHistory(r.Context(), response.User.ID, "login", clientIP, userAgent, "", provider, false, nil); historyErr != nil {
+		logrus.WithError(historyErr).WithField("userID", response.User.ID).Warn("Failed to record OAuth login history")
+	}
+
 	result := &auth.AuthCallbackResult{
 		Success:      true,
 		Token:        response.Token,

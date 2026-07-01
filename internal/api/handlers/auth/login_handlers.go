@@ -156,6 +156,10 @@ func (h *Handler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, historyErr := h.authSvc.Repo().CreateLoginHistory(r.Context(), user.ID, "login", ipAddress, userAgent, "", "password", false, nil); historyErr != nil {
+		logrus.WithError(historyErr).WithField("userID", user.ID).Warn("Failed to record login history")
+	}
+
 	if user.Role == "super_admin" || user.Role == "admin" || user.Role == "support" || user.Role == "billing_admin" || user.Role == "developer_admin" {
 		deviceFingerprint := r.Header.Get("X-Device-Fingerprint")
 		expiresAt := time.Now().Add(24 * time.Hour)

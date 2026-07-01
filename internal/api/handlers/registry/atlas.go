@@ -92,7 +92,7 @@ func (h *AtlasHandler) HandleListTraces(w http.ResponseWriter, r *http.Request) 
 	runs, err := client.ListRuns(r.Context(), limit, after)
 	if err != nil {
 		logrus.WithError(err).Error("Failed to list atlas runs")
-		apierror.WriteError(w, apierror.NewInternal("Failed to list traces"))
+		apierror.WriteError(w, apierror.NewServiceUnavailable("Atlas service unavailable"))
 		return
 	}
 

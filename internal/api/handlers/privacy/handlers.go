@@ -90,7 +90,7 @@ func (h *Handler) HandleDeletePrivacySettings(w http.ResponseWriter, r *http.Req
 	})
 }
 
-// HandleRequestDataExport handles POST /v1/privacy/exports
+// HandleRequestDataExport handles POST /v1/privacy/export
 func (h *Handler) HandleRequestDataExport(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getUserID(r)
 	if err != nil {
@@ -98,11 +98,8 @@ func (h *Handler) HandleRequestDataExport(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tenantID, err := h.getTenantID(r)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Tenant ID required", err.Error())
-		return
-	}
+	// Tenant ID is optional — individual users may not belong to a tenant
+	tenantID, _ := h.getTenantID(r)
 
 	var request struct {
 		RequestType string `json:"request_type,omitempty"`
@@ -314,7 +311,7 @@ func isRemoteURL(url string) bool {
 		strings.HasPrefix(url, "s3://")
 }
 
-// HandleRequestDataDeletion handles POST /v1/privacy/deletions
+// HandleRequestDataDeletion handles POST /v1/privacy/deletion
 func (h *Handler) HandleRequestDataDeletion(w http.ResponseWriter, r *http.Request) {
 	userID, err := h.getUserID(r)
 	if err != nil {
@@ -322,11 +319,8 @@ func (h *Handler) HandleRequestDataDeletion(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	tenantID, err := h.getTenantID(r)
-	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "Tenant ID required", err.Error())
-		return
-	}
+	// Tenant ID is optional — individual users may not belong to a tenant
+	tenantID, _ := h.getTenantID(r)
 
 	var request struct {
 		RequestType string `json:"request_type,omitempty"`

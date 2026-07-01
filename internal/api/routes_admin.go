@@ -475,6 +475,8 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/state-fabrics/{id}/resume", authMiddleware.RequirePermission(auth.PermTenantsWrite)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleResumeFabric))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/cleanup", authMiddleware.RequirePermission(auth.PermSystemWrite)(rateLimiter.RequireRateLimit(advancedSecurityMiddleware.RequireHMACSignature(stateFabricHandler.HandleRunTTLCleanup)))).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/state-fabrics/cleanup/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleGetTTLCleanupStats))).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/health", authMiddleware.RequirePermission(auth.PermSystemRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleStateFabricHealth))).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/state-fabrics/{id}/health", authMiddleware.RequirePermission(auth.PermSystemRead)(rateLimiter.RequireRateLimit(stateFabricHandler.HandleGetFabricHealth))).Methods("GET", "OPTIONS")
 
 	// Trigger Engine Admin Endpoints
 	// GET /admin/triggers/stats - Get trigger engine statistics

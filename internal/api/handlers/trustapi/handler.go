@@ -17,19 +17,21 @@ import (
 
 // Handler handles Trust API requests
 type Handler struct {
-	apikeyRepo   *apikey.Repository  // unified platform API key repository (for key CRUD)
-	trustRepo    *trustapi.Repository // Trust API-specific repository (partners, rate limits, usage, etc.)
-	registryRepo *registry.RegistryRepository
-	logger       *logrus.Logger
+	apikeyRepo        *apikey.Repository    // unified platform API key repository (for key CRUD)
+	trustRepo         *trustapi.Repository  // Trust API-specific repository (partners, rate limits, usage, etc.)
+	registryRepo      *registry.RegistryRepository
+	turnstileVerifier *middleware.TurnstileVerifier
+	logger            *logrus.Logger
 }
 
 // NewHandler creates a new Trust API handler
 func NewHandler(apikeyRepo *apikey.Repository, trustRepo *trustapi.Repository, registryRepo *registry.RegistryRepository) *Handler {
 	return &Handler{
-		apikeyRepo:   apikeyRepo,
-		trustRepo:    trustRepo,
-		registryRepo: registryRepo,
-		logger:       logrus.New(),
+		apikeyRepo:        apikeyRepo,
+		trustRepo:         trustRepo,
+		registryRepo:      registryRepo,
+		turnstileVerifier: middleware.NewTurnstileVerifier(),
+		logger:            logrus.New(),
 	}
 }
 

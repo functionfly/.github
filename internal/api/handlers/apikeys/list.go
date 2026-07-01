@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/functionfly/functionfly/internal/apikey"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -38,6 +39,15 @@ func (h *Handler) HandleList(w http.ResponseWriter, r *http.Request) {
 	// search filter
 	if search := r.URL.Query().Get("search"); search != "" {
 		filters.Search = search
+	}
+
+	// team_id filter
+	if teamIDStr := r.URL.Query().Get("team_id"); teamIDStr != "" {
+		if teamIDStr == "personal" {
+			filters.TeamIDIsNull = true
+		} else if teamID, err := uuid.Parse(teamIDStr); err == nil {
+			filters.TeamID = &teamID
+		}
 	}
 
 	// Pagination

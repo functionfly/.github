@@ -35,7 +35,14 @@ func (h *Handler) HandleGetWallet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if walletInfo == nil {
-			writeJSONError(w, http.StatusNotFound, "Wallet not found")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"user_id":               claims.UserID,
+				"balance_usd":           float64(0),
+				"lifetime_earnings_usd": float64(0),
+				"lifetime_fees_usd":     float64(0),
+			})
 			return
 		}
 
@@ -70,6 +77,99 @@ func (h *Handler) HandleGetWallet(w http.ResponseWriter, r *http.Request) {
 		"balance_usd":           wallet.BalanceUSD,
 		"lifetime_earnings_usd": wallet.LifetimeEarningsUSD,
 		"lifetime_fees_usd":     wallet.LifetimeFeesUSD,
+	})
+}
+
+// HandleListWalletTransactions returns paginated wallet transaction history for the current user.
+// GET /v1/billing/wallet/transactions
+func (h *Handler) HandleListWalletTransactions(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	if h.walletService == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "Wallet is unavailable")
+		return
+	}
+
+	limit := 50
+	offset := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	walletObj, err := h.walletService.GetUserWallet(r.Context(), claims.UserID)
+	if err != nil {
+		logrus.WithError(err).WithField("user_id", claims.UserID).Warn("billing: get wallet for transactions failed")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to load wallet")
+		return
+	}
+	if walletObj == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"transactions": []interface{}{},
+			"total":        0,
+		})
+		return
+	}
+
+	transactions, total, err := h.walletService.GetTransactionHistory(r.Context(), walletObj.ID, limit, offset)
+	if err != nil {
+		logrus.WithError(err).WithField("wallet_id", walletObj.ID).Warn("billing: list wallet transactions failed")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to load transactions")
+		return
+	}
+
+	type transactionJSON struct {
+		ID              string     `json:"id"`
+		Type            string     `json:"type"`
+		AmountUSD       float64    `json:"amount"`
+		Reference       string     `json:"description"`
+		CreatedAt       time.Time  `json:"timestamp"`
+		Status          string     `json:"status"`
+		TransactionType string     `json:"transaction_type,omitempty"`
+		BalanceBefore   float64    `json:"balance_before,omitempty"`
+		BalanceAfter    float64    `json:"balance_after,omitempty"`
+		FeeType         *string    `json:"fee_type,omitempty"`
+		CompletedAt     *time.Time `json:"completed_at,omitempty"`
+	}
+
+	out := make([]transactionJSON, 0, len(transactions))
+	for _, tx := range transactions {
+		desc := ""
+		if tx.Reference != nil {
+			desc = *tx.Reference
+		}
+		out = append(out, transactionJSON{
+			ID:              tx.ID.String(),
+			Type:            tx.TransactionType,
+			AmountUSD:       tx.AmountUSD,
+			Reference:       desc,
+			CreatedAt:       tx.CreatedAt,
+			Status:          tx.Status,
+			TransactionType: tx.TransactionType,
+			BalanceBefore:   tx.BalanceBeforeUSD,
+			BalanceAfter:    tx.BalanceAfterUSD,
+			FeeType:         tx.FeeType,
+			CompletedAt:     tx.CompletedAt,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"transactions": out,
+		"total":        total,
 	})
 }
 

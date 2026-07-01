@@ -1340,11 +1340,17 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	// ── Admin AI Model Preferences (provider/model enable/disable) ──────────
 	aiModelsPrefsRepo := storage.NewAIModelPreferencesRepository(s.postgresDB.DB)
-	aiModelsHandler := aimodels.NewHandler(s.repo, aiModelsPrefsRepo, s.redisClient, os.Getenv("AI_SERVICE_URL"))
+	aiModelsByokRepo := aikeys.NewRepository(s.postgresDB.GORM)
+	aiModelsHandler := aimodels.NewHandler(s.repo, aiModelsPrefsRepo, s.redisClient, os.Getenv("AI_SERVICE_URL"), aiModelsByokRepo)
 	adminAIRoutes := api.PathPrefix("/admin/ai").Subrouter()
 	adminAIRoutes.HandleFunc("/models/catalog", authMiddleware.RequirePermission(auth.PermSystemRead)(aiModelsHandler.HandleGetCatalog)).Methods("GET", "OPTIONS")
+	adminAIRoutes.HandleFunc("/models/check", authMiddleware.RequireAuth(aiModelsHandler.HandleCheckModel)).Methods("POST", "OPTIONS")
 	adminAIRoutes.HandleFunc("/models/preferences", authMiddleware.RequirePermission(auth.PermSystemRead)(aiModelsHandler.HandleGetPreferences)).Methods("GET", "OPTIONS")
 	adminAIRoutes.HandleFunc("/models/preferences", authMiddleware.RequirePermission(auth.PermSystemWrite)(aiModelsHandler.HandlePutPreferences)).Methods("PUT", "OPTIONS")
+
+	// Public catalog endpoint for dashboard model picker (with BYOK annotation)
+	protected.HandleFunc("/ai/models/catalog", authMiddleware.RequireAuth(aiModelsHandler.HandleGetCatalog)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/ai/models/check", authMiddleware.RequireAuth(aiModelsHandler.HandleCheckModel)).Methods("POST", "OPTIONS")
 
 	// Trust API for external platform partners
 	registerTrustAPIRoutes(s, api, registryRepo)

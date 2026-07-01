@@ -403,7 +403,9 @@ func (h *Handler) HandleSetSecrets(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result)
 }
 
-// HandleListSecrets handles listing secrets for Fly.io
+// HandleListSecrets handles listing secrets for an app's provider (e.g. Fly.io).
+// Auto-detects the provider from the app's backends. Returns an empty list when
+// provider credentials (api_token, app_name) are not available in the query params.
 func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
 	if user == nil {
@@ -418,38 +420,57 @@ func (h *Handler) HandleListSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 	appID := app.ID
 
-	// Parse request body
-	var req struct {
-		Provider       string                 `json:"provider"`
-		ProviderConfig map[string]interface{} `json:"provider_config"`
+	provider := r.URL.Query().Get("provider")
+	if provider == "" {
+		backends, err := h.repo.ListBackendsByAppID(r.Context(), appID)
+		if err != nil {
+			logrus.WithError(err).WithField("app_id", appID).Error("Failed to list backends")
+			apierror.WriteError(w, apierror.NewInternal("Failed to list backends"))
+			return
+		}
+		for _, b := range backends {
+			if b.Enabled {
+				provider = b.Provider
+				break
+			}
+		}
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
+	if provider == "" || provider != "fly" {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"secrets": []interface{}{}})
 		return
 	}
 
-	if req.Provider != "fly" {
-		apierror.WriteError(w, apierror.NewBadRequest("Secret management is only supported for Fly.io"))
-		return
-	}
-
-	// Get adapter
-	adapter := utils.GetAdapterForProvider(req.Provider)
+	adapter := utils.GetAdapterForProvider(provider)
 	if adapter == nil {
-		apierror.WriteError(w, apierror.NewBadRequest("Invalid provider"))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"secrets": []interface{}{}})
 		return
 	}
 
-	// Check if adapter supports secret management
 	extendedAdapter, ok := adapter.(common.ExtendedDeploymentAdapter)
 	if !ok {
-		apierror.WriteError(w, apierror.NewBadRequest("Provider does not support secret management"))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"secrets": []interface{}{}})
 		return
 	}
 
-	// List secrets
-	result, err := extendedAdapter.ListSecrets(r.Context(), req.ProviderConfig)
+	providerConfig := make(map[string]interface{})
+	if token := r.URL.Query().Get("api_token"); token != "" {
+		providerConfig["api_token"] = token
+	}
+	if appName := r.URL.Query().Get("app_name"); appName != "" {
+		providerConfig["app_name"] = appName
+	}
+
+	if providerConfig["api_token"] == nil || providerConfig["app_name"] == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{"secrets": []interface{}{}})
+		return
+	}
+
+	result, err := extendedAdapter.ListSecrets(r.Context(), providerConfig)
 	if err != nil {
 		logrus.WithError(err).WithField("app_id", appID).Error("Failed to list secrets")
 		apierror.WriteError(w, apierror.NewInternal("failed to list secrets"))

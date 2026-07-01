@@ -35,10 +35,34 @@ func NewSearchHandler(
 	execRepo := searchrepo.NewExecutionRepository(db)
 	cacheRepo := searchrepo.NewCacheRepository(db, cacheTTLSeconds)
 
-	// Initialize search registry with mock provider by default
-	provider := providers.NewMockProvider()
-	if err := search.Initialize(provider); err != nil {
-		logrus.WithError(err).Error("failed to initialize search tools")
+	cfg := search.LoadSearchConfig()
+
+	var provider search.SearchProvider
+	var reader *search.JinaReader
+
+	if cfg.Provider == "mock" && cfg.SearXNGURL == "" && cfg.BraveAPIKey == "" && cfg.SERPAPIKey == "" {
+		provider = providers.NewMockProvider()
+	} else {
+		cascade, err := providers.NewCascadeProviderFromConfig(cfg)
+		if err != nil {
+			logrus.WithError(err).Warn("failed to create cascade provider, falling back to mock")
+			provider = providers.NewMockProvider()
+		} else {
+			provider = cascade
+		}
+		if cfg.JinaAPIKey != "" || cfg.AutoReadTop > 0 {
+			reader = search.NewJinaReader(cfg.JinaAPIKey)
+		}
+	}
+
+	if reader != nil {
+		if err := search.InitializeWithReader(provider, reader); err != nil {
+			logrus.WithError(err).Error("failed to initialize search tools")
+		}
+	} else {
+		if err := search.Initialize(provider); err != nil {
+			logrus.WithError(err).Error("failed to initialize search tools")
+		}
 	}
 
 	return &SearchHandler{

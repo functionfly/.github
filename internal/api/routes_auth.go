@@ -152,6 +152,7 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/me/notification-preferences", authMiddleware.RequireAuth(notificationHandler.HandleUpdatePreferences)).Methods("PATCH", "OPTIONS")
 	api.HandleFunc("/users/lookup-by-ids", authMiddleware.RequireAuth(usersHandler.HandleLookupUsersByIDs)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/users/search", authMiddleware.RequireAuth(usersHandler.HandleSearchUsers)).Methods("GET", "OPTIONS")
+	api.HandleFunc("/locations/search", authMiddleware.RequireAuth(usersHandler.HandleSearchLocations)).Methods("GET", "OPTIONS")
 
 	// ── User Favorites ────────────────────────────────────────────────────
 	api.HandleFunc("/users/me/favorites", authMiddleware.RequireAuth(favoritesHandler.HandleListFavorites)).Methods("GET", "OPTIONS")
@@ -243,6 +244,7 @@ func registerAuthRoutes(
 	api.HandleFunc("/billing/invoices", authMiddleware.RequireAuth(billingHandler.HandleListInvoices)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/usage", authMiddleware.RequireAuth(billingHandler.HandleGetUsage)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/wallet", authMiddleware.RequireAuth(walletRateLimiter.LimitBalanceCheck(billingHandler.HandleGetWallet))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/wallet/transactions", authMiddleware.RequireAuth(billingHandler.HandleListWalletTransactions)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/wallet/top-up", authMiddleware.RequireAuth(walletRateLimiter.LimitTopUp(csrfMiddleware.RequireCSRF(billingHandler.HandleWalletTopUp)))).Methods("POST", "OPTIONS")
 	api.HandleFunc("/billing/fees", authMiddleware.RequireAuth(billingHandler.HandleListPlatformFees)).Methods("GET", "OPTIONS")
 

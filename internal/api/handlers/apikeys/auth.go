@@ -220,8 +220,8 @@ func (h *APIKeyAuthHandler) HandleValidateAPIKey(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Hash the provided API key (using bcrypt, same as Go storage)
-	keyHash := h.hasher.Hash(req.APIKey)
+	// Hash the provided API key (deterministic SHA-256 for DB lookup)
+	keyHash := h.hasher.HashDeterministic(req.APIKey)
 
 	// Look up the API key
 	ctx := context.Background()

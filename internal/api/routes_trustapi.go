@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/handlers/trustapi"
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -74,6 +75,9 @@ func registerTrustAPIRoutes(
 	rateLimitMiddleware := trustapi.NewRateLimitMiddleware(trustRepo)
 	usageTrackingMiddleware := trustapi.NewUsageTrackingMiddleware(trustRepo)
 
+	// IP-based rate limiter for the public registration endpoint (5 per IP per hour)
+	registrationRateLimiter := trustapi.NewRegistrationRateLimiter(5, 1*time.Hour)
+
 	// Get internal auth middleware for JWT-protected routes
 	internalAuthMiddleware := middleware.NewAuthMiddleware(s.authSvc)
 
@@ -90,7 +94,9 @@ func registerTrustAPIRoutes(
 	trustAPI.Use(rateLimitMiddleware.RateLimit())
 
 	// Partner registration and management (create is public, read/update require JWT auth)
-	trustAPI.HandleFunc("/partners", trustHandler.HandleCreatePartner).Methods("POST")
+	// Registration has IP-based rate limiting (5/hour) + CAPTCHA verification in handler
+	trustAPI.Handle("/partners",
+		registrationRateLimiter.RateLimit()(http.HandlerFunc(trustHandler.HandleCreatePartner))).Methods("POST")
 	trustAPI.Handle("/partners",
 		internalAuthMiddleware.RequireAuth(trustHandler.HandleListPartners)).Methods("GET")
 	trustAPI.Handle("/partners/{partner_id}",

@@ -271,6 +271,10 @@ func (h *SAMLHandler) HandleSSO(w http.ResponseWriter, r *http.Request) {
 		"token_version":  "v1",
 	})
 
+	if _, historyErr := h.samlSvc.Repo().CreateLoginHistory(r.Context(), resp.User.ID, "login", clientIP, userAgent, "", "saml", false, nil); historyErr != nil {
+		logrus.WithError(historyErr).WithField("userID", resp.User.ID).Warn("Failed to record SAML login history")
+	}
+
 	// Option A: If RelayState is provided and is an allowed redirect, redirect with token (consistent with OAuth)
 	if relayState != "" && auth.IsAllowedRedirectURI(relayState) {
 		u, _ := url.Parse(relayState)

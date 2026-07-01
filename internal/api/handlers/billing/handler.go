@@ -332,9 +332,28 @@ func (h *Handler) HandleCreateCheckoutSession(w http.ResponseWriter, r *http.Req
 // writeJSONError writes a standardized JSON error response
 // Deprecated: Use apierror.WriteError() directly for new code
 func writeJSONError(w http.ResponseWriter, status int, msg string) {
+	code := apierror.ErrCodeInternal
+	switch status {
+	case http.StatusBadRequest:
+		code = apierror.ErrCodeBadRequest
+	case http.StatusUnauthorized:
+		code = apierror.ErrCodeUnauthorized
+	case http.StatusForbidden:
+		code = apierror.ErrCodeForbidden
+	case http.StatusNotFound:
+		code = apierror.ErrCodeNotFound
+	case http.StatusConflict:
+		code = apierror.ErrCodeConflict
+	case http.StatusUnprocessableEntity:
+		code = apierror.ErrCodeValidation
+	case http.StatusTooManyRequests:
+		code = apierror.ErrCodeTooManyRequests
+	case http.StatusServiceUnavailable:
+		code = apierror.ErrCodeServiceUnavailable
+	}
 	err := &apierror.APIError{
 		Status:  status,
-		Code:    apierror.ErrCodeInternal,
+		Code:    code,
 		Message: msg,
 	}
 	apierror.WriteError(w, err)
@@ -352,7 +371,7 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 	subscription, err := h.repo.GetSubscriptionByTenantID(r.Context(), claims.TenantID)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Warn("billing: failed to get subscription")
-		writeJSONError(w, http.StatusNotFound, "No subscription found")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve subscription")
 		return
 	}
 	if subscription == nil {
@@ -815,7 +834,11 @@ func (h *Handler) HandleListPaymentMethods(w http.ResponseWriter, r *http.Reques
 	}
 
 	if tenant.StripeCustomerID == nil || *tenant.StripeCustomerID == "" {
-		writeJSONError(w, http.StatusNotFound, "No Stripe customer found")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"payment_methods": []interface{}{},
+		})
 		return
 	}
 

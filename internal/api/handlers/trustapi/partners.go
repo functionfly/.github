@@ -3,7 +3,10 @@ package trustapi
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -11,6 +14,19 @@ import (
 	"github.com/functionfly/functionfly/internal/storage/trustapi"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+)
+
+var (
+	slugRegex  = regexp.MustCompile(`^[a-z0-9]+([a-z0-9-]*[a-z0-9]+)?$`)
+	emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+
+	validTiers = map[string]bool{
+		string(trustapi.PartnerTierDeveloper):   true,
+		string(trustapi.PartnerTierPayAsYouGo):  true,
+		string(trustapi.PartnerTierStartup):     true,
+		string(trustapi.PartnerTierBusiness):    true,
+		string(trustapi.PartnerTierEnterprise):  true,
+	}
 )
 
 // ============================================
@@ -26,42 +42,48 @@ func (h *Handler) HandleCreatePartner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate required fields
-	if req.Name == "" {
-		h.writeError(w, http.StatusBadRequest, "Name is required", "validation_error")
-		return
-	}
-	if req.Slug == "" {
-		h.writeError(w, http.StatusBadRequest, "Slug is required", "validation_error")
-		return
-	}
-	if req.ContactEmail == "" {
-		h.writeError(w, http.StatusBadRequest, "Contact email is required", "validation_error")
+	// --- Input validation ---
+	if err := validatePartnerCreateRequest(&req); err != nil {
+		h.writeError(w, http.StatusBadRequest, err.Error(), "validation_error")
 		return
 	}
 
-	// Check if slug is already taken
-	existingPartner, _ := h.trustRepo.GetPartnerBySlug(req.Slug)
-	if existingPartner != nil {
-		h.writeError(w, http.StatusConflict, "Slug already in use", "slug_conflict")
-		return
+	// Normalize
+	req.Name = strings.TrimSpace(req.Name)
+	req.Slug = strings.ToLower(strings.TrimSpace(req.Slug))
+	req.ContactEmail = strings.ToLower(strings.TrimSpace(req.ContactEmail))
+	req.Description = strings.TrimSpace(req.Description)
+	req.ContactName = strings.TrimSpace(req.ContactName)
+	req.WebsiteURL = strings.TrimSpace(req.WebsiteURL)
+
+	// --- Turnstile/CAPTCHA verification ---
+	if h.turnstileVerifier != nil && h.turnstileVerifier.IsEnabled() {
+		token := r.Header.Get("X-Turnstile-Token")
+		if token == "" {
+			h.writeError(w, http.StatusBadRequest, "Security verification token is required", "captcha_required")
+			return
+		}
+		result, err := h.turnstileVerifier.VerifyToken(token, getClientIP(r))
+		if err != nil || !result.Success {
+			h.logger.WithError(err).Warn("Turnstile verification failed for partner registration")
+			h.writeError(w, http.StatusForbidden, "Security verification failed. Please try again.", "captcha_failed")
+			return
+		}
 	}
 
-	// Check if email is already registered
-	existingPartner, _ = h.trustRepo.GetPartnerByContactEmail(req.ContactEmail)
-	if existingPartner != nil {
-		h.writeError(w, http.StatusConflict, "Email already registered", "email_conflict")
-		return
-	}
-
-	// Get tier config for rate limits
+	// --- Tier defaulting and validation ---
 	tier := req.Tier
 	if tier == "" {
 		tier = string(trustapi.PartnerTierDeveloper)
 	}
 	tierConfig := trustapi.GetRateLimitConfig(tier)
 
-	// Create partner
+	// Auto-activate free-tier partners; paid tiers stay pending until payment
+	status := string(trustapi.PartnerStatusPending)
+	if tier == string(trustapi.PartnerTierDeveloper) {
+		status = string(trustapi.PartnerStatusActive)
+	}
+
 	partner := &trustapi.TrustAPIPartner{
 		Name:                req.Name,
 		Slug:                req.Slug,
@@ -73,10 +95,15 @@ func (h *Handler) HandleCreatePartner(w http.ResponseWriter, r *http.Request) {
 		RateLimitPerMinute: tierConfig.PerMinute,
 		RateLimitPerDay:    tierConfig.PerDay,
 		MonthlyRequestLimit: tierConfig.MonthlyRequestLimit,
-		Status:             string(trustapi.PartnerStatusPending),
+		Status:             status,
 	}
 
-	if err := h.trustRepo.CreatePartner(partner); err != nil {
+	// --- Transactional create with UNIQUE constraint handling ---
+	if err := h.trustRepo.CreatePartnerInTransaction(partner); err != nil {
+		if isUniqueViolation(err) {
+			h.writeError(w, http.StatusConflict, "A partner with that slug or email already exists", "conflict")
+			return
+		}
 		h.logger.WithError(err).Error("Failed to create partner")
 		h.writeError(w, http.StatusInternalServerError, "Failed to create partner", "internal_error")
 		return
@@ -100,6 +127,92 @@ func (h *Handler) HandleCreatePartner(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSON(w, http.StatusCreated, response)
+}
+
+// validatePartnerCreateRequest validates all fields of a partner creation request.
+func validatePartnerCreateRequest(req *trustapi.PartnerCreateRequest) error {
+	// Name: required, 2-255 chars
+	req.Name = strings.TrimSpace(req.Name)
+	if req.Name == "" {
+		return fieldError("name", "is required")
+	}
+	if len(req.Name) < 2 || len(req.Name) > 255 {
+		return fieldError("name", "must be between 2 and 255 characters")
+	}
+
+	// Slug: required, 2-100 chars, lowercase alphanumeric + hyphens, must start and end with alnum
+	req.Slug = strings.ToLower(strings.TrimSpace(req.Slug))
+	if req.Slug == "" {
+		return fieldError("slug", "is required")
+	}
+	if len(req.Slug) < 2 || len(req.Slug) > 100 {
+		return fieldError("slug", "must be between 2 and 100 characters")
+	}
+	if !slugRegex.MatchString(req.Slug) {
+		return fieldError("slug", "must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number")
+	}
+
+	// ContactEmail: required, valid email format
+	req.ContactEmail = strings.TrimSpace(req.ContactEmail)
+	if req.ContactEmail == "" {
+		return fieldError("contact_email", "is required")
+	}
+	if len(req.ContactEmail) > 255 {
+		return fieldError("contact_email", "must not exceed 255 characters")
+	}
+	if !emailRegex.MatchString(req.ContactEmail) {
+		return fieldError("contact_email", "must be a valid email address")
+	}
+
+	// Description: optional, max 2000 chars
+	if len(req.Description) > 2000 {
+		return fieldError("description", "must not exceed 2000 characters")
+	}
+
+	// WebsiteURL: optional, valid URL if provided
+	if req.WebsiteURL != "" {
+		if len(req.WebsiteURL) > 500 {
+			return fieldError("website_url", "must not exceed 500 characters")
+		}
+		parsed, err := url.ParseRequestURI(req.WebsiteURL)
+		if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return fieldError("website_url", "must be a valid HTTP or HTTPS URL")
+		}
+	}
+
+	// Tier: optional, must be one of the allowed values
+	if req.Tier != "" {
+		if !validTiers[req.Tier] {
+			return fieldError("tier", "must be one of: developer, payg, startup, business, enterprise")
+		}
+	}
+
+	return nil
+}
+
+// validationError is a simple error for field validation failures.
+type validationError struct {
+	field   string
+	message string
+}
+
+func (e validationError) Error() string {
+	return e.field + " " + e.message
+}
+
+func fieldError(field, message string) error {
+	return validationError{field: field, message: message}
+}
+
+// isUniqueViolation checks if a GORM error is a PostgreSQL unique constraint violation.
+func isUniqueViolation(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "duplicate key") ||
+		strings.Contains(errStr, "unique constraint") ||
+		strings.Contains(errStr, "SQLSTATE 23505")
 }
 
 // HandleListPartners handles GET /v1/partners
@@ -228,9 +341,18 @@ func (h *Handler) HandleUpdatePartner(w http.ResponseWriter, r *http.Request) {
 
 	// Apply updates
 	if name, ok := updates["name"].(string); ok {
+		name = strings.TrimSpace(name)
+		if len(name) < 2 || len(name) > 255 {
+			h.writeError(w, http.StatusBadRequest, "name must be between 2 and 255 characters", "validation_error")
+			return
+		}
 		partner.Name = name
 	}
 	if description, ok := updates["description"].(string); ok {
+		if len(description) > 2000 {
+			h.writeError(w, http.StatusBadRequest, "description must not exceed 2000 characters", "validation_error")
+			return
+		}
 		partner.Description = description
 	}
 	if contactName, ok := updates["contact_name"].(string); ok {
@@ -246,6 +368,18 @@ func (h *Handler) HandleUpdatePartner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if webhookURL, ok := updates["webhook_url"].(string); ok {
+		webhookURL = strings.TrimSpace(webhookURL)
+		if webhookURL != "" {
+			if len(webhookURL) > 500 {
+				h.writeError(w, http.StatusBadRequest, "webhook_url must not exceed 500 characters", "validation_error")
+				return
+			}
+			parsed, err := url.ParseRequestURI(webhookURL)
+			if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+				h.writeError(w, http.StatusBadRequest, "webhook_url must be a valid HTTP or HTTPS URL", "validation_error")
+				return
+			}
+		}
 		partner.WebhookURL = webhookURL
 	}
 	// Status changes are NOT allowed via this endpoint — admin-only operation
