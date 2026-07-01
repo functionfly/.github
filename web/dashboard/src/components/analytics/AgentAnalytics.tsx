@@ -10,340 +10,166 @@ import {
   Activity,
   Clock,
   BarChart3,
-  PieChart as PieChartIcon,
+  Cpu,
+  Hash,
 } from 'lucide-react';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { AreaChart, PieChart, BarChart } from '@/components/ui/charts';
-import { agentApi, type AgentAnalytics as AgentAnalyticsType, type ExecutionRecord, type CostBreakdown, type AgentUsage } from '@/api/agent';
+import { agentApi, type AgentAnalytics as AgentAnalyticsType, type ExecutionRecord, type CostBreakdown, type AgentUsage, type ModelBreakdownItem } from '@/api/agent';
 
 type TimeRange = '24h' | '7d' | '30d';
 
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  change?: number;
-  changeLabel?: string;
-  icon: React.ElementType;
-  trend?: 'up' | 'down' | 'neutral';
+function formatTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
 }
 
-function StatCard({ title, value, change, changeLabel, icon: Icon, trend = 'neutral' }: StatCardProps) {
-  const { t } = useTranslation();
-  const IconComponent = Icon as React.ComponentType<{ className?: string }>;
-  
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-medium text-text-secondary">{title}</p>
-            <p className="text-2xl font-bold mt-1">{value}</p>
-            {change !== undefined && (
-              <div className="flex items-center gap-1 mt-2">
-                {trend === 'up' && <TrendingUp className="h-3 w-3 text-success" />}
-                {trend === 'down' && <TrendingDown className="h-3 w-3 text-error" />}
-                <span className={`text-xs font-medium ${
-                  trend === 'up' ? 'text-success' : trend === 'down' ? 'text-error' : 'text-text-muted'
-                }`}>
-                  {change > 0 ? '+' : ''}{change.toFixed(1)}%
+    <div className="aw-stat">
+      <p className="aw-stat__label">{label}</p>
+      <p className="aw-stat__value">{value}</p>
+      {sub && <p className="aw-stat__sub">{sub}</p>}
+    </div>
+  );
+}
+
+function ModelBreakdownTable({ models, isLoading }: { models: ModelBreakdownItem[]; isLoading: boolean }) {
+  if (isLoading) {
+    return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
+
+  if (!models || models.length === 0) {
+    return (
+      <div className="aw-empty">
+        <Cpu size={40} className="aw-empty__icon" />
+        <span className="aw-empty__title">No model data yet</span>
+        <span className="aw-empty__desc">Model usage will appear once agents make LLM calls</span>
+      </div>
+    );
+  }
+
+  const maxCost = Math.max(...models.map(m => m.total_cost_usd));
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      {models.map((model, i) => (
+        <div key={i} className="aw-card">
+          <div className="aw-card__body" style={{ padding: 'var(--space-3) var(--space-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <Cpu size={14} style={{ color: 'var(--accent)' }} />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+                  {model.model_name}
                 </span>
-                {changeLabel && (
-                  <span className="text-xs text-text-muted">{changeLabel}</span>
-                )}
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  padding: '2px 6px', borderRadius: 'var(--radius-sm)',
+                  color: 'var(--text-faint)', background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)',
+                }}>
+                  {model.provider}
+                </span>
               </div>
-            )}
-          </div>
-          <span className="p-3 rounded-full bg-primary/10">
-            <IconComponent className="h-5 w-5 text-brand" />
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 500, color: 'var(--text)' }}>
+                ${model.total_cost_usd.toFixed(4)}
+              </span>
+            </div>
 
-interface StatsGridProps {
-  analytics: AgentAnalyticsType;
-  usage: AgentUsage | null;
-  isLoading: boolean;
-}
+            <div className="aw-progress" style={{ marginBottom: 'var(--space-2)' }}>
+              <div className="aw-progress__fill" style={{ width: `${maxCost > 0 ? (model.total_cost_usd / maxCost) * 100 : 0}%` }} />
+            </div>
 
-function StatsGrid({ analytics, usage, isLoading }: StatsGridProps) {
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-8 w-16 mt-2" />
-              <Skeleton className="h-3 w-12 mt-2" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
-  const successRate = (analytics.success_rate ?? 0) * 100;
-  const successRateTrend = successRate >= 95 ? 'up' : successRate < 90 ? 'down' : 'neutral';
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard
-        title="Total Executions"
-        value={(analytics.total_calls ?? 0).toLocaleString()}
-        icon={Activity}
-      />
-      <StatCard
-        title="Success Rate"
-        value={`${successRate.toFixed(1)}%`}
-        trend={successRateTrend}
-        change={0}
-        changeLabel="vs last period"
-        icon={TrendingUp}
-      />
-      <StatCard
-        title="Avg Latency"
-        value={`${((analytics.avg_latency_ms ?? 0) / 1000).toFixed(2)}s`}
-        icon={Clock}
-      />
-      <StatCard
-        title="Avg Cost"
-        value={`$${(analytics.total_cost_usd ?? 0).toFixed(4)}`}
-        icon={DollarSign}
-      />
-    </div>
-  );
-}
-
-interface CostBreakdownChartProps {
-  breakdown: CostBreakdown | null;
-  isLoading: boolean;
-}
-
-function CostBreakdownChart({ breakdown, isLoading }: CostBreakdownChartProps) {
-  if (isLoading) {
-    return <Skeleton className="h-[300px] w-full" />;
-  }
-
-  if (!breakdown || breakdown.totalCost === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6 flex items-center justify-center h-[300px]">
-          <p className="text-text-muted">No cost data available</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const pieData = Object.entries(breakdown.byFunction).map(([name, value]) => ({
-    name,
-    value,
-  }));
-
-  const barData = Object.entries(breakdown.byPeriod).map(([name, value]) => ({
-    name,
-    value,
-  }));
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <PieChart
-        data={pieData}
-        title="Cost by Function"
-        description="Distribution of execution costs across functions"
-        donut
-        donutInnerRadius={60}
-        height={280}
-        tooltipFormatter={(value) => [`$${Number(value).toFixed(4)}`, 'Cost']}
-      />
-      <BarChart
-        data={barData}
-        series={[{ key: 'value', name: 'Cost', color: 'var(--brand-500)' }]}
-        title="Cost by Period"
-        description="Cost breakdown over time"
-        height={280}
-        yAxisFormatter={(value) => `$${value.toFixed(2)}`}
-      />
-    </div>
-  );
-}
-
-interface ExecutionsChartProps {
-  executions: ExecutionRecord[];
-  isLoading: boolean;
-}
-
-function ExecutionsChart({ executions, isLoading }: ExecutionsChartProps) {
-  if (isLoading) {
-    return <Skeleton className="h-[300px] w-full" />;
-  }
-
-  if (!executions || executions.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6 flex items-center justify-center h-[300px]">
-          <p className="text-text-muted">No execution data available</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const last7Days = [...Array(7)].map((_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
-    return date.toISOString().split('T')[0];
-  });
-
-  const dailyData = last7Days.map((date) => {
-    const dayExecutions = executions.filter((e) => {
-      const execDate = new Date(e.timestamp).toISOString().split('T')[0];
-      return execDate === date;
-    });
-    return {
-      name: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-      executions: dayExecutions.length,
-      costs: dayExecutions.reduce((sum, e) => sum + e.costUsd, 0),
-    };
-  });
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Execution Activity</CardTitle>
-        <CardDescription>Executions and costs over the last 7 days</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <AreaChart
-          data={dailyData}
-          series={[
-            { key: 'executions', name: 'Executions', color: '#6366f1' },
-            { key: 'costs', name: 'Costs ($)', color: '#10b981', strokeWidth: 2 },
-          ]}
-          height={280}
-          yAxisFormatter={(value) => value.toString()}
-          xAxisFormatter={(value) => value}
-          tooltipFormatter={(value, name) => {
-            if (name === 'Costs ($)') {
-              return [`$${Number(value).toFixed(4)}`, name];
-            }
-            return [String(value), name];
-          }}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-interface RecentExecutionsProps {
-  executions: ExecutionRecord[];
-  isLoading: boolean;
-}
-
-function RecentExecutions({ executions, isLoading }: RecentExecutionsProps) {
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  if (!executions || executions.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6 flex items-center justify-center h-[200px]">
-          <p className="text-text-muted">No recent executions</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const recentExecutions = executions.slice(0, 10);
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Executions</CardTitle>
-        <CardDescription>Latest function executions</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-3">
-          {recentExecutions.map((execution) => (
-            <div
-              key={execution.id}
-              className="flex items-center justify-between p-3 rounded-lg border border-border-subtle hover:bg-secondary/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <BarChart3 className="h-4 w-4 text-brand" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">
-                    {execution.functionName}
-                    <span className="text-text-muted ml-1">
-                      by {execution.functionAuthor}
-                    </span>
-                  </p>
-                  <p className="text-xs text-text-muted">
-                    {new Date(execution.timestamp).toLocaleString()}
-                  </p>
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--space-3)' }}>
+              <div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Calls</span>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 500, color: 'var(--text)', margin: '2px 0 0' }}>{model.total_calls}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium">${(execution.costUsd ?? 0).toFixed(4)}</p>
-                  <p className="text-xs text-text-muted">
-                    {((execution.latencyMs ?? 0) / 1000).toFixed(2)}s
-                  </p>
-                </div>
-                <Badge
-                  variant={execution.outcome === 'success' ? 'success' : 'error'}
-                >
-                  {execution.outcome}
-                </Badge>
+              <div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Prompt Tokens</span>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 500, color: 'var(--foil-a)', margin: '2px 0 0' }}>{formatTokens(model.total_prompt_tokens)}</p>
+              </div>
+              <div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Completion</span>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 500, color: 'var(--foil-b)', margin: '2px 0 0' }}>{formatTokens(model.total_completion_tokens)}</p>
+              </div>
+              <div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Reasoning</span>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 500, color: 'var(--status-pending)', margin: '2px 0 0' }}>{formatTokens(model.total_reasoning_tokens)}</p>
+              </div>
+              <div>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Avg/Call</span>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 500, color: 'var(--text-dim)', margin: '2px 0 0' }}>{formatTokens(Math.round(model.avg_tokens_per_call))}</p>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   );
 }
 
-interface TimeRangeSelectorProps {
-  value: TimeRange;
-  onChange: (range: TimeRange) => void;
-}
+function RecentExecutions({ executions, isLoading }: { executions: ExecutionRecord[]; isLoading: boolean }) {
+  if (isLoading) {
+    return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
 
-function TimeRangeSelector({ value, onChange }: TimeRangeSelectorProps) {
+  if (!executions || executions.length === 0) {
+    return (
+      <div className="aw-empty">
+        <Activity size={40} className="aw-empty__icon" />
+        <span className="aw-empty__title">No recent executions</span>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-1 p-1 rounded-lg bg-secondary border border-border-subtle">
-      {(['24h', '7d', '30d'] as TimeRange[]).map((range) => (
-        <Button
-          key={range}
-          variant={value === range ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => onChange(range)}
-          className="h-8"
-        >
-          {range}
-        </Button>
-      ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      {executions.slice(0, 15).map((exec) => {
+        const uri = exec.functionUri ?? exec.functionName ?? 'unknown';
+        const parts = uri.replace('fx://', '').replace('chat://', 'chat: ').split('/');
+        const displayName = parts.length > 1 ? parts[1] : uri;
+
+        return (
+          <div key={exec.id} className="aw-feed-item">
+            <span className={`aw-feed-item__dot ${exec.outcome === 'success' ? 'aw-feed-item__dot--result' : 'aw-feed-item__dot--error'}`} />
+            <div className="aw-feed-item__content">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text)' }}>
+                  {displayName}
+                </span>
+                {exec.model_name && (
+                  <span style={{
+                    fontFamily: 'var(--font-mono)', fontSize: '9px', fontWeight: 500, letterSpacing: '0.06em',
+                    padding: '1px 4px', borderRadius: 'var(--radius-sm)',
+                    color: 'var(--foil-a)', background: 'rgba(159,216,255,0.08)', border: '1px solid rgba(159,216,255,0.2)',
+                  }}>
+                    {exec.model_name}
+                  </span>
+                )}
+                <span style={{
+                  fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  color: exec.outcome === 'success' ? 'var(--status-ok)' : 'var(--status-revoked)',
+                }}>
+                  {exec.outcome}
+                </span>
+              </div>
+              <div className="aw-feed-item__meta">
+                <span><DollarSign size={10} /> ${(exec.costUsd ?? 0).toFixed(4)}</span>
+                <span><Clock size={10} /> {((exec.latencyMs ?? 0) / 1000).toFixed(2)}s</span>
+                {(exec.total_tokens ?? 0) > 0 && (
+                  <span><Hash size={10} /> {formatTokens(exec.total_tokens!)} tokens</span>
+                )}
+                {(exec.prompt_tokens ?? 0) > 0 && (
+                  <span style={{ color: 'var(--foil-a)' }}>in:{formatTokens(exec.prompt_tokens!)}</span>
+                )}
+                {(exec.completion_tokens ?? 0) > 0 && (
+                  <span style={{ color: 'var(--foil-b)' }}>out:{formatTokens(exec.completion_tokens!)}</span>
+                )}
+                <span>{new Date(exec.timestamp).toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -374,68 +200,138 @@ export function AgentAnalyticsComponent({ agentId, className }: AgentAnalyticsPr
     enabled: !!agentId,
   });
 
-  const { data: costData, isLoading: costLoading } = useQuery({
-    queryKey: ['agent-cost', agentId],
-    queryFn: () => agentApi.getCostBreakdown(agentId),
-    enabled: !!agentId,
-  });
-
-  const { data: usageData, isLoading: usageLoading } = useQuery({
-    queryKey: ['agent-usage', agentId],
-    queryFn: () => agentApi.getUsage(agentId),
+  const { data: modelData, isLoading: modelLoading } = useQuery({
+    queryKey: ['agent-model-breakdown', agentId],
+    queryFn: () => agentApi.getModelBreakdown(agentId),
     enabled: !!agentId,
   });
 
   const analytics = analyticsData?.analytics;
   const executions = executionsData?.executions ?? [];
-  const breakdown = costData?.breakdown;
-  const usage = usageData?.usage ?? null;
+  const models = modelData?.models ?? [];
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'models' | 'executions'>('overview');
+  const tabs = [
+    { key: 'overview' as const, label: 'Overview', icon: BarChart3 },
+    { key: 'models' as const, label: 'Models', icon: Cpu },
+    { key: 'executions' as const, label: 'Executions', icon: Activity },
+  ];
 
   return (
     <div className={className}>
-      <div className="flex items-center justify-between mb-6">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-5)' }}>
         <div>
-          <h2 className="text-2xl font-bold">Agent Analytics</h2>
-          <p className="text-text-muted mt-1">
-            Execution statistics and cost breakdown
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'var(--text)', margin: 0 }}>
+            Agent Analytics
+          </h2>
+          <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-dim)', margin: 'var(--space-1) 0 0' }}>
+            Execution statistics, model usage, and cost breakdown
           </p>
         </div>
-        <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
+        <div style={{ display: 'flex', gap: 'var(--space-1)', padding: 'var(--space-1)', background: 'var(--panel)', border: '1px solid var(--panel-edge)', borderRadius: 'var(--radius)' }}>
+          {(['24h', '7d', '30d'] as TimeRange[]).map(range => (
+            <button
+              key={range}
+              className={`aw-nav-item ${timeRange === range ? 'aw-nav-item--active' : ''}`}
+              style={{ padding: 'var(--space-1) var(--space-2)', fontSize: '12px' }}
+              onClick={() => setTimeRange(range)}
+            >
+              {range}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <StatsGrid
-        analytics={analytics ?? { agent_id: '', total_calls: 0, total_cost_usd: 0, avg_latency_ms: 0, p50_latency_ms: 0, p95_latency_ms: 0, success_count: 0, error_count: 0, timeout_count: 0, policy_violation_count: 0, success_rate: 0 }}
-        usage={usage}
-        isLoading={analyticsLoading}
-      />
+      {/* Stats Grid */}
+      {analyticsLoading ? (
+        <div className="aw-loading"><div className="aw-loading__spinner" /></div>
+      ) : analytics ? (
+        <div className="aw-stats">
+          <StatCard label="Total Executions" value={(analytics.total_calls ?? 0).toLocaleString()} />
+          <StatCard label="Success Rate" value={`${((analytics.success_rate ?? 0) * 100).toFixed(1)}%`} />
+          <StatCard label="Avg Latency" value={`${((analytics.avg_latency_ms ?? 0) / 1000).toFixed(2)}s`} />
+          <StatCard label="Total Cost" value={`$${(analytics.total_cost_usd ?? 0).toFixed(4)}`} />
+          <StatCard label="Total Tokens" value={formatTokens(analytics.total_all_tokens ?? 0)} sub={`${formatTokens(analytics.total_prompt_tokens ?? 0)} in / ${formatTokens(analytics.total_completion_tokens ?? 0)} out`} />
+          <StatCard label="Reasoning Tokens" value={formatTokens(analytics.total_reasoning_tokens ?? 0)} />
+          <StatCard label="P50 Latency" value={`${((analytics.p50_latency_ms ?? 0) / 1000).toFixed(2)}s`} />
+          <StatCard label="P95 Latency" value={`${((analytics.p95_latency_ms ?? 0) / 1000).toFixed(2)}s`} />
+        </div>
+      ) : null}
 
-      <div className="mt-6">
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="costs">Costs</TabsTrigger>
-            <TabsTrigger value="executions">Executions</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="mt-4">
-            <div className="space-y-6">
-              <ExecutionsChart executions={executions} isLoading={executionsLoading} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="costs" className="mt-4">
-            <div className="space-y-6">
-              <CostBreakdownChart breakdown={breakdown ?? null} isLoading={costLoading} />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="executions" className="mt-4">
-            <div className="space-y-6">
-              <RecentExecutions executions={executions} isLoading={executionsLoading} />
-            </div>
-          </TabsContent>
-        </Tabs>
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 'var(--space-1)', padding: 'var(--space-1)', background: 'var(--panel)', border: '1px solid var(--panel-edge)', borderRadius: 'var(--radius)', marginTop: 'var(--space-5)', marginBottom: 'var(--space-4)' }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.key}
+            className={`aw-nav-item ${activeTab === tab.key ? 'aw-nav-item--active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            <tab.icon size={14} />
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          {/* Token Distribution */}
+          {analytics && (analytics.total_all_tokens ?? 0) > 0 && (
+            <div className="aw-card">
+              <div className="aw-card__header">
+                <span className="aw-card__title">Token Distribution</span>
+              </div>
+              <div className="aw-card__body">
+                <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', height: '24px', borderRadius: 'var(--radius-sm)', overflow: 'hidden', background: 'var(--panel)' }}>
+                      {(() => {
+                        const total = analytics.total_all_tokens || 1;
+                        const promptPct = (analytics.total_prompt_tokens / total) * 100;
+                        const completionPct = (analytics.total_completion_tokens / total) * 100;
+                        const reasoningPct = (analytics.total_reasoning_tokens / total) * 100;
+                        const otherCompletionPct = Math.max(0, completionPct - reasoningPct);
+                        return (
+                          <>
+                            <div style={{ width: `${promptPct}%`, background: 'var(--foil-a)', transition: 'width var(--duration-base)' }} title={`Prompt: ${formatTokens(analytics.total_prompt_tokens)}`} />
+                            <div style={{ width: `${otherCompletionPct}%`, background: 'var(--foil-b)', transition: 'width var(--duration-base)' }} title={`Completion: ${formatTokens(analytics.total_completion_tokens - analytics.total_reasoning_tokens)}`} />
+                            <div style={{ width: `${reasoningPct}%`, background: 'var(--status-pending)', transition: 'width var(--duration-base)' }} title={`Reasoning: ${formatTokens(analytics.total_reasoning_tokens)}`} />
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--foil-a)', flexShrink: 0 }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-dim)' }}>Prompt ({formatTokens(analytics.total_prompt_tokens)})</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--foil-b)', flexShrink: 0 }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-dim)' }}>Completion ({formatTokens(analytics.total_completion_tokens - analytics.total_reasoning_tokens)})</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'var(--status-pending)', flexShrink: 0 }} />
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-dim)' }}>Reasoning ({formatTokens(analytics.total_reasoning_tokens)})</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Recent Executions */}
+          <RecentExecutions executions={executions} isLoading={executionsLoading} />
+        </div>
+      )}
+
+      {activeTab === 'models' && (
+        <ModelBreakdownTable models={models} isLoading={modelLoading} />
+      )}
+
+      {activeTab === 'executions' && (
+        <RecentExecutions executions={executions} isLoading={executionsLoading} />
+      )}
     </div>
   );
 }

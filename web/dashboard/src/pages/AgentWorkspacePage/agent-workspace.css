@@ -1,0 +1,957 @@
+/**
+ * Agent Workspace — Sealed Containment
+ * Full-screen 3-panel workspace for agent operations + building.
+ */
+
+@import '@/styles/sc-tokens.css';
+
+/* ==========================================================================
+   Shell
+   ========================================================================== */
+
+.aw-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  z-index: 50;
+  overflow: hidden;
+}
+
+.aw-shell__body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ==========================================================================
+   Header
+   ========================================================================== */
+
+.aw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 var(--space-4);
+  background: var(--panel);
+  border-bottom: 1px solid var(--panel-edge);
+  flex-shrink: 0;
+  gap: var(--space-3);
+}
+
+.aw-header__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.aw-header__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--steel);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.aw-header__back:hover {
+  border-color: var(--steel-light);
+  color: var(--text);
+}
+
+.aw-header__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 122, 61, 0.08);
+  border: 1px solid rgba(255, 122, 61, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.aw-header__icon svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+
+.aw-header__name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aw-header__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.aw-header__model {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 2px var(--space-2);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius-sm);
+}
+
+/* ==========================================================================
+   Left Nav
+   ========================================================================== */
+
+.aw-left-nav {
+  width: 180px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-right: 1px solid var(--panel-edge);
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) 0;
+  overflow-y: auto;
+}
+
+.aw-left-nav__section {
+  padding: 0 var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.aw-left-nav__section-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: var(--space-1) var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.aw-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-2);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.aw-nav-item:hover {
+  color: var(--text);
+  background: var(--panel-raised);
+}
+
+.aw-nav-item--active {
+  color: var(--text);
+  background: var(--panel-raised);
+  border-color: var(--panel-edge);
+}
+
+.aw-nav-item__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.aw-nav-item--active .aw-nav-item__icon {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.aw-nav-item__badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--status-revoked);
+  font-weight: 600;
+}
+
+.aw-nav-item__badge--ok {
+  background: rgba(143, 255, 208, 0.1);
+  color: var(--status-ok);
+}
+
+/* ==========================================================================
+   Center Panel
+   ========================================================================== */
+
+.aw-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.aw-center__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+}
+
+.aw-center__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+  flex-shrink: 0;
+}
+
+.aw-center__title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.aw-center__subtitle {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Right Panel (Contextual)
+   ========================================================================== */
+
+.aw-right {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--panel-edge);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.aw-right--collapsed {
+  width: 0;
+  border-left: none;
+}
+
+.aw-right__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--panel-edge);
+  flex-shrink: 0;
+}
+
+.aw-right__title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.aw-right__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+.aw-right__close:hover {
+  color: var(--text);
+}
+
+.aw-right__scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+/* ==========================================================================
+   Status Bar
+   ========================================================================== */
+
+.aw-status-bar {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--space-4);
+  background: var(--panel);
+  border-top: 1px solid var(--panel-edge);
+  flex-shrink: 0;
+  gap: var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.aw-status-bar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.aw-status-bar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.aw-status-bar__dot--live {
+  background: var(--status-ok);
+  box-shadow: 0 0 4px rgba(143, 255, 208, 0.5);
+}
+
+.aw-status-bar__dot--warn {
+  background: var(--status-pending);
+}
+
+.aw-status-bar__dot--error {
+  background: var(--status-revoked);
+}
+
+.aw-status-bar__dot--off {
+  background: var(--steel);
+}
+
+.aw-status-bar__separator {
+  width: 1px;
+  height: 16px;
+  background: var(--panel-edge);
+}
+
+.aw-status-bar__alert {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--status-revoked);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   View Cards (shared)
+   ========================================================================== */
+
+.aw-card {
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.aw-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.aw-card__title {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.aw-card__body {
+  padding: var(--space-4);
+}
+
+.aw-card__body--flush {
+  padding: 0;
+}
+
+/* ==========================================================================
+   Stat Grid (shared)
+   ========================================================================== */
+
+.aw-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.aw-stat {
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+}
+
+.aw-stat__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin: 0 0 var(--space-1);
+}
+
+.aw-stat__value {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--text);
+  margin: 0;
+}
+
+.aw-stat__sub {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-dim);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Empty State (shared)
+   ========================================================================== */
+
+.aw-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.aw-empty__icon {
+  width: 40px;
+  height: 40px;
+  color: var(--text-faint);
+  margin-bottom: var(--space-3);
+  opacity: 0.5;
+}
+
+.aw-empty__title {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.aw-empty__desc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+/* ==========================================================================
+   Loading (shared)
+   ========================================================================== */
+
+.aw-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-8);
+}
+
+.aw-loading__spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--panel-edge);
+  border-top-color: var(--status-ok);
+  border-radius: 50%;
+  animation: aw-spin 1s linear infinite;
+}
+
+@keyframes aw-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   Toggle Switch (shared)
+   ========================================================================== */
+
+.aw-switch {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: var(--steel);
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--duration-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.aw-switch--on {
+  background: var(--status-ok);
+}
+
+.aw-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.aw-switch--on .aw-switch__thumb {
+  transform: translateX(16px);
+}
+
+/* ==========================================================================
+   Progress Bar (shared)
+   ========================================================================== */
+
+.aw-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--panel);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.aw-progress__fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--status-ok);
+  transition: width var(--duration-base) var(--ease-out);
+}
+
+.aw-progress__fill--warn {
+  background: var(--status-pending);
+}
+
+.aw-progress__fill--error {
+  background: var(--status-revoked);
+}
+
+/* ==========================================================================
+   Event Feed (Console)
+   ========================================================================== */
+
+.aw-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.aw-feed-item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.aw-feed-item:hover {
+  border-color: var(--steel-light);
+}
+
+.aw-feed-item__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.aw-feed-item__dot--input { background: var(--foil-a); }
+.aw-feed-item__dot--decision { background: var(--foil-b); }
+.aw-feed-item__dot--action { background: var(--status-ok); }
+.aw-feed-item__dot--result { background: #5ce8d8; }
+.aw-feed-item__dot--error { background: var(--status-revoked); }
+.aw-feed-item__dot--tool { background: var(--accent); }
+
+.aw-feed-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.aw-feed-item__kind {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--space-1);
+}
+
+.aw-feed-item__body {
+  color: var(--text);
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.aw-feed-item__meta {
+  display: flex;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+/* ==========================================================================
+   Execution Timeline (Console)
+   ========================================================================== */
+
+.aw-exec-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  padding-left: var(--space-5);
+}
+
+.aw-exec-timeline::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--panel-edge);
+}
+
+.aw-exec-step {
+  position: relative;
+  padding: var(--space-3) 0;
+}
+
+.aw-exec-step__dot {
+  position: absolute;
+  left: calc(-1 * var(--space-5) + 7px);
+  top: var(--space-3);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--steel);
+  border: 2px solid var(--panel-raised);
+}
+
+.aw-exec-step__dot--active {
+  background: var(--status-ok);
+  box-shadow: 0 0 6px rgba(143, 255, 208, 0.5);
+}
+
+.aw-exec-step__dot--error {
+  background: var(--status-revoked);
+}
+
+.aw-exec-step__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.aw-exec-step__name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.aw-exec-step__duration {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.aw-exec-step__detail {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ==========================================================================
+   Tool Card (Abilities)
+   ========================================================================== */
+
+.aw-tool-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.aw-tool-card:hover {
+  border-color: var(--steel-light);
+}
+
+.aw-tool-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.aw-tool-card__icon svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+}
+
+.aw-tool-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.aw-tool-card__name {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.aw-tool-card__desc {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--text-faint);
+  margin: var(--space-1) 0 0;
+}
+
+.aw-tool-card__meta {
+  display: flex;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  margin-top: var(--space-1);
+}
+
+/* ==========================================================================
+   Swarm Node Card
+   ========================================================================== */
+
+.aw-swarm-node {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.aw-swarm-node:hover {
+  border-color: var(--steel-light);
+}
+
+.aw-swarm-node__avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.aw-swarm-node__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.aw-swarm-node__name {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.aw-swarm-node__role {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ==========================================================================
+   Policy Rule Row
+   ========================================================================== */
+
+.aw-policy-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.aw-policy-row__type {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.aw-policy-row__type--allow {
+  color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.08);
+  border: 1px solid rgba(143, 255, 208, 0.2);
+}
+
+.aw-policy-row__type--deny {
+  color: var(--status-revoked);
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+}
+
+.aw-policy-row__type--limit {
+  color: var(--status-pending);
+  background: rgba(232, 196, 104, 0.08);
+  border: 1px solid rgba(232, 196, 104, 0.2);
+}
+
+.aw-policy-row__text {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* ==========================================================================
+   Cost Chart Area
+   ========================================================================== */
+
+.aw-cost-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 64px;
+  padding-top: var(--space-2);
+}
+
+.aw-cost-bar__segment {
+  flex: 1;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  min-height: 2px;
+  transition: height var(--duration-base) var(--ease-out);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 960px) {
+  .aw-left-nav {
+    width: 48px;
+    padding: var(--space-2) 0;
+  }
+
+  .aw-nav-item__label,
+  .aw-left-nav__section-label {
+    display: none;
+  }
+
+  .aw-nav-item {
+    justify-content: center;
+    padding: var(--space-2);
+  }
+
+  .aw-nav-item__badge {
+    display: none;
+  }
+
+  .aw-right {
+    position: absolute;
+    right: 0;
+    top: 48px;
+    bottom: 32px;
+    z-index: 10;
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@media (max-width: 640px) {
+  .aw-left-nav {
+    width: 0;
+    overflow: hidden;
+    border-right: none;
+  }
+
+  .aw-status-bar {
+    overflow-x: auto;
+    gap: var(--space-3);
+  }
+}

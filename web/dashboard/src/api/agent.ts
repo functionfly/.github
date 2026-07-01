@@ -12,6 +12,8 @@ export interface AgentIdentity {
   tenantId: string;
   status: string;
   model?: string;
+  thinking_mode?: string;
+  thinking_budget?: number;
   createdAt: string;
   updatedAt: string;
   parentAgentId?: string;
@@ -20,6 +22,10 @@ export interface AgentIdentity {
   capabilities?: Record<string, unknown>;
   autonomousEnabled?: boolean;
   evolutionEnabled?: boolean;
+  is_daemon_running?: boolean;
+  daemon_started_at?: string;
+  daemon_execution_count?: number;
+  daemon_config?: Record<string, unknown>;
 }
 
 export interface RegisterAgentRequest {
@@ -89,6 +95,12 @@ export function normalizeAgentIdentity(raw: unknown): AgentIdentity {
           ? r.evolution_enabled
           : undefined,
     model: r.model != null ? String(r.model) : undefined,
+    thinking_mode: r.thinking_mode != null ? String(r.thinking_mode) : r.thinkingMode != null ? String(r.thinkingMode) : undefined,
+    thinking_budget: typeof r.thinking_budget === 'number' ? r.thinking_budget : typeof r.thinkingBudget === 'number' ? r.thinkingBudget : undefined,
+    is_daemon_running: typeof r.is_daemon_running === 'boolean' ? r.is_daemon_running : typeof r.isDaemonRunning === 'boolean' ? r.isDaemonRunning : undefined,
+    daemon_started_at: r.daemon_started_at != null ? String(r.daemon_started_at) : r.daemonStartedAt != null ? String(r.daemonStartedAt) : undefined,
+    daemon_execution_count: typeof r.daemon_execution_count === 'number' ? r.daemon_execution_count : typeof r.daemonExecutionCount === 'number' ? r.daemonExecutionCount : undefined,
+    daemon_config: r.daemon_config as Record<string, unknown> | undefined ?? r.daemonConfig as Record<string, unknown> | undefined,
   };
 }
 
@@ -126,11 +138,18 @@ export interface ExecutionRecord {
   functionAuthor: string;
   functionName: string;
   functionVersion?: string;
+  functionUri?: string;
   outcome: string;
   latencyMs: number;
   costUsd: number;
   timestamp: string;
   errorCode?: string;
+  model_name?: string;
+  provider?: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+  reasoning_tokens?: number;
 }
 
 export interface ExecutionListResponse {
@@ -168,6 +187,23 @@ export interface AgentAnalytics {
   timeout_count: number;
   policy_violation_count: number;
   success_rate: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_all_tokens: number;
+  total_reasoning_tokens: number;
+}
+
+export interface ModelBreakdownItem {
+  model_name: string;
+  provider: string;
+  total_calls: number;
+  total_cost_usd: number;
+  avg_latency_ms: number;
+  total_prompt_tokens: number;
+  total_completion_tokens: number;
+  total_tokens: number;
+  total_reasoning_tokens: number;
+  avg_tokens_per_call: number;
 }
 
 export interface AgentSession {
@@ -525,6 +561,13 @@ export const agentApi = {
    */
   getCostBreakdown: (agentId: string) =>
     apiClient.get<{ ok: boolean; breakdown: CostBreakdown }>(`/v1/agent/${agentId}/cost-breakdown`),
+
+  /**
+   * Get cost and token breakdown by model.
+   * GET /v1/agent/{agent_id}/model-breakdown
+   */
+  getModelBreakdown: (agentId: string) =>
+    apiClient.get<{ ok: boolean; models: ModelBreakdownItem[] }>(`/v1/agent/${agentId}/model-breakdown`),
 
   /**
    * Get credit balance.
@@ -1256,12 +1299,27 @@ export const agentApi = {
    * Send a message to an agent via FlyMind using the agent's configured model.
    * POST /v1/agent/{agent_id}/chat
    */
-  agentChat: (agentId: string, message: string) =>
-    apiClient.post<{ ok: boolean; message: string; model: string }>(`/v1/agent/${agentId}/chat`, { message }),
+  agentChat: (agentId: string, message: string, sessionId?: string) =>
+    apiClient.post<{ ok: boolean; message: string; model: string; thinking?: { content: string; tokens: number }; session_id?: string }>(`/v1/agent/${agentId}/chat`, { message, session_id: sessionId }),
 
-  getChatHistory: (agentId: string, limit = 50, offset = 0) =>
-    apiClient.get<{ ok: boolean; messages: Array<{ role: string; content: string; model?: string; created_at: string }> }>(`/v1/agent/${agentId}/chat/history?limit=${limit}&offset=${offset}`),
+  getChatHistory: (agentId: string, limit = 50, offset = 0, sessionId?: string) => {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (sessionId) params.set('session_id', sessionId);
+    return apiClient.get<{ ok: boolean; messages: Array<{ role: string; content: string; model?: string; metadata?: { thinking?: { content: string; tokens: number } }; created_at: string }> }>(`/v1/agent/${agentId}/chat/history?${params}`);
+  },
 
-  clearChat: (agentId: string) =>
-    apiClient.delete<{ ok: boolean }>(`/v1/agent/${agentId}/chat`),
+  clearChat: (agentId: string, sessionId?: string) => {
+    const params = sessionId ? `?session_id=${sessionId}` : '';
+    return apiClient.delete<{ ok: boolean }>(`/v1/agent/${agentId}/chat${params}`);
+  },
+
+  // Chat Sessions
+  listChatSessions: (agentId: string, limit = 50, offset = 0) =>
+    apiClient.get<{ ok: boolean; sessions: Array<{ id: string; title: string; agent_id: string; message_count: number; last_message_at?: string; created_at: string }> }>(`/v1/agent/${agentId}/chat/sessions?limit=${limit}&offset=${offset}`),
+
+  createChatSession: (agentId: string, title?: string) =>
+    apiClient.post<{ ok: boolean; session_id: string; title: string }>(`/v1/agent/${agentId}/chat/sessions`, { title }),
+
+  deleteChatSession: (agentId: string, sessionId: string) =>
+    apiClient.delete<{ ok: boolean }>(`/v1/agent/${agentId}/chat/sessions/${sessionId}`),
 };

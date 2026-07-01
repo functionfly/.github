@@ -33,7 +33,7 @@ import {
 import { EnterpriseStatusCard, PlanSelectionModal } from '@/components/enterprise';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { usePageTitle, usePlan } from '@/hooks';
+import { useAgents, usePageTitle, usePlan, useStateFabrics, useVaultSecrets } from '@/hooks';
 import { useAuthStore } from '@/stores/authStore';
 import { useOnboardingStore } from '@/stores/onboardingStore';
 import { useQueries, useQuery } from '@tanstack/react-query';
@@ -132,6 +132,10 @@ export function DashboardPage() {
     queryKey: ['providers'],
     queryFn: () => providersApi.getConnectedProviders(),
   });
+
+  const { data: agentsData } = useAgents();
+  const { data: secretsData } = useVaultSecrets();
+  const { data: stateFabricsData } = useStateFabrics();
 
   const activeFunctions = functions.filter((f) => f.status === 'deployed').length;
 
@@ -577,7 +581,7 @@ export function DashboardPage() {
                 },
                 {
                   name: 'Secrets',
-                  used: 0,
+                  used: secretsData?.total ?? 0,
                   limit: limits?.secrets ?? 0,
                   icon: QUOTA_ICONS.secrets,
                 },
@@ -589,13 +593,13 @@ export function DashboardPage() {
                 },
                 {
                   name: 'State Fabrics',
-                  used: 0,
+                  used: stateFabricsData?.length ?? 0,
                   limit: limits?.stateFabrics ?? 0,
                   icon: QUOTA_ICONS.stateFabrics,
                 },
                 {
                   name: 'Agents',
-                  used: 0,
+                  used: agentsData?.agents?.length ?? 0,
                   limit: limits?.agents ?? 0,
                   icon: QUOTA_ICONS.agents,
                 },

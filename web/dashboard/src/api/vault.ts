@@ -117,9 +117,8 @@ export const vaultKeys = {
   rotationSchedule: (secretId: string) => [...vaultKeys.rotationSchedules(), secretId] as const,
 };
 
-async function unwrap<T>(p: Promise<{ data: T }>): Promise<T> {
-  const { data } = await p;
-  return data;
+async function unwrap<T>(p: Promise<T>): Promise<T> {
+  return p;
 }
 
 // ============================================================================

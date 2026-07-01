@@ -722,12 +722,13 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className={cn(
-            'fixed left-0 top-0 z-40 flex flex-col',
-            'min-h-screen lg:min-h-0 lg:h-full',
+            'flex flex-col',
+            isLg
+              ? 'relative h-full shrink-0 overflow-hidden z-auto'
+              : 'fixed left-0 top-0 z-40 min-h-screen',
             'aviation-sidebar',
             isCollapsed && 'aviation-sidebar-collapsed',
             !isLg && 'aviation-sidebar-mobile-sheet',
-            'lg:relative lg:translate-x-0 lg:z-auto'
           )}
         >
           <CollapseButton />

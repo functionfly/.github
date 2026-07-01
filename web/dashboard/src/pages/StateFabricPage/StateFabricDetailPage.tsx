@@ -264,21 +264,33 @@ export function StateFabricDetailPage() {
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+        {/* Quick Stats — GaugeStrip */}
+        <div className="grid grid-cols-2 md:grid-cols-4 mt-6" style={{ borderTop: '1px solid var(--panel-edge)' }}>
           {[
-            { label: 'Throughput', value: metrics?.operationsPerSecond ? `${metrics.operationsPerSecond.toFixed(1)}` : 'N/A', sub: 'ops/sec', icon: Activity },
-            { label: 'Latency', value: metrics?.averageLatency ? `${metrics.averageLatency.toFixed(0)}` : 'N/A', sub: 'ms avg', icon: Clock },
-            { label: 'Stores', value: String(stores?.length || 0), sub: 'active stores', icon: Database },
-            { label: 'Pipelines', value: String(pipelines?.length || 0), sub: 'configured', icon: Network },
-          ].map((stat) => (
-            <div key={stat.label} className="p-4 rounded-[var(--radius)]" style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)' }}>
-              <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--text-faint)' }}>
-                <stat.icon className="w-4 h-4" />
-                <span className="text-sm">{stat.label}</span>
+            { label: 'Throughput', value: metrics?.operationsPerSecond ? `${metrics.operationsPerSecond.toFixed(1)}` : 'N/A', sub: 'ops/sec', icon: Activity, color: 'var(--status-ok)' },
+            { label: 'Latency', value: metrics?.averageLatency ? `${metrics.averageLatency.toFixed(0)}` : 'N/A', sub: 'ms avg', icon: Clock, color: 'var(--foil-a)' },
+            { label: 'Stores', value: String(stores?.length || 0), sub: 'active stores', icon: Database, color: 'var(--status-pending)' },
+            { label: 'Pipelines', value: String(pipelines?.length || 0), sub: 'configured', icon: Network, color: 'var(--foil-b)' },
+          ].map((stat, i) => (
+            <div
+              key={stat.label}
+              className="p-5"
+              style={{
+                borderLeft: i > 0 ? '1px solid var(--panel-edge)' : 'none',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3" style={{ color: 'var(--text-faint)' }}>
+                <stat.icon className="w-3.5 h-3.5" />
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{stat.label}</span>
               </div>
-              <p className="text-2xl font-bold font-mono tabular-nums" style={{ color: 'var(--text)' }}>{stat.value}</p>
-              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{stat.sub}</p>
+              <div className="flex items-baseline gap-2">
+                <span
+                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                  style={{ background: stat.color, boxShadow: `0 0 6px ${stat.color}99` }}
+                />
+                <p className="text-2xl font-mono tabular-nums" style={{ color: 'var(--text)', fontWeight: 500, lineHeight: 1.2 }}>{stat.value}</p>
+              </div>
+              <p className="mt-1" style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-faint)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{stat.sub}</p>
             </div>
           ))}
         </div>
@@ -317,12 +329,15 @@ export function StateFabricDetailPage() {
         <div className="mt-6 space-y-6">
           {activeTab === 'overview' && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Chamber nested>
-                <CardHeader>
-                  <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Configuration</CardTitle>
+              <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'none' }}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>
+                    <Settings className="w-4 h-4" style={{ color: 'var(--status-ok)' }} />
+                    Configuration
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                     {[
                       ['Type', fabric.type],
                       ['Auto Snapshot', fabric.settings?.autoSnapshot ? 'Enabled' : 'Disabled'],
@@ -331,66 +346,81 @@ export function StateFabricDetailPage() {
                       ['Replication', fabric.settings?.enableReplication ? 'Enabled' : 'Disabled'],
                       ['Conflict Resolution', (fabric.settings?.conflictResolution || 'last-write-wins').replace(/-/g, ' ')],
                     ].map(([label, value]) => (
-                      <div key={label}>
-                        <p className="text-sm" style={{ color: 'var(--text-faint)' }}>{label}</p>
-                        <p className="font-medium capitalize" style={{ color: 'var(--text)' }}>{value}</p>
+                      <div key={label} className="space-y-0.5">
+                        <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>{label}</p>
+                        <p className="font-medium capitalize" style={{ color: 'var(--text)', fontSize: '14px' }}>{value}</p>
                       </div>
                     ))}
                   </div>
                 </CardContent>
-              </Chamber>
+              </Card>
 
-              <Chamber nested>
-                <CardHeader>
-                  <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Regions</CardTitle>
+              <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'none' }}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>
+                    <Network className="w-4 h-4" style={{ color: 'var(--foil-a)' }} />
+                    Regions
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {fabric.settings?.regions && fabric.settings.regions.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {fabric.settings.regions.map((region) => (
-                        <span key={region} className="text-xs px-2.5 py-0.5 rounded-[var(--radius-sm)]" style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)' }}>
+                        <span key={region} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[var(--radius-sm)]" style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 500, background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)' }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--status-ok)', boxShadow: '0 0 6px rgba(143,255,208,0.6)' }} />
                           {region}
                         </span>
                       ))}
                     </div>
                   ) : (
-                    <p style={{ color: 'var(--text-faint)' }}>No regions configured</p>
+                    <div className="flex items-center justify-center py-8" style={{ color: 'var(--text-faint)' }}>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>No regions configured</p>
+                    </div>
                   )}
                 </CardContent>
-              </Chamber>
+              </Card>
 
-              <Chamber nested className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Recent Activity</CardTitle>
+              <Card className="lg:col-span-2" style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)', boxShadow: 'none' }}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2" style={{ fontFamily: 'var(--font-display)', fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>
+                    <Activity className="w-4 h-4" style={{ color: 'var(--status-pending)' }} />
+                    Recent Activity
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {eventLogs?.events && eventLogs.events.length > 0 ? (
-                    <div className="space-y-2">
+                    <div>
+                      {/* Table header */}
+                      <div className="grid grid-cols-[1fr_1fr_auto] gap-4 pb-2 mb-2" style={{ borderBottom: '1px solid var(--panel-edge)' }}>
+                        {['Event', 'Source', 'Time'].map((h) => (
+                          <span key={h} style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>{h}</span>
+                        ))}
+                      </div>
                       {eventLogs.events.slice(0, 5).map((event) => (
                         <div
                           key={event.id}
-                          className="flex items-center justify-between py-2"
+                          className="grid grid-cols-[1fr_1fr_auto] gap-4 py-2.5 items-center"
                           style={{ borderBottom: '1px solid var(--panel-edge)' }}
                         >
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs px-2 py-0.5 rounded-[var(--radius-sm)] capitalize" style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)' }}>
-                              {event.eventType}
-                            </span>
-                            <span className="text-sm" style={{ color: 'var(--text-dim)' }}>
-                              {event.correlationId?.slice(0, 8) || 'System'}
-                            </span>
-                          </div>
-                          <span className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                          <span className="text-xs px-2 py-0.5 rounded-[var(--radius-sm)] capitalize w-fit" style={{ background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)', fontFamily: 'var(--font-mono)' }}>
+                            {event.eventType}
+                          </span>
+                          <span className="text-sm font-mono truncate" style={{ color: 'var(--text-dim)' }}>
+                            {event.correlationId?.slice(0, 8) || 'System'}
+                          </span>
+                          <span className="text-xs font-mono tabular-nums whitespace-nowrap" style={{ color: 'var(--text-faint)' }}>
                             {new Date(event.timestamp).toLocaleString()}
                           </span>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p style={{ color: 'var(--text-faint)' }}>No recent activity</p>
+                    <div className="flex items-center justify-center py-8" style={{ color: 'var(--text-faint)' }}>
+                      <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>No recent activity</p>
+                    </div>
                   )}
                 </CardContent>
-              </Chamber>
+              </Card>
             </div>
           )}
 

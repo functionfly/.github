@@ -5,12 +5,19 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { ArrowDown, Loader2, MessageSquare, Plus, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChatThinking } from './ChatThinking';
 import './agent-chat.css';
+
+interface ThinkingData {
+  content: string;
+  tokens: number;
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   model?: string;
+  thinking?: ThinkingData;
   created_at: string;
 }
 
@@ -18,11 +25,13 @@ interface AgentChatHistoryProps {
   agentId: string;
   agentName: string;
   model: string;
+  sessionId?: string | null;
+  onSessionCreated?: (sessionId: string) => void;
 }
 
 const PAGE_SIZE = 50;
 
-export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistoryProps) {
+export function AgentChatHistory({ agentId, agentName, model, sessionId, onSessionCreated }: AgentChatHistoryProps) {
   const { t } = useTranslation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -32,7 +41,7 @@ export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistory
   const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showJump, setShowJump] = useState(false);
-  const [clearing, setClearing] = useState(false);
+  const [creating, setCreating] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const prevLengthRef = useRef(0);
@@ -42,17 +51,17 @@ export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistory
   }, []);
 
   const handleNewChat = async () => {
-    if (clearing) return;
-    setClearing(true);
+    if (creating) return;
+    setCreating(true);
     try {
-      await agentApi.clearChat(agentId);
-      setMessages([]);
-      setHasMore(false);
-      setSearchQuery('');
+      const res = await agentApi.createChatSession(agentId);
+      if (res.ok && res.session_id) {
+        onSessionCreated?.(res.session_id);
+      }
     } catch {
       // silently ignore
     } finally {
-      setClearing(false);
+      setCreating(false);
     }
   };
 
@@ -71,15 +80,21 @@ export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistory
     prevLengthRef.current = messages.length;
   }, [messages.length, loading, scrollToBottom]);
 
+  // Load messages when sessionId or agentId changes
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    agentApi.getChatHistory(agentId, PAGE_SIZE, 0).then((res) => {
+    setMessages([]);
+    setHasMore(false);
+    setSearchQuery('');
+
+    agentApi.getChatHistory(agentId, PAGE_SIZE, 0, sessionId ?? undefined).then((res) => {
       if (cancelled) return;
       const msgs = (res.messages ?? []).map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
         model: m.model,
+        thinking: m.metadata?.thinking,
         created_at: m.created_at,
       }));
       setMessages(msgs);
@@ -90,17 +105,18 @@ export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistory
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
-  }, [agentId]);
+  }, [agentId, sessionId]);
 
   const handleLoadOlder = async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const res = await agentApi.getChatHistory(agentId, PAGE_SIZE, messages.length);
+      const res = await agentApi.getChatHistory(agentId, PAGE_SIZE, messages.length, sessionId ?? undefined);
       const older = (res.messages ?? []).map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
         model: m.model,
+        thinking: m.metadata?.thinking,
         created_at: m.created_at,
       }));
       setMessages((prev) => [...older, ...prev]);
@@ -120,10 +136,20 @@ export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistory
     setMessages((prev) => [...prev, { role: 'user', content: text, created_at: now }]);
     setSending(true);
     try {
-      const res = await agentApi.agentChat(agentId, text);
+      const res = await agentApi.agentChat(agentId, text, sessionId ?? undefined);
+      // If this was the first message in a new session, notify parent
+      if (res.session_id && !sessionId && onSessionCreated) {
+        onSessionCreated(res.session_id);
+      }
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: res.message || '(no response)', model: res.model, created_at: new Date().toISOString() },
+        {
+          role: 'assistant',
+          content: res.message || '(no response)',
+          model: res.model,
+          thinking: res.thinking,
+          created_at: new Date().toISOString(),
+        },
       ]);
     } catch (err) {
       setMessages((prev) => [
@@ -172,8 +198,8 @@ export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistory
             </>
           )}
         </div>
-        <button className="ach-new-chat" onClick={handleNewChat} disabled={clearing} title="New chat">
-          {clearing ? <Loader2 className="ach-new-chat__spinner" /> : <Plus style={{ width: 14, height: 14 }} />}
+        <button className="ach-new-chat" onClick={handleNewChat} disabled={creating} title="New chat">
+          {creating ? <Loader2 className="ach-new-chat__spinner" /> : <Plus style={{ width: 14, height: 14 }} />}
           <span>New Chat</span>
         </button>
       </div>
@@ -241,6 +267,9 @@ export function AgentChatHistory({ agentId, agentName, model }: AgentChatHistory
             </div>
             {group.messages.map((msg, i) => (
               <div key={`${group.label}-${i}`} className={`ach-msg ach-msg--${msg.role}`}>
+                {msg.role === 'assistant' && msg.thinking && msg.thinking.content && (
+                  <ChatThinking content={msg.thinking.content} tokens={msg.thinking.tokens} />
+                )}
                 <div className="ach-msg__bubble">{msg.content}</div>
                 <div className="ach-msg__meta">
                   <span className="ach-msg__time" title={format(new Date(msg.created_at), 'PPpp')}>

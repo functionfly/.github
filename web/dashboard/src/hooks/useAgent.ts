@@ -89,6 +89,8 @@ export function useUpdateAgent(agentId: string) {
       autonomous_enabled?: boolean;
       evolution_enabled?: boolean;
       model?: string;
+      thinking_mode?: string;
+      thinking_budget?: number;
     }) => agentApi.updateAgent(agentId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: agentKeys.detail(agentId) });

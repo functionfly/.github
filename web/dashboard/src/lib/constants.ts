@@ -89,10 +89,12 @@ export const ROUTES = {
   AGENT_ANALYTICS: '/agents/:id/analytics',
 
   AGENT_CONSOLE: '/agents/:id/console',
+  AGENT_WORKSPACE: '/agents/:id/workspace',
   agentPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}`,
   agentEditPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/edit`,
   agentWalletPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/wallet`,
   agentAnalyticsPath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/analytics`,
+  agentWorkspacePath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/workspace`,
   SDK_INTEGRATIONS: '/sdk-integrations',
   MARKETPLACE: '/marketplace',
   // Alias for the agent-specific marketplace (distinct semantic purpose from generic MARKETPLACE)

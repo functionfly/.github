@@ -63,7 +63,7 @@ export function DashboardLayout() {
       />
 
       <div
-        className="min-h-screen flex flex-col relative mesh-gradient-bg"
+        className="h-screen flex flex-col relative mesh-gradient-bg overflow-hidden"
         {...openGestureHandlers}
       >
         {/* Background Effects */}
@@ -87,7 +87,7 @@ export function DashboardLayout() {
           />
 
           {/* Main Content - No margin needed on desktop since sidebar is in flex flow */}
-          <div className="flex-1 flex flex-col min-w-0 relative dashboard-main-bg transition-all duration-300 ease-in-out">
+          <div className="flex-1 flex flex-col min-w-0 relative dashboard-main-bg transition-all duration-300 ease-in-out overflow-y-auto">
 
             <main className="flex-1 p-4 lg:p-6" aria-label="Main content">
               <div className="max-w-7xl mx-auto">

@@ -422,6 +422,23 @@ export {
   vaultKeys,
 } from './useVault';
 
+// Connector / Integration Hooks
+export {
+  connectorKeys,
+  useConnectorCatalog,
+  useConnectorStatuses,
+  useUserConnectors,
+} from './useConnectors';
+
+// MCP Server Hooks
+export {
+  mcpServerKeys,
+  useMCPServers,
+  useAddMCPServer,
+  useUpdateMCPServer,
+  useDeleteMCPServer,
+} from './useMCPServers';
+
 // UI/UX Hooks
 export { usePageTitle, formatPageTitle } from './usePageTitle.tsx';
 export { useCookieConsent } from './useCookieConsent';

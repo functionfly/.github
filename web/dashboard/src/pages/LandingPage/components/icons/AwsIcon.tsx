@@ -12,8 +12,8 @@ export const AwsIcon: React.FC<{ className?: string }> = ({ className = "w-8 h-8
     <title>AWS Lambda</title>
     <defs>
       <linearGradient x1="0%" y1="100%" x2="100%" y2="0%" id="linearGradient-1">
-        <stop stop-color="#C8511B" offset="0%"/>
-        <stop stop-color="#FF9900" offset="100%"/>
+        <stop stopColor="#C8511B" offset="0%"/>
+        <stop stopColor="#FF9900" offset="100%"/>
       </linearGradient>
     </defs>
     <g>

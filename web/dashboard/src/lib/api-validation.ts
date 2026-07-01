@@ -494,7 +494,7 @@ export const connectProviderRequestSchema = z.object({
 export const connectedProviderSchema = z.object({
   id: z.string().min(1, 'Provider ID is required'),
   name: z.enum(['workers', 'vercel', 'fly', 'deno', 'functionfly-edge']),
-  status: z.enum(['online', 'offline', 'degraded', 'pending']),
+  status: z.enum(['online', 'offline', 'degraded', 'pending', 'error']),
   connectedAt: timestampSchema,
 });
 

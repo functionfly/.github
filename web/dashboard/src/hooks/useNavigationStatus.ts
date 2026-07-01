@@ -5,6 +5,10 @@ import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/api/client';
 import { API_URLS } from '@/lib/api-urls';
 import { appsApi } from '@/api/apps';
+import { agentApi } from '@/api/agent';
+import { vaultApi } from '@/api/vault';
+import { functionsApi } from '@/api/functions';
+import { providersApi } from '@/api';
 import { useQuery } from '@tanstack/react-query';
 
 interface NavigationStatus {
@@ -105,17 +109,74 @@ export function useNavigationStatus(): NavigationStatus {
     retry: false,
   });
 
+  const { data: agentsData } = useQuery({
+    queryKey: ['agents', 'sidebar-count'],
+    queryFn: () => agentApi.listAgents(),
+    staleTime: 1000 * 60,
+    retry: false,
+  });
+
+  const { data: secretsData } = useQuery({
+    queryKey: ['secrets', 'sidebar-count'],
+    queryFn: () => vaultApi.listSecrets(),
+    staleTime: 1000 * 60,
+    retry: false,
+  });
+
+  const { data: functionsData } = useQuery({
+    queryKey: ['functions', 'sidebar-count'],
+    queryFn: () => functionsApi.list(),
+    staleTime: 1000 * 60,
+    retry: false,
+  });
+
+  const { data: providersData } = useQuery({
+    queryKey: ['providers', 'sidebar-count'],
+    queryFn: () => providersApi.getConnectedProviders(),
+    staleTime: 1000 * 60,
+    retry: false,
+  });
+
   const appCount = appsData?.apps?.length ?? 0;
+  const agentList = agentsData?.agents ?? [];
+  const agentCount = agentList.length;
+  const agentActiveCount = agentList.filter((a) => a.status === 'active').length;
+  const agentHasOffline = agentList.some((a) => a.status === 'suspended' || a.status === 'deleted');
+  const secretCount = secretsData?.total ?? 0;
+  const functionList = functionsData?.functions ?? [];
+  const functionCount = functionList.length;
+  const pendingDeployments = functionList.filter((f) => f.status === 'deploying').length;
+  const functionHasIssues = functionList.some((f) => f.status === 'failed');
+  const providerList = providersData ?? [];
+  const providerCount = providerList.length;
+  const providerHasOffline = providerList.some((p) => p.status === 'offline' || p.status === 'error');
 
   return useMemo(() => {
     return {
       ...mockStatusData,
+      functions: {
+        hasIssues: functionHasIssues,
+        pendingDeployments,
+        totalCount: functionCount,
+      },
+      providers: {
+        hasOffline: providerHasOffline,
+        totalCount: providerCount,
+      },
+      agents: {
+        totalCount: agentCount,
+        activeCount: agentActiveCount,
+        hasOffline: agentHasOffline,
+      },
       apps: {
         totalCount: appsLimit,
         deployedCount: appCount,
       },
+      secrets: {
+        totalCount: secretCount,
+      },
     };
-  }, [unreadCount, appsLimit, appCount]);
+  }, [unreadCount, appsLimit, appCount, agentCount, agentActiveCount, agentHasOffline, secretCount, functionCount, pendingDeployments, functionHasIssues, providerCount, providerHasOffline]);
 }
 
 // Helper hook for getting specific status badge content

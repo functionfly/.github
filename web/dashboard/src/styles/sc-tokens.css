@@ -738,20 +738,20 @@
    ============================================================================ */
 
 .gauge-strip {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  display: flex;
+  justify-content: center;
   border-top: 1px solid var(--panel-edge);
 }
 
 .gauge {
   border-left: 1px solid var(--panel-edge);
-  padding: var(--space-5) 0 var(--space-6);
-  padding-left: var(--space-5);
+  padding: var(--space-5) var(--space-6) var(--space-6) var(--space-5);
+  text-align: center;
 }
 
 .gauge--first {
   border-left: none;
-  padding-left: 0;
+  padding-left: var(--space-6);
 }
 
 .gauge__value {
@@ -785,14 +785,18 @@
 
 @media (max-width: 480px) {
   .gauge-strip {
-    grid-template-columns: 1fr;
+    flex-direction: column;
+    align-items: center;
   }
 
   .gauge {
     border-left: none;
     border-top: 1px solid var(--panel-edge);
     padding-left: 0;
+    padding-right: 0;
     padding-top: var(--space-5);
+    width: 100%;
+    max-width: 200px;
   }
 
   .gauge--first {

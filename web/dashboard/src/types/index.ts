@@ -450,7 +450,7 @@ export interface ConnectedProvider {
   id: string;
   /** Provider slug from the API (e.g. workers, vercel, functionfly-edge) — not the display name. */
   name: string;
-  status: 'online' | 'offline' | 'degraded' | 'pending';
+  status: 'online' | 'offline' | 'degraded' | 'pending' | 'error';
   connectedAt: string;
   apiKey?: string;
   /** Whether the provider connection is stale (not used in 30+ days) */
@@ -833,7 +833,7 @@ export interface FunctionHeaderData {
   /** Optional description */
   description?: string;
   /** Optional status for the status badge */
-  status?: 'online' | 'offline' | 'degraded' | 'pending';
+  status?: 'online' | 'offline' | 'degraded' | 'pending' | 'error';
   /** Optional version */
   version?: string;
 }
@@ -914,7 +914,7 @@ export interface StateFabric {
   id: string;
   name: string;
   description: string;
-  status: 'online' | 'offline' | 'degraded' | 'pending';
+  status: 'online' | 'offline' | 'degraded' | 'pending' | 'error';
   type: 'session' | 'catalog' | 'cache' | 'workflow' | 'custom';
   tenantId: string;
   stores: StateFabricStore[];

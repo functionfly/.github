@@ -5,7 +5,7 @@ import { useAgentMemories } from '@/hooks/useAgentMemory';
 import { ROUTES } from '@/lib/constants';
 import { usePageTitle } from '@/hooks';
 import {
-  ArrowLeft, Bot, Brain, Copy, Check, GitBranch, Loader2, MemoryStick, Save, Settings, Trash2, Wallet, BarChart3, Plus, X, Terminal,
+  ArrowLeft, Bot, Brain, Copy, Check, GitBranch, Loader2, MemoryStick, Save, Settings, Trash2, Wallet, BarChart3, Plus, X, Terminal, LayoutDashboard,
 } from 'lucide-react';
 import { AgentChatHistory } from '@/components/agent-console';
 import { useEffect, useMemo, useState } from 'react';
@@ -87,6 +87,8 @@ export function AgentDetailPage() {
   const [newCapValue, setNewCapValue] = useState('');
   const [copied, setCopied] = useState(false);
   const [model, setModel] = useState('gpt-4o-mini');
+  const [thinkingMode, setThinkingMode] = useState<'off' | 'auto' | 'always'>('off');
+  const [thinkingBudget, setThinkingBudget] = useState(10000);
   const [models, setModels] = useState<Array<{ id: string; name: string; provider: string; provider_label?: string; key_source?: string; tier: string; cost: string }>>([]);
 
   const { data: agentData, isLoading: loading, error } = useAgent(agentId ?? '');
@@ -111,6 +113,8 @@ export function AgentDetailPage() {
       setEvolutionEnabled(agent.evolutionEnabled ?? false);
       setCapabilities(agent.capabilities ?? {});
       setModel(agent.model || 'gpt-4o-mini');
+      setThinkingMode((agent.thinking_mode as 'off' | 'auto' | 'always') || 'off');
+      setThinkingBudget(agent.thinking_budget || 10000);
     }
   }, [agent]);
 
@@ -179,7 +183,7 @@ export function AgentDetailPage() {
     if (!agentId) return;
     setSaving(true);
     try {
-      await updateAgent.mutateAsync({ name, description, capabilities, autonomous_enabled: autonomousEnabled, evolution_enabled: evolutionEnabled, model });
+      await updateAgent.mutateAsync({ name, description, capabilities, autonomous_enabled: autonomousEnabled, evolution_enabled: evolutionEnabled, model, thinking_mode: thinkingMode, thinking_budget: thinkingBudget });
       await updatePolicy.mutateAsync({ agentId, maxExecutionDepth, maxRecursionDepth, maxWallTimeMs, maxMemoryGrowthMB });
       toast.success(t('agentDetail.settingsSaved'));
     } catch (err) {
@@ -288,6 +292,7 @@ export function AgentDetailPage() {
           </div>
         </div>
         <div className="adp-header__actions">
+          <SealedButton size="sm" onClick={() => navigate(`/agents/${encodeURIComponent(agent?.agentId ?? agentId ?? '')}/workspace`)} iconLeft={<LayoutDashboard className="adp-icon-sm" />}>Workspace</SealedButton>
           <FrameButton size="sm" onClick={() => navigate(ROUTES.agentAnalyticsPath(agent?.agentId ?? agentId ?? ''))} iconLeft={<BarChart3 className="adp-icon-sm" />}>{t('agentDetail.analytics')}</FrameButton>
           <FrameButton size="sm" onClick={() => navigate(ROUTES.agentWalletPath(agent?.agentId ?? agentId ?? ''))} iconLeft={<Wallet className="adp-icon-sm" />}>{t('agentDetail.wallet')}</FrameButton>
         </div>
@@ -416,6 +421,53 @@ export function AgentDetailPage() {
                 })()}
               </select>
             </div>
+            <div className="adp-field">
+              <label className="adp-label">Thinking Mode</label>
+              <p className="adp-field__hint">Enable provider-native reasoning for complex tasks. Auto activates thinking for long or analytical queries.</p>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                {(['off', 'auto', 'always'] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`adp-toggle-btn ${thinkingMode === mode ? 'adp-toggle-btn--active' : ''}`}
+                    onClick={() => setThinkingMode(mode)}
+                    style={{
+                      padding: '6px 16px',
+                      borderRadius: '6px',
+                      border: `1px solid ${thinkingMode === mode ? 'var(--accent, #6366f1)' : 'var(--border-subtle, rgba(255,255,255,0.1))'}`,
+                      background: thinkingMode === mode ? 'var(--accent-bg, rgba(99,102,241,0.1))' : 'transparent',
+                      color: thinkingMode === mode ? 'var(--accent, #6366f1)' : 'var(--text-secondary, #a1a1aa)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontFamily: 'var(--font-body)',
+                      textTransform: 'capitalize',
+                    }}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {thinkingMode !== 'off' && (
+              <div className="adp-field">
+                <label className="adp-label">Thinking Budget</label>
+                <p className="adp-field__hint">Maximum tokens allocated for reasoning per request. Higher values enable deeper analysis but increase cost.</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px' }}>
+                  <input
+                    type="range"
+                    min={1000}
+                    max={50000}
+                    step={1000}
+                    value={thinkingBudget}
+                    onChange={(e) => setThinkingBudget(Number(e.target.value))}
+                    style={{ flex: 1 }}
+                  />
+                  <span style={{ fontSize: '13px', color: 'var(--text-secondary, #a1a1aa)', minWidth: '80px', textAlign: 'right', fontFamily: 'var(--font-mono, monospace)' }}>
+                    {thinkingBudget.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="adp-toggles">
               <label className="adp-toggle-label">
                 <input type="checkbox" checked={autonomousEnabled} onChange={(e) => setAutonomousEnabled(e.target.checked)} className="adp-checkbox" />

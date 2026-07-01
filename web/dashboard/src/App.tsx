@@ -56,6 +56,7 @@ const AgentSDKIntegrationsPage = lazyPage(() => import('@/pages/AgentSDKIntegrat
 const AgentsMarketplacePage = lazyPage(() => import('@/pages/AgentsMarketplacePage'), 'AgentsMarketplacePage');
 const AgentsPage = lazyPage(() => import('@/pages/AgentsPage'), 'AgentsPage');
 const AgentWalletPage = lazyPage(() => import('@/pages/AgentWalletPage'), 'AgentWalletPage');
+const AgentWorkspacePage = lazyPage(() => import('@/pages/AgentWorkspacePage'), 'AgentWorkspacePage');
 const AIComposerPage = lazyPage(() => import('@/pages/AIComposerPage'), 'AIComposerPage');
 const AnalyticsPage = lazyPage(() => import('@/pages/AnalyticsPage'), 'AnalyticsPage');
 const APIKeyDetailPage = lazyPage(() => import('@/pages/api-keys'), 'APIKeyDetailPage');
@@ -714,6 +715,16 @@ function AppContent() {
             <Route path="conversations/:id" element={<ConversationsPage />} />
             <Route path="community" element={<CommunityPage />} />
           </Route>
+
+          {/* Agent Workspace - Outside DashboardLayout for fullscreen */}
+          <Route
+            path="agents/:id/workspace"
+            element={
+              <ProtectedRoute>
+                <AgentWorkspacePage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Studio Route - Outside DashboardLayout for fullscreen */}
           <Route
