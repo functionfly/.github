@@ -20,6 +20,7 @@ FunctionFly™ is a comprehensive serverless platform that enables developers to
 - **Multi-language Support**: Deploy functions in Go, Python, Node.js, and more
 - **Edge Execution**: Run functions close to your users with global distribution
 - **Automatic Scaling**: Scale from zero to millions of requests without configuration
+- **ML Intelligence Layer**: Adaptive cost anomaly detection, demand forecasting (Holt-Winters), Thompson Sampling edge routing, and collaborative filtering recommendations — all in FlyMind
 - **Built-in Monitoring**: Real-time metrics with Prometheus and Grafana dashboards
 - **Pay-per-use Pricing**: Pay only for what you use with granular billing
 - **Secure by Default**: Isolated execution environments with built-in secrets management
@@ -45,6 +46,20 @@ FunctionFly™ is a comprehensive serverless platform that enables developers to
                                       │  Runtimes   │
                                       │ (WASM/VM)   │
                                       └─────────────┘
+
+                    ┌─────────────────────────────────┐
+                    │         FlyMind AI Service       │
+                    │  ┌───────────┐ ┌──────────────┐ │
+                    │  │  Cost     │ │  Holt-Winters│ │
+                    │  │  Anomaly  │ │  Prewarming  │ │
+                    │  │  Detector │ │  (Forecast)  │ │
+                    │  └───────────┘ └──────────────┘ │
+                    │  ┌───────────┐ ┌──────────────┐ │
+                    │  │ Thompson  │ │ Collaborative│ │
+                    │  │ Sampling  │ │ Filtering    │ │
+                    │  │ Routing   │ │ Recommend.   │ │
+                    │  └───────────┘ └──────────────┘ │
+                    └─────────────────────────────────┘
 ```
 
 ## Project layout
@@ -53,6 +68,7 @@ FunctionFly™ is a comprehensive serverless platform that enables developers to
 |------|---------|
 | `cmd/` | Go entrypoints (orchestrator-api, health-monitor, etc.) |
 | `internal/` | Go application code |
+| `ai-service/` | FlyMind Python AI service (ML models, LLM routing, embeddings) |
 | `docs/` | Documentation and guides (see [docs/README.md](docs/README.md)) |
 | `scripts/` | Dev and ops scripts (dev.sh, migrations, publish, test helpers) |
 | `examples/` | Sample functions and fixtures; `examples/stdlib-publish/` = publish payloads for stdlib |
@@ -203,6 +219,10 @@ Environment variables can be configured via `.env` files. See `.env.example` for
 | `REDIS_URL` | Redis connection string | redis://localhost:6379 |
 | `PORT` | HTTP server port | 8080 |
 | `LOG_LEVEL` | Logging level | info |
+| `ML_ENABLED` | Enable ML intelligence services | true |
+| `ML_COST_ANOMALY_THRESHOLD` | Z-score threshold for cost anomaly detection | 3.0 |
+| `ML_ROUTING_EXPLORATION` | Thompson Sampling exploration budget (0.0-1.0) | 0.1 |
+| `ML_PREWARM_SEASONALITY_PERIODS` | Holt-Winters seasonality periods | 24 |
 
 ## Monitoring
 
@@ -217,6 +237,21 @@ docker-compose -f docker-compose.monitoring.yml up -d
 1. Access Grafana at <http://localhost:3000> (admin/admin)
 
 2. Import dashboards from `deploy/monitoring/grafana/`
+
+## ML Intelligence Layer
+
+FunctionFly includes four ML services in the FlyMind AI service (`ai-service/`):
+
+| Service | Technique | What It Does |
+|---------|-----------|-------------|
+| **Cost Anomaly Detection** | Adaptive Z-score (Welford's algorithm) | Flags cost spikes, memory leaks, and error surges per function |
+| **Predictive Prewarming** | Holt-Winters exponential smoothing | Forecasts demand with hourly/weekly seasonality to reduce cold starts |
+| **Edge Routing** | Thompson Sampling (Bayesian bandit) | Learns optimal edge provider per function from execution outcomes |
+| **Recommendations** | ALS collaborative filtering | Personalized function recommendations from user interaction history |
+
+All ML services share a common infrastructure (`services/ml_common/`) for model persistence, feature extraction, and synthetic data bootstrapping. Models improve over time as execution data accumulates.
+
+See the [ML Intelligence Layer Design](docs/superpowers/specs/2026-06-30-ml-intelligence-layer-design.md) for the full specification.
 
 ## Examples
 
