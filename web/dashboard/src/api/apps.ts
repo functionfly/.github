@@ -1,4 +1,4 @@
-import type { App, AppStatus, Backend, CreateAppRequest, CreateBackendRequest } from '@/types';
+import type { App, AppStatus, AppAnalyticsResponse, Backend, CreateAppRequest, CreateBackendRequest, UpdateAppRequest } from '@/types';
 import { apiClient } from './client';
 
 /** Row for POST /v1/functions/deploy (backend_id) — aggregated from all tenant apps */
@@ -17,6 +17,10 @@ export const appsApi = {
 
   create: (data: CreateAppRequest) => apiClient.post<App>('/v1/apps', data),
 
+  update: (appId: string, data: UpdateAppRequest) => apiClient.patch<App>(`/v1/apps/${appId}`, data),
+
+  delete: (appId: string) => apiClient.delete<void>(`/v1/apps/${appId}`),
+
   getStatus: (appId: string) => apiClient.get<AppStatus>(`/v1/apps/${appId}/status`),
 
   listBackends: (appId: string) =>
@@ -25,8 +29,23 @@ export const appsApi = {
   createBackend: (appId: string, data: CreateBackendRequest) =>
     apiClient.post<Backend>(`/v1/apps/${appId}/backends`, data),
 
+  deleteBackend: (appId: string, backendId: string) =>
+    apiClient.delete<void>(`/v1/apps/${appId}/backends/${backendId}`),
+
+  updateBackend: (appId: string, backendId: string, data: { enabled?: boolean; priority?: number }) =>
+    apiClient.patch<Backend>(`/v1/apps/${appId}/backends/${backendId}`, data),
+
   getRoute: (appId: string, params?: { clientRegion?: string; method?: string }) =>
     apiClient.get(`/v1/apps/${appId}/route`, { params }),
+
+  getAnalytics: (appId: string, days = 7) =>
+    apiClient.get<AppAnalyticsResponse>(`/v1/apps/${appId}/analytics?days=${days}`),
+
+  listSecrets: (appId: string) =>
+    apiClient.get<{ secrets: Array<{ key: string; value?: string }> }>(`/v1/apps/${appId}/secrets`),
+
+  setSecrets: (appId: string, data: { provider: string; secrets: Record<string, string> }) =>
+    apiClient.post<void>(`/v1/apps/${appId}/secrets`, data),
 };
 
 export async function fetchDeployBackendOptions(): Promise<DeployBackendOption[]> {

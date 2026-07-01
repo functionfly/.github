@@ -174,6 +174,7 @@ export class TokenVault {
       return await this.decrypt(store.tokens.accessToken);
     } catch (e) {
       console.error('Failed to decrypt access token:', e);
+      this.clearTokens();
       return null;
     }
   }
@@ -199,6 +200,7 @@ export class TokenVault {
       return await this.decrypt(store.tokens.refreshToken);
     } catch (e) {
       console.error('Failed to decrypt refresh token:', e);
+      this.clearTokens();
       return null;
     }
   }

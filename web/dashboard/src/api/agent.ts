@@ -88,6 +88,7 @@ export function normalizeAgentIdentity(raw: unknown): AgentIdentity {
         : typeof r.evolution_enabled === 'boolean'
           ? r.evolution_enabled
           : undefined,
+    model: r.model != null ? String(r.model) : undefined,
   };
 }
 
@@ -156,11 +157,17 @@ export interface SEBGModificationProposal {
 }
 
 export interface AgentAnalytics {
-  totalExecutions: number;
-  successRate: number;
-  avgLatencyMs: number;
-  avgCostUsd: number;
-  period: string;
+  agent_id: string;
+  total_calls: number;
+  total_cost_usd: number;
+  avg_latency_ms: number;
+  p50_latency_ms: number;
+  p95_latency_ms: number;
+  success_count: number;
+  error_count: number;
+  timeout_count: number;
+  policy_violation_count: number;
+  success_rate: number;
 }
 
 export interface AgentSession {
@@ -227,11 +234,13 @@ export interface SwarmStats {
 }
 
 export interface AgentWallet {
-  agentId: string;
-  balanceUSD: number;
-  escrowBalanceUSD: number;
-  totalEarnedUSD: number;
-  totalSpentUSD: number;
+  agent_id: string;
+  balance_usd: number;
+  escrow_balance_usd: number;
+  total_earned_usd: number;
+  total_spent_usd: number;
+  last_earning_at?: string;
+  last_spending_at?: string;
 }
 
 export interface AgentFinancialTransaction {
@@ -387,7 +396,7 @@ export const agentApi = {
       model?: string;
     }
   ) =>
-    apiClient.put<{ ok: boolean; agent: AgentIdentity }>(`/v1/agent/${agentId}`, data),
+    apiClient.put<{ ok: boolean; agent: AgentIdentity }>(`/v1/agent/${agentId}`, data).then((res) => ({ ...res, agent: normalizeAgentIdentity(res.agent) })),
 
   // ---------------------------------------------------------------------------
   // Quota Management
@@ -1237,7 +1246,7 @@ export const agentApi = {
    * GET /v1/agent/models
    */
   getModels: () =>
-    apiClient.get<{ ok: boolean; models: Array<{ id: string; name: string; provider: string; tier: string; cost: string }> }>('/v1/ai/models'),
+    apiClient.get<{ ok: boolean; models: Array<{ id: string; name: string; provider: string; provider_label?: string; key_source?: string; tier: string; cost: string }> }>('/v1/ai/models'),
 
   // ---------------------------------------------------------------------------
   // Agent Console (Chat)
@@ -1249,4 +1258,10 @@ export const agentApi = {
    */
   agentChat: (agentId: string, message: string) =>
     apiClient.post<{ ok: boolean; message: string; model: string }>(`/v1/agent/${agentId}/chat`, { message }),
+
+  getChatHistory: (agentId: string, limit = 50, offset = 0) =>
+    apiClient.get<{ ok: boolean; messages: Array<{ role: string; content: string; model?: string; created_at: string }> }>(`/v1/agent/${agentId}/chat/history?limit=${limit}&offset=${offset}`),
+
+  clearChat: (agentId: string) =>
+    apiClient.delete<{ ok: boolean }>(`/v1/agent/${agentId}/chat`),
 };

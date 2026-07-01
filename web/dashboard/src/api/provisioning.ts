@@ -32,7 +32,7 @@ export interface NotProvisionedResponse {
  * Creates an isolated database with Auth, Payments, Email, and Analytics.
  */
 export async function provisionBundle(bundleSlug: string): Promise<ProvisioningResult> {
-  return apiClient.post<ProvisioningResult>('/provisioning/bundle', {
+  return apiClient.post<ProvisioningResult>('/v1/provisioning/bundle', {
     bundle_slug: bundleSlug,
   });
 }
@@ -41,7 +41,7 @@ export async function provisionBundle(bundleSlug: string): Promise<ProvisioningR
  * Get the current provisioning status for the authenticated tenant.
  */
 export async function getProvisioningStatus(): Promise<ProvisioningResult | NotProvisionedResponse> {
-  return apiClient.get<ProvisioningResult | NotProvisionedResponse>('/provisioning/status');
+  return apiClient.get<ProvisioningResult | NotProvisionedResponse>('/v1/provisioning/status');
 }
 
 /**
@@ -49,5 +49,5 @@ export async function getProvisioningStatus(): Promise<ProvisioningResult | NotP
  * Idempotent — active components are skipped.
  */
 export async function retryProvisioning(): Promise<{ status: string; message: string }> {
-  return apiClient.post<{ status: string; message: string }>('/provisioning/retry');
+  return apiClient.post<{ status: string; message: string }>('/v1/provisioning/retry');
 }

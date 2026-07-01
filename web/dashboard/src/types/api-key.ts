@@ -53,6 +53,7 @@ export interface APIKey {
   name: string;
   description?: string;
   key_type: APIKeyType;
+  team_id?: string;
   key_id?: string; // Public key identifier (used by Trust API keys)
   key_prefix: string;
   // Alias for backwards compatibility
@@ -104,6 +105,7 @@ export interface CreateAPIKeyRequest {
   name: string;
   description?: string;
   key_type: APIKeyType;
+  team_id?: string;
   permissions?: PermissionGrant[];
   environments?: string[];
   expires_at?: string;
@@ -146,6 +148,7 @@ export interface AddEnvironmentRequest {
 
 // Filter types
 export interface APIKeyFilters {
+  team_id?: string; // UUID or "personal" for keys with no team
   key_type?: APIKeyType;
   is_active?: boolean;
   expires_before?: string;

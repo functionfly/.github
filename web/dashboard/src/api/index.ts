@@ -80,4 +80,6 @@ export type {
   UsageForecast,
   UsageTrend,
 } from './usageAnalytics';
+export { privacyApi } from './privacy';
+export type { DataDeletionRequest, DataExportRequest, PrivacySettings } from './privacy';
 export { usersApi } from './users';

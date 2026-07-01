@@ -100,7 +100,7 @@ export function useRevokeOtherSessions() {
 // Get user login history
 export function useLoginHistory(params?: { limit?: number; offset?: number }) {
   return useQuery({
-    queryKey: userKeys.loginHistory(),
+    queryKey: [...userKeys.loginHistory(), params?.limit ?? 20, params?.offset ?? 0],
     queryFn: () => usersApi.listLoginHistory(params),
     staleTime: 1000 * 60 * 2, // 2 minutes
   });

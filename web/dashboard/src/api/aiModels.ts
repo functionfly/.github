@@ -4,11 +4,13 @@ export interface ModelCatalogItem {
   id: string;
   display_name: string;
   provider: string;
+  provider_label?: string;
   capabilities?: string[];
   tier?: string;
   context_window?: number;
   cost_hint?: string;
   provider_available?: boolean;
+  key_source?: 'byok' | 'token-plan' | '';
 }
 
 export interface ModelSelection {
@@ -51,5 +53,9 @@ export const aiModelsApi = {
 
   updateMyOverrides: async (overrides: Record<string, ModelSelection>): Promise<void> => {
     await apiClient.patch('/v1/users/me/settings/ai', { overrides });
+  },
+
+  checkModel: async (provider: string, modelId: string): Promise<{ available: boolean; deprecated: boolean; message: string; latency_ms?: number }> => {
+    return apiClient.post('/v1/ai/models/check', { provider, model_id: modelId }) as Promise<{ available: boolean; deprecated: boolean; message: string; latency_ms?: number }>;
   },
 };

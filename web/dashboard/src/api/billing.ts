@@ -211,9 +211,18 @@ export async function createCheckoutSession(
 
 /**
  * Get the current user's payment methods.
+ * Returns empty list when Stripe is not configured or no customer exists.
  */
 export async function listPaymentMethods(): Promise<PaymentMethodsResponse> {
-  return apiClient.get<PaymentMethodsResponse>('/v1/billing/payment-methods');
+  try {
+    return await apiClient.get<PaymentMethodsResponse>('/v1/billing/payment-methods');
+  } catch (e: unknown) {
+    const status = (e as { response?: { status?: number } })?.response?.status;
+    if (status === 404 || status === 503) {
+      return { payment_methods: [] };
+    }
+    throw e;
+  }
 }
 
 /**

@@ -87,7 +87,14 @@ export interface App {
   name: string;
   slug: string;
   tenantId: string;
+  deployUrl: string;
   createdAt: string;
+  /** Snake_case alias from Go API (created_at) */
+  created_at?: string;
+  /** Snake_case alias from Go API (deploy_url) */
+  deploy_url?: string;
+  /** Snake_case alias from Go API (tenant_id) */
+  tenant_id?: string;
 }
 
 export interface Backend {
@@ -98,8 +105,12 @@ export interface Backend {
   region: string;
   url: string;
   sharedSecret: string;
+  /** Snake_case alias from Go API */
+  shared_secret?: string;
   priority?: number;
   createdAt: string;
+  /** Snake_case alias from Go API */
+  created_at?: string;
 }
 
 export interface CircuitState {
@@ -129,17 +140,72 @@ export interface AppStatus {
   backends: BackendStatus[];
 }
 
+export interface AppAnalyticsSummary {
+  totalRequests: number;
+  avgLatencyMs: number;
+  p95LatencyMs: number;
+  p99LatencyMs: number;
+  errorRate: number;
+  successRate: number;
+  totalExecutions: number;
+  totalCostCents: number;
+}
+
+export interface AppRequestTimeseriesPoint {
+  timestamp: string;
+  total: number;
+  success: number;
+  errors: number;
+}
+
+export interface AppLatencyTimeseriesPoint {
+  timestamp: string;
+  avgMs: number;
+  p50Ms: number;
+  p95Ms: number;
+  p99Ms: number;
+}
+
+export interface AppErrorBreakdown {
+  statusCode: number;
+  count: number;
+}
+
+export interface AppBackendBreakdown {
+  backendId: string;
+  provider: string;
+  requests: number;
+  avgLatencyMs: number;
+  errorRate: number;
+}
+
+export interface AppAnalyticsResponse {
+  summary: AppAnalyticsSummary;
+  requestsOverTime: AppRequestTimeseriesPoint[];
+  latencyOverTime: AppLatencyTimeseriesPoint[];
+  topErrors: AppErrorBreakdown[];
+  backendBreakdown: AppBackendBreakdown[];
+}
+
 export interface Deployment {
   id: string;
   appId: string;
+  /** Snake_case alias from Go API */
+  app_id?: string;
   provider: string;
   region: string;
   status: 'pending' | 'building' | 'deploying' | 'success' | 'failed' | 'rolled_back';
   artifactUrl?: string;
   deployedUrl?: string;
   errorMessage?: string;
+  /** Snake_case alias from Go API */
+  message?: string;
   createdAt: string;
+  /** Snake_case alias from Go API */
+  created_at?: string;
   updatedAt: string;
+  /** Snake_case alias from Go API */
+  updated_at?: string;
 }
 
 export interface RoutingDecision {
@@ -185,6 +251,10 @@ export interface LoginResponse {
 export interface CreateAppRequest {
   name: string;
   slug: string;
+}
+
+export interface UpdateAppRequest {
+  name?: string;
 }
 
 export interface CreateBackendRequest {

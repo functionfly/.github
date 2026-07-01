@@ -56,10 +56,15 @@ export function useCreateStateFabric() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateStateFabricRequest) => stateFabricApi.create(data),
+    mutationFn: async (data: CreateStateFabricRequest) => {
+      const result = await stateFabricApi.create(data);
+      console.log('[state-fabric.create] raw response:', result);
+      return result;
+    },
     onSuccess: (created) => {
+      console.log('[state-fabric.create] onSuccess:', created);
       queryClient.invalidateQueries({ queryKey: stateFabricKeys.lists() });
-      toast.success(`"${created.name}" created`);
+      toast.success(`"${created?.name ?? 'State fabric'}" created`);
     },
     onError: (error: Error) => {
       toast.error(`Failed to create state fabric: ${error.message}`);

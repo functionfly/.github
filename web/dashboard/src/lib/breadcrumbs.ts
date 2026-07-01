@@ -104,6 +104,8 @@ export const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   // ─── Account section ────────────────────────────────────────────────────────
   '/settings': { label: 'Settings', path: ROUTES.SETTINGS, icon: Settings },
   '/billing': { label: 'Billing', path: '/billing', icon: CreditCard },
+  '/trust-api': { label: 'Trust API', path: '/settings#trust-api', icon: Shield },
+  '/trust-api/register': { label: 'Register Partner', icon: Shield },
   '/founders': { label: 'Founders', path: ROUTES.FOUNDERS, icon: Sparkles },
   '/enterprise/support': { label: 'Support', path: ROUTES.ENTERPRISE_SUPPORT, icon: LifeBuoy },
 

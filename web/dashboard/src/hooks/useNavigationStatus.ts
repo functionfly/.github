@@ -4,6 +4,8 @@ import { getAppsLimit } from '@/lib/plan-utils';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/api/client';
 import { API_URLS } from '@/lib/api-urls';
+import { appsApi } from '@/api/apps';
+import { useQuery } from '@tanstack/react-query';
 
 interface NavigationStatus {
   functions: {
@@ -47,8 +49,6 @@ interface NavigationStatus {
   };
 }
 
-// Default values - apps.totalCount will be overridden in useNavigationStatus
-// based on the user's plan
 const mockStatusData: NavigationStatus = {
   functions: {
     hasIssues: false,
@@ -96,21 +96,26 @@ export function useNavigationStatus(): NavigationStatus {
   const user = useAuthStore((state) => state.user);
   const plan = user?.plan;
 
-  // Apps limit from plan (unlimited = -1)
   const appsLimit = getAppsLimit(plan);
 
-  // In a real app, this would fetch from API with polling/websockets
-  // For now, return mock data enhanced with notifications
+  const { data: appsData } = useQuery({
+    queryKey: ['apps', 'sidebar-count'],
+    queryFn: () => appsApi.list(),
+    staleTime: 1000 * 60,
+    retry: false,
+  });
+
+  const appCount = appsData?.apps?.length ?? 0;
+
   return useMemo(() => {
     return {
       ...mockStatusData,
       apps: {
         totalCount: appsLimit,
-        deployedCount: 0,
+        deployedCount: appCount,
       },
-      // Could incorporate unreadCount into relevant sections
     };
-  }, [unreadCount, appsLimit]);
+  }, [unreadCount, appsLimit, appCount]);
 }
 
 // Helper hook for getting specific status badge content
@@ -151,6 +156,9 @@ export function useStatusBadge(path: string): { content: string | number | null;
         }
         return { content: status.agents.activeCount, type: 'success' };
       case '/apps':
+        if (status.apps.totalCount < 0) {
+          return { content: status.apps.deployedCount, type: 'info' };
+        }
         return { content: status.apps.deployedCount + '/' + status.apps.totalCount, type: 'info' };
       case '/secrets':
         return { content: status.secrets.totalCount, type: 'info' };

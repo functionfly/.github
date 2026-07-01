@@ -15,33 +15,29 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
+import { platformToVaultPlan } from "@/lib/vaultPlans";
 import type { VaultPlan } from "@/types/vault-enterprise";
-
-interface TenantPlanResponse {
-  plan: VaultPlan;
-}
 
 export function useCurrentPlan() {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["tenant", "plan"],
-    queryFn: async (): Promise<VaultPlan> => {
+    queryKey: ["tenant", "plan", "v2"],
+    queryFn: async (): Promise<{ raw: string; vault: VaultPlan }> => {
       try {
-        // apiClient.get returns Promise<AxiosResponse<T>>; we read .data.
-        // We cast through unknown to avoid coupling to axios's exact types.
         const res = (await apiClient.get("/v1/tenants/plan")) as unknown as {
-          data?: { plan?: VaultPlan };
+          plan?: string;
         };
-        const plan = (res?.data?.plan ?? "free") as VaultPlan;
-        return plan;
+        const raw = (res?.plan ?? "free").toLowerCase();
+        return { raw, vault: platformToVaultPlan(raw) };
       } catch {
-        return "free" as VaultPlan;
+        return { raw: "free", vault: "free" as VaultPlan };
       }
     },
     staleTime: 5 * 60_000,
   });
 
   return {
-    plan: (data ?? "free") as VaultPlan,
+    plan: data?.vault ?? ("free" as VaultPlan),
+    rawPlan: data?.raw ?? "free",
     isLoading,
     error,
   };

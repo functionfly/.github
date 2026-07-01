@@ -89,6 +89,34 @@ export interface TrustAPIInvoicesResponse {
   total: number;
 }
 
+export interface TrustAPIPartnerCreateRequest {
+  name: string;
+  slug: string;
+  description?: string;
+  contact_email: string;
+  contact_name?: string;
+  website_url?: string;
+  tier?: string;
+}
+
+export interface TrustAPIPartnerResponse {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  contact_email: string;
+  contact_name: string;
+  website_url: string;
+  tier: string;
+  rate_limit_per_minute: number;
+  rate_limit_per_day: number;
+  monthly_request_limit: number;
+  current_month_usage: number;
+  status: string;
+  created_at: string;
+  activated_at: string | null;
+}
+
 export interface TrustAPIFounderModeRequest {
   mode_type: 'time_based' | 'revenue_based' | 'hybrid';
   free_days: number;
@@ -211,6 +239,16 @@ export async function enrollTrustAPIFounderMode(
     data,
     { headers }
   );
+}
+
+/**
+ * Register a new Trust API partner.
+ * POST /v1/partners
+ */
+export async function createTrustAPIPartner(
+  data: TrustAPIPartnerCreateRequest
+): Promise<TrustAPIPartnerResponse> {
+  return apiClient.post<TrustAPIPartnerResponse>('/v1/partners', data);
 }
 
 // ==================== Tier Display Helpers ====================

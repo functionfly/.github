@@ -120,12 +120,17 @@ export {
 export {
   appKeys,
   useApp,
+  useAppAnalytics,
   useApps,
   useAppStatus,
+  useAppSecrets,
   useBackends,
   useCreateApp,
   useCreateBackend,
+  useDeleteApp,
+  useDeleteBackend,
   useDeployBackendOptions,
+  useUpdateApp,
 } from './useApps';
 
 // Function Hooks

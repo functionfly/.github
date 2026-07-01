@@ -7,6 +7,7 @@ export interface AIProviderKey {
   last_health_check?: string;
   last_used_at?: string;
   created_at: string;
+  token_plan_region?: string;
 }
 
 export interface SupportedProvider {
@@ -21,6 +22,7 @@ export interface SupportedProvider {
 export interface ConnectAIKeyRequest {
   provider: string;
   apiKey: string;
+  region?: string;
 }
 
 export interface ConnectAIKeyResponse {

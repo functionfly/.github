@@ -58,7 +58,8 @@ export function useAIKeys() {
   return useQuery({
     queryKey: aiKeysQueryKeys.list(),
     queryFn: aiKeysApi.listKeys,
-    staleTime: 30_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
 }
 
@@ -73,7 +74,8 @@ export function useSupportedProviders() {
 export function useConnectAIKey() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: aiKeysApi.connectKey,
+    mutationFn: (params: { provider: string; apiKey: string; region?: string }) =>
+      aiKeysApi.connectKey(params),
     onSuccess: (key) => {
       queryClient.invalidateQueries({ queryKey: aiKeysQueryKeys.list() });
       toast.success(`Connected ${key.provider} key (...${key.key_last4})`);
@@ -99,8 +101,15 @@ export function useDisconnectAIKey() {
 }
 
 export function useTestAIKey() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: aiKeysApi.testKey,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: aiKeysQueryKeys.list() });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to test key');
+    },
   });
 }
 

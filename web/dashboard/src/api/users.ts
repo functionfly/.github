@@ -54,6 +54,14 @@ export interface MeResponse {
   role?: string;
   // Founder badge number for permanent founder members
   founderNumber?: number;
+  // Extended profile fields
+  location?: string;
+  website?: string;
+  jobTitle?: string;
+  socialLinks?: Record<string, string>;
+  twitterUrl?: string;
+  githubUrl?: string;
+  linkedinUrl?: string;
 }
 
 export interface UpdateProfileResponse {
@@ -273,6 +281,12 @@ export interface UsernameChangeHistoryItem {
   was_early_change: boolean;
   fee_paid_cents: number;
   fee_currency: string;
+}
+
+export interface LocationResult {
+  placeId: number;
+  label: string;
+  displayName: string;
 }
 
 export const usersApi = {
@@ -599,4 +613,13 @@ export const usersApi = {
       data
     );
   },
+
+  /**
+   * Search locations via the backend Nominatim proxy.
+   * Returns structured location suggestions with city/state/country labels.
+   */
+  searchLocations: (q: string) =>
+    apiClient.get<{ locations: LocationResult[] }>(
+      `/v1/locations/search?q=${encodeURIComponent(q)}`
+    ),
 };

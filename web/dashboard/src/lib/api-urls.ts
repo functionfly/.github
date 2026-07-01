@@ -153,15 +153,14 @@ export const API_URLS = {
   },
 
   // ========================================================================
-  // State Fabric Endpoints
+  // State Fabric Endpoints (use stateFabricApi from @/api/stateFabric instead)
   // ========================================================================
   stateFabric: {
-    list: (page = 1, limit = 20) => `${API}/state-fabric?page=${page}&limit=${limit}`,
-    get: (id: string) => `${API}/state-fabric/${id}`,
-    create: `${API}/state-fabric`,
-    update: (id: string) => `${API}/state-fabric/${id}`,
-    delete: (id: string) => `${API}/state-fabric/${id}`,
-    entries: (id: string) => `${API}/state-fabric/${id}/entries`,
+    list: (page = 1, limit = 20) => `${API}/state-fabrics?page=${page}&limit=${limit}`,
+    get: (id: string) => `${API}/state-fabrics/${id}`,
+    create: `${API}/state-fabrics`,
+    update: (id: string) => `${API}/state-fabrics/${id}`,
+    delete: (id: string) => `${API}/state-fabrics/${id}`,
   },
 
   // ========================================================================
