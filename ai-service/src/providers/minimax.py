@@ -1,9 +1,9 @@
-"""Xiaomi MiMo provider implementation.
+"""MiniMax provider implementation.
 
-MiMo exposes an OpenAI-compatible chat API at api.xiaomimimo.com.
-Best for: long-context reasoning, agent workflows, cost-efficient flash inference.
+MiniMax exposes an OpenAI-compatible chat API at api.minimaxi.com.
+Best for: agentic workflows, tool use, interleaved thinking.
 
-See https://platform.xiaomimimo.com/docs/en-US/api/chat/openai-api
+See https://platform.minimaxi.com/docs/api-reference/text-chat-openai.md
 """
 
 import os
@@ -11,7 +11,6 @@ from typing import Optional, AsyncGenerator
 import time
 
 from .base import BaseProvider, RetryConfig
-from .model_registry import model_ids_for_provider
 from ..config import settings
 from ..models.schemas import (
     ChatMessage,
@@ -22,17 +21,17 @@ from ..models.schemas import (
     CostTracking,
 )
 
-MIMO_BASE_URL = "https://api.xiaomimimo.com/v1"
+MINIMAX_BASE_URL = "https://api.minimaxi.com/v1"
 
 
-class MiMoProvider(BaseProvider):
-    """Xiaomi MiMo provider (OpenAI-compatible)."""
+class MiniMaxProvider(BaseProvider):
+    """MiniMax provider (OpenAI-compatible)."""
 
     def __init__(self, api_key: Optional[str] = None, base_url: Optional[str] = None):
         super().__init__(
-            name="mimo",
-            display_name="Xiaomi MiMo",
-            rate_limit=getattr(settings, "mimo_rate_limit", 100),
+            name="minimax",
+            display_name="MiniMax",
+            rate_limit=getattr(settings, "minimax_rate_limit", 100),
             retry_config=RetryConfig(
                 max_retries=settings.max_retries,
                 base_delay=settings.retry_base_delay,
@@ -42,13 +41,11 @@ class MiMoProvider(BaseProvider):
         )
         self.api_key = (
             api_key
-            or getattr(settings, "mimo_api_key", None)
-            or os.environ.get("MIMO_API_KEY")
-            or os.environ.get("XIAOMIMIMO_API_KEY")
+            or getattr(settings, "minimax_api_key", None)
+            or os.environ.get("MINIMAX_API_KEY")
         )
-        self.model = getattr(settings, "mimo_model", "mimo-v2-flash")
-        self.base_url = base_url or getattr(settings, "mimo_base_url", MIMO_BASE_URL)
-        self._models = model_ids_for_provider("mimo")
+        self.model = getattr(settings, "minimax_model", "MiniMax-M3")
+        self.base_url = base_url or getattr(settings, "minimax_base_url", MINIMAX_BASE_URL)
         self._available = True
         try:
             from openai import AsyncOpenAI
@@ -84,7 +81,7 @@ class MiMoProvider(BaseProvider):
         stop: Optional[list[str]] = None,
     ) -> CompletionResponse:
         if not self.available:
-            raise RuntimeError("MiMo provider not available. Set MIMO_API_KEY.")
+            raise RuntimeError("MiniMax provider not available. Set MINIMAX_API_KEY.")
         await self.rate_limiter.acquire()
         start_time = time.time()
 
@@ -104,7 +101,6 @@ class MiMoProvider(BaseProvider):
         usage = response.usage
         return CompletionResponse(
             content=choice.message.content or "",
-            provider=ProviderType.MIMO,
             model=response.model,
             usage={
                 "prompt_tokens": usage.prompt_tokens,
@@ -125,7 +121,7 @@ class MiMoProvider(BaseProvider):
         stop: Optional[list[str]] = None,
     ) -> AsyncGenerator[str, None]:
         if not self.available:
-            raise RuntimeError("MiMo provider not available. Set MIMO_API_KEY.")
+            raise RuntimeError("MiniMax provider not available. Set MINIMAX_API_KEY.")
         await self.rate_limiter.acquire()
 
         stream = await self.client.chat.completions.create(
@@ -147,14 +143,14 @@ class MiMoProvider(BaseProvider):
         model: Optional[str] = None,
         dimensions: Optional[int] = None,
     ) -> EmbeddingResponse:
-        raise NotImplementedError("MiMo does not provide an embeddings API.")
+        raise NotImplementedError("MiniMax does not provide an embeddings API via this provider.")
 
     def get_provider_info(self) -> ProviderInfo:
         return ProviderInfo(
             name=self.name,
             display_name=self.display_name,
             available=self.available,
-            models=self._models,
+            models=["MiniMax-M3"],
             rate_limit=self.rate_limiter.rate,
             embedding_dimensions=0,
             supports_streaming=True,
@@ -167,19 +163,8 @@ class MiMoProvider(BaseProvider):
         input_tokens: int,
         output_tokens: int,
     ) -> CostTracking:
-        """Estimate cost from published MiMo API pricing (per 1M tokens)."""
         total_tokens = input_tokens + output_tokens
-        model_lower = model.lower()
-
-        if "flash" in model_lower:
-            input_per_m, output_per_m = 0.10, 0.30
-        elif "2.5-pro" in model_lower or model_lower.endswith("v2-pro"):
-            input_per_m, output_per_m = 1.00, 3.00
-        elif "omni" in model_lower or "2.5" in model_lower:
-            input_per_m, output_per_m = 0.40, 0.80
-        else:
-            input_per_m, output_per_m = 0.50, 1.50
-
+        input_per_m, output_per_m = 1.00, 8.00
         estimated_cost = (input_tokens / 1_000_000 * input_per_m) + (
             output_tokens / 1_000_000 * output_per_m
         )

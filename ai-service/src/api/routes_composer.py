@@ -80,6 +80,7 @@ async def generate_function(
     x_byok_key: Optional[str] = Header(default=None, alias="X-BYOK-Key"),
     x_byok_provider: Optional[str] = Header(default=None, alias="X-BYOK-Provider"),
     x_key_source: str = Header(default="platform", alias="X-Key-Source"),
+    x_byok_base_url: Optional[str] = Header(default=None, alias="X-BYOK-Base-URL"),
 ):
     """Generate a function using AI based on natural language description.
 
@@ -92,6 +93,7 @@ async def generate_function(
         x_byok_key: Optional BYOK API key from Go proxy
         x_byok_provider: Optional BYOK provider name from Go proxy
         x_key_source: Key source indicator ("byok" or "platform")
+        x_byok_base_url: Optional BYOK base URL override (for MiMo Token Plan)
 
     Returns:
         FunctionGenerationResponse with generated code and metadata
@@ -105,7 +107,7 @@ async def generate_function(
         byok_provider = x_byok_provider if x_key_source == "byok" else None
 
         if byok_key and byok_provider:
-            provider = provider_manager.get_provider_for_request(byok_provider, byok_key)
+            provider = provider_manager.get_provider_for_request(byok_provider, byok_key, base_url=x_byok_base_url)
             provider_name = byok_provider
         else:
             provider_name = "openrouter"
@@ -397,6 +399,7 @@ async def generate_function_stream(
     x_byok_key: Optional[str] = Header(default=None, alias="X-BYOK-Key"),
     x_byok_provider: Optional[str] = Header(default=None, alias="X-BYOK-Provider"),
     x_key_source: str = Header(default="platform", alias="X-Key-Source"),
+    x_byok_base_url: Optional[str] = Header(default=None, alias="X-BYOK-Base-URL"),
 ):
     """Stream a function generation using AI.
 
@@ -409,6 +412,7 @@ async def generate_function_stream(
         x_byok_key: Optional BYOK API key from Go proxy
         x_byok_provider: Optional BYOK provider name from Go proxy
         x_key_source: Key source indicator ("byok" or "platform")
+        x_byok_base_url: Optional BYOK base URL override (for MiMo Token Plan)
 
     Returns:
         Streaming response with generated content chunks
@@ -427,7 +431,7 @@ async def generate_function_stream(
         byok_provider = x_byok_provider if x_key_source == "byok" else None
 
         if byok_key and byok_provider:
-            provider = provider_manager.get_provider_for_request(byok_provider, byok_key)
+            provider = provider_manager.get_provider_for_request(byok_provider, byok_key, base_url=x_byok_base_url)
         else:
             provider = provider_manager.get_provider("openai")
 

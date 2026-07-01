@@ -163,9 +163,9 @@ async def _validate_redis_startup() -> None:
         return
 
     try:
-        from .services.redis_client import RedisClient
+        from .services.redis_client import init_redis_client
 
-        redis_client = await RedisClient.create()
+        redis_client = await init_redis_client()
         if not redis_client or not await redis_client.ping():
             raise RuntimeError("Redis ping failed")
 

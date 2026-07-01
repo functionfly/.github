@@ -59,6 +59,8 @@ CURATED_MODELS: list[dict[str, Any]] = [
     _m("openai/gpt-oss-120b", "GPT-OSS 120B", "openrouter", "reasoning", "free", ["chat", "code", "tools"]),
     _m("nvidia/nemotron-3-super-120b-a12b:free", "Nemotron 3 Super 120B (free)", "openrouter", "reasoning", "free", ["chat", "code", "tools"]),
     _m("nvidia/nemotron-3-ultra-550b-a55b:free", "Nemotron 3 Ultra 550B", "openrouter", "reasoning", "free", ["chat", "code", "tools"]),
+    _m("poolside/laguna-m.1:free", "Laguna M.1", "openrouter", "reasoning", "free", ["chat", "code", "tools"]),
+    _m("poolside/laguna-xs.2:free", "Laguna XS.2", "openrouter", "fast", "free", ["chat", "code", "tools"]),
     _m("qwen/qwen3-coder", "Qwen3 Coder", "openrouter", "code", "$$", ["chat", "code", "tools"]),
     _m("openai/gpt-5-codex", "GPT-5 Codex", "openrouter", "code", "$$$", ["chat", "code", "tools"]),
     _m("cohere/north-mini-code:free", "North Mini Code", "openrouter", "code", "free", ["chat", "code", "tools"]),
@@ -140,7 +142,7 @@ CURATED_MODELS: list[dict[str, Any]] = [
     # https://platform.xiaomimimo.com
     # ══════════════════════════════════════════════════════════════════════════
     _m(
-        "mimo-v2.5-pro",
+        "MiMo-V2.5-Pro",
         "MiMo V2.5 Pro",
         "mimo",
         "frontier",
@@ -149,16 +151,16 @@ CURATED_MODELS: list[dict[str, Any]] = [
         context_window=1_000_000,
     ),
     _m(
-        "mimo-v2-pro",
-        "MiMo V2 Pro",
+        "MiMo-V2.5-Pro-UltraSpeed",
+        "MiMo V2.5 Pro UltraSpeed",
         "mimo",
-        "frontier",
-        "$$$",
+        "fast",
+        "$$",
         ["chat", "code", "tools"],
         context_window=1_000_000,
     ),
     _m(
-        "mimo-v2.5",
+        "MiMo-V2.5",
         "MiMo V2.5",
         "mimo",
         "frontier",
@@ -167,22 +169,13 @@ CURATED_MODELS: list[dict[str, Any]] = [
         context_window=1_000_000,
     ),
     _m(
-        "mimo-v2-omni",
-        "MiMo V2 Omni",
+        "MiMo-Ultra",
+        "MiMo Ultra",
         "mimo",
         "frontier",
-        "$$",
+        "$$$",
         ["chat", "code", "tools"],
-        context_window=256_000,
-    ),
-    _m(
-        "mimo-v2-flash",
-        "MiMo V2 Flash",
-        "mimo",
-        "fast",
-        "$",
-        ["chat", "code", "tools"],
-        context_window=256_000,
+        context_window=1_000_000,
     ),
     # ══════════════════════════════════════════════════════════════════════════
     # Ollama — local dev (shown when model is installed)
@@ -207,6 +200,14 @@ CURATED_MODELS: list[dict[str, Any]] = [
     _m("step-1v-8k", "Step 1v 8k", "stepfun", "fast", "$$", ["chat", "code", "tools", "vision"], context_window=8_000),
     _m("step-1v-32k", "Step 1v 32k", "stepfun", "fast", "$$$", ["chat", "code", "tools", "vision"], context_window=32_000),
     _m("step-r1-v-mini", "Step R1 Vision Mini", "stepfun", "reasoning", "$$", ["chat", "code", "tools", "vision"]),
+    # ══════════════════════════════════════════════════════════════════════════
+    # MiniMax — agentic workflows, tool use, long context
+    # https://platform.minimaxi.com
+    # ══════════════════════════════════════════════════════════════════════════
+    _m("MiniMax-M2.5", "MiniMax M2.5", "minimax", "fast", "$", ["chat", "code", "tools"], context_window=256_000),
+    _m("MiniMax-M2.7", "MiniMax M2.7", "minimax", "reasoning", "$$", ["chat", "code", "tools"], context_window=512_000),
+    _m("MiniMax-M3", "MiniMax M3", "minimax", "frontier", "$$$", ["chat", "code", "tools"], context_window=1_000_000),
+    _m("MiniMax-Text-01", "MiniMax Text 01", "minimax", "fast", "$", ["chat", "code", "tools"], context_window=256_000),
 ]
 
 # Providers where catalog entries require the model to exist on the provider

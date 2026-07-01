@@ -456,6 +456,8 @@ def require_permission(permission):
                 return {"error": "Unauthorized"}, 401
         return wrapper
     return decorator''',
+                "fill_prompt": "Configure JWT secret environment variable, required permissions, and authentication flow. Customize permission checking for your authorization model."
+            },
             "nodejs": {
                 "base_code": '''const jwt = require('jsonwebtoken');
 

@@ -1046,3 +1046,11 @@ async def ai_namespace_status():
         },
         "message": "AI namespace is active. Use /api/ai/composer/* for current features.",
     }
+
+
+@router.get("/api/models/catalog")
+async def get_model_catalog():
+    """Return the full model catalog with provider metadata."""
+    from ..providers.model_registry import CURATED_MODELS
+
+    return {"models": CURATED_MODELS}

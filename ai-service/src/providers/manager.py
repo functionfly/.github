@@ -229,7 +229,7 @@ class ProviderManager:
         raise ValueError("No embedding provider available")
 
     def get_provider_for_request(
-        self, provider_name: str, byok_key: Optional[str] = None
+        self, provider_name: str, byok_key: Optional[str] = None, base_url: Optional[str] = None
     ) -> BaseProvider:
         """Get a provider instance, optionally with a BYOK key override.
 
@@ -239,6 +239,7 @@ class ProviderManager:
         Args:
             provider_name: Provider name (openai, anthropic, etc.)
             byok_key: Optional BYOK API key override
+            base_url: Optional base URL override (used for MiMo Token Plan regional endpoints)
 
         Returns:
             Provider instance (cached for platform keys, fresh for BYOK)
@@ -247,14 +248,14 @@ class ProviderManager:
             ValueError: If provider not found
         """
         if byok_key:
-            return self._create_byok_provider(provider_name, byok_key)
+            return self._create_byok_provider(provider_name, byok_key, base_url=base_url)
 
         if provider_name not in self._providers:
             raise ValueError(f"Provider '{provider_name}' not found")
 
         return self._providers[provider_name]
 
-    def _create_byok_provider(self, provider_name: str, api_key: str) -> BaseProvider:
+    def _create_byok_provider(self, provider_name: str, api_key: str, base_url: Optional[str] = None) -> BaseProvider:
         """Create a fresh provider instance with a BYOK key."""
         provider_classes = {
             "openai": OpenAIProvider,
@@ -277,10 +278,19 @@ class ProviderManager:
             provider_classes["stepfun"] = StepFunProvider
         except ImportError:
             pass
+        try:
+            from .minimax import MiniMaxProvider
+            provider_classes["minimax"] = MiniMaxProvider
+            provider_classes["minimax-token-plan"] = MiniMaxProvider
+        except ImportError:
+            pass
 
         cls = provider_classes.get(provider_name)
         if cls is None:
             raise ValueError(f"Provider '{provider_name}' does not support BYOK")
+
+        if base_url and provider_name == "mimo":
+            return cls(api_key=api_key, base_url=base_url)
 
         return cls(api_key=api_key)
 

@@ -216,3 +216,18 @@ class RedisClient:
             return
         if not self._is_upstash:
             await self._client.close()
+
+
+_instance: Optional[RedisClient] = None
+
+
+async def init_redis_client() -> RedisClient:
+    """Create and store the module-level Redis client singleton."""
+    global _instance
+    _instance = await RedisClient.create()
+    return _instance
+
+
+def get_redis_client() -> Optional[RedisClient]:
+    """Return the module-level Redis client singleton (may be None if not initialized)."""
+    return _instance
