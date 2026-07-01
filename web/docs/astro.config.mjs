@@ -127,10 +127,64 @@ export default defineConfig({
           ],
         },
         {
+          label: "Functions",
+          badge: { text: "New", variant: "tip" },
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/functions/" },
+            { label: "Creating Functions", link: "/functions/creating/" },
+            { label: "Function Structure", link: "/functions/structure/" },
+            { label: "Testing Functions", link: "/functions/testing/" },
+            { label: "Best Practices", link: "/functions/best-practices/" },
+          ],
+        },
+        {
+          label: "MCP",
+          badge: { text: "New", variant: "tip" },
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/mcp/" },
+            { label: "Server Setup", link: "/mcp/server-setup/" },
+            { label: "Publish MCP", link: "/mcp/publish-mcp/" },
+            { label: "API Reference", link: "/mcp/api/" },
+          ],
+        },
+        {
+          label: "Time Machine",
+          badge: { text: "New", variant: "tip" },
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/time-machine/" },
+            { label: "Replays", link: "/time-machine/replays/" },
+            { label: "Reconciliation", link: "/time-machine/reconciliation/" },
+            { label: "Audit Certificates", link: "/time-machine/audit-certificates/" },
+            { label: "API Reference", link: "/time-machine/api/" },
+          ],
+        },
+        {
+          label: "Apps",
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/apps/" },
+            { label: "Backends", link: "/apps/backends/" },
+            { label: "Deployments", link: "/apps/deployments/" },
+            { label: "API Reference", link: "/apps/api/" },
+          ],
+        },
+        {
+          label: "API Keys",
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/api-keys/" },
+            { label: "Permissions", link: "/api-keys/permissions/" },
+            { label: "Rotation", link: "/api-keys/rotation/" },
+            { label: "API Reference", link: "/api-keys/api/" },
+          ],
+        },
+        {
           label: "Core Concepts",
           collapsed: false,
           items: [
-            { label: "Functions", link: "/functions/" },
             { label: "CLI", link: "/cli/" },
             { label: "Deployment", link: "/deployment/" },
             { label: "Registry", link: "/registry/" },
