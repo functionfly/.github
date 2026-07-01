@@ -803,3 +803,373 @@ h2::after {
     color: black !important;
   }
 }
+
+/* ==========================================================================
+   SC Button System — Loaded last for specificity over Tailwind utilities
+   Spec 3.6 (SealedButton) / 3.7 (FrameButton)
+   ========================================================================== */
+
+.sealed-btn-primary {
+  background: linear-gradient(180deg, #ffffff 0%, #d8dee2 100%) !important;
+  color: var(--text-on-light, #0a0d11) !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: var(--radius, 4px) !important;
+  box-shadow: var(--shadow-btn-primary-rest) !important;
+  transition:
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  cursor: pointer;
+}
+
+.sealed-btn-primary:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover) !important;
+}
+
+.sealed-btn-primary:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active) !important;
+  transform: translateY(1px) !important;
+}
+
+.sealed-btn-primary:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  box-shadow: none !important;
+}
+
+.sealed-btn-primary:focus-visible {
+  box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus) !important;
+  outline: none !important;
+}
+
+.sealed-btn-outline {
+  background: transparent !important;
+  color: var(--text, #eef2f0) !important;
+  font-weight: 500 !important;
+  border: 1px solid var(--steel, #2a3138) !important;
+  border-radius: var(--radius, 4px) !important;
+  box-shadow: none !important;
+  transition:
+    border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+  cursor: pointer;
+}
+
+.sealed-btn-outline:hover:not(:disabled) {
+  border-color: var(--steel-light, #4a565f) !important;
+}
+
+.sealed-btn-outline:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-secondary-active) !important;
+}
+
+.sealed-btn-outline:focus-visible {
+  box-shadow: var(--shadow-focus) !important;
+  outline: none !important;
+}
+
+.sealed-btn-destructive {
+  background: linear-gradient(180deg, #ff6b6b 0%, #e05555 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-radius: var(--radius, 4px) !important;
+  box-shadow: var(--shadow-btn-primary-rest) !important;
+  transition:
+    box-shadow var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+  cursor: pointer;
+}
+
+.sealed-btn-destructive:hover:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-hover) !important;
+}
+
+.sealed-btn-destructive:active:not(:disabled) {
+  box-shadow: var(--shadow-btn-primary-active) !important;
+  transform: translateY(1px) !important;
+}
+
+.sealed-btn-destructive:focus-visible {
+  box-shadow: var(--shadow-btn-primary-rest), var(--shadow-focus) !important;
+  outline: none !important;
+}
+
+.sealed-btn-secondary {
+  background: var(--panel-raised, #131922) !important;
+  color: var(--text, #eef2f0) !important;
+  font-weight: 500 !important;
+  border: 1px solid var(--panel-edge, #1c242b) !important;
+  border-radius: var(--radius, 4px) !important;
+  transition: border-color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+  cursor: pointer;
+}
+
+.sealed-btn-secondary:hover:not(:disabled) {
+  border-color: var(--steel-light, #4a565f) !important;
+}
+
+.sealed-btn-secondary:focus-visible {
+  box-shadow: var(--shadow-focus) !important;
+  outline: none !important;
+}
+
+.sealed-btn-ghost {
+  background: transparent !important;
+  color: var(--text-dim, #7c8a8a) !important;
+  border: none !important;
+  border-radius: var(--radius-sm, 3px) !important;
+  transition:
+    color var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)),
+    background var(--duration-fast, 120ms) var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) !important;
+  cursor: pointer;
+}
+
+.sealed-btn-ghost:hover:not(:disabled) {
+  color: var(--text, #eef2f0) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.sealed-btn-ghost:focus-visible {
+  box-shadow: var(--shadow-focus) !important;
+  outline: none !important;
+}
+
+.sealed-btn-link {
+  background: transparent !important;
+  color: var(--accent, #ff7a3d) !important;
+  border: none !important;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.sealed-btn-link:hover {
+  text-decoration: underline !important;
+  color: var(--accent-hover, #ff8f5c) !important;
+}
+
+/* Light mode button overrides */
+[data-theme='light'] .sealed-btn-primary {
+  color: #0f172a !important;
+}
+
+[data-theme='light'] .sealed-btn-outline {
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+[data-theme='light'] .sealed-btn-outline:hover:not(:disabled) {
+  border-color: #94a3b8 !important;
+}
+
+[data-theme='light'] .sealed-btn-secondary {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+[data-theme='light'] .sealed-btn-secondary:hover:not(:disabled) {
+  border-color: #94a3b8 !important;
+}
+
+[data-theme='light'] .sealed-btn-ghost {
+  color: #64748b !important;
+}
+
+[data-theme='light'] .sealed-btn-ghost:hover:not(:disabled) {
+  color: #0f172a !important;
+  background: rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ==========================================================================
+   Vault Dialog Styles — Global (Radix portals to <body>, bypasses .vault-page)
+   ========================================================================== */
+
+.secrets-dialog-content {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--panel-edge) !important;
+  background: var(--panel) !important;
+  box-shadow: var(--shadow-chamber) !important;
+}
+
+.secrets-dialog-content::before {
+  display: none !important;
+}
+
+.secrets-dialog-header {
+  border-bottom: 1px solid var(--panel-edge) !important;
+  padding-bottom: var(--space-4) !important;
+}
+
+.secrets-dialog-title {
+  font-family: var(--font-display) !important;
+  color: var(--text) !important;
+}
+
+.secrets-dialog-description {
+  color: var(--text-dim) !important;
+}
+
+.secrets-dialog-footer {
+  border-top: 1px solid var(--panel-edge) !important;
+  padding-top: var(--space-4) !important;
+}
+
+.secrets-delete-content {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid rgba(255, 107, 107, 0.3) !important;
+  background: var(--panel) !important;
+  box-shadow: var(--shadow-chamber) !important;
+}
+
+.secrets-delete-header {
+  border-bottom: 1px solid var(--panel-edge) !important;
+}
+
+.secrets-delete-title {
+  font-family: var(--font-display) !important;
+  color: var(--status-revoked) !important;
+}
+
+.secrets-delete-description {
+  color: var(--text-dim) !important;
+}
+
+.secrets-delete-description strong {
+  color: var(--text) !important;
+}
+
+.secrets-delete-footer {
+  border-top: 1px solid var(--panel-edge) !important;
+}
+
+/* Form styles — global for portaled dialogs */
+.secrets-form-label {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.06em !important;
+  text-transform: uppercase !important;
+  color: var(--text-faint) !important;
+  display: block !important;
+}
+
+.secrets-form-error {
+  font-size: 12px !important;
+  color: var(--status-revoked) !important;
+  font-family: var(--font-mono) !important;
+  margin-top: var(--space-1) !important;
+}
+
+.secrets-form-hint {
+  font-size: 12px !important;
+  color: var(--text-faint) !important;
+  margin-top: var(--space-1) !important;
+}
+
+.secrets-scope-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: var(--space-1) !important;
+  padding: var(--space-1) var(--space-3) !important;
+  border-radius: 9999px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-mono) !important;
+  background: var(--panel-raised) !important;
+  color: var(--text-dim) !important;
+  border: 1px solid var(--steel) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+  cursor: pointer !important;
+}
+
+.secrets-scope-btn:hover {
+  border-color: var(--status-pending) !important;
+  color: var(--text) !important;
+}
+
+.secrets-scope-btn-active {
+  background: rgba(255, 122, 61, 0.08) !important;
+  color: var(--accent) !important;
+  border-color: rgba(255, 122, 61, 0.2) !important;
+}
+
+.secrets-scope-btn-active:hover {
+  background: rgba(255, 122, 61, 0.15) !important;
+}
+
+.secrets-generate-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: var(--space-1) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-mono) !important;
+  color: var(--status-pending) !important;
+  padding: var(--space-1) var(--space-2) !important;
+  border-radius: var(--radius-sm) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+  cursor: pointer !important;
+}
+
+.secrets-generate-btn:hover {
+  background: rgba(232, 196, 104, 0.1) !important;
+}
+
+.secrets-copy-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: var(--space-1) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-mono) !important;
+  color: var(--text-dim) !important;
+  padding: var(--space-1) var(--space-2) !important;
+  border-radius: var(--radius-sm) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+  cursor: pointer !important;
+}
+
+.secrets-copy-btn:hover {
+  background: var(--panel-raised) !important;
+  color: var(--text) !important;
+}
+
+.secrets-toggle-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  border-radius: var(--radius) !important;
+  color: var(--text-dim) !important;
+  transition: all var(--duration-fast) var(--ease-out) !important;
+  cursor: pointer !important;
+}
+
+.secrets-toggle-btn:hover {
+  background: var(--panel-raised) !important;
+  color: var(--accent) !important;
+}
+
+.secrets-warning-box {
+  border-radius: var(--radius) !important;
+  background: rgba(232, 196, 104, 0.04) !important;
+  border: 1px solid rgba(232, 196, 104, 0.15) !important;
+  padding: var(--space-3) !important;
+  margin-top: var(--space-2) !important;
+}
+
+.secrets-warning-box .text-warning {
+  color: var(--status-pending) !important;
+}
+
+.secrets-form-actions {
+  display: flex !important;
+  justify-content: flex-end !important;
+  gap: var(--space-3) !important;
+  padding-top: var(--space-4) !important;
+  border-top: 1px solid var(--panel-edge) !important;
+}
