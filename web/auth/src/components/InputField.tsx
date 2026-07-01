@@ -38,11 +38,13 @@ export default function InputField(props: Props) {
     autoComplete: _ac1,
     autocomplete: _ac2,
     type: _type,
+    label: _label,
     ...restWithoutAutoComplete
   } = rest as Props & {
     autoComplete?: string;
     autocomplete?: string;
     type?: string;
+    label?: string;
   };
 
   return (
@@ -51,7 +53,7 @@ export default function InputField(props: Props) {
         id={id}
         name={name}
         type={isPassword && showPwd ? "text" : type}
-        label={label}
+        label={typeof label === "string" ? label : undefined}
         error={error}
         autoComplete={autoCompleteValue}
         aria-describedby={describedBy}

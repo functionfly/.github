@@ -35,6 +35,8 @@ Then in another terminal: `curl http://localhost:8080/api/health`
 | **Repo docs (Markdown)** | `docs/` | Design, ops, internal guides (not the public docs site) |
 | **Local PG 17 + pgvector** | `docs/LOCAL_POSTGRES_17.md` | PostgreSQL 17 with pgvector and extensions for local dev |
 | **Go modules** | `go.work`, `go.mod` | Workspace with main module + `cmd/delete-functions/` for incremental builds |
+| **ML Intelligence Layer** | `ai-service/src/services/ml_common/`, `cost_anomaly/`, `thompson_routing/`, `recommendations/`, `prewarming/holt_winters.py` | Four ML services: cost anomaly (Z-score), prewarming (Holt-Winters), routing (Thompson Sampling), recommendations (ALS) |
+| **ML API routes** | `ai-service/src/api/routes_ml.py` | Endpoints at `/api/ml/*` for all ML services |
 
 When adding API surface: add handler in `internal/api/handlers/`, register in `internal/api/routes.go`, and use existing storage/auth patterns.
 
@@ -234,6 +236,40 @@ Compliance-based data retention is implemented for cost allocation entries:
 | `DATA_RETENTION_SKIP_IF_LEGAL_HOLD` | Skip cleanup if legal holds active | `true` |
 
 **Legal Holds:** Use the `legal_holds` table to block deletion for litigation/audit. Check `is_under_legal_hold()` function before any bulk deletion.
+
+---
+
+## ML Intelligence Layer
+
+The FlyMind AI service includes four ML services that replace rule-based heuristics with learned models:
+
+| Service | Location | Technique | API Prefix |
+|---------|----------|-----------|------------|
+| **Cost Anomaly** | `ai-service/src/services/cost_anomaly/` | Adaptive Z-score (Welford's online algorithm) | `/api/ml/anomalies/cost/*` |
+| **Prewarming** | `ai-service/src/services/prewarming/holt_winters.py` | Holt-Winters triple exponential smoothing | `/api/ml/prewarm/*` |
+| **Routing** | `ai-service/src/services/thompson_routing/` | Thompson Sampling multi-armed bandit | `/api/ml/route/*` |
+| **Recommendations** | `ai-service/src/services/recommendations/` | ALS collaborative filtering | `/api/ml/recommendations/*` |
+
+**Shared infrastructure:** `ai-service/src/services/ml_common/` — model persistence (joblib), feature extraction from Redis, synthetic data generation for bootstrapping.
+
+**Key ML config variables:**
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `ML_ENABLED` | Master switch for ML services | `true` |
+| `ML_COST_ANOMALY_THRESHOLD` | Z-score threshold for cost anomalies | `3.0` |
+| `ML_ROUTING_EXPLORATION` | Thompson Sampling exploration budget (0.0-1.0) | `0.1` |
+| `ML_PREWARM_SEASONALITY_PERIODS` | Holt-Winters seasonality periods | `24` |
+| `ML_RECOMMENDATION_LATENT_DIMS` | ALS latent factor dimensions | `50` |
+| `ML_MODEL_DIR` | Model storage directory | `/var/lib/flymind/models` |
+
+**How it works:**
+- Cost anomaly: Go backend calls `POST /api/ml/anomalies/cost/check` after each cost allocation batch. Uses Welford's online algorithm for running mean/stddev per function. Also detects memory leak trends.
+- Prewarming: Holt-Winters forecasts demand with hourly and weekly seasonality. Replaces simple moving average.
+- Routing: Thompson Sampling maintains Beta(α, β) distributions per edge per function. Naturally explores/exploits. Update via `POST /api/ml/route/outcome` after each execution.
+- Recommendations: ALS matrix factorization on user-function interaction matrix. Falls back to popularity for cold-start users.
+
+**Design spec:** `docs/superpowers/specs/2026-06-30-ml-intelligence-layer-design.md`
 
 ---
 
