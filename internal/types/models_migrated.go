@@ -3875,3 +3875,23 @@ const (
 	PCIAuditSessionCreated    = "session_created"
 	PCIAuditSessionTerminated = "session_terminated"
 )
+
+// AgentMCPServer represents an MCP server connected to an agent
+type AgentMCPServer struct {
+	ID              uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID         string         `json:"agent_id" gorm:"not null;index"`
+	TenantID        uuid.UUID      `json:"tenant_id" gorm:"type:uuid;not null;index"`
+	Name            string         `json:"name" gorm:"not null"`
+	URL             string         `json:"url" gorm:"not null"`
+	Transport       string         `json:"transport" gorm:"not null;default:'streamable-http'"`
+	Description     string         `json:"description"`
+	Enabled         bool           `json:"enabled" gorm:"default:true"`
+	Headers         JSONMap        `json:"headers" gorm:"type:jsonb;not null;default:'{}'"`
+	ToolCount       int            `json:"tool_count" gorm:"default:0"`
+	LastConnectedAt *time.Time     `json:"last_connected_at,omitempty"`
+	LastError       string         `json:"last_error,omitempty"`
+	CreatedAt       time.Time      `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt       time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (AgentMCPServer) TableName() string { return "agent_mcp_servers" }

@@ -241,6 +241,40 @@ func (h *Handler) HandleGetCostBreakdown(w http.ResponseWriter, r *http.Request)
 	})
 }
 
+// HandleGetModelBreakdown returns cost and token breakdown by model for an agent
+// GET /v1/agent/{agent_id}/model-breakdown
+func (h *Handler) HandleGetModelBreakdown(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
+		return
+	}
+
+	agentID := mux.Vars(r)["agent_id"]
+	agent, err := h.identityRepo.GetAgent(r.Context(), agentID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
+		return
+	}
+
+	if agent.TenantID != claims.TenantID {
+		writeError(w, http.StatusForbidden, "FORBIDDEN", "access denied")
+		return
+	}
+
+	breakdown, err := h.attributionRepo.GetModelBreakdown(r.Context(), agentID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "MODEL_BREAKDOWN_FAILED", "failed to get model breakdown")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":       true,
+		"agent_id": agentID,
+		"models":   breakdown,
+	})
+}
+
 // HandlePurchaseCredits purchases execution credits for an agent
 // POST /v1/agent/{agent_id}/credits/purchase
 func (h *Handler) HandlePurchaseCredits(w http.ResponseWriter, r *http.Request) {

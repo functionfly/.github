@@ -26,6 +26,7 @@ type (
 	AgentFunctionExecution            = types.AgentFunctionExecution
 	AgentFunctionExecutionsFilter     = types.AgentFunctionExecutionsFilter
 	AgentFunctionPolicy               = types.AgentFunctionPolicy
+	AgentMCPServer                    = types.AgentMCPServer
 	AgentMemory                       = types.AgentMemory
 	AgentMemoryIndex                  = types.AgentMemoryIndex
 	AgentSubscription                 = types.AgentSubscription

@@ -116,6 +116,8 @@ type AgentIdentity struct {
 	AutonomousEnabled bool      `json:"autonomous_enabled" gorm:"not null;default:false"`
 	EvolutionEnabled  bool      `json:"evolution_enabled" gorm:"not null;default:false"`
 	Model             string    `json:"model" gorm:"not null;default:'gpt-4o-mini'"`
+	ThinkingMode      string    `json:"thinking_mode" gorm:"not null;default:'off'"`    // off | auto | always
+	ThinkingBudget    int       `json:"thinking_budget" gorm:"not null;default:10000"` // max thinking tokens
 	TrustScore        float64   `json:"trust_score" gorm:"type:decimal(5,2);default:0"`
 	EconomicScore     float64   `json:"economic_score" gorm:"type:decimal(5,2);default:0"`
 

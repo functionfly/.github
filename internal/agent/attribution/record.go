@@ -33,6 +33,12 @@ type AgentExecutionRecord struct {
 	Outcome          string     `json:"outcome" gorm:"not null"` // success | error | timeout | policy_violation
 	ErrorCode        *string    `json:"error_code,omitempty"`
 	PolicyViolation  *string    `json:"policy_violation,omitempty"`
+	ModelName        string     `json:"model_name,omitempty"`
+	Provider         string     `json:"provider,omitempty"`
+	PromptTokens     int        `json:"prompt_tokens" gorm:"not null;default:0"`
+	CompletionTokens int        `json:"completion_tokens" gorm:"not null;default:0"`
+	TotalTokens      int        `json:"total_tokens" gorm:"not null;default:0"`
+	ReasoningTokens  int        `json:"reasoning_tokens" gorm:"not null;default:0"`
 	ObjectKey        string     `json:"object_key,omitempty"` // pointer to full record in object storage
 	Timestamp        time.Time  `json:"timestamp" gorm:"not null;default:now()"`
 	RetentionDays    int        `json:"retention_days" gorm:"-"` // not stored in DB, computed from plan
@@ -225,7 +231,11 @@ func (r *Repository) GetAnalytics(ctx context.Context, agentID string, since tim
 			SUM(CASE WHEN outcome = 'success' THEN 1 ELSE 0 END) as success_count,
 			SUM(CASE WHEN outcome = 'error' THEN 1 ELSE 0 END) as error_count,
 			SUM(CASE WHEN outcome = 'timeout' THEN 1 ELSE 0 END) as timeout_count,
-			SUM(CASE WHEN outcome = 'policy_violation' THEN 1 ELSE 0 END) as policy_violation_count
+			SUM(CASE WHEN outcome = 'policy_violation' THEN 1 ELSE 0 END) as policy_violation_count,
+			COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
+			COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
+			COALESCE(SUM(total_tokens), 0) as total_all_tokens,
+			COALESCE(SUM(reasoning_tokens), 0) as total_reasoning_tokens
 		`).
 		Scan(&analytics).Error
 
@@ -253,6 +263,10 @@ type AgentAnalytics struct {
 	TimeoutCount         int64   `json:"timeout_count"`
 	PolicyViolationCount int64   `json:"policy_violation_count"`
 	SuccessRate          float64 `json:"success_rate"`
+	TotalPromptTokens    int64   `json:"total_prompt_tokens"`
+	TotalCompletionTokens int64  `json:"total_completion_tokens"`
+	TotalAllTokens       int64   `json:"total_all_tokens"`
+	TotalReasoningTokens int64   `json:"total_reasoning_tokens"`
 }
 
 // HashInput computes a SHA-256 hash of the input for attribution
@@ -269,10 +283,27 @@ func HashOutput(output json.RawMessage) string {
 
 // CostBreakdownItem holds cost information for a single function
 type CostBreakdownItem struct {
-	FunctionURI   string  `json:"function_uri"`
-	TotalCalls   int64   `json:"total_calls"`
-	TotalCostUSD float64 `json:"total_cost_usd"`
-	AvgLatencyMs float64 `json:"avg_latency_ms"`
+	FunctionURI       string  `json:"function_uri"`
+	TotalCalls        int64   `json:"total_calls"`
+	TotalCostUSD      float64 `json:"total_cost_usd"`
+	AvgLatencyMs      float64 `json:"avg_latency_ms"`
+	TotalPromptTokens int64   `json:"total_prompt_tokens"`
+	TotalCompletionTokens int64 `json:"total_completion_tokens"`
+	TotalTokens       int64   `json:"total_tokens"`
+}
+
+// ModelBreakdownItem holds cost and token information for a single model
+type ModelBreakdownItem struct {
+	ModelName             string  `json:"model_name"`
+	Provider              string  `json:"provider"`
+	TotalCalls            int64   `json:"total_calls"`
+	TotalCostUSD          float64 `json:"total_cost_usd"`
+	AvgLatencyMs          float64 `json:"avg_latency_ms"`
+	TotalPromptTokens     int64   `json:"total_prompt_tokens"`
+	TotalCompletionTokens int64   `json:"total_completion_tokens"`
+	TotalTokens           int64   `json:"total_tokens"`
+	TotalReasoningTokens  int64   `json:"total_reasoning_tokens"`
+	AvgTokensPerCall      float64 `json:"avg_tokens_per_call"`
 }
 
 // GetCostBreakdown returns cost breakdown by function for an agent
@@ -285,7 +316,10 @@ func (r *Repository) GetCostBreakdown(ctx context.Context, agentID string) ([]*C
 			function_uri,
 			COUNT(*) as total_calls,
 			COALESCE(SUM(cost_usd), 0) as total_cost_usd,
-			COALESCE(AVG(latency_ms), 0) as avg_latency_ms
+			COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
+			COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
+			COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
+			COALESCE(SUM(total_tokens), 0) as total_tokens
 		`).
 		Where("agent_id = ?", agentID).
 		Group("function_uri").
@@ -294,6 +328,36 @@ func (r *Repository) GetCostBreakdown(ctx context.Context, agentID string) ([]*C
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cost breakdown: %w", err)
+	}
+
+	return results, nil
+}
+
+// GetModelBreakdown returns cost and token breakdown by model for an agent
+func (r *Repository) GetModelBreakdown(ctx context.Context, agentID string) ([]*ModelBreakdownItem, error) {
+	var results []*ModelBreakdownItem
+
+	err := r.db.WithContext(ctx).
+		Table("agent_execution_records").
+		Select(`
+			COALESCE(model_name, 'unknown') as model_name,
+			COALESCE(provider, 'unknown') as provider,
+			COUNT(*) as total_calls,
+			COALESCE(SUM(cost_usd), 0) as total_cost_usd,
+			COALESCE(AVG(latency_ms), 0) as avg_latency_ms,
+			COALESCE(SUM(prompt_tokens), 0) as total_prompt_tokens,
+			COALESCE(SUM(completion_tokens), 0) as total_completion_tokens,
+			COALESCE(SUM(total_tokens), 0) as total_tokens,
+			COALESCE(SUM(reasoning_tokens), 0) as total_reasoning_tokens,
+			CASE WHEN COUNT(*) > 0 THEN COALESCE(SUM(total_tokens), 0)::float / COUNT(*) ELSE 0 END as avg_tokens_per_call
+		`).
+		Where("agent_id = ?", agentID).
+		Group("model_name, provider").
+		Order("total_cost_usd DESC").
+		Scan(&results).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get model breakdown: %w", err)
 	}
 
 	return results, nil

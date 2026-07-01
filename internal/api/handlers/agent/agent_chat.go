@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/aikeys"
+	"github.com/functionfly/functionfly/internal/agent/attribution"
+	"github.com/functionfly/functionfly/internal/agent/chat"
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -24,13 +26,18 @@ import (
 )
 
 type agentChatRequest struct {
-	Message string `json:"message"`
+	Message   string `json:"message"`
+	SessionID string `json:"session_id,omitempty"`
 }
 
 type agentChatResponse struct {
-	OK      bool   `json:"ok"`
-	Message string `json:"message"`
-	Model   string `json:"model"`
+	OK               bool                  `json:"ok"`
+	Message          string                `json:"message"`
+	Model            string                `json:"model"`
+	Thinking         *chat.ThinkingContent `json:"thinking,omitempty"`
+	PromptTokens     int                   `json:"prompt_tokens,omitempty"`
+	CompletionTokens int                   `json:"completion_tokens,omitempty"`
+	TotalTokens      int                   `json:"total_tokens,omitempty"`
 }
 
 // agentSessionID returns a deterministic UUID for an agent's chat session.
@@ -39,6 +46,33 @@ func agentSessionID(agentID uuid.UUID) uuid.UUID {
 	s := hex.EncodeToString(h[:16])
 	u, _ := uuid.Parse(s[:8] + "-" + s[8:12] + "-" + s[12:16] + "-" + s[16:20] + "-" + s[20:])
 	return u
+}
+
+// shouldThink determines if thinking should be enabled based on mode and message content.
+func shouldThink(message, mode string) bool {
+	if mode == "always" {
+		return true
+	}
+	if mode == "off" || mode == "" {
+		return false
+	}
+	// auto mode
+	if len(message) > 200 {
+		return true
+	}
+	if strings.Contains(message, "```") {
+		return true
+	}
+	keywords := []string{"analyze", "debug", "explain", "compare", "design",
+		"architect", "evaluate", "think", "reason", "why", "how",
+		"optimize", "review", "trace", "investigate"}
+	lower := strings.ToLower(message)
+	for _, kw := range keywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 // HandleAgentChat sends a message to the agent via the FlyMind AI service
@@ -74,18 +108,23 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 		model = "gpt-4o-mini"
 	}
 
-	aiBaseURL := os.Getenv("AI_SERVICE_URL")
-	if aiBaseURL == "" {
-		aiBaseURL = "http://localhost:18081"
-	}
-	aiAPIKey := os.Getenv("AI_SERVICE_API_KEY")
-
 	systemPrompt := fmt.Sprintf(
 		"You are %s, an AI agent. %s Respond concisely and helpfully.",
 		agent.Name, agent.Description,
 	)
 
-	sessionID := agentSessionID(agent.ID)
+	// Resolve session ID: use provided session_id, or fall back to deterministic default
+	var sessionID uuid.UUID
+	if req.SessionID != "" {
+		sid, err := uuid.Parse(req.SessionID)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_SESSION", "invalid session_id")
+			return
+		}
+		sessionID = sid
+	} else {
+		sessionID = agentSessionID(agent.ID)
+	}
 
 	// Execute tools if the message looks like it needs them
 	toolResults := h.executeAgentTools(r.Context(), req.Message, agent, claims)
@@ -96,22 +135,89 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 		systemPrompt += "\n\nYou have access to tools. When tool results are provided in [Tool Results], use them to answer the user's question. Cite sources when available."
 	}
 
+	// Build thinking config from agent settings
+	var thinking *chat.ThinkingConfig
+	if shouldThink(req.Message, agent.ThinkingMode) {
+		budget := agent.ThinkingBudget
+		if budget <= 0 {
+			budget = 10000
+		}
+		thinking = &chat.ThinkingConfig{
+			Mode:         agent.ThinkingMode,
+			BudgetTokens: budget,
+		}
+	}
+
+	// Persist user message
+	modelCopy := model
+	h.saveChatMessage(r.Context(), sessionID, "user", req.Message, &modelCopy, nil)
+
+	// Try BYOK direct path: call the LLM provider directly, bypassing FlyMind
+	if h.byokRepo != nil {
+		reply, thinkingContent, byokResp, ok := h.tryBYOKDirect(r.Context(), model, systemPrompt, messageWithContext, claims, thinking)
+		if ok {
+			h.saveChatMessage(r.Context(), sessionID, "assistant", reply, &modelCopy, thinkingContent)
+
+			// Record execution with token data
+			if h.attributionRepo != nil && byokResp != nil {
+				execRecord := &attribution.AgentExecutionRecord{
+					AgentID:          agent.AgentID,
+					TenantID:         agent.TenantID,
+					FunctionID:       uuid.Nil,
+					FunctionURI:      fmt.Sprintf("chat://%s", model),
+					ExecutionID:      generateExecutionID(),
+					SessionID:        sessionID.String(),
+					LatencyMs:        0,
+					Outcome:          attribution.OutcomeSuccess,
+					ModelName:        byokResp.Model,
+					Provider:         chat.ProviderFromModel(model),
+					PromptTokens:     byokResp.PromptTokens,
+					CompletionTokens: byokResp.CompletionTokens,
+					TotalTokens:      byokResp.TotalTokens,
+					ReasoningTokens:  byokResp.ReasoningTokens,
+					Timestamp:        time.Now(),
+				}
+				h.attributionRepo.RecordExecution(r.Context(), execRecord)
+			}
+
+			writeJSON(w, http.StatusOK, agentChatResponse{
+				OK:               true,
+				Message:          reply,
+				Model:            model,
+				Thinking:         thinkingContent,
+				PromptTokens:     byokResp.PromptTokens,
+				CompletionTokens: byokResp.CompletionTokens,
+				TotalTokens:      byokResp.TotalTokens,
+			})
+			return
+		}
+	}
+
+	// Fall back to FlyMind
+	aiBaseURL := os.Getenv("AI_SERVICE_URL")
+	if aiBaseURL == "" {
+		aiBaseURL = "http://localhost:18081"
+	}
+	aiAPIKey := os.Getenv("AI_SERVICE_API_KEY")
+
+	contextMap := map[string]string{
+		"agent_id":      agent.AgentID,
+		"agent_name":    agent.Name,
+		"system_prompt": systemPrompt,
+	}
+	if thinking != nil {
+		contextMap["thinking_mode"] = thinking.Mode
+		contextMap["thinking_budget"] = strconv.Itoa(thinking.BudgetTokens)
+	}
+
 	aiReq := map[string]interface{}{
 		"session_id": sessionID.String(),
 		"message":    messageWithContext,
 		"model":      model,
 		"tenant_id":  claims.TenantID.String(),
 		"user_id":    claims.UserID.String(),
-		"context": map[string]string{
-			"agent_id":      agent.AgentID,
-			"agent_name":    agent.Name,
-			"system_prompt": systemPrompt,
-		},
+		"context":    contextMap,
 	}
-
-	// Persist user message
-	modelCopy := model
-	h.saveChatMessage(r.Context(), sessionID, "user", req.Message, &modelCopy)
 
 	body, _ := json.Marshal(aiReq)
 	httpReq, err := http.NewRequestWithContext(r.Context(), "POST", aiBaseURL+"/api/chat/message", bytes.NewBuffer(body))
@@ -122,51 +228,6 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 	httpReq.Header.Set("Content-Type", "application/json")
 	if aiAPIKey != "" {
 		httpReq.Header.Set("X-API-Key", aiAPIKey)
-	}
-
-	// Inject BYOK key if tenant has one for this model's provider
-	if h.byokRepo != nil {
-		provider := providerFromModel(model)
-		if provider != "" {
-			tid, err := uuid.Parse(claims.TenantID.String())
-			if err == nil {
-				key, err := h.byokRepo.GetByTenantAndProvider(r.Context(), tid, provider)
-				if err != nil || key == nil || key.Status != "active" {
-					if provider == "mimo" {
-						key, err = h.byokRepo.GetByTenantAndProvider(r.Context(), tid, "mimo-token-plan")
-						if err != nil || key == nil || key.Status != "active" {
-							key = nil
-						}
-					} else if provider == "minimax" {
-						key, err = h.byokRepo.GetByTenantAndProvider(r.Context(), tid, "minimax-token-plan")
-						if err != nil || key == nil || key.Status != "active" {
-							key = nil
-						}
-					} else {
-						key = nil
-					}
-				}
-				if key != nil {
-					plaintext, err := aikeys.DecryptKey(key.EncryptedKey, key.KeyNonce, tid)
-					if err == nil {
-						httpReq.Header.Set("X-BYOK-Key", string(plaintext))
-						httpReq.Header.Set("X-BYOK-Provider", provider)
-						httpReq.Header.Set("X-Key-Source", "byok")
-						if key.Provider == "mimo-token-plan" {
-							httpReq.Header.Set("X-BYOK-Provider", "mimo")
-							httpReq.Header.Set("X-Key-Source", "token-plan")
-							region := extractRegionFromHealthMessage(key.HealthMessage)
-							if base, ok := aikeys.TokenPlanRegionURLs[region]; ok {
-								httpReq.Header.Set("X-BYOK-Base-URL", base)
-							}
-						} else if key.Provider == "minimax-token-plan" {
-							httpReq.Header.Set("X-BYOK-Provider", "minimax")
-							httpReq.Header.Set("X-Key-Source", "token-plan")
-						}
-					}
-				}
-			}
-		}
 	}
 
 	client := &http.Client{Timeout: 120 * time.Second}
@@ -189,22 +250,100 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var aiResp struct {
-		Message string `json:"message"`
-		Model   string `json:"model"`
+		Message         string `json:"message"`
+		Model           string `json:"model"`
+		ThinkingContent string `json:"thinking_content"`
+		ThinkingTokens  int    `json:"thinking_tokens"`
 	}
 	reply := string(respBody)
 	if err := json.Unmarshal(respBody, &aiResp); err == nil && aiResp.Message != "" {
 		reply = aiResp.Message
 	}
 
+	var flyMindThinking *chat.ThinkingContent
+	if aiResp.ThinkingContent != "" {
+		flyMindThinking = &chat.ThinkingContent{
+			Content: aiResp.ThinkingContent,
+			Tokens:  aiResp.ThinkingTokens,
+		}
+	}
+
 	// Persist assistant reply
-	h.saveChatMessage(r.Context(), sessionID, "assistant", reply, &modelCopy)
+	h.saveChatMessage(r.Context(), sessionID, "assistant", reply, &modelCopy, flyMindThinking)
 
 	writeJSON(w, http.StatusOK, agentChatResponse{
-		OK:      true,
-		Message: reply,
-		Model:   model,
+		OK:       true,
+		Message:  reply,
+		Model:    model,
+		Thinking: flyMindThinking,
 	})
+}
+
+// tryBYOKDirect attempts to call the LLM provider directly using a BYOK key.
+// Returns (reply, thinkingContent, byokResponse, true) on success, ("", nil, nil, false) if no BYOK key is available.
+func (h *Handler) tryBYOKDirect(ctx context.Context, model, systemPrompt, userMessage string, claims *auth.Claims, thinking *chat.ThinkingConfig) (string, *chat.ThinkingContent, *chat.BYOKResponse, bool) {
+	if h.byokRepo == nil {
+		return "", nil, nil, false
+	}
+
+	provider := chat.ProviderFromModel(model)
+	if provider == "" {
+		return "", nil, nil, false
+	}
+
+	tid := claims.TenantID
+	key, err := h.byokRepo.GetByTenantAndProvider(ctx, tid, provider)
+	if err != nil || key == nil || key.Status != "active" {
+		// Try token-plan variants
+		switch provider {
+		case "mimo":
+			key, err = h.byokRepo.GetByTenantAndProvider(ctx, tid, "mimo-token-plan")
+		case "minimax":
+			key, err = h.byokRepo.GetByTenantAndProvider(ctx, tid, "minimax-token-plan")
+		default:
+			return "", nil, nil, false
+		}
+		if err != nil || key == nil || key.Status != "active" {
+			return "", nil, nil, false
+		}
+	}
+
+	plaintext, err := aikeys.DecryptKey(key.EncryptedKey, key.KeyNonce, tid)
+	if err != nil {
+		logrus.WithError(err).Warn("tryBYOKDirect: failed to decrypt key")
+		return "", nil, nil, false
+	}
+
+	// Resolve base URL (token plans may have region-specific endpoints)
+	callProvider := provider
+	baseURL := ""
+	if key.Provider == "mimo-token-plan" {
+		callProvider = "mimo"
+		region := extractRegionFromHealthMessage(key.HealthMessage)
+		if base, ok := aikeys.TokenPlanRegionURLs[region]; ok {
+			baseURL = base
+		}
+	} else if key.Provider == "minimax-token-plan" {
+		callProvider = "minimax"
+	}
+
+	resp, err := chat.CallLLM(ctx, chat.BYOKRequest{
+		Provider:     callProvider,
+		APIKey:       string(plaintext),
+		BaseURL:      baseURL,
+		Model:        model,
+		SystemPrompt: systemPrompt,
+		UserMessage:  userMessage,
+		MaxTokens:    1024,
+		Temperature:  0.7,
+		Thinking:     thinking,
+	})
+	if err != nil {
+		logrus.WithError(err).WithField("provider", callProvider).Warn("tryBYOKDirect: LLM call failed")
+		return "", nil, nil, false
+	}
+
+	return resp.Content, resp.ThinkingContent, resp, true
 }
 
 // HandleAgentChatClear deletes all chat messages for an agent session.
@@ -233,7 +372,19 @@ func (h *Handler) HandleAgentChatClear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sessionID := agentSessionID(agent.ID)
+	// Resolve session ID from query param, or fall back to deterministic default
+	var sessionID uuid.UUID
+	if sidStr := r.URL.Query().Get("session_id"); sidStr != "" {
+		sid, err := uuid.Parse(sidStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_SESSION", "invalid session_id")
+			return
+		}
+		sessionID = sid
+	} else {
+		sessionID = agentSessionID(agent.ID)
+	}
+
 	if _, err := h.rawDB.ExecContext(r.Context(),
 		`DELETE FROM ai_chat_messages WHERE session_id = $1`, sessionID,
 	); err != nil {
@@ -279,7 +430,18 @@ func (h *Handler) HandleAgentChatHistory(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	sessionID := agentSessionID(agent.ID)
+	// Resolve session ID from query param, or fall back to deterministic default
+	var sessionID uuid.UUID
+	if sidStr := r.URL.Query().Get("session_id"); sidStr != "" {
+		sid, err := uuid.Parse(sidStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "INVALID_SESSION", "invalid session_id")
+			return
+		}
+		sessionID = sid
+	} else {
+		sessionID = agentSessionID(agent.ID)
+	}
 
 	db := h.rawDB
 	if db == nil {
@@ -288,7 +450,7 @@ func (h *Handler) HandleAgentChatHistory(w http.ResponseWriter, r *http.Request)
 	}
 
 	rows, err := db.QueryContext(r.Context(),
-		`SELECT role, content, COALESCE(model, ''), created_at FROM ai_chat_messages WHERE session_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3`,
+		`SELECT role, content, COALESCE(model, ''), COALESCE(metadata, '{}'), created_at FROM ai_chat_messages WHERE session_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3`,
 		sessionID, limit, offset,
 	)
 	if err != nil {
@@ -298,16 +460,24 @@ func (h *Handler) HandleAgentChatHistory(w http.ResponseWriter, r *http.Request)
 	defer rows.Close()
 
 	type chatMsg struct {
-		Role      string    `json:"role"`
-		Content   string    `json:"content"`
-		Model     string    `json:"model,omitempty"`
-		CreatedAt time.Time `json:"created_at"`
+		Role      string                 `json:"role"`
+		Content   string                 `json:"content"`
+		Model     string                 `json:"model,omitempty"`
+		Metadata  map[string]interface{} `json:"metadata,omitempty"`
+		CreatedAt time.Time              `json:"created_at"`
 	}
 
 	var messages []chatMsg
 	for rows.Next() {
 		var m chatMsg
-		if err := rows.Scan(&m.Role, &m.Content, &m.Model, &m.CreatedAt); err == nil {
+		var metadataStr string
+		if err := rows.Scan(&m.Role, &m.Content, &m.Model, &metadataStr, &m.CreatedAt); err == nil {
+			if metadataStr != "" && metadataStr != "{}" {
+				var meta map[string]interface{}
+				if json.Unmarshal([]byte(metadataStr), &meta) == nil {
+					m.Metadata = meta
+				}
+			}
 			messages = append(messages, m)
 		}
 	}
@@ -323,10 +493,24 @@ func (h *Handler) HandleAgentChatHistory(w http.ResponseWriter, r *http.Request)
 }
 
 // saveChatMessage persists a chat message to the database.
-func (h *Handler) saveChatMessage(ctx context.Context, sessionID uuid.UUID, role, content string, model *string) {
+func (h *Handler) saveChatMessage(ctx context.Context, sessionID uuid.UUID, role, content string, model *string, thinking *chat.ThinkingContent) {
 	if h.rawDB == nil {
 		logrus.Warn("saveChatMessage: rawDB is nil, cannot persist chat message")
 		return
+	}
+
+	// Build metadata with thinking content
+	metadata := "{}"
+	if thinking != nil && thinking.Content != "" {
+		meta := map[string]interface{}{
+			"thinking": map[string]interface{}{
+				"content": thinking.Content,
+				"tokens":  thinking.Tokens,
+			},
+		}
+		if b, err := json.Marshal(meta); err == nil {
+			metadata = string(b)
+		}
 	}
 
 	// Ensure session exists
@@ -342,8 +526,8 @@ func (h *Handler) saveChatMessage(ctx context.Context, sessionID uuid.UUID, role
 
 	if _, err := h.rawDB.ExecContext(ctx,
 		`INSERT INTO ai_chat_messages (id, session_id, role, content, tokens_used, model, metadata, created_at)
-		 VALUES ($1, $2, $3, $4, 0, $5, '{}', NOW())`,
-		uuid.New(), sessionID, role, content, model,
+		 VALUES ($1, $2, $3, $4, 0, $5, $6, NOW())`,
+		uuid.New(), sessionID, role, content, model, metadata,
 	); err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"session_id": sessionID,
@@ -352,12 +536,28 @@ func (h *Handler) saveChatMessage(ctx context.Context, sessionID uuid.UUID, role
 	}
 }
 
+// isToolEnabled checks if a tool is enabled in the agent's capabilities.
+func isToolEnabled(agent *identity.AgentIdentity, toolKey string) bool {
+	if agent.Capabilities == nil {
+		return false
+	}
+	val, ok := agent.Capabilities[toolKey]
+	return ok && (val == "true" || val == "enabled")
+}
+
 // executeAgentTools detects tool-worthy intents and executes them, returning results as text.
 func (h *Handler) executeAgentTools(ctx context.Context, message string, agent *identity.AgentIdentity, claims *auth.Claims) string {
+	if !isToolEnabled(agent, "web_search") {
+		return ""
+	}
+
 	msg := strings.ToLower(message)
 
-	// Detect search intent
-	searchTriggers := []string{"search", "find", "look up", "what is", "what are", "best", "compare", "who is", "where", "how to", "latest", "news", "price", "buy"}
+	searchTriggers := []string{
+		"search", "find", "look up", "what is", "what are", "best", "compare",
+		"who is", "where", "how to", "latest", "news", "price", "buy",
+		"developments", "recent", "trending", "current", "update", "updates",
+	}
 	needsSearch := false
 	for _, trigger := range searchTriggers {
 		if strings.Contains(msg, trigger) {
@@ -454,27 +654,6 @@ func (h *Handler) executeSearchDirect(ctx context.Context, query string) string 
 	}
 	data, _ := json.MarshalIndent(parsed, "", "  ")
 	return string(data)
-}
-
-// providerFromModel maps a model name to its primary BYOK provider.
-func providerFromModel(model string) string {
-	m := strings.ToLower(model)
-	switch {
-	case strings.HasPrefix(m, "gpt-") || strings.HasPrefix(m, "o1") || strings.HasPrefix(m, "o3") || strings.HasPrefix(m, "o4"):
-		return "openai"
-	case strings.HasPrefix(m, "claude-"):
-		return "anthropic"
-	case strings.HasPrefix(m, "groq/") || strings.Contains(m, "llama") || strings.Contains(m, "mixtral"):
-		return "groq"
-	case strings.HasPrefix(m, "minimax"):
-		return "minimax"
-	case strings.HasPrefix(m, "mimo") || strings.HasPrefix(m, "xiaomi"):
-		return "mimo"
-	case strings.HasPrefix(m, "step-") || strings.HasPrefix(m, "stepfun"):
-		return "stepfun"
-	default:
-		return ""
-	}
 }
 
 func extractRegionFromHealthMessage(healthMessage string) string {

@@ -147,6 +147,9 @@ func registerAgentRoutes(
 	protected.HandleFunc("/agent/{agent_id}/chat", authMiddleware.RequireAuth(aepHandler.HandleAgentChat)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/chat", authMiddleware.RequireAuth(aepHandler.HandleAgentChatClear)).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/chat/history", authMiddleware.RequireAuth(aepHandler.HandleAgentChatHistory)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/chat/sessions", authMiddleware.RequireAuth(aepHandler.HandleListChatSessions)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/chat/sessions", authMiddleware.RequireAuth(aepHandler.HandleCreateChatSession)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/chat/sessions/{session_id}", authMiddleware.RequireAuth(aepHandler.HandleDeleteChatSession)).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleGetAgent, agentTeamMiddleware))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleUpdateAgent, agentTeamMiddleware))).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleDeleteAgent, agentTeamMiddleware))).Methods("DELETE", "OPTIONS")
@@ -164,6 +167,7 @@ func registerAgentRoutes(
 	protected.HandleFunc("/agent/{agent_id}/billing/summary", authMiddleware.RequireAuth(aepHandler.HandleGetBillingSummary)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/billing/spend-cap", authMiddleware.RequireAuth(aepHandler.HandleUpdateSpendCap)).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/cost-breakdown", authMiddleware.RequireAuth(aepHandler.HandleGetCostBreakdown)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/model-breakdown", authMiddleware.RequireAuth(aepHandler.HandleGetModelBreakdown)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/credits/balance", authMiddleware.RequireAuth(aepHandler.HandleGetCreditBalance)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/credits/purchase", authMiddleware.RequireAuth(aepHandler.HandlePurchaseCredits)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/credits/checkout", authMiddleware.RequireAuth(aepHandler.HandleCreateCreditsCheckout)).Methods("POST", "OPTIONS")
@@ -199,6 +203,11 @@ func registerAgentRoutes(
 	// ── Agent Daemon (Always-On) API ─────────────────────────────────────────
 	// Daemon exposes: /agents/{id}/daemon/start, /daemon/stop, /daemon/status, /daemon/config
 	daemonHandler.RegisterDaemonRoutes(protected, "", authMiddleware)
+
+	// ── Agent MCP Servers ─────────────────────────────────────────────────
+	mcpServerRepo := storage.NewAgentMCPServerRepository(s.postgresDB.GORM)
+	mcpServerHandler := agenthandler.NewMCPServerHandler(mcpServerRepo)
+	mcpServerHandler.RegisterRoutes(protected, "", authMiddleware)
 
 	// ── Browser Automation API ───────────────────────────────────────────────
 	if s.browserSvc != nil {

@@ -212,6 +212,8 @@ type UpdateAgentRequest struct {
 	AutonomousEnabled *bool   `json:"autonomous_enabled,omitempty"`
 	EvolutionEnabled  *bool   `json:"evolution_enabled,omitempty"`
 	Model             *string `json:"model,omitempty"`
+	ThinkingMode      *string `json:"thinking_mode,omitempty"`
+	ThinkingBudget    *int    `json:"thinking_budget,omitempty"`
 }
 
 // UpdateAgent applies partial updates to an agent identity.
@@ -236,6 +238,12 @@ func (r *Repository) UpdateAgent(ctx context.Context, agentID string, req *Updat
 	}
 	if req.Model != nil {
 		updates["model"] = *req.Model
+	}
+	if req.ThinkingMode != nil {
+		updates["thinking_mode"] = *req.ThinkingMode
+	}
+	if req.ThinkingBudget != nil {
+		updates["thinking_budget"] = *req.ThinkingBudget
 	}
 
 	result := r.db.WithContext(ctx).Model(&AgentIdentity{}).
