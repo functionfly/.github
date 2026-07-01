@@ -268,6 +268,9 @@ class Settings(BaseSettings):
     orchestrator_api_key: Optional[str] = Field(
         default=None, description="API key for orchestrator authentication"
     )
+    ai_service_api_key: Optional[str] = Field(
+        default=None, description="API key the orchestrator uses to call this AI service"
+    )
 
     # Internal API secret for service-to-service authentication
     # Required for accessing internal endpoints like /internal/composer/generate
@@ -368,6 +371,17 @@ class Settings(BaseSettings):
     # Atlas OpenTelemetry Export
     atlas_otel_exporter_enabled: bool = Field(default=False, description="Export Atlas events as OTEL spans")
     atlas_otel_endpoint: Optional[str] = Field(default=None, description="OTLP endpoint for Atlas export")
+
+    # ML Intelligence Layer
+    ml_enabled: bool = Field(default=True, description="Enable ML services")
+    ml_retrain_cron: str = Field(default="0 3 * * *", description="Cron for model retraining")
+    ml_model_dir: str = Field(default="/var/lib/flymind/models", description="Model storage directory")
+    ml_cost_anomaly_threshold: float = Field(default=3.0, description="Z-score threshold for cost anomalies")
+    ml_cost_anomaly_window_hours: int = Field(default=168, description="Cost anomaly sliding window (hours)")
+    ml_prewarm_seasonality_periods: int = Field(default=24, description="Seasonality periods for Holt-Winters")
+    ml_routing_exploration: float = Field(default=0.1, description="Thompson Sampling exploration budget")
+    ml_recommendation_latent_dims: int = Field(default=50, description="ALS latent factor dimensions")
+    ml_synthetic_data_enabled: bool = Field(default=True, description="Use synthetic data for bootstrap")
 
 
 # Global settings instance

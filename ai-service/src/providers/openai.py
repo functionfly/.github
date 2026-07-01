@@ -16,6 +16,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 
@@ -77,28 +78,48 @@ class OpenAIProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
-        """Generate a completion using OpenAI API."""
+        """Generate a completion using OpenAI API with optional reasoning_effort for o-series."""
         if not self.available:
             raise RuntimeError("OpenAI provider not available. Check API key.")
 
         await self.rate_limiter.acquire()
 
         start_time = time.time()
+        model_name = (model or self.model).lower()
+        is_reasoning = any(m in model_name for m in ["o1", "o3", "o4"])
 
         def _do_completion():
-            return self.client.chat.completions.create(
+            kwargs = dict(
                 model=model or self.model,
                 messages=[{"role": m.role.value, "content": m.content} for m in messages],
-                temperature=temperature,
                 max_tokens=max_tokens,
                 top_p=top_p,
                 stop=stop,
             )
+            if is_reasoning:
+                if thinking and thinking.mode != "off":
+                    if thinking.budget_tokens >= 20000:
+                        kwargs["reasoning_effort"] = "high"
+                    elif thinking.budget_tokens >= 10000:
+                        kwargs["reasoning_effort"] = "medium"
+                    else:
+                        kwargs["reasoning_effort"] = "low"
+            else:
+                kwargs["temperature"] = temperature
+
+            return self.client.chat.completions.create(**kwargs)
 
         response = await self._retry_with_backoff(_do_completion)
 
         latency_ms = (time.time() - start_time) * 1000
+
+        reasoning_tokens = 0
+        if response.usage and hasattr(response.usage, 'completion_tokens_details'):
+            details = response.usage.completion_tokens_details
+            if details and hasattr(details, 'reasoning_tokens'):
+                reasoning_tokens = details.reasoning_tokens or 0
 
         return CompletionResponse(
             content=response.choices[0].message.content or "",
@@ -111,6 +132,7 @@ class OpenAIProvider(BaseProvider):
             },
             finish_reason=response.choices[0].finish_reason,
             latency_ms=latency_ms,
+            thinking_tokens=reasoning_tokens,
         )
 
     async def stream(
@@ -121,22 +143,37 @@ class OpenAIProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
-        """Stream completion using OpenAI API."""
+        """Stream completion using OpenAI API with optional reasoning_effort for o-series."""
         if not self.available:
             raise RuntimeError("OpenAI provider not available. Check API key.")
 
         await self.rate_limiter.acquire()
 
-        stream = await self.client.chat.completions.create(
+        model_name = (model or self.model).lower()
+        is_reasoning = any(m in model_name for m in ["o1", "o3", "o4"])
+
+        kwargs = dict(
             model=model or self.model,
             messages=[{"role": m.role.value, "content": m.content} for m in messages],
-            temperature=temperature,
             max_tokens=max_tokens,
             top_p=top_p,
             stop=stop,
             stream=True,
         )
+        if is_reasoning:
+            if thinking and thinking.mode != "off":
+                if thinking.budget_tokens >= 20000:
+                    kwargs["reasoning_effort"] = "high"
+                elif thinking.budget_tokens >= 10000:
+                    kwargs["reasoning_effort"] = "medium"
+                else:
+                    kwargs["reasoning_effort"] = "low"
+        else:
+            kwargs["temperature"] = temperature
+
+        stream = await self.client.chat.completions.create(**kwargs)
 
         async for chunk in stream:
             if chunk.choices[0].delta.content:

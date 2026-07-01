@@ -20,6 +20,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 MIMO_BASE_URL = "https://api.xiaomimimo.com/v1"
@@ -82,6 +83,7 @@ class MiMoProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
         if not self.available:
             raise RuntimeError("MiMo provider not available. Set MIMO_API_KEY.")
@@ -123,6 +125,7 @@ class MiMoProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
         if not self.available:
             raise RuntimeError("MiMo provider not available. Set MIMO_API_KEY.")

@@ -17,6 +17,7 @@ from ..models.schemas import (
     EmbeddingResponse,
     ProviderInfo,
     CostTracking,
+    ThinkingConfig,
 )
 
 
@@ -113,6 +114,7 @@ class BaseProvider(ABC):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
         """Generate a completion response.
 
@@ -123,6 +125,7 @@ class BaseProvider(ABC):
             max_tokens: Maximum tokens to generate
             top_p: Nucleus sampling parameter
             stop: Stop sequences
+            thinking: Optional thinking/reasoning configuration
 
         Returns:
             CompletionResponse with the generated content
@@ -138,6 +141,7 @@ class BaseProvider(ABC):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream completion responses token by token.
 
@@ -148,6 +152,7 @@ class BaseProvider(ABC):
             max_tokens: Maximum tokens to generate
             top_p: Nucleus sampling parameter
             stop: Stop sequences
+            thinking: Optional thinking/reasoning configuration
 
         Yields:
             Text chunks as they are generated

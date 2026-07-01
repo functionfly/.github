@@ -20,6 +20,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 DEEPINFRA_BASE_URL = "https://api.deepinfra.com/v1/openai"
@@ -123,8 +124,9 @@ class DeepInfraProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
-        """Generate a completion via DeepInfra."""
+        """Generate a completion via DeepInfra with optional reasoning_content extraction."""
         if not self.available:
             raise RuntimeError(
                 "DeepInfra provider not available. Set DEEPINFRA_API_KEY."
@@ -146,6 +148,11 @@ class DeepInfraProvider(BaseProvider):
         latency_ms = (time.time() - start_time) * 1000
         choice = response.choices[0]
         usage = response.usage
+
+        thinking_content = None
+        if hasattr(choice.message, 'reasoning_content'):
+            thinking_content = choice.message.reasoning_content
+
         return CompletionResponse(
             content=choice.message.content or "",
             provider=ProviderType.DEEPINFRA,
@@ -157,6 +164,7 @@ class DeepInfraProvider(BaseProvider):
             },
             finish_reason=choice.finish_reason,
             latency_ms=latency_ms,
+            thinking_content=thinking_content,
         )
 
     async def stream(
@@ -167,6 +175,7 @@ class DeepInfraProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream completion via DeepInfra."""
         if not self.available:

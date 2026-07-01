@@ -265,7 +265,7 @@ class APIKeyValidator:
                     headers["Authorization"] = f"Bearer {self._orchestrator_api_key}"
 
                 response = await client.post(
-                    f"{self._orchestrator_url}/api/v1/auth/validate-key",
+                    f"{self._orchestrator_url}/v1/auth/validate-key",
                     json={"api_key": key},
                     headers=headers,
                 )
@@ -549,6 +549,19 @@ async def require_api_key(
             headers={"WWW-Authenticate": "ApiKey"},
         )
 
+    # Fast path: validate the orchestrator service key locally (avoids callback deadlock)
+    import os
+    service_key = os.getenv("AI_SERVICE_API_KEY")
+    if service_key and x_api_key == service_key:
+        return APIKeyInfo(
+            key_id="service-key",
+            tenant_id="system",
+            user_id="system",
+            name="Orchestrator Service Key",
+            scopes=list(KeyScope),
+            is_active=True,
+        )
+
     # Check if key is locked out due to too many failures
     rate_limiter = get_auth_rate_limiter()
     is_locked, retry_after = rate_limiter.check_lockout(x_api_key)
@@ -657,6 +670,19 @@ def require_api_key_with_scope(scope: KeyScope):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="API key required. Provide X-API-Key header.",
                 headers={"WWW-Authenticate": "ApiKey"},
+            )
+
+        # Fast path: validate the orchestrator service key locally (avoids callback deadlock)
+        from ..config import settings
+        service_key = settings.ai_service_api_key
+        if service_key and x_api_key == service_key:
+            return APIKeyInfo(
+                key_id="service-key",
+                tenant_id="system",
+                user_id="system",
+                name="Orchestrator Service Key",
+                scopes=list(KeyScope),
+                is_active=True,
             )
 
         validator = get_api_key_validator()

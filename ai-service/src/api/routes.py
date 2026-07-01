@@ -36,6 +36,7 @@ from .routes_composer import router as composer_router
 from .routes_routing import router as routing_router
 from .routes_composition import router as composition_router
 from .routes_dna import router as dna_router
+from .routes_ml import router as ml_router
 
 from ..security.auth import (
     require_api_key,
@@ -85,6 +86,7 @@ router.include_router(composer_router)
 router.include_router(routing_router)
 router.include_router(composition_router)
 router.include_router(dna_router)
+router.include_router(ml_router)
 
 
 # =============================================================================

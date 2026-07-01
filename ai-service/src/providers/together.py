@@ -20,6 +20,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 TOGETHER_BASE_URL = "https://api.together.xyz/v1"
@@ -122,6 +123,7 @@ class TogetherProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
         """Generate a completion via Together AI."""
         if not self.available:
@@ -166,6 +168,7 @@ class TogetherProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream completion via Together AI."""
         if not self.available:

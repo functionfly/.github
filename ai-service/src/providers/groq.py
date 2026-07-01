@@ -21,6 +21,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
@@ -111,6 +112,7 @@ class GroqProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
         """Generate a completion via Groq (lowest latency)."""
         if not self.available:
@@ -158,6 +160,7 @@ class GroqProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream completion via Groq (extremely fast streaming)."""
         if not self.available:

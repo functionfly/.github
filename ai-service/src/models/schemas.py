@@ -48,6 +48,13 @@ class ChatMessage(BaseModel):
     content: str
 
 
+class ThinkingConfig(BaseModel):
+    """Configuration for provider-native thinking/reasoning."""
+
+    mode: str = Field(default="off", description="Thinking mode: off, auto, always")
+    budget_tokens: int = Field(default=10000, ge=1000, le=100000, description="Max tokens for thinking")
+
+
 class CompletionRequest(BaseModel):
     """Request for LLM completion."""
 
@@ -59,6 +66,7 @@ class CompletionRequest(BaseModel):
     stream: bool = False
     top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     stop: Optional[list[str]] = None
+    thinking: Optional[ThinkingConfig] = None
 
 
 class CompletionResponse(BaseModel):
@@ -72,6 +80,8 @@ class CompletionResponse(BaseModel):
     )
     finish_reason: Optional[str] = None
     latency_ms: float = 0.0
+    thinking_content: Optional[str] = None
+    thinking_tokens: int = 0
 
 
 class EmbeddingRequest(BaseModel):
@@ -385,6 +395,8 @@ class ChatMessageResponse(BaseModel):
     message: str
     intent: ChatIntent
     confidence: float
+    thinking_content: Optional[str] = None
+    thinking_tokens: int = 0
 
 
 class ChatHistoryResponse(BaseModel):

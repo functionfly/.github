@@ -103,8 +103,8 @@ async def generate_function(
 
     try:
         provider_manager = get_provider_manager()
-        byok_key = x_byok_key if x_key_source == "byok" else None
-        byok_provider = x_byok_provider if x_key_source == "byok" else None
+        byok_key = x_byok_key if x_key_source in ("byok", "token-plan") else None
+        byok_provider = x_byok_provider if x_key_source in ("byok", "token-plan") else None
 
         if byok_key and byok_provider:
             provider = provider_manager.get_provider_for_request(byok_provider, byok_key, base_url=x_byok_base_url)
@@ -427,8 +427,8 @@ async def generate_function_stream(
 
     try:
         provider_manager = get_provider_manager()
-        byok_key = x_byok_key if x_key_source == "byok" else None
-        byok_provider = x_byok_provider if x_key_source == "byok" else None
+        byok_key = x_byok_key if x_key_source in ("byok", "token-plan") else None
+        byok_provider = x_byok_provider if x_key_source in ("byok", "token-plan") else None
 
         if byok_key and byok_provider:
             provider = provider_manager.get_provider_for_request(byok_provider, byok_key, base_url=x_byok_base_url)

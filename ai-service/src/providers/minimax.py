@@ -19,6 +19,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 MINIMAX_BASE_URL = "https://api.minimaxi.com/v1"
@@ -79,6 +80,7 @@ class MiniMaxProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
         if not self.available:
             raise RuntimeError("MiniMax provider not available. Set MINIMAX_API_KEY.")
@@ -119,6 +121,7 @@ class MiniMaxProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
         if not self.available:
             raise RuntimeError("MiniMax provider not available. Set MINIMAX_API_KEY.")

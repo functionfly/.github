@@ -17,6 +17,7 @@ from ..models.schemas import (
     EmbeddingResponse,
     ProviderInfo,
     ProviderType,
+    ThinkingConfig,
 )
 from .base import BaseProvider, RetryConfig
 
@@ -174,6 +175,7 @@ class OpenRouterProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
         user_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
     ) -> CompletionResponse:
@@ -233,6 +235,7 @@ class OpenRouterProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
         user_id: Optional[str] = None,
         tenant_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:

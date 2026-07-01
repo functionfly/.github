@@ -16,6 +16,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 
@@ -74,8 +75,9 @@ class AnthropicProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
-        """Generate a completion using Anthropic API."""
+        """Generate a completion using Anthropic API with optional extended thinking."""
         if not self.available:
             raise RuntimeError("Anthropic provider not available. Check API key.")
 
@@ -83,8 +85,6 @@ class AnthropicProvider(BaseProvider):
 
         start_time = time.time()
 
-        # Convert messages to Anthropic format
-        # System messages need special handling - combine into first user message if present
         system_prompt = None
         anthropic_messages = []
 
@@ -97,25 +97,50 @@ class AnthropicProvider(BaseProvider):
                     "content": msg.content
                 })
 
+        use_thinking = thinking and thinking.mode != "off"
+
         def _do_completion():
-            return self.client.messages.create(
+            kwargs = dict(
                 model=model or self.model,
                 system=system_prompt,
                 messages=anthropic_messages,
-                temperature=temperature,
                 max_tokens=max_tokens or self.max_tokens,
                 top_p=top_p,
                 stop_sequences=stop,
             )
+            if use_thinking:
+                kwargs["thinking"] = {
+                    "type": "enabled",
+                    "budget_tokens": thinking.budget_tokens,
+                }
+                kwargs["temperature"] = 1.0
+            else:
+                kwargs["temperature"] = temperature
+
+            return self.client.messages.create(**kwargs)
 
         response = await self._retry_with_backoff(_do_completion)
 
         latency_ms = (time.time() - start_time) * 1000
 
-        # Extract content from response
         content = ""
+        thinking_content = None
+        thinking_tokens = 0
         if response.content:
-            content = response.content[0].text if hasattr(response.content[0], 'text') else str(response.content[0])
+            for block in response.content:
+                if hasattr(block, 'type'):
+                    if block.type == "thinking":
+                        thinking_content = getattr(block, 'thinking', None)
+                    elif block.type == "text":
+                        content = block.text
+                else:
+                    content = str(block)
+
+        if hasattr(response, 'usage') and response.usage:
+            if hasattr(response.usage, 'output_tokens'):
+                thinking_tokens = 0
+                if thinking_content:
+                    thinking_tokens = response.usage.output_tokens // 2
 
         return CompletionResponse(
             content=content,
@@ -128,6 +153,8 @@ class AnthropicProvider(BaseProvider):
             },
             finish_reason=response.stop_reason,
             latency_ms=latency_ms,
+            thinking_content=thinking_content,
+            thinking_tokens=thinking_tokens,
         )
 
     async def stream(
@@ -138,14 +165,14 @@ class AnthropicProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
-        """Stream completion using Anthropic API."""
+        """Stream completion using Anthropic API with optional extended thinking."""
         if not self.available:
             raise RuntimeError("Anthropic provider not available. Check API key.")
 
         await self.rate_limiter.acquire()
 
-        # Convert messages to Anthropic format
         system_prompt = None
         anthropic_messages = []
 
@@ -158,15 +185,26 @@ class AnthropicProvider(BaseProvider):
                     "content": msg.content
                 })
 
-        async with self.client.messages.stream(
+        use_thinking = thinking and thinking.mode != "off"
+
+        stream_kwargs = dict(
             model=model or self.model,
             system=system_prompt,
             messages=anthropic_messages,
-            temperature=temperature,
             max_tokens=max_tokens or self.max_tokens,
             top_p=top_p,
             stop_sequences=stop,
-        ) as stream:
+        )
+        if use_thinking:
+            stream_kwargs["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": thinking.budget_tokens,
+            }
+            stream_kwargs["temperature"] = 1.0
+        else:
+            stream_kwargs["temperature"] = temperature
+
+        async with self.client.messages.stream(**stream_kwargs) as stream:
             async for text in stream.text_stream:
                 yield text
 

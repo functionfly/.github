@@ -21,6 +21,7 @@ from ..models.schemas import (
     ProviderInfo,
     ProviderType,
     CostTracking,
+    ThinkingConfig,
 )
 
 STEPFUN_BASE_URL = "https://api.stepfun.ai/v1"
@@ -82,6 +83,7 @@ class StepFunProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> CompletionResponse:
         if not self.available:
             raise RuntimeError("StepFun provider not available. Set STEPFUN_API_KEY.")
@@ -123,6 +125,7 @@ class StepFunProvider(BaseProvider):
         max_tokens: Optional[int] = None,
         top_p: Optional[float] = None,
         stop: Optional[list[str]] = None,
+        thinking: Optional[ThinkingConfig] = None,
     ) -> AsyncGenerator[str, None]:
         if not self.available:
             raise RuntimeError("StepFun provider not available. Set STEPFUN_API_KEY.")
