@@ -742,6 +742,30 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 		}
 	}()
 
+	// Auto-deploy bundle to user's connected provider
+	providerSlug := session.Metadata["provider"]
+	providerIDStr := session.Metadata["provider_id"]
+	scriptName := fmt.Sprintf("%s-%s", tenantID.String()[:8], bundleSlug)
+
+	if providerSlug != "" && providerIDStr != "" {
+		sub.DeployStatus = "deploying"
+		sub.ScriptName = scriptName
+		pid, _ := uuid.Parse(providerIDStr)
+		sub.ProviderID = &pid
+		if err := h.userRepo.UpdateBundleSubscription(r.Context(), sub); err != nil {
+			logrus.WithError(err).Error("Failed to set deploy status on subscription")
+		}
+
+		billingHandler := billing.NewHandler(h.userRepo, nil, nil, nil)
+		go billingHandler.DeployBundle(context.Background(), sub)
+	} else {
+		sub.DeployStatus = "awaiting_provider"
+		sub.ScriptName = scriptName
+		if err := h.userRepo.UpdateBundleSubscription(r.Context(), sub); err != nil {
+			logrus.WithError(err).Error("Failed to set awaiting_provider status")
+		}
+	}
+
 	// Send bundle welcome email
 	if h.emailSvc != nil {
 		dashboardURL := os.Getenv("DASHBOARD_URL")

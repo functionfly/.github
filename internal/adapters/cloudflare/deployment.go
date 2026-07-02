@@ -693,3 +693,216 @@ type DeploymentResult struct {
 	Message      string
 	Metadata     map[string]interface{}
 }
+
+// GetAccountID returns the Cloudflare account ID for the authenticated token.
+func (c *CloudflareDeploymentClient) GetAccountID(ctx context.Context) (string, error) {
+	if c.accountID != "" {
+		return c.accountID, nil
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.cloudflare.com/client/v4/accounts", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create accounts request: %w", err)
+	}
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to get accounts: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var accountsResp struct {
+		Success bool `json:"success"`
+		Result  []struct {
+			ID string `json:"id"`
+		} `json:"result"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&accountsResp); err != nil {
+		return "", fmt.Errorf("failed to decode accounts response: %w", err)
+	}
+	if !accountsResp.Success || len(accountsResp.Result) == 0 {
+		if len(accountsResp.Errors) > 0 {
+			return "", fmt.Errorf("cloudflare: %s", accountsResp.Errors[0].Message)
+		}
+		return "", fmt.Errorf("no Cloudflare accounts found for this API key")
+	}
+
+	c.accountID = accountsResp.Result[0].ID
+	return c.accountID, nil
+}
+
+// GetWorkersSubdomain returns the workers.dev subdomain for the account.
+func (c *CloudflareDeploymentClient) GetWorkersSubdomain(ctx context.Context) (string, error) {
+	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/subdomain", c.accountID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create subdomain request: %w", err)
+	}
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to get workers subdomain: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var subdomainResp struct {
+		Success bool `json:"success"`
+		Result  struct {
+			Subdomain string `json:"subdomain"`
+		} `json:"result"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&subdomainResp); err != nil {
+		return "", fmt.Errorf("failed to decode subdomain response: %w", err)
+	}
+	if !subdomainResp.Success || subdomainResp.Result.Subdomain == "" {
+		if len(subdomainResp.Errors) > 0 {
+			return "", fmt.Errorf("cloudflare: %s", subdomainResp.Errors[0].Message)
+		}
+		return "", fmt.Errorf("workers.dev subdomain not configured")
+	}
+
+	return subdomainResp.Result.Subdomain, nil
+}
+
+// CreateKVNamespace creates a KV namespace and returns its ID.
+func (c *CloudflareDeploymentClient) CreateKVNamespace(ctx context.Context, title string) (string, error) {
+	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/storage/kv/namespaces", c.accountID)
+	body, _ := json.Marshal(map[string]string{"title": title})
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	if err != nil {
+		return "", fmt.Errorf("failed to create KV namespace request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to create KV namespace: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var kvResp struct {
+		Success bool `json:"success"`
+		Result  struct {
+			ID string `json:"id"`
+		} `json:"result"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&kvResp); err != nil {
+		return "", fmt.Errorf("failed to decode KV namespace response: %w", err)
+	}
+	if !kvResp.Success {
+		if len(kvResp.Errors) > 0 {
+			return "", fmt.Errorf("cloudflare: %s", kvResp.Errors[0].Message)
+		}
+		return "", fmt.Errorf("failed to create KV namespace")
+	}
+
+	return kvResp.Result.ID, nil
+}
+
+// DeleteKVNamespace deletes a KV namespace by ID.
+func (c *CloudflareDeploymentClient) DeleteKVNamespace(ctx context.Context, namespaceID string) error {
+	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/storage/kv/namespaces/%s", c.accountID, namespaceID)
+	req, err := http.NewRequestWithContext(ctx, "DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create delete KV namespace request: %w", err)
+	}
+	c.setAuthHeaders(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to delete KV namespace: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("delete KV namespace failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// DeployWithKVNamespace deploys a worker script with a KV namespace binding.
+func (c *CloudflareDeploymentClient) DeployWithKVNamespace(ctx context.Context, scriptContent []byte, scriptName, kvNamespaceID, kvBindingName string) (*DeploymentResult, error) {
+	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/accounts/%s/workers/scripts/%s", c.accountID, scriptName)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	// Add the script as a multipart part
+	part, err := writer.CreateFormFile("script", scriptName+".js")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create form file: %w", err)
+	}
+	if _, err := part.Write(scriptContent); err != nil {
+		return nil, fmt.Errorf("failed to write script content: %w", err)
+	}
+
+	// Add metadata with KV namespace binding
+	metadata := map[string]interface{}{
+		"bindings": []map[string]interface{}{
+			{
+				"type":         "kv_namespace",
+				"name":         kvBindingName,
+				"namespace_id": kvNamespaceID,
+			},
+		},
+	}
+	metadataJSON, _ := json.Marshal(metadata)
+	metadataPart, err := writer.CreateFormField("metadata")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create metadata field: %w", err)
+	}
+	if _, err := metadataPart.Write(metadataJSON); err != nil {
+		return nil, fmt.Errorf("failed to write metadata: %w", err)
+	}
+
+	writer.Close()
+
+	req, err := http.NewRequestWithContext(ctx, "PUT", url, &body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create deploy request: %w", err)
+	}
+	c.setAuthHeaders(req)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	start := time.Now()
+	resp, err := c.httpClient.Do(req)
+	latencyMs := int(time.Since(start).Milliseconds())
+	if err != nil {
+		return nil, fmt.Errorf("failed to deploy worker: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		return &DeploymentResult{
+			Status:  common.DeploymentStatusFailed,
+			Message: fmt.Sprintf("deploy failed with status %d: %s", resp.StatusCode, string(respBody)),
+		}, nil
+	}
+
+	return &DeploymentResult{
+		DeploymentID: scriptName,
+		Status:       common.DeploymentStatusSuccess,
+		Message:      fmt.Sprintf("deployed successfully in %dms", latencyMs),
+		Metadata: map[string]interface{}{
+			"script_name":     scriptName,
+			"kv_namespace_id": kvNamespaceID,
+			"kv_binding":      kvBindingName,
+		},
+	}, nil
+}
