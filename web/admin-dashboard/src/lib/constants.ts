@@ -47,6 +47,8 @@ export const ROUTES = {
   ADMIN_SIGNUP_INVITES: '/signup-invites',
   ADMIN_WAITLIST: '/waitlist',
   ADMIN_CHANGELOG: '/changelog',
+  ADMIN_COMMUNITY_RULES: '/community-rules',
+  ADMIN_FOUNDER_VOTES: '/founders/votes',
 };
 
 export const API_ROUTES = {
@@ -75,8 +77,12 @@ export const API_ROUTES = {
   FACTORY_REVIEWS_PENDING: '/factory/reviews/pending',
   FACTORY_OPPORTUNITIES: '/factory/opportunities',
   FACTORY_FUNCTIONS: '/factory/functions',
-  FACTORY_VERSION_CODE: '/factory/versions',
-} as const;
+   FACTORY_VERSION_CODE: '/factory/versions',
+   // Community
+   COMMUNITY_RULES: '/community/rules',
+   // Founder Governance
+   ADMIN_FOUNDER_VOTES: '/founders/votes',
+ } as const;
 
 export type APIRoute = (typeof API_ROUTES)[keyof typeof API_ROUTES];
 

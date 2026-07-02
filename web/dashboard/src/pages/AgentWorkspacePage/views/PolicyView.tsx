@@ -2,15 +2,16 @@ import { agentApi } from '@/api/agent';
 import { FrameButton, SealedButton } from '@/components/containment';
 import { useAgentPolicy, useUpdateAgentPolicy } from '@/hooks/useAgent';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle, Shield, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { AlertTriangle, CheckCircle, RefreshCw, Shield, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
 
 interface PolicyViewProps {
   agentId: string;
 }
 
 export function PolicyView({ agentId }: PolicyViewProps) {
-  const { data: policyData, isLoading } = useAgentPolicy(agentId);
+  const { data: policyData, isLoading, error: policyError } = useAgentPolicy(agentId);
   const updatePolicy = useUpdateAgentPolicy(agentId);
   const policy = policyData?.policy;
 
@@ -22,22 +23,54 @@ export function PolicyView({ agentId }: PolicyViewProps) {
 
   const violationCount = analyticsData?.analytics?.policy_violation_count ?? 0;
 
-  const [editDepth, setEditDepth] = useState(String(policy?.maxExecutionDepth ?? 10));
-  const [editRecursion, setEditRecursion] = useState(String(policy?.maxRecursionDepth ?? 5));
-  const [editWallTime, setEditWallTime] = useState(String(policy?.maxWallTimeMs ?? 30000));
-  const [editMemory, setEditMemory] = useState(String(policy?.maxMemoryGrowthMB ?? 256));
+  const [editDepth, setEditDepth] = useState('10');
+  const [editRecursion, setEditRecursion] = useState('5');
+  const [editWallTime, setEditWallTime] = useState('30000');
+  const [editMemory, setEditMemory] = useState('256');
+
+  useEffect(() => {
+    if (policy) {
+      setEditDepth(String(policy.maxExecutionDepth ?? 10));
+      setEditRecursion(String(policy.maxRecursionDepth ?? 5));
+      setEditWallTime(String(policy.maxWallTimeMs ?? 30000));
+      setEditMemory(String(policy.maxMemoryGrowthMB ?? 256));
+    }
+  }, [policy]);
 
   const handleSave = useCallback(async () => {
-    await updatePolicy.mutateAsync({
-      maxExecutionDepth: parseInt(editDepth) || 10,
-      maxRecursionDepth: parseInt(editRecursion) || 5,
-      maxWallTimeMs: parseInt(editWallTime) || 30000,
-      maxMemoryGrowthMB: parseInt(editMemory) || 256,
-    });
+    try {
+      await updatePolicy.mutateAsync({
+        maxExecutionDepth: parseInt(editDepth) || 10,
+        maxRecursionDepth: parseInt(editRecursion) || 5,
+        maxWallTimeMs: parseInt(editWallTime) || 30000,
+        maxMemoryGrowthMB: parseInt(editMemory) || 256,
+      });
+      toast.success('Policy saved');
+    } catch (err: any) {
+      toast.error(`Failed to save policy: ${err?.message ?? 'Unknown error'}`);
+    }
   }, [editDepth, editRecursion, editWallTime, editMemory, updatePolicy]);
 
   if (isLoading) {
     return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
+
+  if (policyError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="aw-center__header">
+          <div>
+            <h2 className="aw-center__title">Policy</h2>
+            <p className="aw-center__subtitle">Behavioral guardrails and violation tracking</p>
+          </div>
+        </div>
+        <div className="aw-empty">
+          <AlertTriangle size={40} className="aw-empty__icon" style={{ color: 'var(--status-error)' }} />
+          <span className="aw-empty__title">Failed to load policy</span>
+          <span className="aw-empty__desc">{(policyError as any)?.message ?? 'An error occurred'}</span>
+        </div>
+      </div>
+    );
   }
 
   const forbiddenFns = policy?.forbiddenFunctions ?? [];

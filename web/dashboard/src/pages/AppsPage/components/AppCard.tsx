@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Clock,
   ExternalLink,
+  Globe,
   MoreVertical,
   Server,
   Settings,
@@ -82,6 +83,7 @@ interface AppCardProps {
 export function AppCard({ app, onDelete, index = 0 }: AppCardProps) {
   const color = getAppColor(app.name);
   const animationDelay = `${index * 0.05}s`;
+  const deployUrl = app.deployUrl || app.deploy_url || '';
 
   return (
     <div
@@ -135,6 +137,14 @@ export function AppCard({ app, onDelete, index = 0 }: AppCardProps) {
                   View Details
                 </Link>
               </DropdownMenuItem>
+              {deployUrl && (
+                <DropdownMenuItem asChild>
+                  <a href={deployUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Visit Live
+                  </a>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem asChild>
                 <Link to={`/apps/${encodeURIComponent(app.slug)}`} className="flex items-center gap-2">
                   <Settings className="w-4 h-4" />
@@ -178,6 +188,27 @@ export function AppCard({ app, onDelete, index = 0 }: AppCardProps) {
             <span>{formatRelativeTime(app.createdAt)}</span>
           </div>
         </div>
+
+        {/* Deploy URL */}
+        {deployUrl && (
+          <div className="mt-3 flex items-center gap-2">
+            <Globe className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs font-mono text-muted-foreground truncate flex-1 min-w-0">
+              {deployUrl.replace(/^https?:\/\//, '')}
+            </span>
+            <a
+              href={deployUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md bg-brand-500/10 text-brand-500 hover:bg-brand-500/20 transition-colors flex-shrink-0"
+              aria-label={`Open ${app.name} live`}
+            >
+              <ExternalLink className="w-3 h-3" />
+              Open
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Footer link */}

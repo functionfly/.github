@@ -84,13 +84,13 @@ export function PurchaseEmptyState() {
         className="relative mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row"
       >
         <Button asChild size="lg">
-          <Link to="/marketplace/agents">
+          <Link to="/marketplace?type=agents">
             <Bot className="mr-2 h-4 w-4" />
             {t('purchasesPage.browseAgents')}
           </Link>
         </Button>
         <Button asChild variant="outline" size="lg">
-          <Link to="/functions/discovery">
+          <Link to="/marketplace?type=functions">
             <FunctionSquare className="mr-2 h-4 w-4" />
             {t('purchasesPage.browseFunctions')}
           </Link>

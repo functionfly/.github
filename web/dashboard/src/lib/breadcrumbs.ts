@@ -55,7 +55,7 @@ export const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   '/dashboard': { label: 'Home', path: ROUTES.DASHBOARD, icon: Home },
 
   // ─── Discover section ──────────────────────────────────────────────────────
-  '/functions/discovery': { label: 'Discover', path: ROUTES.DISCOVER, icon: LayoutGrid },
+  '/marketplace': { label: 'Marketplace', path: ROUTES.MARKETPLACE, icon: LayoutGrid },
   '/functions/hot': { label: 'Hot', path: '/functions/hot', icon: Star },
   '/functions/trending': { label: 'Trending', path: '/functions/trending', icon: TrendingUp },
   '/functions/explore/new': { label: 'New', path: '/functions/explore/new', icon: Sparkles },

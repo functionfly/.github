@@ -25,15 +25,17 @@ export function useAgentHealth(agentId: string) {
   });
 
   const concurrencyQuery = useQuery({
-    queryKey: ['agent-concurrency'],
+    queryKey: ['agent-concurrency', agentId],
     queryFn: () => agentApi.getConcurrencyStats(),
     refetchInterval: 5000,
+    enabled: !!agentId,
     select: (data: any) => data?.stats as ConcurrencyData,
   });
 
   return {
     health: healthQuery.data as HealthData | undefined,
     healthLoading: healthQuery.isLoading,
+    healthError: healthQuery.error,
     concurrency: concurrencyQuery.data as ConcurrencyData | undefined,
     concurrencyLoading: concurrencyQuery.isLoading,
     refetch: () => {

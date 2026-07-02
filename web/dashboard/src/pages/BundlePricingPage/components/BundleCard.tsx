@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { Check, Rocket, Sparkles } from 'lucide-react';
+import { Check, Rocket, Sparkles, CreditCard, Zap, Loader2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface Bundle {
@@ -26,8 +26,10 @@ interface BundleCardProps {
   icon: LucideIcon;
   colorClass: string;
   onSelect: (bundle: Bundle) => void;
+  onPayNow: (bundle: Bundle) => void;
   onViewDetails: (bundle: Bundle) => void;
   delay?: number;
+  loading?: boolean;
 }
 
 const featureLabels: Record<string, string> = {
@@ -48,7 +50,7 @@ const featureLabels: Record<string, string> = {
 // Sentinel value for unlimited resources
 const UNLIMITED = -1;
 
-export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, onViewDetails, delay = 0 }: BundleCardProps) {
+export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, onPayNow, onViewDetails, delay = 0, loading = false }: BundleCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -132,18 +134,36 @@ export function BundleCard({ bundle, icon: Icon, colorClass, onSelect, onViewDet
           </div>
 
           {/* CTA Buttons */}
-          <div className="space-y-3">
+          <div className="space-y-2">
+            {bundle.price_cents > 0 && (
+              <Button
+                onClick={() => onPayNow(bundle)}
+                disabled={loading}
+                className="w-full bg-gradient-to-r from-brand-500 to-brand-400 hover:from-ff-flame hover:to-ff-afterburner text-white transition-all duration-300 hover:shadow-[0_4px_20px_rgba(255,107,53,0.4)]"
+              >
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CreditCard className="w-4 h-4 mr-2" />}
+                {loading ? 'Redirecting to Stripe...' : `Pay Now — ${bundle.price_usd}/${bundle.billing_interval}`}
+              </Button>
+            )}
+
             <Button
               onClick={() => onSelect(bundle)}
-              className="w-full bg-gradient-to-r from-brand-500 to-brand-400 hover:from-ff-flame hover:to-ff-afterburner text-white transition-all duration-300 hover:shadow-[0_4px_20px_rgba(255,107,53,0.4)]"
+              disabled={loading}
+              variant={bundle.price_cents > 0 ? 'outline' : 'default'}
+              className={`w-full ${
+                bundle.price_cents > 0
+                  ? 'border-brand-500/30 text-brand-500 hover:bg-brand-500/10'
+                  : 'bg-gradient-to-r from-brand-500 to-brand-400 hover:from-ff-flame hover:to-ff-afterburner text-white transition-all duration-300 hover:shadow-[0_4px_20px_rgba(255,107,53,0.4)]'
+              }`}
             >
-              <Rocket className="w-4 h-4 mr-2" />
-              {bundle.price_cents === 0 ? 'Start Free' : 'Get Started'}
+              <Zap className="w-4 h-4 mr-2" />
+              {bundle.price_cents > 0 ? 'Start Free (Founder Mode)' : 'Start Free'}
             </Button>
 
             <Button
               variant="ghost"
               onClick={() => onViewDetails(bundle)}
+              disabled={loading}
               className="w-full text-text-secondary hover:text-ff-flame hover:bg-ff-flame/5 transition-all"
             >
               View Details

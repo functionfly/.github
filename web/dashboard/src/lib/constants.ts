@@ -56,7 +56,7 @@ export const ROUTES = {
   SIGNUP: '/signup',
   DASHBOARD: '/dashboard',
   /** Marketplace / discovery home (sidebar: Discover). */
-  DISCOVER: '/functions/discovery',
+  DISCOVER: '/marketplace',
   /** Metrics / activity home (sidebar: Overview). */
   OVERVIEW: '/overview',
   FUNCTIONS: '/functions',
@@ -97,10 +97,9 @@ export const ROUTES = {
   agentWorkspacePath: (agentId: string) => `/agents/${encodeURIComponent(agentId)}/workspace`,
   SDK_INTEGRATIONS: '/sdk-integrations',
   MARKETPLACE: '/marketplace',
-  // Alias for the agent-specific marketplace (distinct semantic purpose from generic MARKETPLACE)
-  MARKETPLACE_AGENTS: '/marketplace',
-  // Alias for discovery landing — DISCOVER is the primary name
-  MARKETPLACE_FUNCTIONS: '/functions/discovery',
+  MARKETPLACE_AGENTS: '/marketplace?type=agents',
+  MARKETPLACE_EXTENSIONS: '/marketplace?type=extensions',
+  MARKETPLACE_FUNCTIONS: '/marketplace?type=functions',
   EVOLUTION: '/evolution',
   STUDIO: '/studio',
   // FRG - Function Runtime Graph

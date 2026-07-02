@@ -21,9 +21,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { formatDate } from '../../settings-utils';
+import { SignerSettingsCard } from './SignerSettingsCard';
 
 export interface TrustAPISettingsTabProps {
   returnUrl: string;
+  userPlan: string;
 }
 
 interface TierOption {
@@ -36,7 +38,7 @@ interface TierOption {
   isDowngrade: boolean;
 }
 
-export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
+export function TrustAPISettingsTab({ returnUrl, userPlan }: TrustAPISettingsTabProps) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -355,6 +357,8 @@ export function TrustAPISettingsTab({ returnUrl }: TrustAPISettingsTabProps) {
           </CardContent>
         </Card>
       )}
+
+      <SignerSettingsCard userPlan={userPlan} />
     </div>
   );
 }

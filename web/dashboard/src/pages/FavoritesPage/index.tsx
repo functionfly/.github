@@ -87,7 +87,7 @@ export default function FavoritesPage() {
           <h2 className="fav-empty__title">No favorites yet</h2>
           <p className="fav-empty__desc">Start exploring and add functions to your favorites by clicking the heart icon.</p>
           <div className="fav-empty__actions">
-            <FrameButton onClick={() => navigate('/functions/discovery/hot')} iconLeft={<Search className="fav-icon-sm" />}>
+            <FrameButton onClick={() => navigate('/marketplace?type=functions')} iconLeft={<Search className="fav-icon-sm" />}>
               Discover Functions
             </FrameButton>
             <FrameButton onClick={() => navigate('/functions/new')}>Create Your Own</FrameButton>

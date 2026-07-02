@@ -4,6 +4,8 @@ import { useAgent, useUpdateAgent, useAgentPolicy, useUpdateAgentPolicy, useDele
 import { useQuery } from '@tanstack/react-query';
 import { Save, Settings, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface ConfigViewProps {
   agentId: string;
@@ -21,6 +23,7 @@ export function ConfigView({ agentId }: ConfigViewProps) {
   const updateAgent = useUpdateAgent(agentId);
   const updatePolicy = useUpdateAgentPolicy(agentId);
   const deleteAgent = useDeleteAgent();
+  const navigate = useNavigate();
 
   const agent = agentData?.agent ? normalizeAgentIdentity(agentData.agent) : undefined;
   const policy = policyData?.policy;
@@ -86,22 +89,27 @@ export function ConfigView({ agentId }: ConfigViewProps) {
   }, [isCapEnabled]);
 
   const handleSave = useCallback(async () => {
-    await Promise.all([
-      updateAgent.mutateAsync({
-        name,
-        description,
-        model,
-        capabilities,
-        autonomous_enabled: autonomousEnabled,
-        evolution_enabled: evolutionEnabled,
-      } as any),
-      updatePolicy.mutateAsync({
-        maxExecutionDepth: parseInt(maxDepth) || 10,
-        maxRecursionDepth: parseInt(maxRecursion) || 5,
-        maxWallTimeMs: parseInt(maxWallTime) || 30000,
-        maxMemoryGrowthMB: parseInt(maxMemory) || 256,
-      }),
-    ]);
+    try {
+      await Promise.all([
+        updateAgent.mutateAsync({
+          name,
+          description,
+          model,
+          capabilities,
+          autonomous_enabled: autonomousEnabled,
+          evolution_enabled: evolutionEnabled,
+        } as any),
+        updatePolicy.mutateAsync({
+          maxExecutionDepth: parseInt(maxDepth) || 10,
+          maxRecursionDepth: parseInt(maxRecursion) || 5,
+          maxWallTimeMs: parseInt(maxWallTime) || 30000,
+          maxMemoryGrowthMB: parseInt(maxMemory) || 256,
+        }),
+      ]);
+      toast.success('Configuration saved');
+    } catch (err: any) {
+      toast.error(`Failed to save configuration: ${err?.message ?? 'Unknown error'}`);
+    }
   }, [name, description, model, capabilities, autonomousEnabled, evolutionEnabled, maxDepth, maxRecursion, maxWallTime, maxMemory, updateAgent, updatePolicy]);
 
   const handleDelete = useCallback(async () => {
@@ -109,8 +117,14 @@ export function ConfigView({ agentId }: ConfigViewProps) {
       setDeleteConfirm(true);
       return;
     }
-    await deleteAgent.mutateAsync(agentId);
-  }, [deleteConfirm, deleteAgent, agentId]);
+    try {
+      await deleteAgent.mutateAsync(agentId);
+      toast.success('Agent deleted');
+      navigate('/agents');
+    } catch (err: any) {
+      toast.error(`Failed to delete agent: ${err?.message ?? 'Unknown error'}`);
+    }
+  }, [deleteConfirm, deleteAgent, agentId, navigate]);
 
   if (isLoading) {
     return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;

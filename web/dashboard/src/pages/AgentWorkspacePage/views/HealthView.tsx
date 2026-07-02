@@ -1,19 +1,44 @@
 import { StatusPill } from '@/components/containment';
 import { useAgentUsage } from '@/hooks/useAgent';
 import { useAgentHealth } from '../hooks/useAgentHealth';
-import { AlertTriangle, Heart, Shield } from 'lucide-react';
+import { AlertTriangle, Heart, RefreshCw, Shield } from 'lucide-react';
 
 interface HealthViewProps {
   agentId: string;
 }
 
 export function HealthView({ agentId }: HealthViewProps) {
-  const { health, healthLoading } = useAgentHealth(agentId);
-  const { data: usageData } = useAgentUsage(agentId);
+  const { health, healthLoading, healthError, refetch } = useAgentHealth(agentId);
+  const { data: usageData, error: usageError } = useAgentUsage(agentId);
   const usage = usageData?.usage as any;
 
   if (healthLoading) {
     return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
+
+  if (healthError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="aw-center__header">
+          <div>
+            <h2 className="aw-center__title">Health</h2>
+            <p className="aw-center__subtitle">Agent health monitoring and SLA tracking</p>
+          </div>
+        </div>
+        <div className="aw-empty">
+          <AlertTriangle size={40} className="aw-empty__icon" style={{ color: 'var(--status-error)' }} />
+          <span className="aw-empty__title">Failed to load health data</span>
+          <span className="aw-empty__desc">{(healthError as any)?.message ?? 'An error occurred'}</span>
+          <button
+            className="aw-nav-item"
+            style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2) var(--space-4)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer' }}
+            onClick={() => refetch()}
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const statusMap: Record<string, 'live' | 'pending' | 'revoked'> = {

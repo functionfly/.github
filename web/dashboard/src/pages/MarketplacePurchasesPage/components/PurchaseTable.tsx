@@ -28,7 +28,7 @@ function purchaseLink(entry: UnifiedPurchase): string | null {
   }
   if (entry.licenseRow) {
     const r = entry.licenseRow;
-    return `/functions/discovery?q=${encodeURIComponent(r.functionName || r.functionId)}`;
+    return `/marketplace?type=functions&q=${encodeURIComponent(r.functionName || r.functionId)}`;
   }
   return null;
 }

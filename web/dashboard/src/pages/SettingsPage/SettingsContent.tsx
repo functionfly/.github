@@ -273,7 +273,7 @@ export function SettingsContent({
           {activeTab === 'ai-keys' && <AIKeysSettingsTab />}
           {activeTab === 'integrations' && <IntegrationsSettingsTab />}
           {activeTab === 'github' && <GitHubSettingsPage />}
-          {activeTab === 'trust-api' && <TrustAPISettingsTab returnUrl={returnUrl} />}
+          {activeTab === 'trust-api' && <TrustAPISettingsTab returnUrl={returnUrl} userPlan={displayPlan} />}
         </div>
       </div>
     </div>

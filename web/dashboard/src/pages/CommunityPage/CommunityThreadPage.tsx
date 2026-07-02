@@ -4,24 +4,40 @@ import {
   communityApi,
   displayAuthor,
   formatRelativeTime,
+  profileUrl,
   type CommunityComment,
 } from '@/api/community';
-import { Navbar } from '@/components/common/Navbar';
 import { CommentThread } from '@/components/community/CommentThread';
 import { VoteControls } from '@/components/community/VoteControls';
 import { MetaTags } from '@/components/seo/MetaTags';
-import { Button } from '@/components/ui/button';
-import { Footer } from '@/pages/LandingPage/components/Footer';
+import { MarkdownRenderer } from '@/pages/FunctionPage/MarkdownRenderer';
+import {
+  Chamber,
+  CornerBrace,
+  PageGrid,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  AnnotationTag,
+} from '@/components/containment';
 import { useAuthStore } from '@/stores/authStore';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CheckCircle2, Loader2, MessageSquare } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  MessageSquare,
+  Send,
+  Eye,
+  Clock,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import './Community.css';
 
 export function CommunityThreadPage() {
-  const { postId } = useParams<{ postId: string }>();
+  const { postId: slugOrId } = useParams<{ postId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
@@ -32,16 +48,18 @@ export function CommunityThreadPage() {
   const [votingId, setVotingId] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['community-post', postId],
-    queryFn: () => communityApi.getPost(postId!),
-    enabled: !!postId,
+    queryKey: ['community-post', slugOrId],
+    queryFn: () => communityApi.getPost(slugOrId!),
+    enabled: !!slugOrId,
+    refetchInterval: 30000,
   });
 
   const post = data?.post;
   const comments = data?.comments ?? [];
+  const postId = post?.id;
 
   const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['community-post', postId] });
+    queryClient.invalidateQueries({ queryKey: ['community-post', slugOrId] });
     queryClient.invalidateQueries({ queryKey: ['community-posts'] });
   };
 
@@ -62,10 +80,44 @@ export function CommunityThreadPage() {
 
   const voteMutation = useMutation({
     mutationFn: communityApi.vote,
-    onMutate: ({ target_id }) => setVotingId(target_id),
-    onSettled: () => setVotingId(null),
-    onSuccess: invalidate,
-    onError: () => toast.error('Sign in to vote'),
+    onMutate: async (variables) => {
+      setVotingId(variables.target_id);
+      await queryClient.cancelQueries({ queryKey: ['community-post', slugOrId] });
+      const key = ['community-post', slugOrId];
+      const previous = queryClient.getQueryData<any>(key);
+      queryClient.setQueryData(key, (old: any) => {
+        if (!old) return old;
+        if (variables.target_type === 'post') {
+          return {
+            ...old,
+            post: {
+              ...old.post,
+              vote_score: old.post.vote_score - ((old.post.user_vote as number) || 0) + variables.value,
+              user_vote: variables.value,
+            },
+          };
+        }
+        return {
+          ...old,
+          comments: old.comments?.map((c: any) =>
+            c.id === variables.target_id
+              ? { ...c, vote_score: c.vote_score - ((c.user_vote as number) || 0) + variables.value, user_vote: variables.value }
+              : c
+          ),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(['community-post', slugOrId], context.previous);
+      }
+      toast.error('Sign in to vote');
+    },
+    onSettled: () => {
+      setVotingId(null);
+      invalidate();
+    },
   });
 
   const acceptMutation = useMutation({
@@ -95,80 +147,138 @@ export function CommunityThreadPage() {
 
   if (isLoading) {
     return (
-      <div className="community-page">
-        <Navbar />
-        <div className="community-empty py-24">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-        </div>
+      <div className="sc-community-page">
+        <PageGrid />
+        <Chamber nested className="sc-community-loading">
+          <Loader2 size={24} className="sc-community-spinner" />
+          <span className="sc-community-loading-text">Loading thread...</span>
+        </Chamber>
       </div>
     );
   }
 
   if (error || !post) {
     return (
-      <div className="community-page">
-        <Navbar />
-        <div className="community-empty py-24">
-          <p className="font-medium mb-4">Thread not found</p>
-          <Button asChild variant="outline">
-            <Link to="/community">Back to community</Link>
-          </Button>
-        </div>
+      <div className="sc-community-page">
+        <PageGrid />
+        <Chamber nested className="sc-community-empty">
+          <MessageSquare size={40} className="sc-community-empty-icon" />
+          <p className="sc-community-empty-title">Thread not found</p>
+          <p className="sc-community-empty-description">
+            This thread may have been removed or the link is incorrect.
+          </p>
+          <FrameButton
+            size="sm"
+            iconLeft={<ArrowLeft size={14} />}
+            onClick={() => navigate('/community')}
+            className="sc-community-mt-4"
+          >
+            Back to community
+          </FrameButton>
+        </Chamber>
       </div>
     );
   }
 
   return (
-    <div className="community-page">
+    <div className="sc-community-page">
+      <PageGrid />
       <MetaTags title={`${post.title} | Community`} description={post.body.slice(0, 160)} />
-      <Navbar />
 
-      <div className="max-w-3xl mx-auto px-4 py-6">
-        <Link
-          to="/community"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to community
+      <div className="sc-thread-container">
+        {/* Back link */}
+        <Link to="/community" className="sc-thread-back">
+          <ArrowLeft size={14} />
+          <span>Back to community</span>
         </Link>
 
-        <article className="community-thread-card">
-          <div className="community-thread-header">
-            <div className="flex gap-3">
+        {/* Thread Card */}
+        <Chamber>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <AnnotationTag
+            primary={post.category?.name?.toUpperCase() || 'THREAD'}
+            secondary={`${post.reply_count} replies`}
+          />
+
+          {/* Thread Header */}
+          <div className="sc-thread-header">
+            <div className="sc-thread-header-main">
               <VoteControls
                 score={post.vote_score}
                 userVote={post.user_vote}
                 onVote={handlePostVote}
                 disabled={votingId === post.id}
               />
-              <div className="min-w-0 flex-1">
-                <div className="community-post-meta mb-2">
-                  <span className="community-badge community-badge-category">
-                    {post.category?.name}
-                  </span>
-                  {post.status === 'solved' && (
-                    <span className="community-badge community-badge-solved">
-                      <CheckCircle2 className="h-3 w-3" />
-                      Solved
-                    </span>
+              <div className="sc-thread-header-content">
+                <div className="sc-thread-meta">
+                  {post.category?.name && (
+                    <span className="sc-thread-category">{post.category.name}</span>
                   )}
-                  <span>{displayAuthor(post.author)}</span>
-                  <span>·</span>
-                  <span>{formatRelativeTime(post.created_at)}</span>
+                  {post.status === 'solved' && <StatusPill status="live" label="Solved" />}
+                  {post.is_pinned && <StatusPill status="pending" label="Pinned" />}
                 </div>
-                <h1 className="text-xl font-bold text-foreground leading-snug">{post.title}</h1>
-                <div className="community-stats mt-2">
-                  <span>{post.reply_count} replies</span>
-                  <span>{post.view_count} views</span>
+                <h1 className="sc-thread-title">{post.title}</h1>
+                <div className="sc-thread-info">
+                  <div className="sc-thread-author">
+                    <Link to={profileUrl(post.author)} className="sc-community-avatar-link">
+                      {post.author?.avatar_url ? (
+                        <img src={post.author.avatar_url} alt="" width={22} height={22} className="sc-community-avatar-img" style={{ borderRadius: '50%' }} />
+                      ) : (
+                        <div className="sc-community-avatar">
+                          {(post.author?.name || post.author?.username || '?')[0].toUpperCase()}
+                        </div>
+                      )}
+                    </Link>
+                    <Link to={profileUrl(post.author)} className="sc-community-post-author">
+                      {displayAuthor(post.author)}
+                    </Link>
+                  </div>
+                  <span className="sc-community-meta-sep">·</span>
+                  <span className="sc-thread-stat">
+                    <Clock size={12} /> {formatRelativeTime(post.created_at)}
+                  </span>
+                  <span className="sc-community-meta-sep">·</span>
+                  <span className="sc-thread-stat">
+                    <MessageSquare size={12} /> {post.reply_count} replies
+                  </span>
+                  <span className="sc-community-meta-sep">·</span>
+                  <span className="sc-thread-stat">
+                    <Eye size={12} /> {post.view_count} views
+                  </span>
                 </div>
               </div>
             </div>
           </div>
-          <div className="community-thread-body">{post.body}</div>
 
-          <section className="community-comments-section">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground mb-4 flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" />
+          {/* Thread Body — Markdown */}
+          <div className="sc-thread-body">
+            <MarkdownRenderer content={post.body} />
+          </div>
+
+          {/* Tags */}
+          {post.tags && post.tags.length > 0 && (
+            <div className="sc-community-tags" style={{ marginBottom: 'var(--space-5)' }}>
+              {post.tags.map((tag) => (
+                <Link key={tag} to={`/community?tag=${encodeURIComponent(tag)}`} className="sc-community-tag">
+                  {tag}
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {/* Accepted Answer Banner */}
+          {post.status === 'solved' && (
+            <div className="sc-thread-solved-banner">
+              <CheckCircle2 size={16} />
+              <span>This thread has been marked as solved</span>
+            </div>
+          )}
+
+          {/* Comments Section */}
+          <section className="sc-thread-comments">
+            <h2 className="sc-thread-comments-header">
+              <MessageSquare size={14} />
               {comments.length} {comments.length === 1 ? 'Reply' : 'Replies'}
             </h2>
 
@@ -176,6 +286,7 @@ export function CommunityThreadPage() {
               comments={comments as CommunityComment[]}
               currentUserId={user?.id}
               postAuthorId={post.author_id}
+              postSlug={post.slug}
               onVote={handleCommentVote}
               onReply={(id) => {
                 requireAuth(() => {
@@ -187,38 +298,42 @@ export function CommunityThreadPage() {
               votingId={votingId}
             />
 
-            <div className="community-reply-box">
+            {/* Reply Box */}
+            <div className="sc-thread-reply-box">
               {replyToId && (
-                <p className="text-xs text-muted-foreground mb-2">
+                <p className="sc-thread-reply-context">
                   Replying to a comment ·{' '}
-                  <button type="button" className="underline" onClick={() => setReplyToId(null)}>
+                  <button type="button" className="sc-thread-reply-cancel" onClick={() => setReplyToId(null)}>
                     cancel
                   </button>
                 </p>
               )}
               <textarea
                 id="community-reply"
+                className="sc-community-textarea"
                 value={replyBody}
                 onChange={(e) => setReplyBody(e.target.value)}
                 placeholder={
-                  isAuthenticated ? 'Share your answer or ask a follow-up…' : 'Sign in to reply'
+                  isAuthenticated ? 'Share your answer or ask a follow-up… (Markdown supported)' : 'Sign in to reply'
                 }
                 disabled={!isAuthenticated}
+                rows={4}
               />
-              <div className="flex justify-end mt-3">
-                <Button
-                  disabled={!replyBody.trim() || replyMutation.isPending}
+              <div className="sc-thread-reply-footer">
+                <SealedButton
+                  size="sm"
+                  iconLeft={<Send size={14} />}
+                  loading={replyMutation.isPending}
+                  disabled={!replyBody.trim()}
                   onClick={() => requireAuth(() => replyMutation.mutate(replyBody.trim()))}
                 >
-                  {replyMutation.isPending ? 'Posting…' : 'Post reply'}
-                </Button>
+                  Post reply
+                </SealedButton>
               </div>
             </div>
           </section>
-        </article>
+        </Chamber>
       </div>
-
-      <Footer />
     </div>
   );
 }

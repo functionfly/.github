@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Check, Rocket, X } from 'lucide-react';
+import { Check, Rocket, X, CreditCard, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 interface Bundle {
@@ -34,6 +34,7 @@ interface BundleDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (bundle: Bundle) => void;
+  onPayNow: (bundle: Bundle) => void;
 }
 
 const featureLabels: Record<string, string> = {
@@ -54,7 +55,7 @@ const featureLabels: Record<string, string> = {
 // Sentinel value for unlimited - use -1 consistently
 const UNLIMITED = -1;
 
-export function BundleDetailModal({ bundle, icon: Icon, colorClass, isOpen, onClose, onSelect }: BundleDetailModalProps) {
+export function BundleDetailModal({ bundle, icon: Icon, colorClass, isOpen, onClose, onSelect, onPayNow }: BundleDetailModalProps) {
   if (!bundle) return null;
 
   return (
@@ -138,15 +139,32 @@ export function BundleDetailModal({ bundle, icon: Icon, colorClass, isOpen, onCl
 
         {/* Actions */}
         <div className="flex gap-3 pt-4">
+          {bundle.price_cents > 0 && (
+            <Button
+              onClick={() => {
+                onPayNow(bundle);
+                onClose();
+              }}
+              className="flex-1 bg-gradient-to-r from-brand-500 to-brand-400 hover:from-ff-flame hover:to-ff-afterburner text-white transition-all duration-300"
+            >
+              <CreditCard className="w-4 h-4 mr-2" />
+              Pay Now — {bundle.price_usd}/{bundle.billing_interval}
+            </Button>
+          )}
           <Button
             onClick={() => {
               onSelect(bundle);
               onClose();
             }}
-            className="flex-1 bg-gradient-to-r from-brand-500 to-brand-400 hover:from-ff-flame hover:to-ff-afterburner text-white transition-all duration-300"
+            variant={bundle.price_cents > 0 ? 'outline' : 'default'}
+            className={`flex-1 ${
+              bundle.price_cents > 0
+                ? 'border-brand-500/30 text-brand-500 hover:bg-brand-500/10'
+                : 'bg-gradient-to-r from-brand-500 to-brand-400 hover:from-ff-flame hover:to-ff-afterburner text-white transition-all duration-300'
+            }`}
           >
-            <Rocket className="w-4 h-4 mr-2" />
-            {bundle.price_cents === 0 ? 'Start Free' : 'Get Started'}
+            <Zap className="w-4 h-4 mr-2" />
+            {bundle.price_cents > 0 ? 'Start Free (Founder Mode)' : 'Start Free'}
           </Button>
           <Button variant="ghost" onClick={onClose} className="px-4">
             <X className="w-4 h-4" />

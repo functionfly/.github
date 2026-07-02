@@ -628,6 +628,43 @@ export async function getBundleStats(): Promise<BundleStats> {
   return apiClient.get<BundleStats>('/v1/billing/bundles/stats');
 }
 
+export interface FounderModeBundleAnalytics {
+  bundle_slug: string;
+  total_signups: number;
+  active: number;
+  converted: number;
+  revenue_cents: number;
+  conversion_rate: number;
+}
+
+export interface FounderModeTypeAnalytics {
+  mode_type: string;
+  count: number;
+  converted: number;
+  conversion_rate: number;
+}
+
+export interface FounderModeAnalytics {
+  total_signups: number;
+  active_founders: number;
+  converted_to_paid: number;
+  expired_or_canceled: number;
+  conversion_rate: number;
+  total_revenue_cents: number;
+  avg_days_to_convert: number;
+  by_bundle: FounderModeBundleAnalytics[];
+  by_mode_type: FounderModeTypeAnalytics[];
+  recent_signups_30d: number;
+}
+
+/**
+ * Get founder mode funnel analytics (admin).
+ * GET /v1/billing/bundles/analytics/founder-mode
+ */
+export async function getFounderModeAnalytics(): Promise<FounderModeAnalytics> {
+  return apiClient.get<FounderModeAnalytics>('/v1/billing/bundles/analytics/founder-mode');
+}
+
 /**
  * Get a specific bundle by slug.
  * GET /v1/billing/bundles/:slug

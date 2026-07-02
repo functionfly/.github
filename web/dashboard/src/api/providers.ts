@@ -106,4 +106,12 @@ export const providersApi = {
   async getProviderMaintenanceStatus(): Promise<Record<string, ProviderMaintenanceStatus>> {
     return apiClient.get('/v1/providers/status');
   },
+
+  async discoverResources(provider: string, apiKey: string): Promise<Array<{ id: string; name: string; url: string }>> {
+    const resp = await apiClient.get<{ resources: Array<{ id: string; name: string; url: string }> }>(
+      `/v1/providers/discover?provider=${encodeURIComponent(provider)}`,
+      { headers: { 'X-Provider-Key': apiKey } },
+    );
+    return resp.resources ?? [];
+  },
 };

@@ -228,7 +228,7 @@ export function SwarmDashboard({ agentId }: SwarmDashboardProps) {
           title="Agent Marketplace"
           description="Browse and hire agents"
           icon={<Shield className="h-5 w-5" />}
-          href="/marketplace/agents"
+          href="/marketplace?type=agents"
         />
         <ActionCard
           title="Function Marketplace"

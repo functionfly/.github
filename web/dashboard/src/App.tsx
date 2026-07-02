@@ -53,7 +53,8 @@ const AgentMarketplaceDetailPage = lazyPage(() => import('@/pages/AgentMarketpla
 const AgentMemoryPage = lazyPage(() => import('@/pages/AgentMemoryPage'), 'AgentMemoryPage');
 const AgentMemoryDetailPage = lazyPage(() => import('@/pages/AgentMemoryPage/AgentMemoryDetailPage'), 'AgentMemoryDetailPage');
 const AgentSDKIntegrationsPage = lazyPage(() => import('@/pages/AgentSDKIntegrationsPage'), 'AgentSDKIntegrationsPage');
-const AgentsMarketplacePage = lazyPage(() => import('@/pages/AgentsMarketplacePage'), 'AgentsMarketplacePage');
+const MarketplacePage = lazyPage(() => import('@/pages/MarketplacePage'), 'MarketplacePage');
+const ExtensionDetailPage = lazyPage(() => import('@/pages/ExtensionDetailPage'), 'ExtensionDetailPage');
 const AgentsPage = lazyPage(() => import('@/pages/AgentsPage'), 'AgentsPage');
 const AgentWalletPage = lazyPage(() => import('@/pages/AgentWalletPage'), 'AgentWalletPage');
 const AgentWorkspacePage = lazyPage(() => import('@/pages/AgentWorkspacePage'), 'AgentWorkspacePage');
@@ -69,10 +70,17 @@ const MagicLinkVerifyPage = lazyPage(() => import('@/pages/AuthPage/MagicLinkVer
 const BrowseFunctionsPage = lazyPage(() => import('@/pages/BrowseFunctionsPage'), 'BrowseFunctionsPage');
 const BundlePricingPage = lazyPage(() => import('@/pages/BundlePricingPage'), 'BundlePricingPage');
 const BundleProvisioningPage = lazyPage(() => import('@/pages/BundleProvisioningPage'), 'BundleProvisioningPage');
+const BundleOverviewPage = lazyPage(() => import('@/pages/BundleOverviewPage'), 'BundleOverviewPage');
+const BundleConfigPage = lazyPage(() => import('@/pages/BundleConfigPage'), 'BundleConfigPage');
+const MyBundlesPage = lazyPage(() => import('@/pages/MyBundlesPage'), 'MyBundlesPage');
 const BrainPage = lazyPage(() => import('@/pages/BrainPage'), 'BrainPage');
 const CertificationPage = lazyPage(() => import('@/pages/CertificationPage'), 'CertificationPage');
 const ChangelogPage = lazyPage(() => import('@/pages/ChangelogPage'), 'ChangelogPage');
 const CommunityPage = lazyPage(() => import('@/pages/CommunityPage'), 'CommunityPage');
+const CommunityThreadPage = lazyPage(() => import('@/pages/CommunityPage/CommunityThreadPage'), 'CommunityThreadPage');
+const CommunityUserProfilePage = lazyPage(() => import('@/pages/CommunityPage/CommunityUserProfilePage'), 'CommunityUserProfilePage');
+const CommunityBookmarksPage = lazyPage(() => import('@/pages/CommunityPage/CommunityBookmarksPage'), 'CommunityBookmarksPage');
+const CommunityNotificationsPage = lazyPage(() => import('@/pages/CommunityPage/CommunityNotificationsPage'), 'CommunityNotificationsPage');
 const ConnectorsCallbackPage = lazyPage(() => import('@/pages/ConnectorsCallbackPage'), 'ConnectorsCallbackPage');
 const ContactPage = lazyPage(() => import('@/pages/ContactPage'), 'ContactPage');
 const ConversationsPage = lazyPage(() => import('@/pages/ConversationsPage'), 'ConversationsPage');
@@ -592,6 +600,7 @@ function AppContent() {
             <Route path="apps" element={<AppsPage />} />
             <Route path="apps/new" element={<CreateAppPage />} />
             <Route path="apps/:slug" element={<AppDetailPage />} />
+            <Route path="apps/:slug/bundle" element={<BundleConfigPage />} />
             <Route path="functions" element={<FunctionsPage />} />
             <Route path="functions/hot" element={<FunctionsDiscoveryPage />} />
             <Route path="functions/trending" element={<FunctionsDiscoveryPage />} />
@@ -599,7 +608,7 @@ function AppContent() {
             <Route path="functions/popular" element={<FunctionsDiscoveryPage />} />
             <Route path="functions/favorites" element={<FavoritesPage />} />
             <Route path="functions/my" element={<FunctionsDiscoveryPage />} />
-            <Route path="functions/discovery" element={<FunctionMarketplacePage />} />
+            <Route path="functions/discovery" element={<Navigate to="/marketplace?type=functions" replace />} />
             <Route path="functions/discovery/:filter" element={<FunctionsDiscoveryPage />} />
             <Route path="gallery" element={<GalleryPage />} />
             <Route path="functions/new" element={<FunctionEditorPage />} />
@@ -645,6 +654,8 @@ function AppContent() {
             <Route path="state-fabric/:id/edit" element={<StateFabricDetailPage />} />
             <Route path="bundles" element={<BundlePricingPage />} />
             <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
+            <Route path="bundles/overview" element={<BundleOverviewPage />} />
+            <Route path="bundles/mine" element={<MyBundlesPage />} />
             <Route path="founders" element={<FoundersPage />} />
             <Route path="founders/votes/:id" element={<ProposalDetailPage />} />
 
@@ -703,9 +714,10 @@ function AppContent() {
             <Route path="agents/:id/analytics" element={<AgentAnalyticsPage />} />
             <Route path="agent-observability" element={<AgentObservabilityPage />} />
             <Route path="sdk-integrations" element={<AgentSDKIntegrationsPage />} />
-            <Route path="marketplace" element={<AgentsMarketplacePage />} />
-            <Route path="marketplace/agents" element={<AgentsMarketplacePage />} />
+            <Route path="marketplace" element={<MarketplacePage />} />
             <Route path="marketplace/agents/:id" element={<AgentMarketplaceDetailPage />} />
+            <Route path="marketplace/extensions/:id" element={<ExtensionDetailPage />} />
+            <Route path="marketplace/agents" element={<Navigate to="/marketplace?type=agents" replace />} />
             <Route path="wallet" element={<WalletPage />} />
             <Route path="wallet/agents/:id" element={<WalletPage />} />
             <Route path="wallet/:slug" element={<WalletPage />} />
@@ -714,6 +726,10 @@ function AppContent() {
             <Route path="conversations" element={<ConversationsPage />} />
             <Route path="conversations/:id" element={<ConversationsPage />} />
             <Route path="community" element={<CommunityPage />} />
+            <Route path="community/bookmarks" element={<CommunityBookmarksPage />} />
+            <Route path="community/notifications" element={<CommunityNotificationsPage />} />
+            <Route path="community/user/:userId" element={<CommunityUserProfilePage />} />
+            <Route path="community/:postId" element={<CommunityThreadPage />} />
           </Route>
 
           {/* Agent Workspace - Outside DashboardLayout for fullscreen */}

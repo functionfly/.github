@@ -77,6 +77,8 @@ export interface Rating {
   tenant_id: string;
   rating: number;
   review?: string;
+  username?: string;
+  user_name?: string;
   created_at: string;
   updated_at: string;
 }
@@ -118,7 +120,7 @@ export const marketplaceApi = {
     if (filters?.limit) params.limit = filters.limit;
     if (filters?.offset) params.offset = filters.offset;
 
-    const response = await apiClient.get('/marketplace/extensions', { params });
+    const response = await apiClient.get('/v1/marketplace/extensions', { params });
     if (response && typeof response === 'object' && 'extensions' in response) {
       return response as { extensions: Extension[] };
     }
@@ -126,58 +128,58 @@ export const marketplaceApi = {
   },
 
   get: async (extensionId: string): Promise<{ extension: Extension }> => {
-    const response = await apiClient.get(`/marketplace/extensions/${extensionId}`);
+    const response = await apiClient.get(`/v1/marketplace/extensions/${extensionId}`);
     return response as { extension: Extension };
   },
 
   create: async (data: CreateExtensionRequest): Promise<{ extension: Extension }> => {
-    const response = await apiClient.post('/marketplace/extensions', data);
+    const response = await apiClient.post('/v1/marketplace/extensions', data);
     return response as { extension: Extension };
   },
 
   update: async (extensionId: string, data: UpdateExtensionRequest): Promise<{ extension: Extension }> => {
-    const response = await apiClient.put(`/marketplace/extensions/${extensionId}`, data);
+    const response = await apiClient.put(`/v1/marketplace/extensions/${extensionId}`, data);
     return response as { extension: Extension };
   },
 
   delete: async (extensionId: string): Promise<{ message: string }> => {
-    const response = await apiClient.delete(`/marketplace/extensions/${extensionId}`);
+    const response = await apiClient.delete(`/v1/marketplace/extensions/${extensionId}`);
     return response as { message: string };
   },
 
   install: async (extensionId: string): Promise<{ message: string; extension: Extension; extension_id: string; plugin_manifest?: Record<string, unknown> }> => {
-    const response = await apiClient.post(`/marketplace/extensions/${extensionId}/install`);
+    const response = await apiClient.post(`/v1/marketplace/extensions/${extensionId}/install`);
     return response as { message: string; extension: Extension; extension_id: string; plugin_manifest?: Record<string, unknown> };
   },
 
   rate: async (extensionId: string, rating: number, review?: string): Promise<{ message: string; rating: Rating }> => {
-    const response = await apiClient.post(`/marketplace/extensions/${extensionId}/rate`, { rating, review: review || '' });
+    const response = await apiClient.post(`/v1/marketplace/extensions/${extensionId}/rate`, { rating, review: review || '' });
     return response as { message: string; rating: Rating };
   },
 
   getMyRating: async (extensionId: string): Promise<{ rating: Rating | null }> => {
-    const response = await apiClient.get(`/marketplace/extensions/${extensionId}/my-rating`);
+    const response = await apiClient.get(`/v1/marketplace/extensions/${extensionId}/my-rating`);
     return response as { rating: Rating | null };
   },
 
   listRatings: async (extensionId: string, limit: number = 50): Promise<{ ratings: Rating[] }> => {
-    const response = await apiClient.get(`/marketplace/extensions/${extensionId}/ratings`, { params: { limit } });
+    const response = await apiClient.get(`/v1/marketplace/extensions/${extensionId}/ratings`, { params: { limit } });
     return response as { ratings: Rating[] };
   },
 
   checkUpdates: async (installed: InstalledPluginInfo[]): Promise<{ updates: ExtensionUpdate[] }> => {
-    const response = await apiClient.post('/marketplace/check-updates', installed);
+    const response = await apiClient.post('/v1/marketplace/check-updates', installed);
     return response as { updates: ExtensionUpdate[] };
   },
 
   getCategories: async (): Promise<{ categories: CategoryCount[] }> => {
-    const response = await apiClient.get('/marketplace/categories');
+    const response = await apiClient.get('/v1/marketplace/categories');
     return response as { categories: CategoryCount[] };
   },
 
   getInstallCounts: async (extensionIds: string[]): Promise<{ install_counts: Record<string, number> }> => {
     const ids = extensionIds.join(',');
-    const response = await apiClient.get('/marketplace/install-counts', { params: { ids } });
+    const response = await apiClient.get('/v1/marketplace/install-counts', { params: { ids } });
     return response as { install_counts: Record<string, number> };
   },
 };

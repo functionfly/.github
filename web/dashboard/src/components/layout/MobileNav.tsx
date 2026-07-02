@@ -38,8 +38,8 @@ interface MobileNavProps {
 const mainNavItems: NavItem[] = [
   { path: ROUTES.DASHBOARD, label: "Dashboard", icon: LayoutDashboard, section: "main" },
   { path: "/functions/my", label: "Functions", icon: FunctionSquare, section: "main" },
-  { path: "/functions/discovery", label: "Browse Functions", icon: Store, section: "marketplace" },
-  { path: "/marketplace/agents", label: "Browse Agents", icon: Bot, section: "marketplace" },
+  { path: "/marketplace?type=functions", label: "Browse Functions", icon: Store, section: "marketplace" },
+  { path: "/marketplace?type=agents", label: "Browse Agents", icon: Bot, section: "marketplace" },
   { path: "/marketplace/purchases", label: "My Purchases", icon: ShoppingBag, section: "marketplace" },
   { path: ROUTES.PROVIDERS, label: "Connected Providers", icon: Cloud, section: "providers" },
   { path: "/providers/billing", label: "Usage & Billing", icon: CreditCard, section: "providers" },
@@ -49,7 +49,7 @@ const mainNavItems: NavItem[] = [
 // Unauthenticated nav items
 const unauthNavItems: NavItem[] = [
   { path: ROUTES.HOME, label: "Home", icon: Home, external: true },
-  { path: "/functions/discovery", label: "Functions", icon: FunctionSquare },
+  { path: "/marketplace", label: "Functions", icon: FunctionSquare },
   { path: "/pricing", label: "Pricing", icon: LayoutDashboard },
   { path: DOCS_SITE_URL, label: "Docs", icon: FunctionSquare, external: true },
 ];

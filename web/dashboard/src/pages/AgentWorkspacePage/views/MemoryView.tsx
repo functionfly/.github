@@ -1,5 +1,5 @@
 import { useAgentMemories } from '@/hooks/useAgentMemory';
-import { Database, Search, Star } from 'lucide-react';
+import { Database, Search, Star, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 interface MemoryViewProps {
@@ -17,7 +17,10 @@ export function MemoryView({ agentId }: MemoryViewProps) {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
 
-  const { data: memoriesData, isLoading } = useAgentMemories({ agent_id: agentId, limit: 200 });
+  const { data: memoriesData, isLoading, error, refetch } = useAgentMemories(
+    agentId ? { agent_id: agentId, limit: 200 } : undefined,
+    !!agentId,
+  );
   const memories = useMemo(() => {
     const data = memoriesData as any;
     return data?.memories ?? data?.items ?? [];
@@ -51,6 +54,41 @@ export function MemoryView({ agentId }: MemoryViewProps) {
 
   if (isLoading) {
     return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
+
+  if (error) {
+    const status = (error as any)?.response?.status;
+    const message = (error as any)?.message ?? 'Unknown error';
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="aw-center__header">
+          <div>
+            <h2 className="aw-center__title">Memory</h2>
+            <p className="aw-center__subtitle">Agent memory store and semantic search</p>
+          </div>
+        </div>
+        <div className="aw-empty">
+          <AlertTriangle size={40} className="aw-empty__icon" style={{ color: 'var(--status-error)' }} />
+          <span className="aw-empty__title">
+            {status === 403 ? 'Permission denied' : status === 401 ? 'Authentication required' : 'Failed to load memories'}
+          </span>
+          <span className="aw-empty__desc">
+            {status === 403
+              ? 'You do not have permission to view agent memories. Ensure your account has the memory.read permission.'
+              : status === 401
+                ? 'Your session has expired. Please log in again.'
+                : `API error: ${message}`}
+          </span>
+          <button
+            className="aw-nav-item"
+            style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2) var(--space-4)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer' }}
+            onClick={() => refetch()}
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

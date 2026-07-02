@@ -550,10 +550,8 @@ export const agentApi = {
    * Update spend cap.
    * PUT /v1/agent/{agent_id}/billing/spend-cap
    */
-  updateSpendCap: (agentId: string, spendCap: number) =>
-    apiClient.put<{ ok: boolean }>(`/v1/agent/${agentId}/billing/spend-cap`, {
-      spend_cap: spendCap,
-    }),
+  updateSpendCap: (agentId: string, caps: { spend_cap_daily_usd?: number; spend_cap_weekly_usd?: number; spend_cap_monthly_usd?: number }) =>
+    apiClient.put<{ ok: boolean }>(`/v1/agent/${agentId}/billing/spend-cap`, caps),
 
   /**
    * Get cost breakdown.
@@ -1322,4 +1320,20 @@ export const agentApi = {
 
   deleteChatSession: (agentId: string, sessionId: string) =>
     apiClient.delete<{ ok: boolean }>(`/v1/agent/${agentId}/chat/sessions/${sessionId}`),
+
+  // ---------------------------------------------------------------------------
+  // Agent Workspace
+  // ---------------------------------------------------------------------------
+
+  /** Browse workspace files. GET /v1/agent/{agent_id}/workspace?path= */
+  browseWorkspace: (agentId: string, path = '') =>
+    apiClient.get<{ ok: boolean; path: string; workspace: string; entries: Array<{ name: string; path: string; is_dir: boolean; size: number; mod_time: string }> }>(`/v1/agent/${agentId}/workspace?path=${encodeURIComponent(path)}`),
+
+  /** Get workspace manifest. GET /v1/agent/{agent_id}/workspace/manifest */
+  getWorkspaceManifest: (agentId: string) =>
+    apiClient.get<{ ok: boolean; manifest: { agent_id: string; tenant_id: string; name: string; description: string; created_at: string; updated_at: string; file_count: number; total_bytes: number; structure: string[] } }>(`/v1/agent/${agentId}/workspace/manifest`),
+
+  /** Get workspace execution history. GET /v1/agent/{agent_id}/workspace/history */
+  getWorkspaceHistory: (agentId: string) =>
+    apiClient.get<{ ok: boolean; history: Array<{ timestamp: string; action: string; tool: string; path?: string; description: string; agent_id: string; session_id?: string; result?: string }> }>(`/v1/agent/${agentId}/workspace/history`),
 };

@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle, Circle, Loader2, AlertCircle, ArrowRight, Shield, CreditCard, Mail, BarChart3, Database, Store, MessageSquare, Bell, Brain, Cpu, Sparkles, MessageCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle, Circle, Loader2, AlertCircle, Shield, CreditCard, Mail, BarChart3, Database, Store, MessageSquare, Bell, Brain, Cpu, Sparkles, MessageCircle } from 'lucide-react';
 import { apiClient } from '@/api/client';
+import {
+  Chamber,
+  CornerBrace,
+  StatusPill,
+  SealedButton,
+  FrameButton,
+  AnnotationTag,
+} from '@/components/containment';
+import '@/styles/sc-provisioning.css';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,92 +40,108 @@ interface ProvisioningStatusCardProps {
 // ─── Component definitions ───────────────────────────────────────────────────
 
 const COMPONENT_META: Record<string, { icon: React.ComponentType<React.SVGAttributes<SVGElement>>; label: string; description: string }> = {
-  user_db: {
-    icon: Database,
-    label: 'User Database',
-    description: 'Dedicated PostgreSQL database with isolated schema',
-  },
-  auth: {
-    icon: Shield,
-    label: 'Authentication',
-    description: 'JWT keys, OAuth configs, sessions, MFA',
-  },
-  payments: {
-    icon: CreditCard,
-    label: 'Payments',
-    description: 'Stripe integration, products, invoices, webhooks',
-  },
-  email_workflows: {
-    icon: Mail,
-    label: 'Email Workflows',
-    description: 'Templates, automated sequences, dunning flows',
-  },
-  analytics: {
-    icon: BarChart3,
-    label: 'Analytics',
-    description: 'Event tracking, funnels, cohorts, dashboards',
-  },
-  // Marketplace-specific components
-  marketplace: {
-    icon: Store,
-    label: 'Marketplace',
-    description: 'Listings, categories, reviews, seller accounts',
-  },
-  messaging: {
-    icon: MessageSquare,
-    label: 'Messaging',
-    description: 'Buyer-seller conversations, offers, attachments',
-  },
-  notifications: {
-    icon: Bell,
-    label: 'Notifications',
-    description: 'In-app, email, push notification templates and delivery',
-  },
-  // AI App-specific components
-  ai_app: {
-    icon: Brain,
-    label: 'AI Infrastructure',
-    description: 'Vector DB, embeddings, RAG collections, memory system',
-  },
-  vector_db: {
-    icon: Cpu,
-    label: 'Vector Database',
-    description: 'pgvector collections with HNSW indexing for fast similarity search',
-  },
-  chat_workflows: {
-    icon: MessageCircle,
-    label: 'Chat Workflows',
-    description: 'AI assistants, conversations, RAG pipelines, tool calling',
-  },
-  memory_system: {
-    icon: Sparkles,
-    label: 'Memory System',
-    description: 'Long-term memory, user profiles, semantic recall',
-  },
+  user_db: { icon: Database, label: 'User Database', description: 'Dedicated PostgreSQL database with isolated schema' },
+  auth: { icon: Shield, label: 'Authentication', description: 'JWT keys, OAuth configs, sessions, MFA' },
+  payments: { icon: CreditCard, label: 'Payments', description: 'Stripe integration, products, invoices, webhooks' },
+  email_workflows: { icon: Mail, label: 'Email Workflows', description: 'Templates, automated sequences, dunning flows' },
+  analytics: { icon: BarChart3, label: 'Analytics', description: 'Event tracking, funnels, cohorts, dashboards' },
+  marketplace: { icon: Store, label: 'Marketplace', description: 'Listings, categories, reviews, seller accounts' },
+  messaging: { icon: MessageSquare, label: 'Messaging', description: 'Buyer-seller conversations, offers, attachments' },
+  notifications: { icon: Bell, label: 'Notifications', description: 'In-app, email, push notification templates and delivery' },
+  ai_app: { icon: Brain, label: 'AI Infrastructure', description: 'Vector DB, embeddings, RAG collections, memory system' },
+  vector_db: { icon: Cpu, label: 'Vector Database', description: 'pgvector collections with HNSW indexing' },
+  chat_workflows: { icon: MessageCircle, label: 'Chat Workflows', description: 'AI assistants, conversations, RAG pipelines, tool calling' },
+  memory_system: { icon: Sparkles, label: 'Memory System', description: 'Long-term memory, user profiles, semantic recall' },
 };
 
-// Bundle-specific component ordering
 const BUNDLE_COMPONENTS: Record<string, string[]> = {
   'saas-starter': ['user_db', 'auth', 'payments', 'email_workflows', 'analytics'],
   'marketplace': ['user_db', 'auth', 'payments', 'email_workflows', 'analytics', 'marketplace'],
   'ai-app': ['user_db', 'auth', 'payments', 'email_workflows', 'analytics', 'ai_app'],
 };
 
-// ─── Status icons ────────────────────────────────────────────────────────────
+// ─── Animated status indicator ──────────────────────────────────────────────
 
-function StatusIcon({ status }: { status: string }) {
-  switch (status) {
-    case 'active':
-      return <CheckCircle className="w-5 h-5 text-emerald-500" />;
-    case 'provisioning':
-      return <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />;
-    case 'failed':
-      return <AlertCircle className="w-5 h-5 text-red-500" />;
-    case 'pending':
-      return <Circle className="w-5 h-5 text-zinc-400" />;
-    default:
-      return <Circle className="w-5 h-5 text-zinc-400" />;
-  }
+function StatusIndicator({ status }: { status: string }) {
+  return (
+    <div className="sc-prov__status-indicator">
+      <AnimatePresence mode="wait">
+        {status === 'active' && (
+          <motion.div
+            key="active"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            className="sc-prov__status-ring sc-prov__status-ring--ok"
+          >
+            <CheckCircle className="sc-prov__status-icon sc-prov__status-icon--ok" />
+          </motion.div>
+        )}
+
+        {status === 'provisioning' && (
+          <motion.div
+            key="provisioning"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="sc-prov__status-ring sc-prov__status-ring--spin"
+          >
+            <Loader2 className="sc-prov__status-icon sc-prov__status-icon--spin" />
+          </motion.div>
+        )}
+
+        {status === 'failed' && (
+          <motion.div
+            key="failed"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+            className="sc-prov__status-ring sc-prov__status-ring--fail"
+          >
+            <AlertCircle className="sc-prov__status-icon sc-prov__status-icon--fail" />
+          </motion.div>
+        )}
+
+        {(status === 'pending' || !status) && (
+          <motion.div
+            key="pending"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="sc-prov__status-ring"
+          >
+            <Circle className="sc-prov__status-icon sc-prov__status-icon--pending" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Progress strip ─────────────────────────────────────────────────────────
+
+function ProgressStrip({ componentOrder, components }: { componentOrder: string[]; components: Record<string, ComponentState> }) {
+  const completed = componentOrder.filter(k => components[k]?.status === 'active').length;
+  const total = componentOrder.length;
+  const percent = total > 0 ? (completed / total) * 100 : 0;
+
+  return (
+    <div className="sc-prov__progress">
+      <div className="sc-prov__progress-track">
+        <motion.div
+          className="sc-prov__progress-fill"
+          initial={{ width: 0 }}
+          animate={{ width: `${percent}%` }}
+          transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+        />
+      </div>
+      <span className="sc-prov__progress-label">{completed}/{total}</span>
+    </div>
+  );
 }
 
 // ─── Main component ──────────────────────────────────────────────────────────
@@ -127,170 +153,162 @@ export function ProvisioningStatusCard({ bundleSlug, onComplete }: ProvisioningS
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await apiClient.get<ProvisioningResult | { status: 'not_provisioned' }>('/provisioning/status');
+      const res = await apiClient.get<ProvisioningResult | { status: 'not_provisioned' }>('/v1/provisioning/status');
       if (res && 'status' in res && res.status === 'not_provisioned') {
         setResult(null);
-      } else {
-        setResult(res as ProvisioningResult);
+        return null;
       }
+      setResult(res as ProvisioningResult);
+      return res as ProvisioningResult;
     } catch {
-      // Silently fail — status endpoint is optional
+      return null;
     }
   }, []);
 
-  // Poll for status updates while provisioning
   useEffect(() => {
-    if (!isProvisioning) return;
-    const interval = setInterval(fetchStatus, 2000);
+    const shouldPoll = isProvisioning || result?.status === 'provisioning';
+    if (!shouldPoll) return;
+    const interval = setInterval(async () => {
+      const latest = await fetchStatus();
+      if (latest?.status === 'active') {
+        setIsProvisioning(false);
+        onComplete?.();
+      } else if (latest?.status === 'failed') {
+        setIsProvisioning(false);
+      }
+    }, 1500);
     return () => clearInterval(interval);
-  }, [isProvisioning, fetchStatus]);
+  }, [isProvisioning, result?.status, fetchStatus, onComplete]);
 
-  // Check for existing provisioning on mount
   useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    fetchStatus().then((data) => {
+      if (data?.status === 'provisioning') setIsProvisioning(true);
+      else if (data?.status === 'active') onComplete?.();
+    });
+  }, []);
 
   const handleProvision = async () => {
     setIsProvisioning(true);
     setError(null);
-
-    try {
-      const res = await apiClient.post<ProvisioningResult>('/provisioning/bundle', {
-        bundle_slug: bundleSlug,
-      });
-
-      setResult(res);
-
-      if (res.status === 'active') {
-        onComplete?.();
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Provisioning failed');
-    } finally {
-      setIsProvisioning(false);
-    }
+    try { await apiClient.post('/v1/provisioning/bundle', { bundle_slug: bundleSlug }); }
+    catch (err: any) { setError(err?.response?.data?.error || 'Provisioning failed'); setIsProvisioning(false); }
   };
 
   const handleRetry = async () => {
     setIsProvisioning(true);
     setError(null);
-
-    try {
-      await apiClient.post('/provisioning/retry');
-      // Poll will pick up the new state
-    } catch (err: any) {
-      setError(err?.response?.data?.error || 'Retry failed');
-      setIsProvisioning(false);
-    }
+    try { await apiClient.post('/v1/provisioning/retry'); }
+    catch (err: any) { setError(err?.response?.data?.error || 'Retry failed'); setIsProvisioning(false); }
   };
 
   const allActive = result?.status === 'active';
   const hasFailures = result?.status === 'failed' || Object.values(result?.components || {}).some(c => c.status === 'failed');
   const componentOrder = BUNDLE_COMPONENTS[bundleSlug] || BUNDLE_COMPONENTS['saas-starter'];
-
-  const bundleNames: Record<string, string> = {
-    'saas-starter': 'SaaS Starter',
-    'marketplace': 'Marketplace',
-    'ai-app': 'AI App',
-  };
+  const components = result?.components || {};
+  const bundleNames: Record<string, string> = { 'saas-starter': 'SaaS Starter', 'marketplace': 'Marketplace', 'ai-app': 'AI App' };
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <Chamber className="sc-prov">
+      <CornerBrace position="tl" />
+      <CornerBrace position="br" />
+      <AnnotationTag primary="MODULE PROV-01" secondary="Provisioning" position="top-right" />
+
       {/* Header */}
-      <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              {bundleNames[bundleSlug] || bundleSlug} — One-Click Provisioning
-            </h3>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {bundleSlug === 'ai-app'
-                ? 'AI infrastructure — Vector DB, embeddings, chat, and memory'
-                : 'Fully isolated production stack — zero platform leakage'}
-            </p>
-          </div>
-          {allActive && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-              <CheckCircle className="h-4 w-4" />
-              All Systems Active
-            </span>
-          )}
+      <div className="sc-prov__header">
+        <div>
+          <h3 className="sc-prov__title">{bundleNames[bundleSlug] || bundleSlug}</h3>
+          <p className="sc-prov__subtitle">
+            {bundleSlug === 'ai-app' ? 'AI infrastructure — Vector DB, embeddings, chat, and memory' : 'Fully isolated production stack — zero platform leakage'}
+          </p>
         </div>
+        <AnimatePresence>
+          {allActive && (
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>
+              <StatusPill status="live" label="All Active" />
+            </motion.div>
+          )}
+          {isProvisioning && !allActive && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <StatusPill status="pending" label="Provisioning" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Component list */}
-      <div className="divide-y divide-zinc-100 px-6 dark:divide-zinc-800">
-        {componentOrder.map((key) => {
+      {/* Progress */}
+      {Object.keys(components).length > 0 && (
+        <ProgressStrip componentOrder={componentOrder} components={components} />
+      )}
+
+      {/* Component rows */}
+      <div className="sc-prov__list">
+        {componentOrder.map((key, index) => {
           const meta = COMPONENT_META[key];
-          const state = result?.components?.[key];
+          const state = components[key];
           const Icon = meta.icon;
+          const status = state?.status || 'pending';
 
           return (
-            <div key={key} className="flex items-center gap-4 py-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                <Icon className="h-5 w-5 text-[#71717a] dark:text-[#71717a]" />
+            <motion.div
+              key={key}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.06, duration: 0.3 }}
+              className={`sc-prov__row ${status === 'provisioning' ? 'sc-prov__row--active' : ''} ${status === 'active' ? 'sc-prov__row--done' : ''} ${status === 'failed' ? 'sc-prov__row--fail' : ''}`}
+            >
+              <div className={`sc-prov__row-icon ${status === 'active' ? 'sc-prov__row-icon--ok' : status === 'provisioning' ? 'sc-prov__row-icon--spin' : status === 'failed' ? 'sc-prov__row-icon--fail' : ''}`}>
+                <Icon className="sc-prov__row-icon-svg" />
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-zinc-900 dark:text-white">
-                    {meta.label}
-                  </span>
-                  {state && <StatusIcon status={state.status} />}
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">{meta.description}</p>
-                {state?.error && (
-                  <p className="mt-1 text-xs text-red-500">{state.error}</p>
-                )}
+
+              <div className="sc-prov__row-body">
+                <span className="sc-prov__row-label">{meta.label}</span>
+                <span className="sc-prov__row-desc">
+                  {status === 'provisioning' ? 'Configuring...' : status === 'active' ? 'Ready' : meta.description}
+                </span>
+                <AnimatePresence>
+                  {state?.error && (
+                    <motion.span initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="sc-prov__row-error">
+                      {state.error}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </div>
-              {state?.resource_id && (
-                <span className="text-xs text-zinc-400 font-mono">{state.resource_id}</span>
-              )}
-            </div>
+
+              <StatusIndicator status={status} />
+            </motion.div>
           );
         })}
       </div>
 
-      {/* Error message */}
-      {error && (
-        <div className="mx-6 mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-400">
-          {error}
-        </div>
-      )}
+      {/* Error */}
+      <AnimatePresence>
+        {error && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="sc-prov__error">
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Actions */}
-      <div className="border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+      <div className="sc-prov__actions">
         {!result && !isProvisioning && (
-          <button
-            onClick={handleProvision}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            Provision {bundleNames[bundleSlug] || 'Everything'}
-            <ArrowRight className="h-4 w-4" />
-          </button>
+          <SealedButton onClick={handleProvision}>Provision {bundleNames[bundleSlug] || 'Everything'}</SealedButton>
         )}
-
         {isProvisioning && (
-          <div className="flex items-center justify-center gap-2 text-sm text-blue-600 dark:text-blue-400">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Provisioning isolated infrastructure...
+          <div className="sc-prov__provisioning-msg">
+            <Loader2 className="sc-prov__provisioning-spinner" />
+            <span>Provisioning isolated infrastructure...</span>
           </div>
         )}
-
         {allActive && (
-          <div className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-            Provisioned in {((result?.duration_ms || 0) / 1000).toFixed(1)}s
-          </div>
+          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="sc-prov__done-msg">
+            Provisioned in {((result?.duration_ms || 0) < 1000 ? `${result?.duration_ms || 0}ms` : `${((result?.duration_ms || 0) / 1000).toFixed(1)}s`)}
+          </motion.div>
         )}
-
         {hasFailures && !isProvisioning && (
-          <button
-            onClick={handleRetry}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-amber-500"
-          >
-            Retry Failed Components
-          </button>
+          <FrameButton onClick={handleRetry}>Retry Failed Components</FrameButton>
         )}
       </div>
-    </div>
+    </Chamber>
   );
 }

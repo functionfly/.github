@@ -132,6 +132,12 @@ const AdminSIEMPage = lazy(() =>
 const AdminDisputesPage = lazy(() =>
   import('@/pages/AdminDisputesPage').then((m) => ({ default: m.AdminDisputesPage }))
 );
+const AdminCommunityRulesPage = lazy(() =>
+  import('@/pages/AdminCommunityRulesPage').then((m) => ({ default: m.AdminCommunityRulesPage }))
+);
+const AdminFounderVotesPage = lazy(() =>
+  import('@/pages/AdminFounderVotesPage').then((m) => ({ default: m.AdminFounderVotesPage }))
+);
 
 interface AdminRouteConfig {
   path: string;
@@ -183,6 +189,8 @@ const ADMIN_ROUTES: AdminRouteConfig[] = [
   { path: 'ip-allowlist', component: AdminIPAllowlistPage, permission: 'system:write', featureName: 'IP allowlist' },
   { path: 'changelog', component: AdminChangelogPage, permission: 'system:read', featureName: 'Changelog' },
   { path: 'siem', component: AdminSIEMPage, permission: 'system:write', featureName: 'SIEM' },
+  { path: 'community-rules', component: AdminCommunityRulesPage, permission: 'system:write', featureName: 'Community Rules' },
+  { path: 'founders/votes', component: AdminFounderVotesPage, permission: 'system:write', featureName: 'Founder Votes' },
 ];
 
 export function renderAdminRoutes(): ReactNode[] {

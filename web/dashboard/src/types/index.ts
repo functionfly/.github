@@ -908,6 +908,57 @@ export interface TrustScoreBadgeProps {
   onClick?: () => void;
 }
 
+/**
+ * Full function trust score response from GET /v1/functions/{id}/trust
+ * Maps to registry.TrustScoreResponse on the backend.
+ */
+export interface FunctionTrustScore {
+  trustScore: number;
+  trustTier: string;
+  isVerified: boolean;
+  verificationLevel: string;
+  components: {
+    reliability: number;
+    latency: number;
+    errorRate: number;
+    userRating: number;
+    verification: number;
+  };
+  metrics: {
+    totalCalls: number;
+    successRate: number;
+    p50LatencyMs: number;
+    p95LatencyMs: number;
+    p99LatencyMs: number;
+    errorRate: number;
+    timeoutRate: number;
+  };
+}
+
+/**
+ * User-level trust breakdown from GET /users/{username}/trust
+ * Aggregates component scores across all of a user's published functions.
+ */
+export interface UserTrustBreakdown {
+  user_id: string;
+  username: string;
+  trust_score: number;
+  components: {
+    reliability: number;
+    latency: number;
+    error_rate: number;
+    user_rating: number;
+    verification: number;
+  };
+  metrics: {
+    total_calls: number;
+    success_rate: number;
+    avg_p50_latency_ms: number;
+    avg_p95_latency_ms: number;
+  };
+  functions_with_trust: number;
+}
+
 // State Fabric Types
 
 export interface StateFabric {
@@ -1682,4 +1733,38 @@ export interface UserCertification extends Omit<import('@/api/certification').Pu
   status: string;
   verification_hash: string;
   verification_url?: string;
+}
+
+// ============================================================================
+// HSM Signer Types
+// ============================================================================
+
+export interface SignerStatus {
+  backend: 'software' | 'pkcs11' | 'awskms';
+  algorithm: string;
+  key_id: string;
+  public_key_hex: string;
+  healthy: boolean;
+  latency_ms?: number;
+  initialized_at?: string;
+}
+
+export interface SignerTestResult {
+  pass: boolean;
+  sign_latency_ms: number;
+  verify_latency_ms: number;
+  algorithm: string;
+  error?: string;
+}
+
+export interface SigningKeyRecord {
+  id: string;
+  key_id: string;
+  public_key_hex: string;
+  algorithm: string;
+  backend: string;
+  is_active: boolean;
+  activated_at: string;
+  deactivated_at?: string;
+  fingerprint: string;
 }

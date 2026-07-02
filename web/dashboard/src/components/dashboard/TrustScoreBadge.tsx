@@ -1,3 +1,8 @@
+/**
+ * Simplified TrustScoreBadge for dashboard aggregate display.
+ * For the full-featured variant with metric breakdown and tooltip, see
+ * @/components/functions/TrustScoreBadge (canonical).
+ */
 import { cn } from "@/lib/utils";
 import { AlertTriangle, CheckCircle, Info, Shield, XCircle } from "lucide-react";
 

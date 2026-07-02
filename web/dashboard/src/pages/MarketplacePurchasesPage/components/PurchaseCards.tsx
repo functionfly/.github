@@ -231,8 +231,8 @@ function LicenseCard({
 }) {
   const [copying, setCopying] = useState(false);
   const fnPath = row.functionId
-    ? `/functions/discovery?q=${encodeURIComponent(row.functionName || row.functionId)}`
-    : '/functions/discovery';
+    ? `/marketplace?type=functions&q=${encodeURIComponent(row.functionName || row.functionId)}`
+    : '/marketplace?type=functions';
   const maxActivations = row.maxActivations ?? null;
   const activationPct =
     maxActivations && maxActivations > 0

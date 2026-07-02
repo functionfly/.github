@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * TrustSeal — decorative trust indicator with check icon and conic gradient foil.
+ * For the full-featured labeled holographic seal with pointer tracking and scroll
+ * shimmer, see @/components/sc/TrustSeal (canonical).
+ */
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Check } from 'lucide-react';
 

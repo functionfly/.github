@@ -71,7 +71,7 @@ const QUICK_ACTIONS: QuickAction[] = [
     icon: Zap,
     action: (navigate, setShow) => {
       setShow(false);
-      navigate('/marketplace/agents');
+      navigate('/marketplace?type=agents');
     },
   },
 ];
@@ -89,8 +89,15 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
   const messagesUnread = useNotificationStore((state) => state.unreadCounts.messages);
   const marketingHomeUrl = getMarketingRedirectOrigin();
   const connectedProviders = useProvidersStore((state) => state.providers);
+  const fetchProviders = useProvidersStore((state) => state.fetchProviders);
   const totalProviders = Object.keys(PROVIDERS).length;
   const connectedCount = connectedProviders.length;
+
+  useEffect(() => {
+    if (isAuthenticated && variant === 'dashboard') {
+      fetchProviders();
+    }
+  }, [isAuthenticated, variant, fetchProviders]);
 
   // Scroll-aware background
   useEffect(() => {
@@ -299,14 +306,14 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
 
                   {/* Functions - direct link */}
                   <Link
-                    to="/functions/discovery"
+                    to="/marketplace?type=functions"
                     className={cn(
                       'sc-navbar-link-indicator',
-                      location.pathname === '/functions/discovery' && 'active'
+                      location.pathname === '/marketplace' && location.search.includes('type=functions') && 'active'
                     )}
                   >
                     Functions
-                    {location.pathname === '/functions/discovery' && (
+                    {location.pathname === '/marketplace' && location.search.includes('type=functions') && (
                       <span className="active-bar" />
                     )}
                   </Link>
@@ -544,22 +551,22 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                           Marketplace
                         </div>
                         <Link
-                          to="/functions/discovery"
+                          to="/marketplace?type=functions"
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/functions/discovery' &&
+                            location.pathname === '/marketplace' && location.search.includes('type=functions') &&
                               'text-text-primary bg-bg-secondary'
                           )}
                         >
                           <FunctionSquare className="w-4 h-4" /> Browse Functions
                         </Link>
                         <Link
-                          to="/marketplace/agents"
+                          to="/marketplace?type=agents"
                           onClick={() => setIsMobileMenuOpen(false)}
                           className={cn(
                             'flex items-center gap-2 py-2 pl-4 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                            location.pathname === '/marketplace/agents' &&
+                            location.pathname === '/marketplace' && location.search.includes('type=agents') &&
                               'text-text-primary bg-bg-secondary'
                           )}
                         >
@@ -617,11 +624,11 @@ export function Navbar({ variant = 'landing', className, onMenuClick }: NavbarPr
                         Home
                       </a>
                       <Link
-                        to="/functions/discovery"
+                        to="/marketplace"
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
                           'flex items-center gap-2 py-2 text-text-secondary hover:text-text-primary transition-colors font-medium rounded-lg hover:bg-bg-secondary/50',
-                          location.pathname === '/functions/discovery' &&
+                          location.pathname === '/marketplace' &&
                             'text-text-primary bg-bg-secondary'
                         )}
                       >

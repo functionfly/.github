@@ -2,13 +2,16 @@
  * Overview Tab Component
  *
  * Displays summary stats, featured functions, and key profile information.
+ * Fetches user trust breakdown from API for real component-level trust scores.
  */
 
 import { FunctionCard } from '@/components/functions/FunctionCard';
-import type { UserProfile } from '@/types';
+import type { UserProfile, UserTrustBreakdown } from '@/types';
+import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { usersApi } from '@/api/users';
 import { tabContentVariants } from '../../animations';
 import { AchievementsSection } from '../AchievementsSection';
 import { ContributionActivity } from '../ContributionActivity';
@@ -24,6 +27,13 @@ export function OverviewTab({ profile }: OverviewTabProps) {
   const featuredFunctions = profile.publishedFunctions
     .filter((f) => f.isFeatured || f.metrics.executionCount > 1000)
     .slice(0, 4);
+
+  const { data: trustBreakdown } = useQuery<UserTrustBreakdown>({
+    queryKey: ['user-trust', profile.username],
+    queryFn: () => usersApi.getUserTrust(profile.username),
+    staleTime: 5 * 60 * 1000,
+    enabled: !!profile.username,
+  });
 
   return (
     <motion.div
@@ -70,6 +80,7 @@ export function OverviewTab({ profile }: OverviewTabProps) {
           <CertificationsSection badges={profile.certifications} username={profile.username} />
           <TrustMetricsSection
             trustScore={profile.stats.trustScore}
+            trustBreakdown={trustBreakdown ?? null}
             builderScore={profile.stats.builderScore}
             optimizerScore={profile.stats.optimizerScore}
             mentorScore={profile.stats.mentorScore}

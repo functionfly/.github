@@ -629,14 +629,14 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
             <GripVertical className="w-3 h-3" />
           </button>
         )}
-        <div
-          className={cn(
-            'flex-1 px-3 py-2 rounded-lg transition-all duration-200 flex items-center gap-2',
-            'aviation-sidebar-section aviation-sidebar-section-title',
-            hasActiveItem && 'aviation-sidebar-section-active'
-          )}
-          title={section.title}
-        >
+          <div
+            className={cn(
+              'flex-1 px-3 py-1.5 rounded-lg transition-all duration-200 flex items-center gap-2',
+              'aviation-sidebar-section aviation-sidebar-section-title',
+              hasActiveItem && 'aviation-sidebar-section-active'
+            )}
+            title={section.title}
+          >
           <SectionIcon
             className={cn(
               'w-4 h-4 flex-shrink-0',
@@ -717,8 +717,8 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
           {...gestureHandlers}
           initial={false}
           animate={{
-            x: isOpen || isLg ? 0 : isCollapsed ? -64 : -300,
-            width: isCollapsed ? 64 : 280,
+            x: isOpen || isLg ? 0 : isCollapsed ? -64 : -340,
+            width: isCollapsed ? 64 : 320,
           }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           className={cn(
@@ -770,7 +770,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {/* Environment Switcher */}
           {!isCollapsed && isLg && (
-            <div className="aviation-workspace-switcher !pt-8">
+            <div className="aviation-workspace-switcher !pt-4">
               <EnvironmentSwitcher />
             </div>
           )}
@@ -796,7 +796,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {/* Navigation */}
           <nav
-            className="flex-1 min-h-0 overflow-y-auto aviation-scroll py-3"
+            className="flex-1 min-h-0 overflow-y-auto aviation-scroll py-2"
             aria-label="Primary navigation"
           >
             {/* Search Results */}
@@ -856,7 +856,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             {/* Favorites */}
             {!mobileSearchQuery && favoriteItems.length > 0 && !isCollapsed && (
-              <div className="aviation-sidebar-favorites px-3 mb-4">
+              <div className="aviation-sidebar-favorites px-3 mb-2">
                 <p className="aviation-sidebar-favorites-title">{translateLabel(t, 'Favorites')}</p>
                 <div className="space-y-0.5">
                   {favoriteItems.map((item) => {
@@ -901,7 +901,7 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
             {/* Recent */}
             {!mobileSearchQuery && recentItems.length > 0 && !isCollapsed && (
-              <div className="aviation-sidebar-recent px-3 mb-4">
+              <div className="aviation-sidebar-recent px-3 mb-2">
                 <p className="aviation-sidebar-recent-title">{translateLabel(t, 'Recent')}</p>
                 <div className="space-y-0.5">
                   {recentItems.map((item) => {
@@ -1057,44 +1057,15 @@ function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           {/* Footer */}
           <div className="p-3 border-t border-chamber-edge">
-            {/* Quick links */}
-            {!isCollapsed && (
-              <div className="flex items-center justify-center gap-4 mb-3 px-2">
-                <NavLink
-                  to="/changelog"
-                  className={({ isActive }) =>
-                    cn(
-                      'text-xs text-text-faint hover:text-text transition-colors',
-                      isActive && 'text-text font-medium'
-                    )
-                  }
-                >
-                  {translateLabel(t, 'Changelog')}
-                </NavLink>
-                <span className="text-text-faint">·</span>
-                <NavLink
-                  to="/feedback"
-                  className={({ isActive }) =>
-                    cn(
-                      'text-xs text-text-faint hover:text-text transition-colors',
-                      isActive && 'text-text font-medium'
-                    )
-                  }
-                >
-                  {translateLabel(t, 'Feedback')}
-                </NavLink>
-              </div>
-            )}
-
             {/* Upgrade Banner */}
             {!isCollapsed && (
-              <div className="mb-3">
+              <div className="mb-2">
                 <UpgradeBanner placement="sidebar" />
               </div>
             )}
 
             {/* User Profile — avatar alt text is always safe fallback */}
-            <div className={cn('aviation-profile mb-3', isCollapsed && 'justify-center')}>
+            <div className={cn('aviation-profile', isCollapsed && 'justify-center')}>
               <div className="aviation-profile-avatar">
                 {showAvatar ? (
                   <img

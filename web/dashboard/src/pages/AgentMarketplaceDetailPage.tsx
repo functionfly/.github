@@ -1,20 +1,18 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
 import { agentApi, type MarketplaceAgent } from '@/api/agent';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { marketplaceUnifiedApi } from '@/api/marketplace-unified';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+  Chamber,
+  CornerBrace,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+  Modal,
+} from '@/components/containment';
+import { ReviewsList } from '@/components/marketplace/ReviewsList';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import { useAuthStore } from '@/stores/authStore';
 import {
   ArrowLeft,
@@ -27,6 +25,8 @@ import {
   TrendingUp,
   Wallet,
 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const PRICING_MODEL_LABELS: Record<string, string> = {
@@ -52,11 +52,20 @@ export function AgentMarketplaceDetailPage() {
   const [agent, setAgent] = useState<MarketplaceAgent | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const [hireDialog, setHireDialog] = useState(false);
   const [hireTaskType, setHireTaskType] = useState('');
   const [hireBudget, setHireBudget] = useState('');
   const [hiring, setHiring] = useState(false);
+
+  const [reviewDialog, setReviewDialog] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewRefreshKey, setReviewRefreshKey] = useState(0);
+
+  usePageTitle(agent ? `Marketplace / ${agent.name}` : 'Marketplace');
 
   const loadAgent = async () => {
     if (!id) return;
@@ -64,13 +73,14 @@ export function AgentMarketplaceDetailPage() {
     setError(null);
     try {
       const response = await agentApi.searchMarketplaceAgents({ agent_id: id, limit: 1 });
-      const found = response.agents.find((a) => a.id === id || a.agentId === id) ?? response.agents[0];
+      const found =
+        response.agents.find((a) => a.id === id || a.agentId === id) ?? response.agents[0];
       if (found) {
         setAgent(found);
         return;
       }
     } catch {
-      // marketplace search failed, fall through to agent API
+      /* fall through */
     }
 
     try {
@@ -118,282 +128,332 @@ export function AgentMarketplaceDetailPage() {
     }
   };
 
+  const handleSubmitReview = async () => {
+    if (!agent) return;
+    setSubmittingReview(true);
+    try {
+      await marketplaceUnifiedApi.rateAgent(agent.agentId, reviewRating, reviewText || undefined);
+      toast.success('Review submitted');
+      setReviewDialog(false);
+      setReviewText('');
+      setReviewRating(5);
+      setReviewRefreshKey((k) => k + 1);
+    } catch {
+      toast.error('Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
   const formatPrice = (agent: MarketplaceAgent) => {
     if (agent.pricingModel === 'free') return 'Free';
-    if (agent.pricingModel === 'per_call' && agent.pricePerCall) {
+    if (agent.pricingModel === 'per_call' && agent.pricePerCall)
       return `$${agent.pricePerCall.toFixed(4)}/call`;
-    }
-    if (agent.pricingModel === 'subscription' && agent.subscriptionMonthlyUsd) {
+    if (agent.pricingModel === 'subscription' && agent.subscriptionMonthlyUsd)
       return `$${agent.subscriptionMonthlyUsd.toFixed(2)}/mo`;
-    }
     return PRICING_MODEL_LABELS[agent.pricingModel] ?? agent.pricingModel;
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin" />
-        <p className="text-sm">Loading agent...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)', padding: 'var(--space-9) 0', color: 'var(--text-faint)' }}>
+        <Loader2 style={{ width: 32, height: 32, animation: 'spin 1s linear infinite' }} />
+        <p style={{ fontSize: 13 }}>Loading agent...</p>
       </div>
     );
   }
 
   if (error || !agent) {
     return (
-      <div className="space-y-4">
-        <Link to="/marketplace/agents" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4 mr-2" />
+      <div style={{ maxWidth: 1180, margin: '0 auto', padding: 'var(--space-7)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        <Link to="/marketplace?type=agents" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 13, color: 'var(--text-faint)', textDecoration: 'none', width: 'fit-content' }}>
+          <ArrowLeft style={{ width: 14, height: 14 }} />
           Back to Marketplace
         </Link>
-        <Card className="border-destructive/40">
-          <CardHeader>
-            <CardTitle>Agent Not Found</CardTitle>
-            <CardDescription>{error ?? 'The agent you are looking for does not exist.'}</CardDescription>
-          </CardHeader>
-        </Card>
+        <Chamber>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 500, color: 'var(--status-revoked)', marginBottom: 'var(--space-2)' }}>Agent Not Found</h2>
+          <p style={{ color: 'var(--text-dim)' }}>{error ?? 'The agent you are looking for does not exist.'}</p>
+        </Chamber>
       </div>
     );
   }
 
+  const detailTabs = [
+    { value: 'overview', label: 'Overview' },
+    { value: 'capabilities', label: 'Capabilities' },
+    { value: 'pricing', label: 'Pricing' },
+    { value: 'reviews', label: 'Reviews' },
+  ];
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: 'var(--space-3) var(--space-4)',
+    background: 'var(--panel-raised)',
+    border: '1px solid var(--steel)',
+    borderRadius: 'var(--radius)',
+    color: 'var(--text)',
+    fontFamily: 'var(--font-body)',
+    fontSize: 13,
+    outline: 'none',
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <Link to="/marketplace/agents" className="flex items-center text-sm text-muted-foreground hover:text-foreground w-fit">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Marketplace
-          </Link>
-          <div className="flex items-center gap-3">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-brand-500 to-purple-500 flex items-center justify-center">
-              <Bot className="h-7 w-7 text-white" />
+    <div style={{ maxWidth: 1180, margin: '0 auto', padding: 'var(--space-7)', display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+      {/* Back link */}
+      <Link to="/marketplace?type=agents" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 13, color: 'var(--text-faint)', textDecoration: 'none', width: 'fit-content' }}>
+        <ArrowLeft style={{ width: 14, height: 14 }} />
+        Back to Marketplace
+      </Link>
+
+      {/* Hero Chamber */}
+      <Chamber ribs>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="AGENT" secondary={agent.agentId} position="top-right" />
+
+        {/* Header */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-lg)', background: 'rgba(143,255,208,0.08)', border: '1px solid rgba(143,255,208,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <Bot style={{ width: 28, height: 28, color: 'var(--status-ok)' }} />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 36, fontWeight: 700, letterSpacing: '-0.005em', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
                 {agent.name}
                 {agent.deterministicVerified && (
-                  <Badge variant="success" className="text-[10px]">
-                    <Shield className="h-3 w-3 mr-0.5" />
-                    Verified
-                  </Badge>
+                  <StatusPill status="live" label="Verified" />
                 )}
                 {agent.isOfficial && (
-                  <Badge variant="default" className="text-[10px]">
-                    <Sparkles className="h-3 w-3 mr-0.5" />
-                    Official
-                  </Badge>
+                  <StatusPill status="pending" label="Official" />
                 )}
               </h1>
-              <p className="font-mono text-xs text-muted-foreground">{agent.agentId}</p>
+              <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--text-faint)', marginTop: 'var(--space-1)' }}>{agent.agentId}</p>
             </div>
           </div>
+
+          {/* Badges */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px var(--space-3)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--panel-edge)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)', background: 'var(--panel-raised)' }}>
+              {LISTING_TYPE_LABELS[agent.listingType] ?? agent.listingType}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px var(--space-3)', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(232,196,104,0.3)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--status-pending)', background: 'rgba(232,196,104,0.06)' }}>
+              {PRICING_MODEL_LABELS[agent.pricingModel] ?? agent.pricingModel}
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px var(--space-3)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--panel-edge)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, color: 'var(--status-ok)', background: 'rgba(143,255,208,0.06)' }}>
+              {formatPrice(agent)}
+            </span>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            <SealedButton onClick={() => setHireDialog(true)} iconLeft={<Bot style={{ width: 14, height: 14 }} />}>
+              Hire Agent
+            </SealedButton>
+            {isAuthenticated && (
+              <FrameButton onClick={() => setReviewDialog(true)} iconLeft={<Star style={{ width: 14, height: 14 }} />}>
+                Write Review
+              </FrameButton>
+            )}
+          </div>
         </div>
-        <Button onClick={() => setHireDialog(true)}>
-          Hire Agent
-        </Button>
+
+        {/* Stats GaugeStrip */}
+        <GaugeStrip>
+          <Gauge data={{ value: (agent.ratingScore ?? 0).toFixed(1), label: 'Rating' }} isFirst />
+          <Gauge data={{ value: (agent.roiScore ?? 0).toFixed(1), label: 'ROI Score' }} />
+          <Gauge data={{ value: agent.totalCalls.toLocaleString(), label: 'Total Calls' }} />
+          {agent.rankScore !== undefined && (
+            <Gauge data={{ value: agent.rankScore.toFixed(2), label: 'Rank' }} />
+          )}
+        </GaugeStrip>
+      </Chamber>
+
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 'var(--space-1)', padding: 'var(--space-1)', background: 'var(--panel)', border: '1px solid var(--panel-edge)', borderRadius: 'var(--radius)', width: 'fit-content' }}>
+        {detailTabs.map(({ value, label }) => {
+          const isActive = activeTab === value;
+          return (
+            <button
+              key={value}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(value)}
+              style={{
+                padding: 'var(--space-2) var(--space-4)',
+                fontSize: 13,
+                fontWeight: isActive ? 500 : 400,
+                fontFamily: 'var(--font-body)',
+                color: isActive ? 'var(--text)' : 'var(--text-faint)',
+                background: isActive ? 'var(--panel-raised)' : 'transparent',
+                borderRadius: 'var(--radius-sm)',
+                border: 'none',
+                cursor: 'pointer',
+                boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.2)' : 'none',
+                transition: 'all var(--duration-fast) var(--ease-out)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Badges */}
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="outline">
-          {LISTING_TYPE_LABELS[agent.listingType] ?? agent.listingType}
-        </Badge>
-        <Badge variant="secondary">
-          {PRICING_MODEL_LABELS[agent.pricingModel] ?? agent.pricingModel}
-        </Badge>
-        <Badge variant="outline">
-          {formatPrice(agent)}
-        </Badge>
-      </div>
+      {/* Tab content */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+        {activeTab === 'overview' && (
+          <>
+            <Chamber nested>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-3)' }}>About</h3>
+              <p style={{ color: 'var(--text-dim)', lineHeight: 1.6, fontSize: 15 }}>
+                {agent.description || 'No description available.'}
+              </p>
+            </Chamber>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Star className="h-4 w-4 text-warning" />
-              <span className="text-sm text-muted-foreground">Rating</span>
-            </div>
-            <p className="text-2xl font-bold">{(agent.ratingScore ?? 0).toFixed(1)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-success" />
-              <span className="text-sm text-muted-foreground">ROI Score</span>
-            </div>
-            <p className="text-2xl font-bold">{(agent.roiScore ?? 0).toFixed(1)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Bot className="h-4 w-4 text-brand-500" />
-              <span className="text-sm text-muted-foreground">Total Calls</span>
-            </div>
-            <p className="text-2xl font-bold">{agent.totalCalls.toLocaleString()}</p>
-          </CardContent>
-        </Card>
-        {agent.rankScore !== undefined && (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="h-4 w-4 text-purple-500" />
-                <span className="text-sm text-muted-foreground">Rank Score</span>
+            {isAuthenticated &&
+              (agent.walletBalanceUsd !== undefined ||
+                agent.hiringHistoryCount !== undefined) && (
+                <Chamber nested>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>Agent Stats</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-7)' }}>
+                    {agent.walletBalanceUsd !== undefined && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                        <Wallet style={{ width: 20, height: 20, color: 'var(--status-ok)' }} />
+                        <div>
+                          <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Wallet Balance</p>
+                          <p style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)' }}>${agent.walletBalanceUsd.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    )}
+                    {agent.hiringHistoryCount !== undefined && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                        <CheckCircle style={{ width: 20, height: 20, color: 'var(--status-ok)' }} />
+                        <div>
+                          <p style={{ fontSize: 13, color: 'var(--text-faint)' }}>Total Hires</p>
+                          <p style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)' }}>{agent.hiringHistoryCount}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Chamber>
+              )}
+          </>
+        )}
+
+        {activeTab === 'capabilities' && (
+          <Chamber nested>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Capabilities</h3>
+            <p style={{ color: 'var(--text-dim)', fontSize: 13, marginBottom: 'var(--space-4)' }}>Skills and features this agent provides</p>
+            {agent.capabilities && agent.capabilities.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+                {agent.capabilities.map((cap) => (
+                  <span key={cap} style={{ display: 'inline-flex', alignItems: 'center', padding: 'var(--space-2) var(--space-3)', borderRadius: 'var(--radius-sm)', background: 'var(--panel)', color: 'var(--text-dim)', border: '1px solid var(--panel-edge)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                    {cap}
+                  </span>
+                ))}
               </div>
-              <p className="text-2xl font-bold">{agent.rankScore.toFixed(2)}</p>
-            </CardContent>
-          </Card>
+            ) : (
+              <p style={{ color: 'var(--text-faint)', fontSize: 13 }}>No capabilities listed</p>
+            )}
+          </Chamber>
+        )}
+
+        {activeTab === 'pricing' && (
+          <Chamber nested>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 'var(--space-4)' }}>Pricing Details</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--space-4) var(--space-6)' }}>
+              {[
+                ['Pricing Model', PRICING_MODEL_LABELS[agent.pricingModel] ?? agent.pricingModel],
+                ...(agent.pricePerCall ? [['Price per Call', `$${agent.pricePerCall.toFixed(4)}`]] : []),
+                ...(agent.subscriptionMonthlyUsd ? [['Monthly Subscription', `$${agent.subscriptionMonthlyUsd.toFixed(2)}`]] : []),
+                ...(agent.revenueSharePercent ? [['Revenue Share', `${agent.revenueSharePercent}%`]] : []),
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 'var(--space-1)' }}>{label}</p>
+                  <p style={{ fontWeight: 500, color: 'var(--text)', fontSize: 14 }}>{value}</p>
+                </div>
+              ))}
+            </div>
+          </Chamber>
+        )}
+
+        {activeTab === 'reviews' && (
+          <Chamber nested>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Reviews</h3>
+              {isAuthenticated && (
+                <FrameButton size="sm" onClick={() => setReviewDialog(true)} iconLeft={<Star style={{ width: 12, height: 12 }} />}>
+                  Write Review
+                </FrameButton>
+              )}
+            </div>
+            <ReviewsList itemType="agent" itemId={agent.agentId} refreshKey={reviewRefreshKey} />
+          </Chamber>
         )}
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
-          <TabsTrigger value="pricing">Pricing</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>About</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                {agent.description || 'No description available.'}
-              </p>
-            </CardContent>
-          </Card>
-
-          {isAuthenticated && (agent.walletBalanceUsd !== undefined || agent.hiringHistoryCount !== undefined) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Agent Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="flex gap-6">
-                {agent.walletBalanceUsd !== undefined && (
-                  <div className="flex items-center gap-2">
-                    <Wallet className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Wallet Balance</p>
-                      <p className="text-lg font-medium">${agent.walletBalanceUsd.toFixed(2)}</p>
-                    </div>
-                  </div>
-                )}
-                {agent.hiringHistoryCount !== undefined && (
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Hires</p>
-                      <p className="text-lg font-medium">{agent.hiringHistoryCount}</p>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="capabilities" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Capabilities</CardTitle>
-              <CardDescription>Skills and features this agent provides</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {agent.capabilities && agent.capabilities.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {agent.capabilities.map((cap) => (
-                    <Badge key={cap} variant="secondary" className="text-sm px-3 py-1">
-                      {cap}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No capabilities listed</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="pricing" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pricing Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Pricing Model</p>
-                  <p className="font-medium">{PRICING_MODEL_LABELS[agent.pricingModel] ?? agent.pricingModel}</p>
-                </div>
-                {agent.pricePerCall && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Price per Call</p>
-                    <p className="font-medium">${agent.pricePerCall.toFixed(4)}</p>
-                  </div>
-                )}
-                {agent.subscriptionMonthlyUsd && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Monthly Subscription</p>
-                    <p className="font-medium">${agent.subscriptionMonthlyUsd.toFixed(2)}</p>
-                  </div>
-                )}
-                {agent.revenueSharePercent && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Revenue Share</p>
-                    <p className="font-medium">{agent.revenueSharePercent}%</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
       {/* Hire Dialog */}
-      <Dialog open={hireDialog} onOpenChange={setHireDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Hire {agent.name}</DialogTitle>
-            <DialogDescription>
-              Configure the hiring parameters for this agent.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="taskType">Task Type</Label>
-              <Input
-                id="taskType"
-                placeholder="e.g. code_generation, analysis"
-                value={hireTaskType}
-                onChange={(e) => setHireTaskType(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="budget">Budget (USD)</Label>
-              <Input
-                id="budget"
-                type="number"
-                placeholder="Optional"
-                value={hireBudget}
-                onChange={(e) => setHireBudget(e.target.value)}
-              />
+      <Modal open={hireDialog} onClose={() => setHireDialog(false)} title={`Hire ${agent.name}`}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Task Type</label>
+            <input
+              placeholder="e.g. code_generation, analysis"
+              value={hireTaskType}
+              onChange={(e) => setHireTaskType(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Budget (USD)</label>
+            <input
+              type="number"
+              placeholder="Optional"
+              value={hireBudget}
+              onChange={(e) => setHireBudget(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', paddingTop: 'var(--space-2)' }}>
+            <FrameButton onClick={() => setHireDialog(false)}>Cancel</FrameButton>
+            <SealedButton onClick={handleHire} disabled={hiring || !hireTaskType.trim()} iconLeft={hiring ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Bot style={{ width: 14, height: 14 }} />}>
+              {hiring ? 'Hiring...' : 'Hire Agent'}
+            </SealedButton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Review Dialog */}
+      <Modal open={reviewDialog} onClose={() => setReviewDialog(false)} title={`Review ${agent.name}`}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Rating</label>
+            <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <button key={s} onClick={() => setReviewRating(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                  <Star style={{ width: 24, height: 24, color: s <= reviewRating ? '#eab308' : 'var(--text-faint)', fill: s <= reviewRating ? '#eab308' : 'none' }} />
+                </button>
+              ))}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setHireDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleHire} disabled={hiring}>
-              {hiring ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Hire Agent'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <div>
+            <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 'var(--space-2)' }}>Review</label>
+            <textarea
+              placeholder="Share your experience..."
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              rows={4}
+              style={{ ...inputStyle, resize: 'vertical' as const }}
+            />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-3)', paddingTop: 'var(--space-2)' }}>
+            <FrameButton onClick={() => setReviewDialog(false)}>Cancel</FrameButton>
+            <SealedButton onClick={handleSubmitReview} disabled={submittingReview} iconLeft={submittingReview ? <Loader2 style={{ width: 14, height: 14, animation: 'spin 1s linear infinite' }} /> : <Star style={{ width: 14, height: 14 }} />}>
+              {submittingReview ? 'Submitting...' : 'Submit Review'}
+            </SealedButton>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

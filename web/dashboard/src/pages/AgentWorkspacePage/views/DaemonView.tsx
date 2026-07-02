@@ -1,18 +1,20 @@
 import { agentApi } from '@/api/agent';
 import { FrameButton, SealedButton, StatusPill } from '@/components/containment';
 import { useAgent, useUpdateAgent } from '@/hooks/useAgent';
-import { useQuery } from '@tanstack/react-query';
-import { Clock, DollarSign, Play, Square, Zap } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, Clock, DollarSign, Play, Square, Zap } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import { toast } from 'sonner';
 
 interface DaemonViewProps {
   agentId: string;
 }
 
 export function DaemonView({ agentId }: DaemonViewProps) {
-  const { data: agentData, isLoading } = useAgent(agentId);
+  const { data: agentData, isLoading, error: agentError } = useAgent(agentId);
   const agent = agentData?.agent;
   const updateAgent = useUpdateAgent(agentId);
+  const queryClient = useQueryClient();
 
   const [dailyLimit, setDailyLimit] = useState('10.00');
   const [alertThreshold, setAlertThreshold] = useState('5.00');
@@ -35,16 +37,40 @@ export function DaemonView({ agentId }: DaemonViewProps) {
 
   const handleToggle = useCallback(async () => {
     if (!agentId) return;
-    if (isRunning) {
-      await agentApi.triggerKillSwitch(agentId, 'Daemon stopped from workspace');
-    } else {
-      await agentApi.startSession(agentId);
+    try {
+      if (isRunning) {
+        await agentApi.triggerKillSwitch(agentId, 'Daemon stopped from workspace');
+        toast.success('Daemon stopped');
+      } else {
+        await agentApi.startSession(agentId);
+        toast.success('Daemon started');
+      }
+      queryClient.invalidateQueries({ queryKey: ['agent', agentId] });
+    } catch (err: any) {
+      toast.error(`Failed to ${isRunning ? 'stop' : 'start'} daemon: ${err?.message ?? 'Unknown error'}`);
     }
-    window.location.reload();
-  }, [agentId, isRunning]);
+  }, [agentId, isRunning, queryClient]);
 
   if (isLoading) {
     return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
+
+  if (agentError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="aw-center__header">
+          <div>
+            <h2 className="aw-center__title">Daemon</h2>
+            <p className="aw-center__subtitle">Always-on agent management and controls</p>
+          </div>
+        </div>
+        <div className="aw-empty">
+          <AlertTriangle size={40} className="aw-empty__icon" style={{ color: 'var(--status-error)' }} />
+          <span className="aw-empty__title">Failed to load daemon status</span>
+          <span className="aw-empty__desc">{(agentError as any)?.message ?? 'An error occurred'}</span>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -188,7 +214,20 @@ export function DaemonView({ agentId }: DaemonViewProps) {
               </button>
             </div>
 
-            <SealedButton size="sm" iconLeft={<DollarSign size={12} />}>
+            <SealedButton size="sm" iconLeft={<DollarSign size={12} />} onClick={async () => {
+              try {
+                await updateAgent.mutateAsync({
+                  daemon_config: {
+                    daily_limit_usd: parseFloat(dailyLimit) || 0,
+                    alert_threshold_usd: parseFloat(alertThreshold) || 0,
+                    auto_pause_on_limit: autoPause,
+                  },
+                } as any);
+                toast.success('Guardrails saved');
+              } catch (err: any) {
+                toast.error(`Failed to save guardrails: ${err?.message ?? 'Unknown error'}`);
+              }
+            }}>
               Save Guardrails
             </SealedButton>
           </div>

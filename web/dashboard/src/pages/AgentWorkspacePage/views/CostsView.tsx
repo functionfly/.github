@@ -1,8 +1,9 @@
 import { agentApi } from '@/api/agent';
 import { SealedButton, Table } from '@/components/containment';
-import { useQuery } from '@tanstack/react-query';
-import { DollarSign, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { AlertTriangle, DollarSign, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface CostsViewProps {
   agentId: string;
@@ -10,20 +11,23 @@ interface CostsViewProps {
 
 export function CostsView({ agentId }: CostsViewProps) {
   const [spendCap, setSpendCap] = useState('');
+  const [weeklyCap, setWeeklyCap] = useState('');
+  const [monthlyCap, setMonthlyCap] = useState('');
+  const queryClient = useQueryClient();
 
-  const { data: billingData, isLoading: billingLoading } = useQuery({
+  const { data: billingData, isLoading: billingLoading, error: billingError } = useQuery({
     queryKey: ['agent-billing', agentId],
     queryFn: () => agentApi.getBillingSummary(agentId),
     enabled: !!agentId,
   });
 
-  const { data: costData } = useQuery({
+  const { data: costData, error: costError } = useQuery({
     queryKey: ['agent-cost-breakdown', agentId],
     queryFn: () => agentApi.getCostBreakdown(agentId),
     enabled: !!agentId,
   });
 
-  const { data: walletData } = useQuery({
+  const { data: walletData, error: walletError } = useQuery({
     queryKey: ['agent-wallet', agentId],
     queryFn: () => agentApi.getWallet(agentId),
     enabled: !!agentId,
@@ -42,6 +46,24 @@ export function CostsView({ agentId }: CostsViewProps) {
 
   if (billingLoading) {
     return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
+
+  if (billingError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="aw-center__header">
+          <div>
+            <h2 className="aw-center__title">Costs</h2>
+            <p className="aw-center__subtitle">Budget intelligence and spending controls</p>
+          </div>
+        </div>
+        <div className="aw-empty">
+          <AlertTriangle size={40} className="aw-empty__icon" style={{ color: 'var(--status-error)' }} />
+          <span className="aw-empty__title">Failed to load cost data</span>
+          <span className="aw-empty__desc">{(billingError as any)?.message ?? 'An error occurred'}</span>
+        </div>
+      </div>
+    );
   }
 
   const costByFunction = breakdown?.by_function ?? [];
@@ -125,14 +147,30 @@ export function CostsView({ agentId }: CostsViewProps) {
                     <input
                       style={{ flex: 1, padding: 'var(--space-1) var(--space-2)', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text)', background: 'var(--panel-raised)', border: '1px solid var(--steel)', borderRadius: 'var(--radius)', textAlign: 'right' }}
                       placeholder="0.00"
-                      value={period === 'Daily' ? spendCap : ''}
-                      onChange={period === 'Daily' ? e => setSpendCap(e.target.value) : undefined}
+                      value={period === 'Daily' ? spendCap : period === 'Weekly' ? weeklyCap : monthlyCap}
+                      onChange={e => {
+                        if (period === 'Daily') setSpendCap(e.target.value);
+                        else if (period === 'Weekly') setWeeklyCap(e.target.value);
+                        else setMonthlyCap(e.target.value);
+                      }}
                     />
                   </div>
                 </div>
               ))}
             </div>
-            <SealedButton size="sm" iconLeft={<DollarSign size={12} />}>
+            <SealedButton size="sm" iconLeft={<DollarSign size={12} />} onClick={async () => {
+              try {
+                await agentApi.updateSpendCap(agentId, {
+                  spend_cap_daily_usd: parseFloat(spendCap) || undefined,
+                  spend_cap_weekly_usd: parseFloat(weeklyCap) || undefined,
+                  spend_cap_monthly_usd: parseFloat(monthlyCap) || undefined,
+                });
+                queryClient.invalidateQueries({ queryKey: ['agent-billing', agentId] });
+                toast.success('Budget limits saved');
+              } catch (err: any) {
+                toast.error(`Failed to save budget limits: ${err?.message ?? 'Unknown error'}`);
+              }
+            }}>
               Save Budget Limits
             </SealedButton>
           </div>

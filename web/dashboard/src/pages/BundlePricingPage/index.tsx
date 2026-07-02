@@ -1,4 +1,4 @@
-import { getBundles, createBundleCheckout, getBundleStats, type Bundle } from '@/api/billing';
+import { getBundles, createBundleCheckout, getBundleStats, registerFounderMode, type Bundle } from '@/api/billing';
 import { ArrowLeft, Rocket, ShoppingCart, Brain, Zap, Clock, TrendingUp, Shield, Lock, CheckCircle, Server, MessageCircle, Users, Package } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
@@ -16,6 +16,7 @@ import {
   AnnotationTag,
 } from '@/components/containment';
 import { useAuthStore } from '@/stores/authStore';
+import { usePageTitle } from '@/hooks';
 import { BundleCard } from './components/BundleCard';
 import { BundleDetailModal } from './components/BundleDetailModal';
 import { FounderModeModal } from './components/FounderModeModal';
@@ -51,6 +52,7 @@ const faqItems = [
 ];
 
 export function BundlePricingPage() {
+  usePageTitle('Bundles');
   const navigate = useNavigate();
   const [bundles, setBundles] = useState<Bundle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,8 +79,13 @@ export function BundlePricingPage() {
 
   const handleBundleSelect = (bundle: Bundle) => {
     setSelectedBundle(bundle);
-    if (!user) { navigate(`/signup?returnTo=/bundles&plan=${bundle.slug}`); return; }
-    setShowDeployWizard(true);
+    if (!user) { navigate(`/signup?returnTo=/bundles&plan=${bundle.slug}&mode=founder`); return; }
+    setShowFounderModal(true);
+  };
+
+  const handlePayNow = (bundle: Bundle) => {
+    setSelectedBundle(bundle);
+    handleImmediateCheckout(bundle);
   };
 
   const handleViewDetails = (bundle: Bundle) => { setDetailBundle(bundle); setShowDetailModal(true); };
@@ -87,18 +94,49 @@ export function BundlePricingPage() {
     if (!user) { navigate(`/signup?returnTo=/bundles&plan=${bundle.slug}`); return; }
     setCheckoutLoading(true);
     try {
-      const successUrl = `${window.location.origin}/dashboard?bundle=${bundle.slug}&success=true`;
+      const successUrl = `${window.location.origin}/overview?bundle=${bundle.slug}&success=true`;
       const cancelUrl = `${window.location.origin}/bundles`;
       const response = await createBundleCheckout(bundle.slug, successUrl, cancelUrl);
       if (response.url) { window.location.href = response.url; } else { toast.error('Failed to create checkout session'); }
-    } catch (e) { console.error('Checkout error:', e); toast.error('Failed to start checkout. Please try again.'); } finally { setCheckoutLoading(false); }
+    } catch (e: any) {
+      console.error('Checkout error:', e);
+      const status = e?.response?.status;
+      if (status === 503) {
+        toast.error('Payments are not configured. Please use Founder Mode (free) or contact support.');
+      } else {
+        toast.error(e?.response?.data?.error || 'Failed to start checkout. Please try again.');
+      }
+    } finally { setCheckoutLoading(false); }
   };
 
   const handleFounderModeSubmit = async (modeType: string, freeDays: number, mrrThreshold: number) => {
     if (!selectedBundle) return;
     if (!user) { navigate(`/signup?returnTo=/bundles&plan=${selectedBundle.slug}&mode=founder`); return; }
     setCheckoutLoading(true);
-    try { toast.success('Activating Founder Mode!'); setShowFounderModal(false); setShowDeployWizard(true); } catch (e) { console.error('Founder mode registration error:', e); toast.error('Failed to register founder mode. Please try again.'); } finally { setCheckoutLoading(false); }
+    try {
+      await registerFounderMode(selectedBundle.slug, {
+        mode_type: modeType as 'time_based' | 'revenue_based' | 'hybrid',
+        free_days: freeDays,
+        mrr_threshold: mrrThreshold,
+        success_url: `${window.location.origin}/overview?bundle=${selectedBundle.slug}&success=true`,
+        cancel_url: `${window.location.origin}/bundles`,
+      });
+      toast.success('Founder Mode activated! Deploying your bundle...');
+      setShowFounderModal(false);
+      setShowDeployWizard(true);
+    } catch (e: any) {
+      console.error('Founder mode registration error:', e);
+      const msg = e?.response?.data?.error || 'Failed to register founder mode. Please try again.';
+      if (e?.response?.status === 409) {
+        toast.success('Already registered! Opening deployment...');
+        setShowFounderModal(false);
+        setShowDeployWizard(true);
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setCheckoutLoading(false);
+    }
   };
 
   return (
@@ -168,8 +206,10 @@ export function BundlePricingPage() {
               icon={iconMap[bundle.icon as keyof typeof iconMap] || Rocket}
               colorClass={colorMap[bundle.color as keyof typeof colorMap] || colorMap.blue}
               onSelect={handleBundleSelect}
+              onPayNow={handlePayNow}
               onViewDetails={handleViewDetails}
               delay={index * 0.15}
+              loading={checkoutLoading && selectedBundle?.id === bundle.id}
             />
           ))}
         </div>
@@ -236,11 +276,11 @@ export function BundlePricingPage() {
 
       {/* Modals */}
       {detailBundle && (
-        <BundleDetailModal bundle={detailBundle} icon={iconMap[detailBundle.icon as keyof typeof iconMap] || Rocket} colorClass={colorMap[detailBundle.color as keyof typeof colorMap] || colorMap.blue} isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} onSelect={handleBundleSelect} />
+        <BundleDetailModal bundle={detailBundle} icon={iconMap[detailBundle.icon as keyof typeof iconMap] || Rocket} colorClass={colorMap[detailBundle.color as keyof typeof colorMap] || colorMap.blue} isOpen={showDetailModal} onClose={() => setShowDetailModal(false)} onSelect={handleBundleSelect} onPayNow={handlePayNow} />
       )}
       <FounderModeModal isOpen={showFounderModal} onClose={() => setShowFounderModal(false)} bundle={selectedBundle} onSubmit={handleFounderModeSubmit} loading={checkoutLoading} />
       {selectedBundle && (
-        <DeployWizard open={showDeployWizard} onOpenChange={setShowDeployWizard} bundle={selectedBundle} pricingMode={pricingMode} onDeployComplete={(appId, backendId) => { toast.success('Bundle deployed successfully!'); setTimeout(() => navigate(`/dashboard/apps/${appId}`), 1500); }} onDeployError={(error) => { toast.error(error); }} />
+        <DeployWizard open={showDeployWizard} onOpenChange={setShowDeployWizard} bundle={selectedBundle} pricingMode={pricingMode} onDeployComplete={(appId, backendId) => { toast.success('Bundle deployed successfully!'); setTimeout(() => navigate(`/bundles/overview?bundle=${selectedBundle.slug}&deployed=true`), 1500); }} onDeployError={(error) => { toast.error(error); }} />
       )}
     </div>
   );

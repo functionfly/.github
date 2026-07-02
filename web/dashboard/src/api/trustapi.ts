@@ -628,3 +628,88 @@ export async function getFunctionDelegationChains(
 ): Promise<{ function_id: string; chains: DelegationChainSummary[]; total: number }> {
   return apiClient.get(`/v1/trust/delegation/function/${functionId}`);
 }
+
+// ==================== HSM Signer Types ====================
+
+export type SignerBackend = 'software' | 'pkcs11' | 'awskms';
+
+export interface SignerStatus {
+  backend: SignerBackend;
+  algorithm: string;
+  key_id: string;
+  public_key_hex: string;
+  healthy: boolean;
+  test_result?: {
+    pass: boolean;
+    sign_latency_ms: number;
+    verify_latency_ms: number;
+    algorithm: string;
+    error?: string;
+  };
+  latency_ms?: number;
+  initialized_at?: string;
+}
+
+export interface SignerTestResult {
+  pass: boolean;
+  sign_latency_ms: number;
+  verify_latency_ms: number;
+  algorithm: string;
+  error?: string;
+}
+
+export interface SigningKeyRecord {
+  id: string;
+  key_id: string;
+  public_key_hex: string;
+  algorithm: string;
+  backend: SignerBackend;
+  is_active: boolean;
+  activated_at: string;
+  deactivated_at?: string;
+  fingerprint: string;
+}
+
+export interface KeyHistoryResponse {
+  keys: SigningKeyRecord[];
+}
+
+// ==================== HSM Signer API Functions ====================
+
+/**
+ * Get current signer status.
+ * GET /v1/trust/signer/status
+ */
+export async function getSignerStatus(): Promise<SignerStatus> {
+  return apiClient.get<SignerStatus>('/v1/trust/signer/status');
+}
+
+/**
+ * Test the signer with a challenge.
+ * POST /v1/trust/signer/test
+ */
+export async function testSigner(): Promise<SignerTestResult> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  return apiClient.post<SignerTestResult>('/v1/trust/signer/test', {}, { headers });
+}
+
+/**
+ * Get signing key history.
+ * GET /v1/trust/signer/keys
+ */
+export async function getKeyHistory(): Promise<KeyHistoryResponse> {
+  return apiClient.get<KeyHistoryResponse>('/v1/trust/signer/keys');
+}
+
+/**
+ * Trigger key rotation.
+ * POST /v1/trust/signer/rotate
+ */
+export async function rotateKey(): Promise<{ success: boolean; message: string }> {
+  const csrfToken = await apiClient.fetchCSRFToken();
+  const headers: Record<string, string> = {};
+  if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+  return apiClient.post<{ success: boolean; message: string }>('/v1/trust/signer/rotate', {}, { headers });
+}

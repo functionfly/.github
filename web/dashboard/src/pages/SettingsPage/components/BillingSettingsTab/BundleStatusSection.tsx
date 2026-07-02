@@ -116,7 +116,7 @@ export function BundleStatusSection() {
           </span>
           {duration_ms > 0 && (
             <span style={{ color: 'var(--text-faint)' }}>
-              Provisioned in {(duration_ms / 1000).toFixed(1)}s
+              Provisioned in {duration_ms < 1000 ? `${duration_ms}ms` : `${(duration_ms / 1000).toFixed(1)}s`}
             </span>
           )}
         </div>

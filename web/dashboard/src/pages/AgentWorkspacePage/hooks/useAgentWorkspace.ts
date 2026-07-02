@@ -12,7 +12,8 @@ export type WorkspaceView =
   | 'health'
   | 'daemon'
   | 'policy'
-  | 'evolution';
+  | 'evolution'
+  | 'workspace';
 
 export type RightPanelContext =
   | null
@@ -30,7 +31,7 @@ export function useAgentWorkspace() {
     const view = searchParams.get('view');
     const validViews: WorkspaceView[] = [
       'console', 'traces', 'tools', 'swarm', 'memory',
-      'config', 'costs', 'health', 'daemon', 'policy', 'evolution',
+      'config', 'costs', 'health', 'daemon', 'policy', 'evolution', 'workspace',
     ];
     return validViews.includes(view as WorkspaceView) ? (view as WorkspaceView) : 'console';
   }, [searchParams]);

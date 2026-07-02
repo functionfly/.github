@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { CheckCircle, Loader2, ArrowRight, ExternalLink, Settings, BarChart3, Shield, CreditCard } from 'lucide-react';
 import { ProvisioningStatusCard } from '@/components/provisioning/ProvisioningStatusCard';
 import { useProvisioningStatus, useProvisionBundle, useIsProvisioned } from '@/hooks/useProvisioning';
+import { usePageTitle } from '@/hooks';
 
 // ─── Bundle metadata ─────────────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ const BUNDLE_META: Record<string, { name: string; tagline: string; color: string
 // ─── Page Component ──────────────────────────────────────────────────────────
 
 export default function BundleProvisioningPage() {
+  usePageTitle('Provisioning');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const bundleSlug = searchParams.get('bundle') || 'saas-starter';
@@ -82,8 +84,7 @@ export default function BundleProvisioningPage() {
       <ProvisioningStatusCard
         bundleSlug={bundleSlug}
         onComplete={() => {
-          // Auto-navigate to app after 3 seconds
-          setTimeout(() => navigate('/dashboard'), 3000);
+          setTimeout(() => navigate(`/bundles/overview?bundle=${bundleSlug}&deployed=true`), 2000);
         }}
       />
 

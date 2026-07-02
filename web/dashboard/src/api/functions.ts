@@ -5,6 +5,7 @@ import type {
   FunctionConfig,
   FunctionDeployment,
   FunctionLog,
+  FunctionTrustScore,
   TestFunctionRequest,
   TestFunctionResponse,
   UpdateFunctionRequest,
@@ -202,19 +203,35 @@ export const functionsApi = {
   getMetrics: (functionId: string, params?: { period?: string; from?: string; to?: string }) =>
     apiClient.get(`/v1/functions/${functionId}/metrics`, { params }),
 
-  // Get function trust score
-  getTrustScore: async (functionId: string): Promise<{ trustScore: number }> => {
+  // Get function trust score with full component breakdown
+  getTrustScore: async (functionId: string): Promise<FunctionTrustScore> => {
     const response = await apiClient.get(`/v1/functions/${functionId}/trust`);
-    // Trust score from API is 0-100 scale
-    if (
-      response &&
-      typeof response === 'object' &&
-      'trust_score' in response &&
-      typeof (response as any).trust_score === 'number'
-    ) {
-      return { trustScore: (response as any).trust_score };
+    if (response && typeof response === 'object' && 'trust_score' in response) {
+      const r = response as any;
+      return {
+        trustScore: typeof r.trust_score === 'number' ? r.trust_score : 0,
+        trustTier: r.trust_tier ?? 'untrusted',
+        isVerified: r.is_verified ?? false,
+        verificationLevel: r.verification_level ?? 'none',
+        components: {
+          reliability: r.components?.reliability ?? 0,
+          latency: r.components?.latency ?? 0,
+          errorRate: r.components?.error_rate ?? 0,
+          userRating: r.components?.user_rating ?? 0,
+          verification: r.components?.verification ?? 0,
+        },
+        metrics: {
+          totalCalls: r.metrics?.total_calls ?? 0,
+          successRate: r.metrics?.success_rate ?? 0,
+          p50LatencyMs: r.metrics?.p50_latency_ms ?? 0,
+          p95LatencyMs: r.metrics?.p95_latency_ms ?? 0,
+          p99LatencyMs: r.metrics?.p99_latency_ms ?? 0,
+          errorRate: r.metrics?.error_rate ?? 0,
+          timeoutRate: r.metrics?.timeout_rate ?? 0,
+        },
+      };
     }
-    return { trustScore: 0 };
+    return { trustScore: 0, trustTier: 'untrusted', isVerified: false, verificationLevel: 'none', components: { reliability: 0, latency: 0, errorRate: 0, userRating: 0, verification: 0 }, metrics: { totalCalls: 0, successRate: 0, p50LatencyMs: 0, p95LatencyMs: 0, p99LatencyMs: 0, errorRate: 0, timeoutRate: 0 } };
   },
 
   // Parse code to extract functions

@@ -4,14 +4,17 @@ import { useAgent, useAgentUsage } from '@/hooks/useAgent';
 import { normalizeAgentIdentity } from '@/api/agent';
 import {
   Activity,
+  AlertTriangle,
   ArrowLeft,
   Bot,
   Database,
   DollarSign,
   GitBranch,
+  HardDrive,
   Heart,
   Pause,
   Play,
+  RefreshCw,
   Settings,
   Shield,
   Sparkles,
@@ -24,6 +27,7 @@ import { usePageTitle } from '@/hooks';
 import { lazy, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useAgentWorkspace, type WorkspaceView } from './hooks/useAgentWorkspace';
 import { useAgentHealth, useCostRate } from './hooks/useAgentHealth';
 import './agent-workspace.css';
@@ -39,6 +43,7 @@ const SwarmView = lazy(() => import('./views/SwarmView').then(m => ({ default: m
 const MemoryView = lazy(() => import('./views/MemoryView').then(m => ({ default: m.MemoryView })));
 const EvolutionView = lazy(() => import('./views/EvolutionView').then(m => ({ default: m.EvolutionView })));
 const ConfigView = lazy(() => import('./views/ConfigView').then(m => ({ default: m.ConfigView })));
+const WorkspaceViewComp = lazy(() => import('./views/WorkspaceView').then(m => ({ default: m.WorkspaceView })));
 
 function ViewSpinner() {
   return (
@@ -77,7 +82,7 @@ export function AgentWorkspacePage() {
   const { id: agentId } = useParams<{ id: string }>();
   const { activeView, setView, rightContext, clearRightContext } = useAgentWorkspace();
 
-  const { data: agentData, isLoading: agentLoading } = useAgent(agentId!);
+  const { data: agentData, isLoading: agentLoading, error: agentError } = useAgent(agentId!);
   const { data: usageData } = useAgentUsage(agentId!);
   const { health, concurrency } = useAgentHealth(agentId!);
   const costRate = useCostRate(agentId!);
@@ -89,20 +94,49 @@ export function AgentWorkspacePage() {
 
   const handleAction = useCallback(async (action: 'start' | 'stop') => {
     if (!agentId) return;
-    if (action === 'start') {
-      await agentApi.startSession(agentId);
-    } else {
-      await agentApi.triggerKillSwitch(agentId, 'Manual stop from workspace');
+    try {
+      if (action === 'start') {
+        await agentApi.startSession(agentId);
+        toast.success('Agent session started');
+      } else {
+        await agentApi.triggerKillSwitch(agentId, 'Manual stop from workspace');
+        toast.success('Agent stopped');
+      }
+    } catch (err: any) {
+      toast.error(`Failed to ${action} agent: ${err?.message ?? 'Unknown error'}`);
     }
   }, [agentId]);
 
-  if (agentLoading || !agent) {
+  if (agentLoading) {
     return (
       <>
         <PageGrid />
         <div className="aw-shell">
           <div className="aw-loading" style={{ flex: 1 }}>
             <div className="aw-loading__spinner" />
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (agentError || !agent) {
+    const status = (agentError as any)?.response?.status;
+    return (
+      <>
+        <PageGrid />
+        <div className="aw-shell">
+          <div className="aw-empty" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-3)' }}>
+            <AlertTriangle size={40} style={{ color: 'var(--status-error)' }} />
+            <span style={{ fontSize: '14px', fontWeight: 600 }}>
+              {status === 404 ? 'Agent not found' : status === 403 ? 'Access denied' : 'Failed to load agent'}
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>
+              {status === 404 ? 'This agent may have been deleted.' : 'An error occurred while loading the agent workspace.'}
+            </span>
+            <Link to="/agents" style={{ marginTop: 'var(--space-2)', fontSize: '12px', color: 'var(--foil-a)' }}>
+              ← Back to Agents
+            </Link>
           </div>
         </div>
       </>
@@ -158,6 +192,7 @@ export function AgentWorkspacePage() {
             <div className="aw-left-nav__section">
               <div className="aw-left-nav__section-label">Operations</div>
               <NavItem icon={<Terminal size={16} />} label="Console" view="console" activeView={activeView} onClick={setView} />
+              <NavItem icon={<HardDrive size={16} />} label="Workspace" view="workspace" activeView={activeView} onClick={setView} />
               <NavItem icon={<Activity size={16} />} label="Traces" view="traces" activeView={activeView} onClick={setView} />
               <NavItem icon={<Heart size={16} />} label="Health" view="health" activeView={activeView} onClick={setView} badge={anomalyCount} />
               <NavItem icon={<Zap size={16} />} label="Daemon" view="daemon" activeView={activeView} onClick={setView} />
@@ -181,8 +216,11 @@ export function AgentWorkspacePage() {
                 {activeView === 'console' && (
                   <ConsoleView agentId={agentId!} agentName={agent.name} model={agent.model || 'gpt-4o-mini'} />
                 )}
+                {activeView === 'workspace' && (
+                  <WorkspaceViewComp agentId={agentId!} />
+                )}
                 {activeView === 'traces' && (
-                  <TracesView agentId={agentId!} setRightContext={() => {}} />
+                  <TracesView agentId={agentId!} setRightContext={setRightContext} />
                 )}
                 {activeView === 'health' && (
                   <HealthView agentId={agentId!} />
@@ -194,13 +232,13 @@ export function AgentWorkspacePage() {
                   <CostsView agentId={agentId!} />
                 )}
                 {activeView === 'tools' && (
-                  <ToolsView agentId={agentId!} setRightContext={() => {}} />
+                  <ToolsView agentId={agentId!} setRightContext={setRightContext as any} />
                 )}
                 {activeView === 'policy' && (
                   <PolicyView agentId={agentId!} />
                 )}
                 {activeView === 'swarm' && (
-                  <SwarmView agentId={agentId!} setRightContext={() => {}} />
+                  <SwarmView agentId={agentId!} setRightContext={setRightContext as any} />
                 )}
                 {activeView === 'memory' && (
                   <MemoryView agentId={agentId!} />

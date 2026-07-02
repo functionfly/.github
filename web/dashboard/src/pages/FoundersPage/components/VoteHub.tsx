@@ -35,8 +35,6 @@ export function VoteHub({ votes, totalFounders }: VoteHubProps) {
   const activeCount = votes.filter((v) => v.status === 'active').length;
   const unvotedActive = votes.filter((v) => v.status === 'active' && !v.has_voted).length;
 
-  if (votes.length === 0) return null;
-
   return (
     <section className="founders-section vote-hub">
       <div className="vote-hub__header">
@@ -44,63 +42,77 @@ export function VoteHub({ votes, totalFounders }: VoteHubProps) {
           <VoteIcon size={14} />
           Governance Hub
         </div>
-        <Link to="/founders" className="vote-hub__view-all">
-          <BarChart3 size={12} />
-          {votes.length} proposals
-        </Link>
-      </div>
-
-      {/* Tabs */}
-      <div className="vote-hub__tabs">
-        <button
-          className={`vote-hub__tab ${activeTab === 'active' ? 'vote-hub__tab--active' : ''}`}
-          onClick={() => setActiveTab('active')}
-        >
-          Active
-          {activeCount > 0 && (
-            <span className="vote-hub__tab-count">{activeCount}</span>
-          )}
-        </button>
-        <button
-          className={`vote-hub__tab ${activeTab === 'passed' ? 'vote-hub__tab--active' : ''}`}
-          onClick={() => setActiveTab('passed')}
-        >
-          Results
-        </button>
-        <button
-          className={`vote-hub__tab ${activeTab === 'all' ? 'vote-hub__tab--active' : ''}`}
-          onClick={() => setActiveTab('all')}
-        >
-          All
-        </button>
-      </div>
-
-      {/* Unvoted banner */}
-      {unvotedActive > 0 && activeTab === 'active' && (
-        <div className="vote-hub__banner">
-          <VoteIcon size={14} />
-          <span>
-            {unvotedActive} proposal{unvotedActive !== 1 ? 's' : ''} awaiting your vote
-          </span>
-        </div>
-      )}
-
-      {/* Proposal list */}
-      <div className="vote-hub__list">
-        {filteredVotes.length === 0 ? (
-          <div className="vote-hub__empty">
-            <p>No {activeTab === 'passed' ? 'completed' : activeTab} proposals</p>
-          </div>
-        ) : (
-          filteredVotes.map((vote) => (
-            <ProposalRow
-              key={vote.id}
-              vote={vote}
-              totalFounders={totalFounders}
-            />
-          ))
+        {votes.length > 0 && (
+          <Link to="/founders" className="vote-hub__view-all">
+            <BarChart3 size={12} />
+            {votes.length} proposals
+          </Link>
         )}
       </div>
+
+      {votes.length === 0 ? (
+        <div className="vote-hub__empty-state">
+          <VoteIcon size={24} className="vote-hub__empty-icon" />
+          <p className="vote-hub__empty-title">No active proposals</p>
+          <p className="vote-hub__empty-desc">
+            Governance proposals will appear here when the team publishes changes for founder approval.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Tabs */}
+          <div className="vote-hub__tabs">
+            <button
+              className={`vote-hub__tab ${activeTab === 'active' ? 'vote-hub__tab--active' : ''}`}
+              onClick={() => setActiveTab('active')}
+            >
+              Active
+              {activeCount > 0 && (
+                <span className="vote-hub__tab-count">{activeCount}</span>
+              )}
+            </button>
+            <button
+              className={`vote-hub__tab ${activeTab === 'passed' ? 'vote-hub__tab--active' : ''}`}
+              onClick={() => setActiveTab('passed')}
+            >
+              Results
+            </button>
+            <button
+              className={`vote-hub__tab ${activeTab === 'all' ? 'vote-hub__tab--active' : ''}`}
+              onClick={() => setActiveTab('all')}
+            >
+              All
+            </button>
+          </div>
+
+          {/* Unvoted banner */}
+          {unvotedActive > 0 && activeTab === 'active' && (
+            <div className="vote-hub__banner">
+              <VoteIcon size={14} />
+              <span>
+                {unvotedActive} proposal{unvotedActive !== 1 ? 's' : ''} awaiting your vote
+              </span>
+            </div>
+          )}
+
+          {/* Proposal list */}
+          <div className="vote-hub__list">
+            {filteredVotes.length === 0 ? (
+              <div className="vote-hub__empty">
+                <p>No {activeTab === 'passed' ? 'completed' : activeTab} proposals</p>
+              </div>
+            ) : (
+              filteredVotes.map((vote) => (
+                <ProposalRow
+                  key={vote.id}
+                  vote={vote}
+                  totalFounders={totalFounders}
+                />
+              ))
+            )}
+          </div>
+        </>
+      )}
     </section>
   );
 }

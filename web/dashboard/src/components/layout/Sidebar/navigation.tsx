@@ -29,6 +29,7 @@ import {
   Link2,
   MessageSquare,
   Network,
+  Package,
   PieChart,
   Plug,
   Rocket,
@@ -265,6 +266,12 @@ export const navigationSections: NavSection[] = [
         badge: 'new',
         description: 'Backend-in-a-Box pricing bundles',
       },
+      {
+        path: '/bundles/mine',
+        label: 'My Bundles',
+        icon: Package,
+        description: 'Your deployed bundles and billing',
+      },
     ],
   },
   {
@@ -352,12 +359,6 @@ export const navigationSections: NavSection[] = [
         icon: Sparkles,
         badge: 'beta',
         description: 'Agent evolution tracking',
-      },
-      {
-        path: ROUTES.MARKETPLACE_AGENTS,
-        label: 'Marketplace',
-        icon: Shield,
-        description: 'Browse agent marketplace',
       },
       {
         path: ROUTES.AGENT_MEMORIES,

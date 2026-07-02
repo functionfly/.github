@@ -84,6 +84,8 @@ export interface RegistryFunctionReview {
   stars: number; // 1-5
   title: string;
   body: string;
+  username?: string;
+  user_name?: string;
   created_at: string;
   updated_at: string;
 }

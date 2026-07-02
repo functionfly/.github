@@ -1,7 +1,2 @@
-// Trust Score Components
-export { TrustScoreBadge, getTrustLevel, getTrustColor } from './TrustScoreBadge';
-export type { TrustLevel } from './TrustScoreBadge';
-
-export { TrustScoreGauge, TrustScoreBar } from './TrustScoreGauge';
-
-export { TrustScoreCard, TrustScoreCompact } from './TrustScoreCard';
+// Common TrustScoreBadge, TrustScoreGauge, and TrustScoreCard were removed.
+// Use the canonical TrustScoreBadge from @/components/functions/TrustScoreBadge instead.

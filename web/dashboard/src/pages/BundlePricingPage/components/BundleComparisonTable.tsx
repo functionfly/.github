@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Minus, type LucideIcon } from 'lucide-react';
 import type { Bundle } from '@/api/billing';
@@ -119,9 +120,8 @@ export function BundleComparisonTable({ bundles, iconMap, colorMap }: BundleComp
             </thead>
             <tbody>
               {featureCategories.map((category, catIndex) => (
-                <>
+                <Fragment key={`category-${catIndex}`}>
                   <tr
-                    key={`category-${catIndex}`}
                     className="bg-bg-tertiary/50 border-b border-border"
                   >
                     <td colSpan={bundles.length + 1} className="px-5 py-3">
@@ -161,7 +161,7 @@ export function BundleComparisonTable({ bundles, iconMap, colorMap }: BundleComp
                       })}
                     </tr>
                   ))}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

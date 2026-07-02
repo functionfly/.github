@@ -336,6 +336,9 @@ class ApiClient {
       const response = await this.client.post(url, data, config);
       return safeParse(schema, response.data, fallback, `POST ${url}`);
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        throw error;
+      }
       console.error(`API validation error for POST ${url}:`, error);
       if (fallback !== undefined) {
         return { success: false, data: fallback, fallbackUsed: true, error: 'API request failed' };

@@ -44,6 +44,9 @@ const lastExecutionRef = { current: 0 };
 /**
  * Check if a nav path matches the current location.
  * - Root paths (/, /dashboard, /overview) require exact match.
+ * - Search/query-only paths (e.g. /marketplace?type=agents) require exact
+ *   pathname match; the query string is ignored so a single page with tabs
+ *   doesn't light up multiple nav items.
  * - All other paths match exactly OR when the current pathname starts with
  *   the path followed by a slash (child routes), preventing /settings
  *   from matching /settings-something.
@@ -51,7 +54,13 @@ const lastExecutionRef = { current: 0 };
 export function isItemActive(path: string, pathname: string): boolean {
   const EXACT_MATCH_ROOTS = ['/', '/dashboard', '/overview'];
   if (EXACT_MATCH_ROOTS.includes(path)) return pathname === path;
-  return pathname === path || (pathname.startsWith(path + '/') && path !== '/');
+  // Strip query string for comparison — nav paths don't encode tab state.
+  const cleanPathname = pathname.split('?')[0];
+  const cleanPath = path.split('?')[0];
+  if (cleanPath !== path) {
+    return cleanPathname === cleanPath;
+  }
+  return cleanPathname === cleanPath || (cleanPathname.startsWith(cleanPath + '/') && cleanPath !== '/');
 }
 
 // ============================================================================

@@ -59,6 +59,7 @@ export const ADMIN_ROUTE_PERMISSIONS: Record<string, AdminRouteDef> = {
   '/waitlist': { path: '/waitlist', permission: 'users:read', featureName: 'Waitlist' },
   '/ip-allowlist': { path: '/ip-allowlist', permission: 'system:write', featureName: 'IP allowlist' },
   '/siem': { path: '/siem', permission: 'system:write', featureName: 'SIEM' },
+  '/community-rules': { path: '/community-rules', permission: 'system:write', featureName: 'Community Rules' },
 };
 
 export function getRoutePermission(path: string): AdminRouteDef | undefined {

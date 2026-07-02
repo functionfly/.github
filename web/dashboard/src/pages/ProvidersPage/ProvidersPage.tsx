@@ -27,14 +27,13 @@ import {
   Chamber,
   CornerBrace,
   TrustSeal,
-  SealedButton,
-  FrameButton,
   StatusPill,
   GaugeStrip,
   Gauge,
   AnnotationTag,
   Card,
 } from '@/components/containment';
+import { FrameButton } from '@/components/sc';
 import { ProviderCard } from './components/ProviderCard';
 import { ProviderCardSkeleton } from './components/ProviderCardSkeleton';
 import { ConnectDialog } from './components/ConnectDialog';
@@ -255,9 +254,18 @@ export function ProvidersPage() {
                 </button>
               ))}
             </div>
-            <FrameButton size="sm" onClick={() => setShowAuditLog(!showAuditLog)} iconLeft={<History className="prov-icon-xs" />}>Audit</FrameButton>
-            <FrameButton size="sm" onClick={() => setFailoverDialogOpen(true)} iconLeft={<Shield className="prov-icon-xs" />}>Failover</FrameButton>
-            <FrameButton size="sm" onClick={() => setShowComparisonTable(!showComparisonTable)} iconLeft={<LayoutGrid className="prov-icon-xs" />}>Compare</FrameButton>
+            <button className={`prov-action-btn ${showAuditLog ? 'prov-action-btn--active' : ''}`} onClick={() => setShowAuditLog(!showAuditLog)}>
+              <History className="prov-icon-xs" />
+              <span className="prov-density-label">Audit</span>
+            </button>
+            <button className="prov-action-btn" onClick={() => setFailoverDialogOpen(true)}>
+              <Shield className="prov-icon-xs" />
+              <span className="prov-density-label">Failover</span>
+            </button>
+            <button className={`prov-action-btn ${showComparisonTable ? 'prov-action-btn--active' : ''}`} onClick={() => setShowComparisonTable(!showComparisonTable)}>
+              <LayoutGrid className="prov-icon-xs" />
+              <span className="prov-density-label">Compare</span>
+            </button>
           </div>
         </div>
 
@@ -293,7 +301,7 @@ export function ProvidersPage() {
         <Chamber className="prov-audit">
           <div className="prov-audit__header">
             <h2 className="prov-section-title"><History className="prov-icon-sm" /> Connection Audit Log</h2>
-            <button className="prov-close-btn" onClick={() => setShowAuditLog(false)}><X className="prov-icon-sm" /></button>
+            <FrameButton size="sm" onClick={() => setShowAuditLog(false)}><X className="prov-icon-sm" /></FrameButton>
           </div>
           <ConnectionAuditLog entries={auditLogEntries} maxHeight={300} />
         </Chamber>
@@ -308,7 +316,7 @@ export function ProvidersPage() {
             <p className="prov-error__message">{error}</p>
             <div className="prov-error__actions">
               <FrameButton size="sm" onClick={() => fetchProviders()} iconLeft={<RefreshCw className={`prov-icon-xs ${isLoading ? 'prov-spin' : ''}`} />}>Retry</FrameButton>
-              <button className="prov-dismiss-btn" onClick={clearError}>Dismiss</button>
+              <FrameButton size="sm" onClick={clearError}>Dismiss</FrameButton>
             </div>
           </div>
         </div>
@@ -372,9 +380,9 @@ export function ProvidersPage() {
                           {testingProvider === provider.id ? <Loader2 className="prov-icon-xs prov-spin" /> : 'Test'}
                         </FrameButton>
                         <FrameButton size="sm" onClick={() => openRotationDialog(provider)}>Rotate</FrameButton>
-                        <button className="prov-delete-btn" onClick={() => openDisconnectConfirm(provider.id)} disabled={disconnecting === provider.id}>
+                        <FrameButton size="sm" onClick={() => openDisconnectConfirm(provider.id)} disabled={disconnecting === provider.id}>
                           {disconnecting === provider.id ? <Loader2 className="prov-icon-xs prov-spin" /> : <Trash2 className="prov-icon-xs" />}
-                        </button>
+                        </FrameButton>
                       </>
                     ) : renderConnectDialog(provider, accent)}
                   </div>

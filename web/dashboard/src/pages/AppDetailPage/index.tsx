@@ -32,6 +32,7 @@ import {
   useDeleteBackend,
   useUpdateApp,
   useDeployments,
+  useProvisioningStatus,
   useRollbackDeployment,
   useVaultSecrets,
   useCreateSecret,
@@ -41,6 +42,7 @@ import {
   useDeleteAPIKey,
   useRotateAPIKey,
   usePageTitle,
+  appKeys,
 } from '@/hooks';
 import {
   Activity,
@@ -74,6 +76,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AreaChart } from '@/components/ui/chart-area';
@@ -116,6 +119,15 @@ function StatusDot({ ok, state }: { ok?: boolean; state?: string }) {
   return <span className="w-2.5 h-2.5 rounded-full" style={{ background: 'var(--text-faint)', opacity: 0.4 }} />;
 }
 
+// Check if the health check response indicates a degraded state (fallback probe succeeded)
+function isDegradedHealthCheck(latestHealthCheck?: { ok?: boolean; statusCode?: number; errorMessage?: string }): boolean {
+  if (!latestHealthCheck || !latestHealthCheck.ok) return false;
+  // 404 from /healthz means fallback was used → degraded
+  if (latestHealthCheck.statusCode === 404) return true;
+  if (latestHealthCheck.errorMessage?.includes('fallback')) return true;
+  return false;
+}
+
 function BackendStatusCard({
   backendStatus,
   onDelete,
@@ -126,6 +138,7 @@ function BackendStatusCard({
   const { backend, circuitState, latestHealthCheck } = backendStatus;
 
   const isHealthy = latestHealthCheck?.ok === true;
+  const isDegraded = isHealthy && isDegradedHealthCheck(latestHealthCheck);
   const isUnhealthy = latestHealthCheck?.ok === false;
   const circuitOpen = circuitState?.state === 'open';
   const circuitHalfOpen = circuitState?.state === 'half-open';
@@ -134,16 +147,18 @@ function BackendStatusCard({
     ? 'Circuit Open'
     : circuitHalfOpen
       ? 'Half-Open'
-      : isHealthy
-        ? 'Healthy'
-        : isUnhealthy
-          ? 'Unhealthy'
-          : 'Unknown';
+      : isDegraded
+        ? 'Degraded'
+        : isHealthy
+          ? 'Healthy'
+          : isUnhealthy
+            ? 'Unhealthy'
+            : 'Unknown';
 
   const statusVariant =
     circuitOpen || isUnhealthy
       ? 'destructive'
-      : circuitHalfOpen
+      : circuitHalfOpen || isDegraded
         ? 'warning'
         : isHealthy
           ? 'success'
@@ -369,6 +384,12 @@ function BackendsTab({ data, appId }: { data: AppStatus; appId: string }) {
   const { backends } = data;
   const [addOpen, setAddOpen] = useState(false);
   const deleteBackend = useDeleteBackend(appId);
+  const queryClient = useQueryClient();
+
+  const handleAddSuccess = useCallback(() => {
+    setAddOpen(false);
+    queryClient.invalidateQueries({ queryKey: appKeys.all });
+  }, [queryClient]);
 
   return (
     <div className="space-y-4">
@@ -410,7 +431,7 @@ function BackendsTab({ data, appId }: { data: AppStatus; appId: string }) {
         appId={appId}
         open={addOpen}
         onOpenChange={setAddOpen}
-        onSuccess={() => setAddOpen(false)}
+        onSuccess={handleAddSuccess}
       />
     </div>
   );
@@ -533,16 +554,38 @@ function AnalyticsTab({ appId }: { appId: string }) {
 
 // ─── Deployments Tab ──────────────────────────────────────────────────────────
 
+const PROVISIONING_COMPONENT_META: Record<string, { label: string; icon: typeof Upload }> = {
+  user_db: { label: 'User Database', icon: Server },
+  auth: { label: 'Authentication', icon: Shield },
+  payments: { label: 'Payments', icon: DollarSign },
+  email_workflows: { label: 'Email Workflows', icon: Upload },
+  analytics: { label: 'Analytics', icon: BarChart3 },
+};
+
 function DeploymentsTab({ appId }: { appId: string }) {
   const { data, isLoading, refetch } = useDeployments(appId, 20);
   const rollback = useRollbackDeployment();
   const deployments = data?.deployments ?? [];
+  const { data: provisioningData } = useProvisioningStatus();
+
+  const provisioningResult = provisioningData && 'components' in provisioningData ? provisioningData : null;
+  const provisioningComponents = provisioningResult?.components ?? {};
+  const hasProvisioning = Object.keys(provisioningComponents).length > 0;
 
   const statusColor = (s: Deployment['status']) => {
     switch (s) {
       case 'success': return 'var(--status-ok)';
       case 'failed': return 'var(--status-revoked)';
       case 'rolled_back': return 'var(--status-pending)';
+      default: return 'var(--text-faint)';
+    }
+  };
+
+  const provisioningStatusColor = (s: string) => {
+    switch (s) {
+      case 'active': return 'var(--status-ok)';
+      case 'failed': return 'var(--status-revoked)';
+      case 'provisioning': return 'var(--accent)';
       default: return 'var(--text-faint)';
     }
   };
@@ -585,6 +628,40 @@ function DeploymentsTab({ appId }: { appId: string }) {
               </div>
             </div>
           ))}
+        </div>
+      ) : hasProvisioning ? (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 mb-3">
+            <Badge variant="outline" className="text-xs capitalize" style={{ background: provisioningResult?.status === 'active' ? 'rgba(143,255,208,0.06)' : undefined, color: provisioningResult?.status === 'active' ? 'var(--status-ok)' : undefined, borderColor: provisioningResult?.status === 'active' ? 'rgba(143,255,208,0.3)' : undefined }}>
+              Bundle: {provisioningResult?.bundle_slug || 'unknown'}
+            </Badge>
+            {provisioningResult?.duration_ms ? (
+              <span className="text-xs" style={{ color: 'var(--text-faint)' }}>Provisioned in {provisioningResult.duration_ms < 1000 ? `${provisioningResult.duration_ms}ms` : `${(provisioningResult.duration_ms / 1000).toFixed(1)}s`}</span>
+            ) : null}
+          </div>
+          {Object.entries(provisioningComponents).map(([key, state]) => {
+            const meta = PROVISIONING_COMPONENT_META[key] || { label: key, icon: Upload };
+            const Icon = meta.icon;
+            const status = state.status;
+            return (
+              <div key={key} className="flex items-center gap-4 p-4 rounded-[var(--radius-lg)]" style={{ border: '1px solid var(--panel-edge)', background: 'var(--panel-raised)' }}>
+                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: provisioningStatusColor(status) }} />
+                <div className="w-8 h-8 rounded-[var(--radius)] flex items-center justify-center shrink-0" style={{ background: status === 'active' ? 'rgba(143,255,208,0.08)' : status === 'failed' ? 'rgba(255,99,99,0.08)' : 'var(--panel)' }}>
+                  <Icon className="w-4 h-4" style={{ color: status === 'active' ? 'var(--status-ok)' : status === 'failed' ? 'var(--status-revoked)' : 'var(--text-faint)' }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm" style={{ color: 'var(--text)' }}>{meta.label}</span>
+                    <Badge variant="outline" className="text-xs capitalize">{status}</Badge>
+                  </div>
+                  {state.error && <p className="text-xs mt-1" style={{ color: 'var(--status-revoked)' }}>{state.error}</p>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0 text-xs" style={{ color: 'var(--text-faint)' }}>
+                  <span>{safeDate(state.timestamp).toLocaleString()}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <EmptyTabState icon={Upload} title="No deployments yet" description="Deploy your app to see deployment history here." />
@@ -1116,8 +1193,12 @@ export function AppDetailPage() {
                 View Deployments
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-2" onClick={() => setActiveTab('secrets')}>
-                <Lock className="w-4 h-4" />
+                <Lock className="w-4 w-4" />
                 Manage Secrets
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onClick={() => navigate(`/apps/${app.slug}/bundle`)}>
+                <Settings className="w-4 w-4" />
+                Bundle Config
               </DropdownMenuItem>
               <DropdownMenuItem className="gap-2" onClick={() => navigate(`${ROUTES.API_KEYS}?type=function`)}>
                 <Key className="w-4 h-4" />

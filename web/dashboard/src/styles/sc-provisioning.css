@@ -1,0 +1,294 @@
+/**
+ * Sealed Containment — Provisioning Status Card
+ */
+
+@import "./sc-tokens.css";
+
+/* ═══════════════════════════════════════════════
+   Card Shell
+   ═══════════════════════════════════════════════ */
+
+.sc-prov {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════════ */
+
+.sc-prov__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--chamber-edge);
+}
+
+.sc-prov__title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.sc-prov__subtitle {
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+  margin: var(--space-1) 0 0;
+}
+
+/* ═══════════════════════════════════════════════
+   Progress Strip
+   ═══════════════════════════════════════════════ */
+
+.sc-prov__progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.sc-prov__progress-track {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--panel-raised);
+  overflow: hidden;
+}
+
+.sc-prov__progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--status-ok), var(--accent));
+}
+
+.sc-prov__progress-label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════
+   Component List
+   ═══════════════════════════════════════════════ */
+
+.sc-prov__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.sc-prov__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--chamber-edge);
+  transition: background var(--duration-base) var(--ease-out);
+}
+
+.sc-prov__row--active {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+  margin: 0 calc(var(--space-3) * -1);
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+.sc-prov__row--done {
+  background: color-mix(in srgb, var(--status-ok) 3%, transparent);
+  margin: 0 calc(var(--space-3) * -1);
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+.sc-prov__row--fail {
+  background: color-mix(in srgb, var(--status-revoked) 4%, transparent);
+  margin: 0 calc(var(--space-3) * -1);
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+/* Row icon */
+.sc-prov__row-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+  flex-shrink: 0;
+  transition: background var(--duration-base) var(--ease-out);
+}
+
+.sc-prov__row-icon--ok {
+  background: color-mix(in srgb, var(--status-ok) 12%, transparent);
+}
+
+.sc-prov__row-icon--spin {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.sc-prov__row-icon--fail {
+  background: color-mix(in srgb, var(--status-revoked) 10%, transparent);
+}
+
+.sc-prov__row-icon-svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-faint);
+  transition: color var(--duration-base) var(--ease-out);
+}
+
+.sc-prov__row-icon--ok .sc-prov__row-icon-svg { color: var(--status-ok); }
+.sc-prov__row-icon--spin .sc-prov__row-icon-svg { color: var(--accent); }
+.sc-prov__row-icon--fail .sc-prov__row-icon-svg { color: var(--status-revoked); }
+
+/* Row body */
+.sc-prov__row-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sc-prov__row-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+.sc-prov__row--done .sc-prov__row-label { color: var(--status-ok); }
+.sc-prov__row--active .sc-prov__row-label { color: var(--accent); }
+
+.sc-prov__row-desc {
+  font-size: 0.6875rem;
+  color: var(--text-faint);
+  font-family: var(--font-body);
+}
+
+.sc-prov__row-error {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--status-revoked);
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════════════
+   Status Indicator
+   ═══════════════════════════════════════════════ */
+
+.sc-prov__status-indicator {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+.sc-prov__status-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-prov__status-ring--ok {
+  position: relative;
+}
+
+.sc-prov__status-ring--ok::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--status-ok) 20%, transparent);
+  animation: prov-pulse 0.6s ease-out;
+}
+
+.sc-prov__status-ring--fail::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--status-revoked) 20%, transparent);
+  animation: prov-pulse 0.6s ease-out;
+}
+
+@keyframes prov-pulse {
+  0% { transform: scale(0.5); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.sc-prov__status-ring--spin {
+  animation: prov-spin 1s linear infinite;
+}
+
+@keyframes prov-spin {
+  to { transform: rotate(360deg); }
+}
+
+.sc-prov__status-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.sc-prov__status-icon--ok { color: var(--status-ok); }
+.sc-prov__status-icon--spin { color: var(--accent); }
+.sc-prov__status-icon--fail { color: var(--status-revoked); }
+.sc-prov__status-icon--pending { color: var(--text-faint); opacity: 0.4; }
+
+/* ═══════════════════════════════════════════════
+   Error & Actions
+   ═══════════════════════════════════════════════ */
+
+.sc-prov__error {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--status-revoked) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-revoked) 20%, transparent);
+  font-size: 0.8125rem;
+  color: var(--status-revoked);
+  overflow: hidden;
+}
+
+.sc-prov__actions {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--chamber-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.sc-prov__provisioning-msg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.8125rem;
+  color: var(--text-dim);
+}
+
+.sc-prov__provisioning-spinner {
+  width: 1rem;
+  height: 1rem;
+  animation: prov-spin 1s linear infinite;
+  color: var(--accent);
+}
+
+.sc-prov__done-msg {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--status-ok);
+}

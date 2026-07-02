@@ -1,8 +1,9 @@
 import { agentApi } from '@/api/agent';
 import { FrameButton, SealedButton, StatusPill } from '@/components/containment';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Award, BarChart3, CheckCircle, Clock, Sparkles, TrendingUp, XCircle } from 'lucide-react';
 import { useCallback } from 'react';
+import { toast } from 'sonner';
 
 interface EvolutionViewProps {
   agentId: string;
@@ -39,17 +40,32 @@ export function EvolutionView({ agentId }: EvolutionViewProps) {
   const analytics = analyticsData?.analytics as any;
 
   const handleTierChange = useCallback(async (tier: string) => {
-    await agentApi.updateSEBGTier(agentId, tier as any);
+    try {
+      await agentApi.updateSEBGTier(agentId, tier as any);
+      toast.success(`Autonomy tier set to ${tier.replace('_', ' ')}`);
+    } catch (err: any) {
+      toast.error(`Failed to update tier: ${err?.message ?? 'Unknown error'}`);
+    }
   }, [agentId]);
 
   const handleDecide = useCallback(async (proposalId: string, decision: 'approved' | 'rejected') => {
-    await agentApi.decideSEBGProposal(agentId, proposalId, decision);
-    refetchProposals();
+    try {
+      await agentApi.decideSEBGProposal(agentId, proposalId, decision);
+      refetchProposals();
+      toast.success(`Proposal ${decision}`);
+    } catch (err: any) {
+      toast.error(`Failed to ${decision} proposal: ${err?.message ?? 'Unknown error'}`);
+    }
   }, [agentId, refetchProposals]);
 
   const handleTriggerEvolve = useCallback(async () => {
-    await agentApi.triggerSEBGEvolve(agentId);
-    refetchProposals();
+    try {
+      await agentApi.triggerSEBGEvolve(agentId);
+      refetchProposals();
+      toast.success('Evolution triggered');
+    } catch (err: any) {
+      toast.error(`Failed to trigger evolution: ${err?.message ?? 'Unknown error'}`);
+    }
   }, [agentId, refetchProposals]);
 
   if (configLoading) {

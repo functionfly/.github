@@ -2,16 +2,19 @@
  * Trust Metrics Section Component
  *
  * Displays user's trust score with detailed metrics breakdown.
- * Also shows user reputation profile scores when available.
+ * Shows per-component trust scores (reliability, latency, error rate, user rating, verification)
+ * when available from the user trust breakdown API, plus reputation profile scores.
  */
 
 import { getTrustColorConfig, getTrustScoreBand } from '@/components/functions/TrustScoreBadge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { BookOpen, Shield, Target, Users, Zap, Hammer, Lightbulb, GraduationCap, Bot, type LucideIcon } from 'lucide-react';
+import type { UserTrustBreakdown } from '@/types';
+import { Activity, BookOpen, CheckCircle, Clock, Shield, Star, Target, Users, Zap, Hammer, Lightbulb, GraduationCap, Bot, type LucideIcon } from 'lucide-react';
 
 export interface TrustMetricsSectionProps {
   trustScore: number;
+  trustBreakdown?: UserTrustBreakdown | null;
   builderScore?: number;
   optimizerScore?: number;
   mentorScore?: number;
@@ -69,6 +72,48 @@ function TrustScoreRing({ score }: { score: number }) {
   );
 }
 
+function getComponentColor(score: number): string {
+  if (score >= 80) return 'bg-emerald-500';
+  if (score >= 60) return 'bg-blue-500';
+  if (score >= 40) return 'bg-amber-500';
+  return 'bg-orange-500';
+}
+
+function getComponentTextColor(score: number): string {
+  if (score >= 80) return 'text-emerald-500';
+  if (score >= 60) return 'text-blue-500';
+  if (score >= 40) return 'text-amber-500';
+  return 'text-orange-500';
+}
+
+interface TrustComponentBarProps {
+  label: string;
+  score: number;
+  icon: LucideIcon;
+  suffix?: string;
+}
+
+function TrustComponentBar({ label, score, icon: Icon, suffix = '%' }: TrustComponentBarProps) {
+  const clampedScore = Math.max(0, Math.min(100, score));
+  return (
+    <div className="flex items-center gap-3">
+      <Icon className="w-4 h-4 text-text-muted" />
+      <span className="text-sm text-text-secondary w-28">{label}</span>
+      <div className="flex-1">
+        <div className="h-2 bg-border-subtle rounded-full overflow-hidden">
+          <div
+            className={cn('h-full rounded-full transition-all duration-1000', getComponentColor(clampedScore))}
+            style={{ width: `${clampedScore}%` }}
+          />
+        </div>
+      </div>
+      <span className={cn('text-sm font-medium font-mono tabular-nums w-10 text-right', getComponentTextColor(clampedScore))}>
+        {suffix === '%' ? Math.round(clampedScore) : Math.round(clampedScore)}{suffix}
+      </span>
+    </div>
+  );
+}
+
 interface ReputationScoreBarProps {
   label: string;
   score: number;
@@ -101,6 +146,7 @@ function ReputationScoreBar({ label, score, maxScore, icon: Icon, color }: Reput
 
 export function TrustMetricsSection({
   trustScore,
+  trustBreakdown,
   builderScore,
   optimizerScore,
   mentorScore,
@@ -118,20 +164,7 @@ export function TrustMetricsSection({
     mentorScore !== undefined ||
     agentWhispererScore !== undefined;
 
-  const metrics = [
-    {
-      name: 'Reliability',
-      score: normalizedTrust,
-      icon: Shield,
-    },
-    { name: 'Performance', score: normalizedTrust, icon: Zap },
-    { name: 'Community', score: normalizedTrust, icon: Users },
-    {
-      name: 'Documentation',
-      score: normalizedTrust,
-      icon: BookOpen,
-    },
-  ];
+  const components = trustBreakdown?.components;
 
   return (
     <Card className="border-border-subtle">
@@ -149,39 +182,89 @@ export function TrustMetricsSection({
               {headlineConfig.label} Reputation
             </h4>
             <p className="text-sm text-text-muted">
-              Based on function quality, community engagement, and execution reliability
+              {trustBreakdown
+                ? `Based on ${trustBreakdown.functions_with_trust} function${trustBreakdown.functions_with_trust !== 1 ? 's' : ''}`
+                : 'Based on function quality, community engagement, and execution reliability'}
             </p>
           </div>
         </div>
 
-        <div className="space-y-3">
-          {metrics.map((metric) => (
-            <div key={metric.name} className="flex items-center gap-3">
-              <metric.icon className="w-4 h-4 text-text-muted" />
-              <span className="text-sm text-text-secondary w-28">{metric.name}</span>
+        {/* Component trust scores — real data from API when available */}
+        {components ? (
+          <div className="space-y-3">
+            <TrustComponentBar
+              label="Reliability"
+              score={components.reliability}
+              icon={Activity}
+            />
+            <TrustComponentBar
+              label="Latency"
+              score={components.latency}
+              icon={Zap}
+            />
+            <TrustComponentBar
+              label="Error Rate"
+              score={components.error_rate}
+              icon={Shield}
+            />
+            <TrustComponentBar
+              label="User Rating"
+              score={components.user_rating}
+              icon={Star}
+            />
+            <TrustComponentBar
+              label="Verification"
+              score={components.verification}
+              icon={CheckCircle}
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <Shield className="w-4 h-4 text-text-muted" />
+              <span className="text-sm text-text-secondary w-28">Overall Trust</span>
               <div className="flex-1">
                 <div className="h-2 bg-border-subtle rounded-full overflow-hidden">
                   <div
-                    className={cn(
-                      'h-full rounded-full transition-all duration-1000',
-                      metric.score >= 80
-                        ? 'bg-emerald-500'
-                        : metric.score >= 60
-                          ? 'bg-yellow-500'
-                          : 'bg-orange-500'
-                    )}
-                    style={{
-                      width: `${Math.max(0, Math.min(100, metric.score))}%`,
-                    }}
+                    className={cn('h-full rounded-full transition-all duration-1000', getComponentColor(normalizedTrust))}
+                    style={{ width: `${Math.max(0, Math.min(100, normalizedTrust))}%` }}
                   />
                 </div>
               </div>
               <span className="text-sm font-medium font-mono tabular-nums text-text-primary w-10 text-right">
-                {Math.round(metric.score)}
+                {Math.round(normalizedTrust)}
               </span>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Execution metrics summary when breakdown is available */}
+        {trustBreakdown?.metrics && trustBreakdown.metrics.total_calls > 0 && (
+          <div className="mt-4 pt-4 border-t border-border-subtle">
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="flex items-center gap-1.5 text-text-muted">
+                <Activity className="w-3.5 h-3.5" />
+                <span>{trustBreakdown.metrics.total_calls.toLocaleString()} calls</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-text-muted">
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>{Math.round(trustBreakdown.metrics.success_rate)}% success</span>
+              </div>
+              {trustBreakdown.metrics.avg_p50_latency_ms > 0 && (
+                <div className="flex items-center gap-1.5 text-text-muted">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>p50 {Math.round(trustBreakdown.metrics.avg_p50_latency_ms)}ms</span>
+                </div>
+              )}
+              {trustBreakdown.metrics.avg_p95_latency_ms > 0 && (
+                <div className="flex items-center gap-1.5 text-text-muted">
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>p95 {Math.round(trustBreakdown.metrics.avg_p95_latency_ms)}ms</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* User Reputation Profile Scores */}
         {hasReputationProfile && (

@@ -130,8 +130,7 @@ export function useCreateBackend() {
       data: CreateBackendRequest;
     }) => appsApi.createBackend(appId, data),
     onSuccess: (_, { appId }) => {
-      queryClient.invalidateQueries({ queryKey: appKeys.backends(appId) });
-      queryClient.invalidateQueries({ queryKey: appKeys.status(appId) });
+      queryClient.invalidateQueries({ queryKey: appKeys.all });
       toast.success('Backend created successfully');
     },
     onError: (error: Error) => {
@@ -147,8 +146,7 @@ export function useDeleteBackend(appId: string) {
   return useMutation({
     mutationFn: (backendId: string) => appsApi.deleteBackend(appId, backendId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: appKeys.backends(appId) });
-      queryClient.invalidateQueries({ queryKey: appKeys.status(appId) });
+      queryClient.invalidateQueries({ queryKey: appKeys.all });
       toast.success('Backend removed');
     },
     onError: (error: Error) => {

@@ -1,7 +1,7 @@
-import { agentApi } from '@/api/agent';
+import { apiClient } from '@/api/client';
 import { FrameButton, SealedButton, StatusPill } from '@/components/containment';
 import { useQuery } from '@tanstack/react-query';
-import { Activity, Clock, DollarSign, Hash, Search } from 'lucide-react';
+import { Activity, AlertTriangle, Clock, DollarSign, Hash, RefreshCw, Search } from 'lucide-react';
 import { useState } from 'react';
 
 interface TracesViewProps {
@@ -13,18 +13,12 @@ export function TracesView({ agentId, setRightContext }: TracesViewProps) {
   const [search, setSearch] = useState('');
   const [timeRange, setTimeRange] = useState('24h');
 
-  const { data: runsData, isLoading } = useQuery({
+  const { data: runsData, isLoading, error, refetch } = useQuery({
     queryKey: ['agent-runs', agentId, timeRange],
-    queryFn: async () => {
-      try {
-        const res = await fetch(`/api/v1/agent-observability/runs?agent_id=${agentId}&limit=50`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
-        });
-        return res.json();
-      } catch {
-        return { runs: [] };
-      }
-    },
+    queryFn: () => apiClient.get<{ runs: any[] }>(
+      `/v1/agent-observability/runs?agent_id=${agentId}&limit=50&range=${timeRange}`,
+    ),
+    enabled: !!agentId,
     refetchInterval: 15000,
   });
 
@@ -104,6 +98,19 @@ export function TracesView({ agentId, setRightContext }: TracesViewProps) {
       {/* Runs List */}
       {isLoading ? (
         <div className="aw-loading"><div className="aw-loading__spinner" /></div>
+      ) : error ? (
+        <div className="aw-empty">
+          <AlertTriangle size={40} className="aw-empty__icon" style={{ color: 'var(--status-error)' }} />
+          <span className="aw-empty__title">Failed to load traces</span>
+          <span className="aw-empty__desc">{(error as any)?.message ?? 'An error occurred while fetching traces'}</span>
+          <button
+            className="aw-nav-item"
+            style={{ marginTop: 'var(--space-3)', padding: 'var(--space-2) var(--space-4)', fontSize: '12px', display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer' }}
+            onClick={() => refetch()}
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="aw-empty">
           <Activity size={40} className="aw-empty__icon" />

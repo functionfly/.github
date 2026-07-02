@@ -2,8 +2,9 @@ import { agentApi } from '@/api/agent';
 import { FrameButton, SealedButton, StatusPill } from '@/components/containment';
 import { useAgentChildren, useSwarmHealth, useSwarmStats, useAgentInbox, useSpawnChildAgent } from '@/hooks/useAgentSwarm';
 import { useQuery } from '@tanstack/react-query';
-import { GitBranch, MessageSquare, Plus, Users, Wallet } from 'lucide-react';
+import { AlertTriangle, GitBranch, MessageSquare, Plus, Users, Wallet } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 
 interface SwarmViewProps {
   agentId: string;
@@ -11,7 +12,7 @@ interface SwarmViewProps {
 }
 
 export function SwarmView({ agentId, setRightContext }: SwarmViewProps) {
-  const { data: childrenData } = useAgentChildren(agentId);
+  const { data: childrenData, isLoading: childrenLoading, error: childrenError } = useAgentChildren(agentId);
   const { data: healthData } = useSwarmHealth(agentId);
   const { data: statsData } = useSwarmStats(agentId);
   const { data: inboxData } = useAgentInbox(agentId);
@@ -35,10 +36,37 @@ export function SwarmView({ agentId, setRightContext }: SwarmViewProps) {
 
   const handleSpawn = async () => {
     if (!spawnName.trim()) return;
-    await spawnChild.mutateAsync({ agentId, name: spawnName, swarmRole: spawnRole });
-    setShowSpawn(false);
-    setSpawnName('');
+    try {
+      await spawnChild.mutateAsync({ agentId, name: spawnName, swarmRole: spawnRole });
+      setShowSpawn(false);
+      setSpawnName('');
+      toast.success(`Child agent "${spawnName}" spawned`);
+    } catch (err: any) {
+      toast.error(`Failed to spawn child: ${err?.message ?? 'Unknown error'}`);
+    }
   };
+
+  if (childrenLoading) {
+    return <div className="aw-loading"><div className="aw-loading__spinner" /></div>;
+  }
+
+  if (childrenError) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div className="aw-center__header">
+          <div>
+            <h2 className="aw-center__title">Swarm</h2>
+            <p className="aw-center__subtitle">Multi-agent coordination and management</p>
+          </div>
+        </div>
+        <div className="aw-empty">
+          <AlertTriangle size={40} className="aw-empty__icon" style={{ color: 'var(--status-error)' }} />
+          <span className="aw-empty__title">Failed to load swarm data</span>
+          <span className="aw-empty__desc">{(childrenError as any)?.message ?? 'An error occurred'}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>

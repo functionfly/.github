@@ -1,4 +1,4 @@
-import type { PublicProfileStats, PublicUserProfile } from '@/types';
+import type { PublicProfileStats, PublicUserProfile, UserTrustBreakdown } from '@/types';
 import { apiClient } from './client';
 
 // Helper function to get upgrade description based on plan
@@ -622,4 +622,20 @@ export const usersApi = {
     apiClient.get<{ locations: LocationResult[] }>(
       `/v1/locations/search?q=${encodeURIComponent(q)}`
     ),
+
+  // ============================================================================
+  // User Trust Breakdown
+  // ============================================================================
+
+  /**
+   * Get trust score breakdown for a user by username.
+   * Returns component scores aggregated across all published functions.
+   */
+  getUserTrust: (username: string) =>
+    apiClient.get<UserTrustBreakdown>(`/v1/users/${encodeURIComponent(username)}/trust`),
+
+  /**
+   * Get trust score breakdown for the authenticated user.
+   */
+  getMyTrust: () => apiClient.get<UserTrustBreakdown>('/v1/users/me/trust'),
 };

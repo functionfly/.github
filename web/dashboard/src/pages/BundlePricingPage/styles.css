@@ -685,3 +685,473 @@
   .bundle-comparison-table { font-size: 13px; }
   .bundle-comparison-table th, .bundle-comparison-table td { padding: var(--space-3) var(--space-2); }
 }
+
+/* ==========================================================================
+   Deploy Wizard — Sealed Containment Modal
+   ========================================================================== */
+
+.sc-deploy-wizard__modal {
+  max-width: 672px;
+}
+
+.sc-deploy-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.sc-deploy-wizard__desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.sc-deploy-wizard__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Bundle Info */
+.sc-deploy-wizard__bundle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.sc-deploy-wizard__bundle-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.sc-deploy-wizard__bundle-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 2px;
+}
+
+.sc-deploy-wizard__bundle-desc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* Field / Label */
+.sc-deploy-wizard__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sc-deploy-wizard__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* Region Selector */
+.sc-deploy-wizard__regions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.sc-deploy-wizard__region {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.sc-deploy-wizard__region:hover {
+  border-color: var(--steel-light);
+}
+
+.sc-deploy-wizard__region.active {
+  border-color: var(--status-ok);
+  background: rgba(143, 255, 208, 0.06);
+}
+
+.sc-deploy-wizard__region-flag {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sc-deploy-wizard__region-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Info Box */
+.sc-deploy-wizard__info {
+  padding: var(--space-3) var(--space-4);
+  background: rgba(159, 216, 255, 0.06);
+  border: 1px solid rgba(159, 216, 255, 0.2);
+  border-radius: var(--radius);
+}
+
+.sc-deploy-wizard__info-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--foil-a);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.sc-deploy-wizard__info-text strong {
+  font-weight: 600;
+}
+
+/* Progress Bar */
+.sc-deploy-wizard__progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sc-deploy-wizard__progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sc-deploy-wizard__progress-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.sc-deploy-wizard__progress-value {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sc-deploy-wizard__progress-bar {
+  height: 6px;
+  background: var(--panel-raised);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.sc-deploy-wizard__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--status-ok), var(--foil-a));
+  border-radius: var(--radius-sm);
+  transition: width 0.5s var(--ease-out);
+}
+
+/* Step List */
+.sc-deploy-wizard__steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sc-deploy-wizard__step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  transition: border-color var(--duration-fast) var(--ease-out),
+              background var(--duration-fast) var(--ease-out);
+}
+
+.sc-deploy-wizard__step.active {
+  border-color: var(--foil-a);
+  background: rgba(159, 216, 255, 0.06);
+}
+
+.sc-deploy-wizard__step.complete {
+  border-color: rgba(143, 255, 208, 0.3);
+  background: rgba(143, 255, 208, 0.04);
+}
+
+.sc-deploy-wizard__step.failed {
+  border-color: rgba(255, 107, 107, 0.3);
+  background: rgba(255, 107, 107, 0.04);
+}
+
+.sc-deploy-wizard__step-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-raised);
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.sc-deploy-wizard__step-icon.active {
+  background: var(--foil-a);
+  color: var(--bg);
+}
+
+.sc-deploy-wizard__step-icon.complete {
+  background: var(--status-ok);
+  color: var(--bg);
+}
+
+.sc-deploy-wizard__step-icon.failed {
+  background: var(--status-revoked);
+  color: var(--bg);
+}
+
+.sc-deploy-wizard__step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-deploy-wizard__step-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.sc-deploy-wizard__step-label.active {
+  color: var(--foil-a);
+}
+
+.sc-deploy-wizard__step-label.complete {
+  color: var(--status-ok);
+}
+
+.sc-deploy-wizard__step-label.failed {
+  color: var(--status-revoked);
+}
+
+.sc-deploy-wizard__step-desc {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 2px 0 0;
+}
+
+.sc-deploy-wizard__step-error {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--status-revoked);
+  margin: 2px 0 0;
+}
+
+.sc-deploy-wizard__step-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--foil-a);
+}
+
+/* Result (success/error) */
+.sc-deploy-wizard__result {
+  text-align: center;
+  padding: var(--space-5) 0;
+}
+
+.sc-deploy-wizard__result-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-4);
+}
+
+.sc-deploy-wizard__result-icon.success {
+  background: rgba(143, 255, 208, 0.15);
+  color: var(--status-ok);
+}
+
+.sc-deploy-wizard__result-icon.error {
+  background: rgba(255, 107, 107, 0.15);
+  color: var(--status-revoked);
+}
+
+.sc-deploy-wizard__result-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text);
+  margin: 0 0 var(--space-2);
+}
+
+.sc-deploy-wizard__result-desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+/* IDs Grid */
+.sc-deploy-wizard__ids {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.sc-deploy-wizard__id {
+  padding: var(--space-3);
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+}
+
+.sc-deploy-wizard__id-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--space-1);
+}
+
+.sc-deploy-wizard__id-value {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Checklist */
+.sc-deploy-wizard__checklist {
+  padding: var(--space-3) var(--space-4);
+  background: rgba(143, 255, 208, 0.06);
+  border: 1px solid rgba(143, 255, 208, 0.2);
+  border-radius: var(--radius);
+}
+
+.sc-deploy-wizard__checklist.error {
+  background: rgba(255, 107, 107, 0.06);
+  border-color: rgba(255, 107, 107, 0.2);
+}
+
+.sc-deploy-wizard__checklist-title {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--status-ok);
+  margin: 0 0 var(--space-2);
+}
+
+.sc-deploy-wizard__checklist.error .sc-deploy-wizard__checklist-title {
+  color: var(--status-revoked);
+}
+
+.sc-deploy-wizard__checklist-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.sc-deploy-wizard__checklist-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.sc-deploy-wizard__checklist-list li svg {
+  color: var(--status-ok);
+  flex-shrink: 0;
+}
+
+.sc-deploy-wizard__checklist.error .sc-deploy-wizard__checklist-list li svg {
+  color: var(--status-revoked);
+}
+
+/* Footer */
+.sc-deploy-wizard__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--panel-edge);
+}
+
+/* Light Mode Overrides */
+[data-theme='light'] .sc-deploy-wizard__bundle {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+
+[data-theme='light'] .sc-deploy-wizard__region.active {
+  border-color: #059669;
+  background: rgba(5, 150, 105, 0.06);
+}
+
+[data-theme='light'] .sc-deploy-wizard__info {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+[data-theme='light'] .sc-deploy-wizard__info-text {
+  color: #2563eb;
+}
+
+[data-theme='light'] .sc-deploy-wizard__step.active {
+  border-color: #2563eb;
+  background: rgba(59, 130, 246, 0.04);
+}
+
+[data-theme='light'] .sc-deploy-wizard__step-label.active {
+  color: #2563eb;
+}
+
+[data-theme='light'] .sc-deploy-wizard__step-status {
+  color: #2563eb;
+}
+
+[data-theme='light'] .sc-deploy-wizard__step-icon.active {
+  background: #2563eb;
+}

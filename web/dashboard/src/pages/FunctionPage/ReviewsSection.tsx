@@ -145,6 +145,11 @@ export function ReviewsSection() {
                             />
                           ))}
                         </div>
+                        {(r.username || r.user_name) && (
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {r.username || r.user_name}
+                          </span>
+                        )}
                         <span className="function-page-review-date">
                           {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
                         </span>
