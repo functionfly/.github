@@ -3,7 +3,6 @@ title: Apps
 description: Organize functions and manage multi-cloud deployments with Apps
 ---
 
-# Apps
 
 An **App** is the top-level organizational unit in FunctionFly. Apps organize
 your functions and manage multi-cloud deployments under a single project.

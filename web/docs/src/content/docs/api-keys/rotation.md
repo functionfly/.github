@@ -5,7 +5,6 @@ sidebar:
   order: 3
 ---
 
-# Key Rotation
 
 Key rotation replaces a key's credentials while preserving its identity
 (key ID, permissions, environments). This is essential for security hygiene

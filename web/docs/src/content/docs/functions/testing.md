@@ -5,7 +5,6 @@ sidebar:
   order: 4
 ---
 
-# Testing Functions
 
 FunctionFly provides multiple ways to test your functions before and after deployment.
 
@@ -95,10 +94,8 @@ describe('handler', () => {
 Use `ff invoke` with `--env` to test against a deployed environment:
 
 ```bash
-# Test staging
 ff invoke my-function --data '{"test": true}' --env staging
 
-# Test production (read-only)
 ff invoke my-function --data '{"test": true}' --env production
 ```
 
@@ -107,13 +104,10 @@ ff invoke my-function --data '{"test": true}' --env production
 ### View Logs
 
 ```bash
-# Stream logs for a function
 ff logs my-function
 
-# Filter by level
 ff logs my-function --level error
 
-# Limit output
 ff logs my-function --tail 50
 ```
 

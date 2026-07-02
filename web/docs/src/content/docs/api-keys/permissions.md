@@ -5,7 +5,6 @@ sidebar:
   order: 2
 ---
 
-# API Key Permissions
 
 API keys support fine-grained permissions that control which resources a key
 can access and what operations it can perform.

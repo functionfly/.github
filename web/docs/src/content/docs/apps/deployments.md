@@ -5,7 +5,6 @@ sidebar:
   order: 3
 ---
 
-# Deployments
 
 A **deployment** records a function being deployed to one of your app's
 backends. Deployments track the full lifecycle from build to rollback.

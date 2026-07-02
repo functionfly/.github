@@ -5,7 +5,6 @@ sidebar:
   order: 3
 ---
 
-# Function Structure
 
 Every FunctionFly function receives a request object and returns a response object.
 
@@ -90,11 +89,9 @@ Functions have access to a writable `/tmp` directory:
 ```python
 import os
 
-# Write to /tmp
 with open("/tmp/cache.json", "w") as f:
     f.write('{"cached": true}')
 
-# Read from /tmp
 with open("/tmp/cache.json", "r") as f:
     data = f.read()
 ```

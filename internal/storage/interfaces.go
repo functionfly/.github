@@ -60,6 +60,7 @@ type (
 	BlogSettings                      = types.BlogSettings
 	BlogViewsTimeSeries               = types.BlogViewsTimeSeries
 	BundleSubscription                = types.BundleSubscription
+	BundleFunctionTemplate            = types.BundleFunctionTemplate
 	ChurnMetrics                      = types.ChurnMetrics
 	CohortRetention                   = types.CohortRetention
 	CostAllocationChargeback          = types.CostAllocationChargeback

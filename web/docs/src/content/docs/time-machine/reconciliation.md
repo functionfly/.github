@@ -5,7 +5,6 @@ sidebar:
   order: 3
 ---
 
-# Reconciliation
 
 After a replay completes and you've reviewed the diffs, **reconciliation**
 applies corrections to the real-world side effects of the original executions.

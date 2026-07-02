@@ -5,7 +5,6 @@ sidebar:
   order: 4
 ---
 
-# Audit Certificates
 
 An **audit certificate** is a tamper-proof, digitally signed document that
 proves exactly what was replayed, what changed, and what was reconciled.

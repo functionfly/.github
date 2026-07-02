@@ -5,7 +5,6 @@ sidebar:
   order: 4
 ---
 
-# Apps API Reference
 
 All endpoints require authentication. Apps are scoped to the authenticated
 user's tenant.

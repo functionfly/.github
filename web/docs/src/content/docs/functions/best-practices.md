@@ -5,7 +5,6 @@ sidebar:
   order: 5
 ---
 
-# Function Best Practices
 
 Guidelines for writing reliable, performant, and secure functions.
 
@@ -25,7 +24,6 @@ Reuse database and HTTP connections across invocations:
 ```python
 import httpx
 
-# Initialize outside handler — reused across warm invocations
 client = httpx.AsyncClient()
 
 async def handler(request):
@@ -81,7 +79,6 @@ Never hardcode secrets. Use the [Secrets Vault](/secrets-vault/) for API keys an
 ```python
 import os
 
-# Secrets are injected as environment variables
 api_key = os.environ["API_KEY"]  # Set via Secrets Vault
 ```
 

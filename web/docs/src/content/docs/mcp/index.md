@@ -3,7 +3,6 @@ title: MCP (Model Context Protocol)
 description: Expose FunctionFly functions as callable tools for AI agents via MCP
 ---
 
-# MCP — Model Context Protocol
 
 The **Model Context Protocol (MCP)** is an open standard that lets AI agents
 (Claude, Cursor, VS Code Copilot, Windsurf, etc.) discover and call external

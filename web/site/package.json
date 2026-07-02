@@ -3,9 +3,6 @@
   "type": "module",
   "version": "1.0.0",
   "description": "FunctionFly™ Marketing Site",
-  "overrides": {
-    "vite": "^7"
-  },
   "scripts": {
     "dev": "bun run astro dev",
     "start": "bun run astro dev",

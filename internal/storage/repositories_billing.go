@@ -541,6 +541,18 @@ func (db *PostgresDB) UpdateBundleSubscription(ctx context.Context, sub *BundleS
 	return db.billingRepository.UpdateBundleSubscription(ctx, sub)
 }
 
+func (db *PostgresDB) ListBundleTemplates(ctx context.Context, bundleSlug string) ([]*BundleFunctionTemplate, error) {
+	return db.billingRepository.ListBundleTemplates(ctx, bundleSlug)
+}
+
+func (db *PostgresDB) ListPendingDeployments(ctx context.Context) ([]*BundleSubscription, error) {
+	return db.billingRepository.ListPendingDeployments(ctx)
+}
+
+func (db *PostgresDB) ListAwaitingProvider(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error) {
+	return db.billingRepository.ListAwaitingProvider(ctx, tenantID)
+}
+
 // ==================== Analytics Repository Delegation ====================
 
 // CalculateMRR delegates to analytics repository

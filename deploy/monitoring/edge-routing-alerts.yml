@@ -1,0 +1,98 @@
+# FunctionFly Edge Routing Hardening Alerts
+#
+# Prometheus alert rules for monitoring:
+# - Circuit breaker state transitions
+# - Backend health failures
+# - Routing latency percentiles
+# - Proxy failures
+#
+# Installation:
+#   Copy to /etc/prometheus/rules/functionfly-edge-routing.yml
+#   Or include in prometheus.yml rules section
+
+groups:
+  - name: functionfly_edge_routing
+    interval: 30s
+    rules:
+      # Circuit breaker opened — backend is down
+      - alert: CircuitBreakerOpen
+        expr: functionfly_circuit_breaker_state{circuit_breaker_state="open"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Backend {{ $labels.backend_id }} circuit breaker OPEN"
+          description: |
+            Circuit breaker for backend {{ $labels.backend_id }} (provider: {{ $labels.provider }}, region: {{ $labels.region }}) has been open for over 1 minute.
+            The backend is not receiving traffic. Check backend health and logs.
+
+      # All backends for an app have open circuits
+      - alert: AllBackendsDown
+        expr: min by (app_id) (functionfly_circuit_breaker_state{circuit_breaker_state="closed"}) == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "All backends down for app {{ $labels.app_id }}"
+          description: |
+            All backends for app {{ $labels.app_id }} have open circuit breakers.
+            The app is completely unreachable. Users will receive 503 errors.
+
+      # High P99 latency
+      - alert: HighBackendLatency
+        expr: functionfly_backend_latency_p99_ms > 5000
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Backend {{ $labels.backend_id }} P99 latency {{ $value }}ms"
+          description: |
+            Backend {{ $labels.backend_id }} P99 latency has exceeded 5 seconds for 5 minutes.
+            This may indicate backend overload or network issues.
+
+      # Health check failure rate > 50%
+      - alert: HealthCheckFailureRate
+        expr: rate(functionfly_health_check_failures_total[5m]) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Backend {{ $labels.backend_id }} health check failure rate {{ $value | humanizePercentage }}"
+          description: |
+            More than 50% of health checks for backend {{ $labels.backend_id }} are failing.
+            Check if the backend is deployed and responding to /healthz.
+
+      # Circuit breaker transitions (informational)
+      - alert: CircuitBreakerFlapping
+        expr: rate(functionfly_circuit_breaker_transitions_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "Backend {{ $labels.backend_id }} circuit breaker flapping"
+          description: |
+            Circuit breaker for backend {{ $labels.backend_id }} has transitioned more than 5 times in 10 minutes.
+            This indicates an unstable backend that keeps going up and down.
+
+      # Proxy failure rate
+      - alert: HighProxyFailureRate
+        expr: rate(functionfly_routing_decisions_total{decision_type!="success"}[5m]) / rate(functionfly_routing_decisions_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          service: functionfly
+        annotations:
+          summary: "High proxy failure rate: {{ $value | humanizePercentage }}"
+          description: |
+            More than 10% of routing decisions are failing. Check backend health and network connectivity.

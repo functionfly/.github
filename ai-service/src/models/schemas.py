@@ -21,6 +21,9 @@ class ProviderType(str, Enum):
     GROQ = "groq"
     DEEPINFRA = "deepinfra"
     TOGETHER = "together"
+    MIMO = "mimo"
+    MINIMAX = "minimax"
+    STEPFUN = "stepfun"
 
 
 class TrafficType(str, Enum):

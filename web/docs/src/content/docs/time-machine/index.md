@@ -3,7 +3,6 @@ title: Time Machine
 description: Retroactively fix bugs in production by replaying real executions through corrected code
 ---
 
-# Function Time Machine
 
 **Time Machine** lets you retroactively fix production bugs by replaying real
 executions through a corrected function version, diffing old vs. new outputs,
@@ -62,7 +61,6 @@ retroactive execution correction with compliance-grade audit certificates.
 ### From the API
 
 ```bash
-# Create a replay job
 curl -X POST https://api.functionfly.com/v1/time-machine/replays \
   -H "Authorization: Bearer $FUNCTIONFLY_API_KEY" \
   -H "Content-Type: application/json" \
@@ -74,7 +72,6 @@ curl -X POST https://api.functionfly.com/v1/time-machine/replays \
     "reconciliation_mode": "dry_run"
   }'
 
-# Stream progress (SSE)
 curl -N https://api.functionfly.com/v1/time-machine/replays/{id}/stream \
   -H "Authorization: Bearer $FUNCTIONFLY_API_KEY"
 ```

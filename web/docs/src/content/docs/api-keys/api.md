@@ -5,7 +5,6 @@ sidebar:
   order: 4
 ---
 
-# API Keys API Reference
 
 All management endpoints require session authentication (JWT cookie).
 Authentication endpoints accept the API key directly.

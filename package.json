@@ -66,6 +66,7 @@
     "zod": "^4.4.3"
   },
   "overrides": {
+    "vite": "^8",
     "dompurify": "^3.4.11",
     "esbuild": "^0.28.0",
     "flatted": "^3.4.2",

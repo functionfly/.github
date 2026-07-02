@@ -1,6 +1,6 @@
 """MiniMax provider implementation.
 
-MiniMax exposes an OpenAI-compatible chat API at api.minimaxi.com.
+MiniMax exposes an OpenAI-compatible chat API at api.minimax.io.
 Best for: agentic workflows, tool use, interleaved thinking.
 
 See https://platform.minimaxi.com/docs/api-reference/text-chat-openai.md
@@ -11,6 +11,7 @@ from typing import Optional, AsyncGenerator
 import time
 
 from .base import BaseProvider, RetryConfig
+from .model_registry import model_ids_for_provider
 from ..config import settings
 from ..models.schemas import (
     ChatMessage,
@@ -22,7 +23,7 @@ from ..models.schemas import (
     ThinkingConfig,
 )
 
-MINIMAX_BASE_URL = "https://api.minimaxi.com/v1"
+MINIMAX_BASE_URL = "https://api.minimax.io/v1"
 
 
 class MiniMaxProvider(BaseProvider):
@@ -47,6 +48,7 @@ class MiniMaxProvider(BaseProvider):
         )
         self.model = getattr(settings, "minimax_model", "MiniMax-M3")
         self.base_url = base_url or getattr(settings, "minimax_base_url", MINIMAX_BASE_URL)
+        self._models = model_ids_for_provider("minimax")
         self._available = True
         try:
             from openai import AsyncOpenAI
@@ -103,6 +105,7 @@ class MiniMaxProvider(BaseProvider):
         usage = response.usage
         return CompletionResponse(
             content=choice.message.content or "",
+            provider=ProviderType.MINIMAX,
             model=response.model,
             usage={
                 "prompt_tokens": usage.prompt_tokens,
@@ -153,7 +156,7 @@ class MiniMaxProvider(BaseProvider):
             name=self.name,
             display_name=self.display_name,
             available=self.available,
-            models=["MiniMax-M3"],
+            models=self._models,
             rate_limit=self.rate_limiter.rate,
             embedding_dimensions=0,
             supports_streaming=True,

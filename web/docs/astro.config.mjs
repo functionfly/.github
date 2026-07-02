@@ -182,6 +182,29 @@ export default defineConfig({
           ],
         },
         {
+          label: "AI Models",
+          badge: { text: "New", variant: "tip" },
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/ai-models/" },
+            { label: "Bring Your Own Key", link: "/ai-models/byok/" },
+            { label: "Model Catalog", link: "/ai-models/catalog/" },
+            { label: "Configuration", link: "/ai-models/configuration/" },
+            { label: "API Reference", link: "/ai-models/api/" },
+          ],
+        },
+        {
+          label: "Marketplace",
+          badge: { text: "New", variant: "tip" },
+          collapsed: false,
+          items: [
+            { label: "Overview", link: "/marketplace/" },
+            { label: "Publishing", link: "/marketplace/publishing/" },
+            { label: "Pricing & Monetization", link: "/marketplace/pricing/" },
+            { label: "API Reference", link: "/marketplace/api/" },
+          ],
+        },
+        {
           label: "Core Concepts",
           collapsed: false,
           items: [

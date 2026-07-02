@@ -271,6 +271,7 @@ class ProviderManager:
         try:
             from .mimo import MiMoProvider
             provider_classes["mimo"] = MiMoProvider
+            provider_classes["mimo-token-plan"] = MiMoProvider
         except ImportError:
             pass
         try:
@@ -289,7 +290,7 @@ class ProviderManager:
         if cls is None:
             raise ValueError(f"Provider '{provider_name}' does not support BYOK")
 
-        if base_url and provider_name == "mimo":
+        if base_url and provider_name in ("mimo", "mimo-token-plan"):
             return cls(api_key=api_key, base_url=base_url)
 
         return cls(api_key=api_key)

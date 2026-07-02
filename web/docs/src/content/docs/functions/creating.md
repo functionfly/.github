@@ -5,17 +5,14 @@ sidebar:
   order: 2
 ---
 
-# Creating Functions
 
 This guide walks through creating, deploying, and invoking a serverless function.
 
 ## Initialize a New Function
 
 ```bash
-# Create with default runtime
 ff init my-function
 
-# Specify a runtime
 ff init my-function --runtime python
 ff init my-function --runtime javascript
 ff init my-function --runtime go
@@ -26,7 +23,6 @@ ff init my-function --runtime go
 ### Python
 
 ```python
-# main.py
 import json
 
 async def handler(request):
@@ -92,20 +88,16 @@ pub extern "C" fn handler(body: &str) -> String {
 ## Deploy
 
 ```bash
-# Deploy to FunctionFly
 ff deploy
 
-# Get the deployment URL
 ff info
 ```
 
 ## Invoke
 
 ```bash
-# Via CLI
 ff invoke my-function --data '{"name": "FunctionFly"}'
 
-# Via HTTP
 curl https://api.functionfly.com/v1/execute/<function-id> \
   -X POST \
   -H "Content-Type: application/json" \

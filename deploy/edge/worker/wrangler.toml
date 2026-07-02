@@ -1,0 +1,23 @@
+name = "functionfly-edge"
+main = "src/worker.ts"
+compatibility_date = "2024-12-01"
+
+# Production environment
+[env.production]
+routes = [
+  { pattern = "*.functionfly.com/*", zone_name = "functionfly.com" }
+]
+
+[env.production.vars]
+UPSTREAM_HOST = "api.functionfly.com"
+ENVIRONMENT = "production"
+
+# Staging environment
+[env.staging]
+routes = [
+  { pattern = "*.staging.functionfly.com/*", zone_name = "functionfly.com" }
+]
+
+[env.staging.vars]
+UPSTREAM_HOST = "api.staging.functionfly.com"
+ENVIRONMENT = "staging"

@@ -5,7 +5,6 @@ sidebar:
   order: 5
 ---
 
-# Time Machine API Reference
 
 All endpoints are under `/v1/time-machine` and require authentication.
 Feature gating is applied per-plan.

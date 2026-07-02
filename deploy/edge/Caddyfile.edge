@@ -22,9 +22,38 @@ http://{$EDGE_DOMAIN} {
 # HTTPS - Cloudflare forwards traffic to this
 {$EDGE_DOMAIN} {
     tls /etc/ssl/functionfly/fullchain.pem /etc/ssl/functionfly/privkey.pem
+
+    # Request body limit
+    request_body {
+        max_size 10MB
+    }
+
+    # Security headers
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+
     reverse_proxy {$EDGE_UPSTREAM_HOST}:{$EDGE_UPSTREAM_PORT:-8082} {
         header_up Host {host}
         header_up X-Forwarded-Proto https
         header_up X-Real-IP {remote_host}
+
+        transport http {
+            dial_timeout 5s
+            response_header_timeout 30s
+            read_timeout 60s
+            write_timeout 60s
+        }
+
+        # Connection draining on shutdown
+        grace_period 30s
+    }
+
+    log {
+        output stdout
+        format json
     }
 }

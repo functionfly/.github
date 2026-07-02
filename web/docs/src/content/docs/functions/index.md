@@ -3,7 +3,6 @@ title: Functions
 description: Serverless functions on FunctionFly
 ---
 
-# Functions
 
 FunctionFly Functions are serverless compute units that run on a global edge network. Write in your language of choice and deploy in seconds.
 

@@ -5,7 +5,6 @@ sidebar:
   order: 2
 ---
 
-# Replays
 
 A **replay** scans a function's execution history within a time window, re-runs
 every request through a corrected version, and diffs the old vs. new outputs.

@@ -5,7 +5,6 @@ sidebar:
   order: 2
 ---
 
-# Backends
 
 A **backend** is a deploy target attached to an app. Each backend points to a
 specific cloud provider and region. An app can have multiple backends for

@@ -3,7 +3,6 @@ title: API Keys
 description: Create and manage API keys for programmatic access to FunctionFly
 ---
 
-# API Keys
 
 API keys are long-lived bearer tokens for programmatic access to the
 FunctionFly platform. Use them with the CLI, SDKs, CI/CD pipelines,
@@ -75,11 +74,9 @@ Response (save the `key` — it is shown only once):
 Include it in the `X-API-Key` or `Authorization` header:
 
 ```bash
-# X-API-Key header
 curl https://api.functionfly.com/v1/functions \
   -H "X-API-Key: ffp_v1_a1b2c3d4e5f6..._a1b2"
 
-# Authorization header
 curl https://api.functionfly.com/v1/functions \
   -H "Authorization: ApiKey ffp_v1_a1b2c3d4e5f6..._a1b2"
 ```
