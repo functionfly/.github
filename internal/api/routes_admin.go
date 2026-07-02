@@ -73,6 +73,7 @@ func registerAdminRoutes(
 	stateUsageHandler *billing.StateUsageHandler,
 	unfairAdvantageHandler *agenthandler.UnfairAdvantageHandler,
 	certHandler *certification.Handler,
+	founderVotesHandler *admin.FounderVotesHandler,
 ) {
 	adminRoutes := api.PathPrefix("/admin").Subrouter()
 
@@ -87,7 +88,7 @@ func registerAdminRoutes(
 				if origin != "" && middleware.IsOriginAllowedForRequest(r) {
 					w.Header().Set("Access-Control-Allow-Origin", origin)
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-					w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
+					w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment, x-provider-key")
 					w.Header().Set("Access-Control-Allow-Credentials", "true")
 					w.Header().Set("Access-Control-Max-Age", "86400")
 				}
@@ -714,4 +715,11 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/certification/credentials/{credentialID}", authMiddleware.RequirePermission(auth.PermSystemRead)(certHandler.AdminGetCredential)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/certification/credentials/{credentialID}/revoke", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminRevokeCredential)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/certification/users/{userID}/exams/tier/{tierSlug}/reset", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminResetUserTierExamAttempts)).Methods("POST", "OPTIONS")
+
+	// ── Founder Governance ────────────────────────────────────────────────
+	adminRoutes.HandleFunc("/founders/votes", authMiddleware.RequirePermission(auth.PermSystemRead)(founderVotesHandler.HandleListVotes)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/founders/votes", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(founderVotesHandler.HandleCreateVote))).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/founders/votes/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(founderVotesHandler.HandleGetVote)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/founders/votes/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(founderVotesHandler.HandleUpdateVote))).Methods("PATCH", "OPTIONS")
+	adminRoutes.HandleFunc("/founders/votes/{id}", authMiddleware.RequirePermission(auth.PermSystemWrite)(advancedSecurityMiddleware.RequireHMACSignature(founderVotesHandler.HandleDeleteVote))).Methods("DELETE", "OPTIONS")
 }

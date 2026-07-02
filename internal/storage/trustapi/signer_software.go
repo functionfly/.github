@@ -22,8 +22,9 @@ const (
 )
 
 var (
-	globalSigner Signer
-	signerOnce   sync.Once
+	globalSigner   Signer
+	signerOnce     sync.Once
+	signerBackend  string
 )
 
 // SignerConfig controls which signing backend to use.
@@ -89,6 +90,10 @@ func GetSigner() Signer {
 			s = newEphemeralSoftwareSigner(AlgEd25519)
 		}
 		globalSigner = s
+		signerBackend = cfg.Backend
+		if signerBackend == "" {
+			signerBackend = "software"
+		}
 	})
 	return globalSigner
 }
@@ -97,6 +102,35 @@ func GetSigner() Signer {
 func SetSigner(s Signer) {
 	globalSigner = s
 	signerOnce = sync.Once{}
+}
+
+// ResetSigner resets the singleton so the next GetSigner() call re-initializes
+// from environment variables. Used during key rotation.
+func ResetSigner() {
+	CloseSigner()
+	globalSigner = nil
+	signerOnce = sync.Once{}
+	signerBackend = ""
+}
+
+// GetSignerBackend returns the backend name (software, pkcs11, awskms).
+func GetSignerBackend() string {
+	if signerBackend == "" {
+		GetSigner() // ensure initialized
+	}
+	return signerBackend
+}
+
+// CloseSigner closes the global signer if it implements CloseableSigner
+func CloseSigner() {
+	if globalSigner == nil {
+		return
+	}
+	if cs, ok := globalSigner.(CloseableSigner); ok {
+		if err := cs.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "attestation: signer close error: %v\n", err)
+		}
+	}
 }
 
 // newSignerFromConfig is the factory that dispatches to the correct backend.

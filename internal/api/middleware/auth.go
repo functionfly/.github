@@ -34,7 +34,7 @@ func NewAuthMiddleware(authSvc *auth.AuthService) *AuthMiddleware {
 	}
 }
 
-// extractUserFromToken extracts user information from JWT token in Authorization header or httpOnly cookie
+// extractUserFromToken extracts user information from JWT token in Authorization header, query param, or httpOnly cookie
 func (m *AuthMiddleware) extractUserFromToken(r *http.Request) (*auth.Claims, error) {
 	// Try Authorization header first (API clients)
 	authHeader := r.Header.Get("Authorization")
@@ -43,6 +43,11 @@ func (m *AuthMiddleware) extractUserFromToken(r *http.Request) (*auth.Claims, er
 		if len(parts) == 2 && parts[0] == "Bearer" {
 			return m.authSvc.ValidateToken(r.Context(), parts[1])
 		}
+	}
+
+	// Try query parameter (WebSocket connections can't set headers)
+	if token := r.URL.Query().Get("token"); token != "" {
+		return m.authSvc.ValidateToken(r.Context(), token)
 	}
 
 	// Fall back to httpOnly cookie (browser clients)

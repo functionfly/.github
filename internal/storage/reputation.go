@@ -1,6 +1,9 @@
 package storage
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -41,6 +44,21 @@ type ReputationStats struct {
 	OptimizerPointsEarned int `json:"optimizer_points_earned"`
 	MentorPointsEarned   int `json:"mentor_points_earned"`
 	AgentPointsEarned    int `json:"agent_points_earned"`
+}
+
+func (s ReputationStats) Value() (driver.Value, error) {
+	return json.Marshal(s)
+}
+
+func (s *ReputationStats) Scan(src interface{}) error {
+	if src == nil {
+		return nil
+	}
+	data, ok := src.([]byte)
+	if !ok {
+		return fmt.Errorf("ReputationStats.Scan: expected []byte, got %T", src)
+	}
+	return json.Unmarshal(data, s)
 }
 
 // ReputationScoreHistoryEntry represents a single entry in the score history

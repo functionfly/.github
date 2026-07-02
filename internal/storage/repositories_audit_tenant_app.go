@@ -59,6 +59,10 @@ func (db *PostgresDB) UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID
 	return db.tenantRepository.UpdateTenantStatus(ctx, tenantID, status)
 }
 
+func (db *PostgresDB) SetTenantDegradedMode(ctx context.Context, tenantID uuid.UUID, degraded bool, reason string) error {
+	return db.tenantRepository.SetTenantDegradedMode(ctx, tenantID, degraded, reason)
+}
+
 func (db *PostgresDB) UpdateTenantTaxSettings(ctx context.Context, tenantID uuid.UUID, settings *TaxSettings) error {
 	return db.tenantRepository.UpdateTenantTaxSettings(ctx, tenantID, settings)
 }

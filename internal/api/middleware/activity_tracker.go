@@ -119,18 +119,21 @@ func ActivityTrackingMiddleware(tracker *ActivityTracker) func(http.Handler) htt
 	}
 }
 
-// SimpleActivityTracker updates last_active_at for authenticated requests before the handler runs,
-// so profile and other handlers read a fresh timestamp in the same request.
+// SimpleActivityTracker updates last_active_at for authenticated requests.
+// Updates run in a background goroutine with their own context so they never
+// block the handler or get cancelled when the request context expires.
 func SimpleActivityTracker(repo *storage.UserRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims := GetUserFromContext(r)
 			if claims != nil && claims.UserID != uuid.Nil {
-				ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-				defer cancel()
-				if err := repo.UpdateUserLastActive(ctx, claims.UserID); err != nil {
-					logrus.WithError(err).WithField("userID", claims.UserID).Debug("Failed to update last active")
-				}
+				go func(userID uuid.UUID) {
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
+					if err := repo.UpdateUserLastActive(ctx, userID); err != nil {
+						logrus.WithError(err).WithField("userID", userID).Debug("Failed to update last active")
+					}
+				}(claims.UserID)
 			}
 			next.ServeHTTP(w, r)
 		})
@@ -149,32 +152,35 @@ type PresenceHeartbeat struct {
 
 // SimpleActivityTrackerWithRedis is like SimpleActivityTracker but also updates Redis presence.
 // This enables real-time presence tracking via WebSocket without database queries.
+// All updates run in a background goroutine so they never block the handler.
 func SimpleActivityTrackerWithRedis(repo *storage.UserRepository, redisClient *redis.Client) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims := GetUserFromContext(r)
 			if claims != nil && claims.UserID != uuid.Nil {
-				ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-				defer cancel()
+				go func(userID uuid.UUID, tenantID uuid.UUID, username string) {
+					ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					defer cancel()
 
-				if err := repo.UpdateUserLastActive(ctx, claims.UserID); err != nil {
-					logrus.WithError(err).WithField("userID", claims.UserID).Debug("Failed to update last active")
-				}
+					if err := repo.UpdateUserLastActive(ctx, userID); err != nil {
+						logrus.WithError(err).WithField("userID", userID).Debug("Failed to update last active")
+					}
 
-				if redisClient != nil {
-					hb := &PresenceHeartbeat{
-						UserID:     claims.UserID,
-						TenantID:   claims.TenantID,
-						Username:   claims.Username,
-						ActiveAt:   time.Now(),
-						LastActive: time.Now(),
+					if redisClient != nil {
+						hb := &PresenceHeartbeat{
+							UserID:     userID,
+							TenantID:   tenantID,
+							Username:   username,
+							ActiveAt:   time.Now(),
+							LastActive: time.Now(),
+						}
+						data, _ := json.Marshal(hb)
+						key := presenceKeyPrefix + userID.String()
+						if err := redisClient.Set(ctx, key, data, 5*time.Minute).Err(); err != nil {
+							logrus.WithError(err).WithField("userID", userID).Debug("Failed to update Redis presence")
+						}
 					}
-					data, _ := json.Marshal(hb)
-					key := presenceKeyPrefix + claims.UserID.String()
-					if err := redisClient.Set(ctx, key, data, 5*time.Minute).Err(); err != nil {
-						logrus.WithError(err).WithField("userID", claims.UserID).Debug("Failed to update Redis presence")
-					}
-				}
+				}(claims.UserID, claims.TenantID, claims.Username)
 			}
 			next.ServeHTTP(w, r)
 		})

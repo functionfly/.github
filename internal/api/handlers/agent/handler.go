@@ -58,6 +58,20 @@ func NewHandler(
 	notificationSvc *notification.Service,
 ) *Handler {
 	sqlDB, _ := db.DB()
+	reg := tools.NewRegistry()
+
+	dbTool := tools.NewDatabaseTool(db)
+	dbTool.SetDB(db)
+	reg.Register(dbTool)
+	reg.Register(&tools.FileReadTool{})
+	reg.Register(&tools.FileWriteTool{})
+	reg.Register(&tools.HTTPTool{})
+	reg.Register(&tools.CodeExecutionTool{})
+	reg.Register(&tools.ImageGenerationTool{})
+	reg.Register(&tools.TextToSpeechTool{})
+	reg.Register(&tools.EmailTool{})
+	reg.Register(&tools.NotificationTool{})
+
 	return &Handler{
 		identityRepo:    identity.NewRepository(db),
 		quotaEnforcer:   quota.NewEnforcer(db, redisClient),
@@ -69,7 +83,7 @@ func NewHandler(
 		userRepo:        userRepo,
 		financialTxRepo: storage.NewFinancialTransactionRepository(db),
 		notificationSvc: notificationSvc,
-		toolRegistry:    tools.NewRegistry(),
+		toolRegistry:    reg,
 		prefsRepo:       storage.NewAIModelPreferencesRepository(sqlDB),
 		byokRepo:        aikeys.NewRepository(db),
 		rawDB:           sqlDB,

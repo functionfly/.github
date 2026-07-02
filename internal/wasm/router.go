@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/circuitbreaker"
 	"github.com/functionfly/functionfly/internal/tracing"
 	"github.com/sirupsen/logrus"
 )
@@ -625,105 +626,55 @@ func CreateWASMProviderFromFactory(wasmPath string, stdout, stderr io.Writer, ha
 }
 
 // CircuitBreakerState represents the state of a circuit breaker
-type CircuitBreakerState int
+type CircuitBreakerState = circuitbreaker.State
 
 const (
-	CircuitClosed CircuitBreakerState = iota
-	CircuitOpen
-	CircuitHalfOpen
+	CircuitClosed   = circuitbreaker.StateClosed
+	CircuitOpen     = circuitbreaker.StateOpen
+	CircuitHalfOpen = circuitbreaker.StateHalfOpen
 )
-
-func (s CircuitBreakerState) String() string {
-	switch s {
-	case CircuitClosed:
-		return "closed"
-	case CircuitOpen:
-		return "open"
-	case CircuitHalfOpen:
-		return "half-open"
-	default:
-		return "unknown"
-	}
-}
 
 // CircuitBreaker implements the circuit breaker pattern for runtime failures
 type CircuitBreaker struct {
-	mu               sync.RWMutex
-	state            CircuitBreakerState
-	failureThreshold int
-	resetTimeout     time.Duration
-	failureCount     int
-	lastFailure      time.Time
+	inner *circuitbreaker.Breaker
 }
 
 // NewCircuitBreaker creates a new circuit breaker
 func NewCircuitBreaker(failureThreshold int, resetTimeout time.Duration) *CircuitBreaker {
+	cooldown := resetTimeout
+	if cooldown <= 0 {
+		cooldown = time.Nanosecond // immediate reset when 0
+	}
 	return &CircuitBreaker{
-		state:            CircuitClosed,
-		failureThreshold: failureThreshold,
-		resetTimeout:     resetTimeout,
+		inner: circuitbreaker.New("wasm", circuitbreaker.Config{
+			FailureThreshold:    failureThreshold,
+			SuccessThreshold:    1,
+			BaseCooldown:        cooldown,
+			MaxCooldown:         cooldown,
+			BackoffMultiplier:   1.0,
+			HalfOpenMaxRequests: 1,
+		}),
 	}
 }
 
 // Allow checks if a request should be allowed through
 func (cb *CircuitBreaker) Allow() bool {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-
-	switch cb.state {
-	case CircuitClosed:
-		return true
-	case CircuitOpen:
-		if time.Since(cb.lastFailure) > cb.resetTimeout {
-			cb.state = CircuitHalfOpen
-			logrus.Info("Circuit breaker entering half-open state")
-			return true
-		}
-		return false
-	case CircuitHalfOpen:
-		return true
-	default:
-		return false
-	}
+	return cb.inner.Allow()
 }
 
 // RecordSuccess records a successful execution
 func (cb *CircuitBreaker) RecordSuccess() {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-
-	cb.failureCount = 0
-	if cb.state == CircuitHalfOpen {
-		cb.state = CircuitClosed
-		logrus.Info("Circuit breaker closed after successful execution")
-	}
+	cb.inner.RecordSuccess()
 }
 
 // RecordFailure records a failed execution
 func (cb *CircuitBreaker) RecordFailure() {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-
-	cb.failureCount++
-	cb.lastFailure = time.Now()
-
-	if cb.state == CircuitHalfOpen {
-		cb.state = CircuitOpen
-		logrus.Warn("Circuit breaker opened after failure in half-open state")
-		return
-	}
-
-	if cb.failureCount >= cb.failureThreshold {
-		cb.state = CircuitOpen
-		logrus.WithField("failures", cb.failureCount).Warn("Circuit breaker opened")
-	}
+	cb.inner.RecordFailure()
 }
 
 // State returns the current state of the circuit breaker
 func (cb *CircuitBreaker) State() CircuitBreakerState {
-	cb.mu.RLock()
-	defer cb.mu.RUnlock()
-	return cb.state
+	return cb.inner.State()
 }
 
 // RuntimeRouterWithCircuitBreaker wraps RuntimeRouter with circuit breaker protection

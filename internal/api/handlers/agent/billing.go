@@ -173,6 +173,7 @@ func (h *Handler) HandleUpdateSpendCap(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		SpendCapDailyUSD   *float64 `json:"spend_cap_daily_usd"`
+		SpendCapWeeklyUSD  *float64 `json:"spend_cap_weekly_usd"`
 		SpendCapMonthlyUSD *float64 `json:"spend_cap_monthly_usd"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -182,6 +183,10 @@ func (h *Handler) HandleUpdateSpendCap(w http.ResponseWriter, r *http.Request) {
 
 	if req.SpendCapDailyUSD != nil && *req.SpendCapDailyUSD < 0 {
 		writeError(w, http.StatusBadRequest, "INVALID_AMOUNT", "spend_cap_daily_usd must be non-negative")
+		return
+	}
+	if req.SpendCapWeeklyUSD != nil && *req.SpendCapWeeklyUSD < 0 {
+		writeError(w, http.StatusBadRequest, "INVALID_AMOUNT", "spend_cap_weekly_usd must be non-negative")
 		return
 	}
 	if req.SpendCapMonthlyUSD != nil {
@@ -196,7 +201,7 @@ func (h *Handler) HandleUpdateSpendCap(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := h.billingCtrl.UpdateSpendCap(r.Context(), agentID, req.SpendCapDailyUSD, req.SpendCapMonthlyUSD); err != nil {
+	if err := h.billingCtrl.UpdateSpendCap(r.Context(), agentID, req.SpendCapDailyUSD, req.SpendCapWeeklyUSD, req.SpendCapMonthlyUSD); err != nil {
 		writeError(w, http.StatusInternalServerError, "UPDATE_FAILED", "failed to update spend cap")
 		return
 	}

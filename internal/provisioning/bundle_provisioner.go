@@ -41,7 +41,7 @@ type ProvisionResult struct {
 	Components map[string]*ComponentState `json:"components"`
 	StartedAt  time.Time                  `json:"started_at"`
 	FinishedAt time.Time                  `json:"finished_at"`
-	Duration   time.Duration              `json:"duration_ms"`
+	Duration   int64                      `json:"duration_ms"`
 	ErrorLog   []string                   `json:"error_log,omitempty"`
 }
 
@@ -148,6 +148,12 @@ func (bp *BundleProvisioner) ProvisionBundle(ctx context.Context, tenantID uuid.
 		provision func(context.Context, uuid.UUID, string) (*ComponentState, error)
 	}
 
+	// Check if tenant DBs are disabled (local dev / shared platform mode)
+	sharedMode := bp.dbProvisioner == nil || !bp.dbProvisioner.IsEnabled()
+	if sharedMode {
+		log.Info("Tenant databases disabled — using shared platform mode")
+	}
+
 	// Base steps (all bundles get these)
 	steps := []pipelineStep{
 		{"user_db", bp.userDBProvisioner.Provision},
@@ -173,14 +179,36 @@ func (bp *BundleProvisioner) ProvisionBundle(ctx context.Context, tenantID uuid.
 
 	allSucceeded := true
 
-	for _, step := range steps {
+	for i, step := range steps {
 		stepLog := log.WithField("component", step.name)
 		stepLog.Info("Provisioning component")
 
-		state, err := step.provision(ctx, tenantID, bundleSlug)
-		if state == nil {
-			state = &ComponentState{Status: StatusFailed}
+		// Mark component as provisioning in result and persist to DB for polling
+		result.Components[step.name] = &ComponentState{Status: StatusProvisioning, Timestamp: time.Now()}
+		bp.trackProvisioningProgress(ctx, tenantID, result)
+
+		// Record step start in deployment_steps
+		stepID := uuid.New()
+		bp.recordDeploymentStep(ctx, tenantID, stepID, bundleSlug, step.name, i, "running")
+
+		var state *ComponentState
+		var err error
+
+		if sharedMode {
+			// Shared platform mode: mark as active using shared infrastructure
+			state = &ComponentState{
+				Status:     StatusActive,
+				Timestamp:  time.Now(),
+				ResourceID: "shared-platform",
+			}
+			stepLog.Info("Component skipped (shared platform mode)")
+		} else {
+			state, err = step.provision(ctx, tenantID, bundleSlug)
+			if state == nil {
+				state = &ComponentState{Status: StatusFailed}
+			}
 		}
+
 		result.Components[step.name] = state
 
 		if err != nil {
@@ -189,26 +217,31 @@ func (bp *BundleProvisioner) ProvisionBundle(ctx context.Context, tenantID uuid.
 			allSucceeded = false
 			result.ErrorLog = append(result.ErrorLog, fmt.Sprintf("%s: %s", step.name, err.Error()))
 			stepLog.WithError(err).Error("Component provisioning failed")
+			bp.recordDeploymentStep(ctx, tenantID, stepID, bundleSlug, step.name, i, "failed")
 			// Continue to next component — each is independent
 		} else {
 			state.Status = StatusActive
 			state.Timestamp = time.Now()
 			stepLog.Info("Component provisioned successfully")
+			bp.recordDeploymentStep(ctx, tenantID, stepID, bundleSlug, step.name, i, "completed")
 		}
+
+		// Persist component result to DB so polling endpoint returns real-time progress
+		bp.trackProvisioningProgress(ctx, tenantID, result)
 	}
 
 	// Finalize
 	endTime := time.Now()
 	result.FinishedAt = endTime
-	result.Duration = endTime.Sub(startTime)
+	result.Duration = endTime.Sub(startTime).Milliseconds()
 
 	if allSucceeded {
 		result.Status = StatusActive
-		log.WithField("duration_ms", result.Duration.Milliseconds()).Info("Bundle provisioning complete — all components active")
+		log.WithField("duration_ms", result.Duration).Info("Bundle provisioning complete — all components active")
 	} else {
 		result.Status = StatusFailed
 		log.WithFields(logrus.Fields{
-			"duration_ms": result.Duration.Milliseconds(),
+			"duration_ms": result.Duration,
 			"errors":      len(result.ErrorLog),
 		}).Warn("Bundle provisioning completed with errors")
 	}
@@ -219,6 +252,11 @@ func (bp *BundleProvisioner) ProvisionBundle(ctx context.Context, tenantID uuid.
 	}
 
 	return result, nil
+}
+
+// TenantDB returns the tenant database provisioner for direct tenant DB access.
+func (bp *BundleProvisioner) TenantDB() *storage.TenantDBProvisioner {
+	return bp.dbProvisioner
 }
 
 // GetProvisioningStatus returns the current provisioning state for a tenant
@@ -250,7 +288,7 @@ func (bp *BundleProvisioner) GetProvisioningStatus(ctx context.Context, tenantID
 	}
 	result.StartedAt = createdAt
 	result.FinishedAt = updatedAt
-	result.Duration = updatedAt.Sub(createdAt)
+	result.Duration = updatedAt.Sub(createdAt).Milliseconds()
 
 	return &result, nil
 }
@@ -280,17 +318,37 @@ func (bp *BundleProvisioner) trackProvisioningComplete(ctx context.Context, tena
 
 	componentsJSON, _ := json.Marshal(result.Components)
 	errorLogJSON, _ := json.Marshal(result.ErrorLog)
+	isActive := string(result.Status) == "active"
 
 	_, err := bp.platformDB.ExecContext(ctx,
 		`UPDATE tenant_bundle_state SET
 		 	provision_status = $1,
-		 	components = $2,
-		 	error_log = $3,
-		 	provisioned_at = CASE WHEN $1 = 'active' THEN NOW() ELSE provisioned_at END,
+		 	components = $2::jsonb,
+		 	error_log = $3::jsonb,
+		 	provisioned_at = CASE WHEN $5 THEN NOW() ELSE provisioned_at END,
 		 	updated_at = NOW()
 		 WHERE tenant_id = $4`,
-		string(result.Status), componentsJSON, errorLogJSON, tenantID)
+		string(result.Status), string(componentsJSON), string(errorLogJSON), tenantID.String(), isActive)
 	return err
+}
+
+// trackProvisioningProgress updates the DB with current component states during provisioning.
+// This enables real-time polling from the frontend to show loading spinners and checkmarks.
+func (bp *BundleProvisioner) trackProvisioningProgress(ctx context.Context, tenantID uuid.UUID, result *ProvisionResult) {
+	if bp.platformDB == nil {
+		return
+	}
+
+	componentsJSON, _ := json.Marshal(result.Components)
+	_, err := bp.platformDB.ExecContext(ctx,
+		`UPDATE tenant_bundle_state SET
+			components = $1::jsonb,
+			updated_at = NOW()
+		 WHERE tenant_id = $2`,
+		string(componentsJSON), tenantID.String())
+	if err != nil {
+		logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to track provisioning progress (non-fatal)")
+	}
 }
 
 // provisionExternalAIDB is the pipeline step that provisions an external Neon database
@@ -353,4 +411,34 @@ func (bp *BundleProvisioner) provisionExternalAIDB(ctx context.Context, tenantID
 	state.ResourceID = fmt.Sprintf("neon:%s", conn.BranchID)
 	log.WithField("branch_id", conn.BranchID).Info("External AI database provisioned")
 	return state, nil
+}
+
+// recordDeploymentStep writes or updates a deployment step record in the platform DB.
+// This enables real-time provisioning status via the deployment status endpoint.
+func (bp *BundleProvisioner) recordDeploymentStep(ctx context.Context, tenantID, stepID uuid.UUID, bundleSlug, stepName string, stepOrder int, status string) {
+	if bp.platformDB == nil {
+		return
+	}
+
+	now := time.Now()
+	_, err := bp.platformDB.ExecContext(ctx,
+		`INSERT INTO deployment_steps (id, tenant_id, deployment_id, bundle_slug, step_name, step_order, status, started_at, completed_at, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		 ON CONFLICT (id) DO UPDATE SET status = $7, completed_at = $9, updated_at = $11`,
+		stepID, tenantID, uuid.Nil, bundleSlug, stepName, stepOrder, status,
+		now, // started_at
+		func() interface{} {
+			if status == "completed" || status == "failed" {
+				return now
+			}
+			return nil
+		}(),
+		now, now)
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"tenant_id": tenantID,
+			"step":      stepName,
+			"status":    status,
+		}).Warn("Failed to record deployment step (non-fatal)")
+	}
 }

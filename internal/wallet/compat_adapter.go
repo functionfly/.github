@@ -184,8 +184,8 @@ func (w *BillingControllerWrapper) GetAgentSpend(ctx context.Context, agentID st
 }
 
 // UpdateSpendCap updates spend caps for an agent (backward compatible)
-func (w *BillingControllerWrapper) UpdateSpendCap(ctx context.Context, agentID string, dailyCap, monthlyCap *float64) error {
-	return w.service.UpdateAgentSpendCaps(ctx, agentID, dailyCap, monthlyCap)
+func (w *BillingControllerWrapper) UpdateSpendCap(ctx context.Context, agentID string, dailyCap, weeklyCap, monthlyCap *float64) error {
+	return w.service.UpdateAgentSpendCaps(ctx, agentID, dailyCap, weeklyCap, monthlyCap)
 }
 
 // Helper function to convert Wallet to AgentBillingControls

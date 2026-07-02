@@ -82,6 +82,8 @@ type HealthCheckResult struct {
 	ErrorMessage string
 	Region       string
 	Version      string
+	Degraded     bool   // true when /healthz failed but fallback probe succeeded
+	Uptime       int64  // uptime in seconds if reported by the backend
 }
 
 // Runtime represents the type of runtime/artifact for deployment

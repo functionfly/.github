@@ -16,16 +16,17 @@ import (
 
 // AgentBillingControls holds the economic controls for an agent
 type AgentBillingControls struct {
-	ID                 uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	AgentID            string     `json:"agent_id" gorm:"uniqueIndex;not null"`
-	SpendCapMonthlyUSD *float64   `json:"spend_cap_monthly_usd,omitempty" gorm:"type:decimal(10,2)"`
-	SpendCapDailyUSD   *float64   `json:"spend_cap_daily_usd,omitempty" gorm:"type:decimal(10,2)"`
-	CreditBalanceUSD   float64    `json:"credit_balance_usd" gorm:"type:decimal(10,2);not null;default:0"`
-	BillingMode        string     `json:"billing_mode" gorm:"not null;default:'per_agent'"` // per_agent | per_tenant | per_team
-	TeamID             *uuid.UUID `json:"team_id,omitempty" gorm:"type:uuid"`
-	AlertThresholds    pq.Float64Array `json:"alert_thresholds" gorm:"type:decimal[]"`
-	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                  uuid.UUID     `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID             string        `json:"agent_id" gorm:"uniqueIndex;not null"`
+	SpendCapMonthlyUSD  *float64      `json:"spend_cap_monthly_usd,omitempty" gorm:"type:decimal(10,2)"`
+	SpendCapWeeklyUSD   *float64      `json:"spend_cap_weekly_usd,omitempty" gorm:"type:decimal(10,2)"`
+	SpendCapDailyUSD    *float64      `json:"spend_cap_daily_usd,omitempty" gorm:"type:decimal(10,2)"`
+	CreditBalanceUSD    float64       `json:"credit_balance_usd" gorm:"type:decimal(10,2);not null;default:0"`
+	BillingMode         string        `json:"billing_mode" gorm:"not null;default:'per_agent'"` // per_agent | per_tenant | per_team
+	TeamID              *uuid.UUID    `json:"team_id,omitempty" gorm:"type:uuid"`
+	AlertThresholds     pq.Float64Array `json:"alert_thresholds" gorm:"type:decimal[]"`
+	CreatedAt           time.Time     `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt           time.Time     `json:"updated_at" gorm:"autoUpdateTime"`
 }
 
 // TableName returns the GORM table name
@@ -40,6 +41,7 @@ type SpendSummary struct {
 	TotalCallsUSD   float64   `json:"total_calls_usd"`
 	CreditBalance   float64   `json:"credit_balance_usd"`
 	SpendCapMonthly *float64  `json:"spend_cap_monthly_usd,omitempty"`
+	SpendCapWeekly  *float64  `json:"spend_cap_weekly_usd,omitempty"`
 	SpendCapDaily   *float64  `json:"spend_cap_daily_usd,omitempty"`
 	CapUtilization  float64   `json:"cap_utilization_pct"` // 0-100
 	GeneratedAt     time.Time `json:"generated_at"`
@@ -299,12 +301,15 @@ func (c *Controller) GetAgentSpend(ctx context.Context, agentID string, period s
 }
 
 // UpdateSpendCap updates the spend cap for an agent
-func (c *Controller) UpdateSpendCap(ctx context.Context, agentID string, dailyCap, monthlyCap *float64) error {
+func (c *Controller) UpdateSpendCap(ctx context.Context, agentID string, dailyCap, weeklyCap, monthlyCap *float64) error {
 	updates := map[string]interface{}{
 		"updated_at": time.Now(),
 	}
 	if dailyCap != nil {
 		updates["spend_cap_daily_usd"] = *dailyCap
+	}
+	if weeklyCap != nil {
+		updates["spend_cap_weekly_usd"] = *weeklyCap
 	}
 	if monthlyCap != nil {
 		updates["spend_cap_monthly_usd"] = *monthlyCap

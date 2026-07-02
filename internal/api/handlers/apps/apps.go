@@ -89,9 +89,29 @@ func (h *Handler) HandleCreateApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate slug format (lowercase, no spaces, etc.)
+	// Validate slug format (lowercase, no spaces, alphanumeric + hyphens)
 	if strings.Contains(req.Slug, " ") || strings.ToLower(req.Slug) != req.Slug {
 		apierror.WriteError(w, apierror.NewBadRequest("Slug must be lowercase with no spaces"))
+		return
+	}
+	for _, c := range req.Slug {
+		if !((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') {
+			apierror.WriteError(w, apierror.NewBadRequest("Slug must contain only lowercase letters, numbers, and hyphens"))
+			return
+		}
+	}
+
+	// Check slug uniqueness (globally — slugs are subdomains, so collisions
+	// would mean two apps with the same deploy URL).
+	existing, err := h.repo.GetAppBySlug(context.Background(), req.Slug)
+	if err != nil {
+		logrus.WithError(err).WithField("slug", req.Slug).Error("Failed to check slug uniqueness")
+		apierror.WriteError(w, apierror.NewInternal("Failed to check slug availability"))
+		return
+	}
+	if existing != nil {
+		apierror.WriteError(w, apierror.NewConflict(
+			fmt.Sprintf("Slug %q is already taken. Choose a different slug for your app.", req.Slug)))
 		return
 	}
 

@@ -14,6 +14,11 @@ func registerMarketplaceRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	marketplaceHandler *marketplace.Handler,
 ) {
+	unifiedSearchHandler := authMiddleware.OptionalAuth(http.HandlerFunc(marketplaceHandler.HandleUnifiedSearch))
+	protected.HandleFunc("/marketplace/search", func(w http.ResponseWriter, r *http.Request) {
+		unifiedSearchHandler.ServeHTTP(w, r)
+	}).Methods("GET", "OPTIONS")
+
 	listHandler := authMiddleware.OptionalAuth(http.HandlerFunc(marketplaceHandler.HandleListExtensions))
 	protected.HandleFunc("/marketplace/extensions", func(w http.ResponseWriter, r *http.Request) {
 		listHandler.ServeHTTP(w, r)
@@ -32,4 +37,14 @@ func registerMarketplaceRoutes(
 	protected.HandleFunc("/marketplace/categories", func(w http.ResponseWriter, r *http.Request) {
 		categoriesHandler.ServeHTTP(w, r)
 	}).Methods("GET", "OPTIONS")
+
+	// Agent ratings
+	protected.HandleFunc("/marketplace/agents/{id}/rate", authMiddleware.RequireAuth(marketplaceHandler.HandleRateAgent)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/marketplace/agents/{id}/my-rating", authMiddleware.RequireAuth(marketplaceHandler.HandleGetMyAgentRating)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/marketplace/agents/{id}/ratings", marketplaceHandler.HandleListAgentRatings).Methods("GET", "OPTIONS")
+
+	// Function ratings
+	protected.HandleFunc("/marketplace/functions/{id}/rate", authMiddleware.RequireAuth(marketplaceHandler.HandleRateFunction)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/marketplace/functions/{id}/my-rating", authMiddleware.RequireAuth(marketplaceHandler.HandleGetMyFunctionRating)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/marketplace/functions/{id}/ratings", marketplaceHandler.HandleListFunctionRatings).Methods("GET", "OPTIONS")
 }

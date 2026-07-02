@@ -620,3 +620,39 @@ func (s *Server) handleDNAServiceHealth(w http.ResponseWriter, r *http.Request) 
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(health)
 }
+
+// handleTenantHealth returns the authenticated tenant's isolation health status.
+// GET /v1/tenant/health
+func (s *Server) handleTenantHealth(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetClaimsFromContext(r.Context())
+	if claims == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("authentication required"))
+		return
+	}
+
+	ctx := r.Context()
+	tenantID := claims.TenantID
+
+	result := map[string]interface{}{
+		"tenant_id": tenantID.String(),
+	}
+
+	// Check tenant degraded mode from DB
+	tenant, tErr := s.repo.GetTenantByID(ctx, tenantID)
+	if tErr == nil && tenant != nil {
+		result["degraded_mode"] = tenant.DegradedMode
+		if tenant.DegradationReason != "" {
+			result["degradation_reason"] = tenant.DegradationReason
+		}
+	}
+
+	// Check Redis connectivity
+	redisStatus := "healthy"
+	if pingErr := s.redisClient.Ping(ctx).Err(); pingErr != nil {
+		redisStatus = "unhealthy"
+	}
+	result["redis"] = map[string]string{"status": redisStatus}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}

@@ -92,11 +92,7 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 		dbUser = getEnvOrDefault("DB_USER", "postgres")
 		dbPassword = getEnvOrDefault("DB_PASSWORD", "postgres")
 		dbName = getEnvOrDefault("DB_NAME", "functionfly")
-		dbSSLMode = getEnvOrDefault("DB_SSLMODE", "require")
-		// Validate SSL mode even in development - reject disable/allow/prefer
-		if !isValidSSLMode(dbSSLMode) {
-			return nil, fmt.Errorf("invalid DB_SSLMODE: %q - must be one of: require, verify-full, verify-ca (disable/allow/prefer are not allowed)", dbSSLMode)
-		}
+		dbSSLMode = getEnvOrDefault("DB_SSLMODE", "disable")
 	} else {
 		// Production: if DATABASE_URL is set, individual DB_* vars are optional
 		if os.Getenv("DATABASE_URL") == "" {

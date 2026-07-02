@@ -248,6 +248,7 @@ func registerPlatformRoutes(
 	protected.HandleFunc("/providers/credentials", authMiddleware.RequireAuth(providersHandler.HandleGetProviderCredentials)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/providers/connect", authMiddleware.RequireAuth(providerRateLimiter.LimitConnect(providersHandler.HandleConnectProvider))).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/providers/validate", authMiddleware.RequireAuth(providersHandler.HandleValidateProvider)).Methods("POST")
+	protected.HandleFunc("/providers/discover", authMiddleware.RequireAuth(providersHandler.HandleDiscoverResources)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/providers/cost-estimate", authMiddleware.RequireAuth(providersHandler.HandleEstimateCost)).Methods("POST")
 	protected.HandleFunc("/providers/{providerId}", authMiddleware.RequireAuth(providerRateLimiter.LimitDisconnect(providersHandler.HandleDisconnectProvider))).Methods("DELETE", "OPTIONS")
 	protected.HandleFunc("/providers/{providerId}/test", authMiddleware.RequireAuth(providerRateLimiter.LimitTest(providersHandler.HandleTestConnection))).Methods("POST", "OPTIONS")

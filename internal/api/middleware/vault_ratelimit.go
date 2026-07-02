@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -62,7 +63,7 @@ func VaultRateLimit(cfg VaultRateLimitConfig) func(http.Handler) http.Handler {
 				next.ServeHTTP(w, r)
 				return
 			}
-			target := r.PathValue("id")
+			target := mux.Vars(r)["id"]
 			if target == "" {
 				target = "n/a"
 			}

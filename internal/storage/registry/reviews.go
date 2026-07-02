@@ -19,6 +19,9 @@ type RegistryFunctionReview struct {
 	Title string `json:"title" gorm:"type:text"`
 	Body  string `json:"body" gorm:"type:text"`
 
+	Username string `json:"username,omitempty" gorm:"->"`
+	UserName string `json:"user_name,omitempty" gorm:"->"`
+
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }
@@ -125,14 +128,19 @@ func (r *RegistryRepository) ListFunctionReviews(ctx context.Context, functionID
 		offset = 0
 	}
 
-	q := r.db.WithContext(ctx).Model(&RegistryFunctionReview{}).Where("function_id = ?", functionID)
+	base := r.db.WithContext(ctx).
+		Table("registry_function_reviews rfr").
+		Select("rfr.*, COALESCE(u.username, '') as username, COALESCE(u.name, '') as user_name").
+		Joins("LEFT JOIN users u ON u.id = rfr.user_id").
+		Where("rfr.function_id = ?", functionID)
+
 	var total int64
-	if err := q.Count(&total).Error; err != nil {
+	if err := base.Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("count reviews: %w", err)
 	}
 
 	var rows []RegistryFunctionReview
-	if err := q.Order("created_at DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
+	if err := base.Order("rfr.created_at DESC").Limit(limit).Offset(offset).Find(&rows).Error; err != nil {
 		return nil, 0, fmt.Errorf("list reviews: %w", err)
 	}
 	return rows, total, nil

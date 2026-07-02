@@ -385,6 +385,22 @@ type FunctionListing struct {
 	DeterministicVerified bool      `json:"deterministic_verified" gorm:"not null;default:false"`
 	ListedAt              time.Time `json:"listed_at" gorm:"autoCreateTime"`
 	UpdatedAt             time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+
+	Function *RegistryFunctionRef `json:"function,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
+}
+
+// RegistryFunctionRef is a lightweight read-only projection of registry_functions
+// for marketplace display. Only used for GORM Preload.
+type RegistryFunctionRef struct {
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
+	Author      string    `json:"author"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	Visibility  string    `json:"visibility"`
+}
+
+func (RegistryFunctionRef) TableName() string {
+	return "registry_functions"
 }
 
 // TableName returns the GORM table name

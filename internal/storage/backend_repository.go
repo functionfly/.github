@@ -250,6 +250,17 @@ func (r *BackendRepository) GetRecentHealthChecks(ctx context.Context, backendID
 	return checks, nil
 }
 
+// DeleteHealthChecksBefore deletes health check records older than the given time.
+// Returns the number of deleted rows.
+func (r *BackendRepository) DeleteHealthChecksBefore(ctx context.Context, before time.Time) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM health_checks WHERE timestamp < $1`, before)
+	if err != nil {
+		return 0, fmt.Errorf("failed to delete old health checks: %w", err)
+	}
+	return result.RowsAffected()
+}
+
 // GetCircuitState gets circuit state for a backend
 func (r *BackendRepository) GetCircuitState(ctx context.Context, backendID uuid.UUID) (*CircuitState, error) {
 	state := &CircuitState{}
@@ -342,6 +353,46 @@ func (r *BackendRepository) GetRecentRoutingEvents(ctx context.Context, limit in
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query routing events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []*RoutingEvent
+	for rows.Next() {
+		var event RoutingEvent
+		err := rows.Scan(
+			&event.ID,
+			&event.AppID,
+			&event.BackendID,
+			&event.Timestamp,
+			&event.LatencyMs,
+			&event.Outcome,
+			&event.RequestID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan routing event: %w", err)
+		}
+		events = append(events, &event)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating routing events: %w", err)
+	}
+
+	return events, nil
+}
+
+// GetRecentRoutingEventsByBackend returns recent routing events for a specific backend.
+func (r *BackendRepository) GetRecentRoutingEventsByBackend(ctx context.Context, backendID uuid.UUID, limit int) ([]*RoutingEvent, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT id, app_id, backend_id, timestamp, latency_ms, outcome, request_id
+		FROM routing_events
+		WHERE backend_id = $1
+		ORDER BY timestamp DESC
+		LIMIT $2`,
+		backendID, limit)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to query routing events by backend: %w", err)
 	}
 	defer rows.Close()
 

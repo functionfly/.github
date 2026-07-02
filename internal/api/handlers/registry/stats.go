@@ -218,6 +218,17 @@ func (h *Handler) HandleSubmitRating(w http.ResponseWriter, r *http.Request) {
 		"user_id":             user.UserID,
 	})
 
+	// Award reputation points for submitting a review
+	if h.repHooker != nil {
+		h.repHooker.Award(user.UserID, user.TenantID, "review_submitted",
+			fmt.Sprintf("Reviewed %s/%s", author, name), fn.ID)
+		// Award the function author for receiving a rating
+		if fn.OwnerUserID != nil && *fn.OwnerUserID != user.UserID {
+			h.repHooker.Award(*fn.OwnerUserID, user.TenantID, "review_received",
+				fmt.Sprintf("Received review on %s/%s", author, name), fn.ID)
+		}
+	}
+
 	response := map[string]interface{}{
 		"ok":      true,
 		"message": "Rating submitted successfully",

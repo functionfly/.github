@@ -100,6 +100,18 @@ func (r *AgentObservabilityRepository) GetRunByAtlasID(ctx context.Context, atla
 	return &run, nil
 }
 
+func (r *AgentObservabilityRepository) GetLatestRunByAgent(ctx context.Context, tenantID uuid.UUID, agentID string) (*ObservabilityRun, error) {
+	var run ObservabilityRun
+	err := r.db.WithContext(ctx).
+		Where("tenant_id = ? AND agent_id = ?", tenantID, agentID).
+		Order("started_at DESC").
+		First(&run).Error
+	if err != nil {
+		return nil, err
+	}
+	return &run, nil
+}
+
 func (r *AgentObservabilityRepository) ListRuns(ctx context.Context, tenantID uuid.UUID, agentID, status string, limit, offset int) ([]*ObservabilityRun, int64, error) {
 	var runs []*ObservabilityRun
 	var total int64

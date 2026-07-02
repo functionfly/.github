@@ -247,12 +247,10 @@ func (h *Handler) provisionSaaSStarter(tenantID uuid.UUID) {
 	logrus.WithField("tenant_id", tenantID).Info("Provisioning SaaS Starter Pack resources")
 
 	ctx := context.Background()
-	now := time.Now()
 
 	// If isolated provisioning is available, delegate to the BundleProvisioner.
 	// This creates a dedicated database with isolated Auth, Payments, Email, and Analytics.
-	// The function templates below are still created in the platform registry as convenience
-	// entry points that bridge into the tenant's isolated data.
+	// Skip creating function templates in the shared DB — they belong in the tenant's dedicated DB.
 	if h.provisionBundleFn != nil {
 		go func() {
 			status, count, err := h.provisionBundleFn(ctx, tenantID, "saas-starter")
@@ -266,8 +264,12 @@ func (h *Handler) provisionSaaSStarter(tenantID uuid.UUID) {
 				}).Info("Isolated SaaS Starter provisioning complete")
 			}
 		}()
+		logrus.WithField("tenant_id", tenantID).Info("Skipping shared-DB SaaS templates (isolated provisioning active)")
+		return
 	}
 
+	// Fallback: create templates in shared platform DB (no dedicated tenant DB available)
+	now := time.Now()
 	templates := []struct {
 		name   string
 		code   string
@@ -324,6 +326,7 @@ func (h *Handler) provisionSaaSStarter(tenantID uuid.UUID) {
 			TenantID:     tenantID,
 			Name:         tmpl.name,
 			Code:         tmpl.code,
+			Providers:    []string{"functionfly"},
 			Region:       tmpl.region,
 			Status:       "draft",
 			Version:      "1.0.0",
@@ -351,10 +354,10 @@ func (h *Handler) provisionMarketplace(tenantID uuid.UUID) {
 	logrus.WithField("tenant_id", tenantID).Info("Provisioning Marketplace Pack resources")
 
 	ctx := context.Background()
-	now := time.Now()
 
 	// If isolated provisioning is available, delegate to the BundleProvisioner.
 	// This creates a dedicated database with isolated Listings, Payments, Messaging, and Notifications.
+	// Skip creating function templates in the shared DB — they belong in the tenant's dedicated DB.
 	if h.provisionBundleFn != nil {
 		go func() {
 			status, count, err := h.provisionBundleFn(ctx, tenantID, "marketplace")
@@ -368,8 +371,12 @@ func (h *Handler) provisionMarketplace(tenantID uuid.UUID) {
 				}).Info("Isolated Marketplace provisioning complete")
 			}
 		}()
+		logrus.WithField("tenant_id", tenantID).Info("Skipping shared-DB marketplace templates (isolated provisioning active)")
+		return
 	}
 
+	// Fallback: create templates in shared platform DB (no dedicated tenant DB available)
+	now := time.Now()
 	templates := []struct {
 		name   string
 		code   string
@@ -421,6 +428,7 @@ func (h *Handler) provisionMarketplace(tenantID uuid.UUID) {
 			TenantID:     tenantID,
 			Name:         tmpl.name,
 			Code:         tmpl.code,
+			Providers:    []string{"functionfly"},
 			Region:       tmpl.region,
 			Status:       "draft",
 			Version:      "1.0.0",
@@ -448,9 +456,9 @@ func (h *Handler) provisionAIApp(tenantID uuid.UUID) {
 	logrus.WithField("tenant_id", tenantID).Info("Provisioning AI App Pack resources")
 
 	ctx := context.Background()
-	now := time.Now()
 
 	// If isolated provisioning is available, delegate to the BundleProvisioner.
+	// Skip creating function templates in the shared DB — they belong in the tenant's dedicated DB.
 	if h.provisionBundleFn != nil {
 		go func() {
 			status, count, err := h.provisionBundleFn(ctx, tenantID, "ai-app")
@@ -464,8 +472,12 @@ func (h *Handler) provisionAIApp(tenantID uuid.UUID) {
 				}).Info("Isolated AI App provisioning complete")
 			}
 		}()
+		logrus.WithField("tenant_id", tenantID).Info("Skipping shared-DB AI templates (isolated provisioning active)")
+		return
 	}
 
+	// Fallback: create templates in shared platform DB (no dedicated tenant DB available)
+	now := time.Now()
 	templates := []struct {
 		name   string
 		code   string
@@ -510,6 +522,7 @@ func (h *Handler) provisionAIApp(tenantID uuid.UUID) {
 			TenantID:     tenantID,
 			Name:         tmpl.name,
 			Code:         tmpl.code,
+			Providers:    []string{"functionfly"},
 			Region:       tmpl.region,
 			Status:       "draft",
 			Version:      "1.0.0",
@@ -561,11 +574,33 @@ func ProvisionBundleResources(repo storage.Repository, tenantID uuid.UUID, bundl
 	return nil
 }
 
+// ProvisionBundleOpts holds optional parameters for ProvisionBundleAppAndBackend.
+type ProvisionBundleOpts struct {
+	// SkipSharedDBResources skips creating backend and functions in the shared
+	// platform DB when the BundleProvisioner will create them in a dedicated tenant DB.
+	SkipSharedDBResources bool
+}
+
+// WithIsolatedProvisioning returns an option that skips shared-DB backend/function
+// creation because the BundleProvisioner handles them in the tenant's dedicated DB.
+func WithIsolatedProvisioning() func(*ProvisionBundleOpts) {
+	return func(o *ProvisionBundleOpts) {
+		o.SkipSharedDBResources = true
+	}
+}
+
 // ProvisionBundleAppAndBackend creates the default app and backend for a bundle
-// This is the "one-click deploy" - called when bundle is purchased via Stripe webhook
-func ProvisionBundleAppAndBackend(repo storage.Repository, tenantID uuid.UUID, bundleSlug string) (*storage.App, error) {
+// This is the "one-click deploy" - called when bundle is purchased via Stripe webhook.
+// When isolatedProvisioner is non-nil, backend and function creation is skipped in the
+// shared platform DB — the BundleProvisioner handles them in the tenant's dedicated DB.
+func ProvisionBundleAppAndBackend(repo storage.Repository, tenantID uuid.UUID, bundleSlug string, opts ...func(*ProvisionBundleOpts)) (*storage.App, error) {
 	ctx := context.Background()
 	now := time.Now()
+
+	var pOpts ProvisionBundleOpts
+	for _, opt := range opts {
+		opt(&pOpts)
+	}
 
 	bundleAppNames := map[string]string{
 		"saas-starter": "SaaS Starter",
@@ -607,60 +642,69 @@ func ProvisionBundleAppAndBackend(repo storage.Repository, tenantID uuid.UUID, b
 		}
 	}
 
-	// Determine backend config based on bundle
-	region := "eu-central-1"
-	url := "https://api.functionfly.io/v1/apps/" + app.ID.String()
+	// Create default backend (skip when isolated provisioning handles it)
+	if !pOpts.SkipSharedDBResources {
+		region := "eu-central-1"
+		url := "https://api.functionfly.io/v1/apps/" + app.ID.String()
 
-	// Create default backend
-	backend, err := repo.CreateBackend(ctx, app.ID, "functionfly", region, url, "", nil)
-	if err != nil {
-		if !strings.Contains(err.Error(), "unique") && !strings.Contains(err.Error(), "duplicate") {
-			logrus.WithError(err).WithFields(logrus.Fields{
-				"app_id":  app.ID,
-				"backend": "functionfly",
-			}).Warn("Failed to create default backend, continuing anyway")
+		backend, err := repo.CreateBackend(ctx, app.ID, "functionfly", region, url, "", nil)
+		if err != nil {
+			if !strings.Contains(err.Error(), "unique") && !strings.Contains(err.Error(), "duplicate") {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"app_id":  app.ID,
+					"backend": "functionfly",
+				}).Warn("Failed to create default backend, continuing anyway")
+			}
+		} else {
+			logrus.WithFields(logrus.Fields{
+				"backend_id": backend.ID,
+				"app_id":     app.ID,
+				"provider":   backend.Provider,
+			}).Info("Created default backend for bundle via standalone function")
 		}
 	} else {
-		logrus.WithFields(logrus.Fields{
-			"backend_id": backend.ID,
-			"app_id":    app.ID,
-			"provider":  backend.Provider,
-		}).Info("Created default backend for bundle via standalone function")
+		logrus.WithField("app_id", app.ID).Info("Skipping shared-DB backend creation (isolated provisioning active)")
 	}
 
-	// Create bundle-specific functions
-	templates := getBundleFunctionTemplates(bundleSlug)
-	for _, tmpl := range templates {
-		function := &storage.FunctionConfig{
-			ID:           uuid.New(),
-			TenantID:     tenantID,
-			AppID:        &app.ID,
-			Name:         tmpl.name,
-			Code:         tmpl.code,
-			Region:       tmpl.region,
-			Status:       "active",
-			Version:      "1.0.0",
-			Capabilities: tmpl.capabs,
-			CreatedAt:    now,
-			UpdatedAt:    now,
+	// Create bundle-specific functions (skip when isolated provisioning handles it)
+	if !pOpts.SkipSharedDBResources {
+		templates := getBundleFunctionTemplates(bundleSlug)
+		for _, tmpl := range templates {
+			function := &storage.FunctionConfig{
+				ID:           uuid.New(),
+				TenantID:     tenantID,
+				AppID:        &app.ID,
+				Name:         tmpl.name,
+				Code:         tmpl.code,
+				Providers:    tmpl.providers,
+				Region:       tmpl.region,
+				Status:       "active",
+				Version:      "1.0.0",
+				Capabilities: tmpl.capabs,
+				CreatedAt:    now,
+				UpdatedAt:    now,
+			}
+			if _, err := repo.CreateFunction(ctx, function); err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"tenant_id": tenantID,
+					"app_id":    app.ID,
+					"function":  tmpl.name,
+				}).Warn("Failed to create bundle function template")
+			}
 		}
-		if _, err := repo.CreateFunction(ctx, function); err != nil {
-			logrus.WithError(err).WithFields(logrus.Fields{
-				"tenant_id": tenantID,
-				"app_id":    app.ID,
-				"function":  tmpl.name,
-			}).Warn("Failed to create bundle function template")
-		}
+	} else {
+		logrus.WithField("app_id", app.ID).Info("Skipping shared-DB function templates (isolated provisioning active)")
 	}
 
 	return app, nil
 }
 
 type bundleFunctionTemplate struct {
-	name   string
-	code   string
-	region string
-	capabs []string
+	name      string
+	code      string
+	region    string
+	capabs    []string
+	providers []string
 }
 
 func getBundleFunctionTemplates(bundleSlug string) []bundleFunctionTemplate {
@@ -803,5 +847,11 @@ func getBundleFunctionTemplates(bundleSlug string) []bundleFunctionTemplate {
 		},
 	}
 
-	return templates[bundleSlug]
+	result := templates[bundleSlug]
+	for i := range result {
+		if len(result[i].providers) == 0 {
+			result[i].providers = []string{"functionfly"}
+		}
+	}
+	return result
 }

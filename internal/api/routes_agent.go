@@ -16,6 +16,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/logging"
+	"github.com/functionfly/functionfly/internal/provisioning"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
@@ -59,6 +60,11 @@ func registerPublicWebhookRoutes(
 	stripeWebhookHandler.SetDunningManager(s.dunningManager)
 	stripeWebhookHandler.SetOperationalRepository(billingOperationalRepo)
 	stripeWebhookHandler.SetPCIAuditHelper(helpers.NewPCIAuditHelper(s.postgresDB.PCIAuditRepository()))
+
+	// Wire isolated bundle provisioner for dedicated tenant DB provisioning
+	if s.bundleProvisioner != nil {
+		stripeWebhookHandler.SetBundleProvisioner(provisioning.ProvisionBundleForBilling(s.bundleProvisioner))
+	}
 
 	// Wire up dispute response manager for automated chargeback handling
 	disputeResponseManager := billing.NewDisputeResponseManager(disputeRepo, s.notificationSvc)
@@ -150,6 +156,12 @@ func registerAgentRoutes(
 	protected.HandleFunc("/agent/{agent_id}/chat/sessions", authMiddleware.RequireAuth(aepHandler.HandleListChatSessions)).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/chat/sessions", authMiddleware.RequireAuth(aepHandler.HandleCreateChatSession)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}/chat/sessions/{session_id}", authMiddleware.RequireAuth(aepHandler.HandleDeleteChatSession)).Methods("DELETE", "OPTIONS")
+
+	// Agent workspace (file browser + manifest + history)
+	protected.HandleFunc("/agent/{agent_id}/workspace", authMiddleware.RequireAuth(aepHandler.HandleBrowseWorkspace)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/workspace/manifest", authMiddleware.RequireAuth(aepHandler.HandleWorkspaceManifest)).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/agent/{agent_id}/workspace/history", authMiddleware.RequireAuth(aepHandler.HandleWorkspaceHistory)).Methods("GET", "OPTIONS")
+
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleGetAgent, agentTeamMiddleware))).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleUpdateAgent, agentTeamMiddleware))).Methods("PUT", "OPTIONS")
 	protected.HandleFunc("/agent/{agent_id}", authMiddleware.RequireAuth(wrapWithTeamMiddleware(aepHandler.HandleDeleteAgent, agentTeamMiddleware))).Methods("DELETE", "OPTIONS")

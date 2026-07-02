@@ -27,15 +27,15 @@ import (
 	"github.com/functionfly/functionfly/internal/agent/swarm"
 	agenttesting "github.com/functionfly/functionfly/internal/agent/testing"
 	secureSandbox "github.com/functionfly/functionfly/internal/agent/testing/sandbox"
+	"github.com/functionfly/functionfly/internal/aikeys"
 	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/docs"
-	"github.com/functionfly/functionfly/internal/aikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
-	"github.com/functionfly/functionfly/internal/api/handlers/aimodels"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
 	agentobs "github.com/functionfly/functionfly/internal/api/handlers/agent_observability"
+	"github.com/functionfly/functionfly/internal/api/handlers/aimodels"
 	analyticshandler "github.com/functionfly/functionfly/internal/api/handlers/analytics"
 	"github.com/functionfly/functionfly/internal/api/handlers/apikeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/apps"
@@ -44,9 +44,11 @@ import (
 	billinghandler "github.com/functionfly/functionfly/internal/api/handlers/billing"
 	"github.com/functionfly/functionfly/internal/api/handlers/blog"
 	brainhandler "github.com/functionfly/functionfly/internal/api/handlers/brain"
+	bundleconfig "github.com/functionfly/functionfly/internal/api/handlers/bundleconfig"
 	categorizationhandler "github.com/functionfly/functionfly/internal/api/handlers/categorization"
 	"github.com/functionfly/functionfly/internal/api/handlers/certification"
 	"github.com/functionfly/functionfly/internal/api/handlers/chat"
+	communityhandler "github.com/functionfly/functionfly/internal/api/handlers/community"
 	connectorhandler "github.com/functionfly/functionfly/internal/api/handlers/connectors"
 	consciousnesshandler "github.com/functionfly/functionfly/internal/api/handlers/consciousness"
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
@@ -62,7 +64,6 @@ import (
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
 	foundershandler "github.com/functionfly/functionfly/internal/api/handlers/founders"
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
-	"github.com/functionfly/functionfly/internal/api/helpers"
 	"github.com/functionfly/functionfly/internal/api/handlers/functions"
 	"github.com/functionfly/functionfly/internal/api/handlers/ghost"
 	githubhandler "github.com/functionfly/functionfly/internal/api/handlers/github"
@@ -98,10 +99,11 @@ import (
 	versionhandler "github.com/functionfly/functionfly/internal/api/handlers/version"
 	"github.com/functionfly/functionfly/internal/api/handlers/wellknown"
 	"github.com/functionfly/functionfly/internal/api/handlers/workflow"
+	"github.com/functionfly/functionfly/internal/api/helpers"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apikey"
-	"github.com/functionfly/functionfly/internal/auth"
 	atlaspkg "github.com/functionfly/functionfly/internal/atlas"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/billing"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
@@ -204,6 +206,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	contentHandler := content.NewHandler(s.repo, contentRepo)
 	blogRepo := blog.NewBlogRepository(s.postgresDB.DB)
 	blogHandler := blog.NewHandler(blogRepo)
+	communityRepo := storage.NewCommunityRepository(s.postgresDB.GORM)
+	repHooker := services.NewReputationHooker(s.postgresDB, s.logger)
+	communityHandler := communityhandler.NewHandler(communityRepo, s.logger, repHooker)
 	feedbackHandler := feedbackHandlerPkg.NewHandler(s.repo, s.storageService)
 
 	followService := services.NewFollowService(s.repo)
@@ -393,6 +398,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, functionRepo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo, s.recommendationSvc, realtimeUsageTracker)
 	registryHandler.SetWalletService(s.walletService)
+	registryHandler.SetReputationHooker(repHooker)
 
 	// Initialize privacy service and wire it into the registry handler
 	privacyRepo := privacy.NewRepository(s.postgresDB)
@@ -682,6 +688,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	agentActuatorSvc := actuator.NewService(s.postgresDB.GORM, agentGraphSvc)
 	agentEconomyService := economy.NewService(s.postgresDB.GORM)
 	agentMarketplaceService := marketplace.NewService(s.postgresDB.GORM)
+	marketplaceHandler.SetAgentSearcher(marketplacehandler.NewAgentSearcherAdapter(agentMarketplaceService))
+	marketplaceHandler.SetFunctionSearcher(marketplacehandler.NewFunctionSearcherAdapter(registryRepo))
+	marketplaceHandler.SetAgentRater(marketplacehandler.NewAgentRaterAdapter(agentMarketplaceService))
+	marketplaceHandler.SetFunctionRater(marketplacehandler.NewFunctionRaterAdapter(agentMarketplaceService))
 	agentAutonomyService := autonomy.NewService(s.postgresDB.GORM)
 	agentEvolutionService := evolution.NewService(s.postgresDB.GORM, agentGraphSvc, agentActuatorSvc)
 	agentSwarmMessageService := swarm.NewMessageService(s.postgresDB.GORM, s.redisClient)
@@ -1179,6 +1189,14 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		s.provisioningHandler.RegisterRoutes(api)
 	}
 
+	// Register bundle config routes (read/update component configs in tenant DB)
+	if s.bundleProvisioner != nil {
+		bundleConfigHandler := bundleconfig.NewHandler(s.bundleProvisioner, s.repo)
+		protected.HandleFunc("/apps/{appId}/bundle/config", authMiddleware.RequireAuth(bundleConfigHandler.HandleGetBundleConfig)).Methods("GET")
+		protected.HandleFunc("/apps/{appId}/bundle/config/auth/oauth/{provider}", authMiddleware.RequireAuth(bundleConfigHandler.HandleUpdateOAuthProvider)).Methods("PUT")
+		protected.HandleFunc("/apps/{appId}/bundle/config/email/workflows/{slug}", authMiddleware.RequireAuth(bundleConfigHandler.HandleToggleWorkflow)).Methods("PUT")
+	}
+
 	// ── DRE Anchoring Service (blockchain anchoring for execution certificates) ──
 	var anchoringService drehandler.AnchorServicer
 	if cfg, cfgErr := drecert.LoadAnchoringConfigFromEnv(); cfgErr != nil {
@@ -1208,6 +1226,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	registerPublicWebhookRoutes(
 		s, api, registryRepo, platformFeeRepo, billingOperationalRepo,
 	)
+
+	// ── Community Forum (must be BEFORE registry /{author}/{name} catch-all) ──
+	communityHandler.RegisterRoutes(api, authMiddleware)
+	communityHandler.RegisterAdminRoutes(api, authMiddleware)
 
 	// ── Registry routes (must be AFTER public webhooks for /{author}/{name} pattern) ──
 	registerRegistryRoutes(
@@ -1322,6 +1344,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 
 	certRepo := s.postgresDB.CertificationRepository()
 	certHandler := certification.NewHandler(certRepo, storage.NewUserRepository(s.postgresDB))
+	founderVotesHandler := admin.NewFounderVotesHandler(s.repo, s.logger)
 	registerAdminRoutes(
 		s, api, authMiddleware, advancedSecurityMiddleware,
 		adminHandler, adminBackendsHandler, adminProvidersHandler,
@@ -1336,6 +1359,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		stateUsageHandler,
 		unfairAdvantageHandler,
 		certHandler,
+		founderVotesHandler,
 	)
 
 	// ── Admin AI Model Preferences (provider/model enable/disable) ──────────
@@ -1483,6 +1507,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// ── Runtime Optimization Endpoint (receives suggestions from Rust GraphOptimizer) ──
 	api.HandleFunc("/optimizations", optimizationHandler.ReceiveOptimizationSuggestion).Methods("POST", "OPTIONS")
 
+	// ── Reputation System ───────────────────────────────────────────────────
+	registerReputationRoutes(s, api, authMiddleware)
+
 	// ── Sandbox Management ───────────────────────────────────────────────────
 	sandboxHandler.RegisterRoutes(api)
 
@@ -1529,6 +1556,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/dna", s.handleDNAServiceHealth).Methods("GET", "OPTIONS")
+	api.HandleFunc("/tenant/health", authMiddleware.RequireAuth(s.handleTenantHealth)).Methods("GET", "OPTIONS")
 	s.router.Handle("/metrics", middleware.MetricsAuthMiddleware(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
 

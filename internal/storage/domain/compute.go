@@ -78,6 +78,7 @@ type CircuitRepository interface {
 type HealthRepository interface {
 	InsertHealthCheck(ctx context.Context, backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error
 	GetRecentHealthChecks(ctx context.Context, backendID uuid.UUID, limit int) ([]*types.HealthCheck, error)
+	DeleteHealthChecksBefore(ctx context.Context, before time.Time) (int64, error)
 	GetBackendStatusByAppID(ctx context.Context, appID uuid.UUID) ([]*types.BackendStatus, error)
 }
 

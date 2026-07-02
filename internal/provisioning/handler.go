@@ -1,8 +1,10 @@
 package provisioning
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/storage"
@@ -67,9 +69,21 @@ func (h *Handler) HandleProvisionBundle(w http.ResponseWriter, r *http.Request) 
 
 	// Check if already provisioning or active
 	existing, _ := h.provisioner.GetProvisioningStatus(r.Context(), claims.TenantID)
-	if existing != nil && existing.Status == StatusProvisioning {
-		writeJSONError(w, http.StatusConflict, "Provisioning already in progress")
+	if existing != nil && existing.Status == StatusActive {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(existing)
 		return
+	}
+	// Allow retry if stuck in "provisioning" (previous run crashed) or "failed"
+	// Only block if truly provisioning right now (check via a lock or timestamp)
+	if existing != nil && existing.Status == StatusProvisioning {
+		// If updated more than 2 minutes ago, consider it stuck — allow retry
+		if time.Since(existing.FinishedAt) < 2*time.Minute {
+			writeJSONError(w, http.StatusConflict, "Provisioning already in progress")
+			return
+		}
+		logrus.WithField("tenant_id", claims.TenantID).Warn("Provisioning appears stuck — allowing retry")
 	}
 
 	// Check plan eligibility (Starter+ plans get dedicated DBs)
@@ -79,37 +93,22 @@ func (h *Handler) HandleProvisionBundle(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Execute provisioning (async to avoid HTTP timeout on slow DB creation)
-	resultCh := make(chan *ProvisionResult, 1)
-	errCh := make(chan error, 1)
-
+	// Execute provisioning asynchronously so the frontend can poll for progress
 	go func() {
-		result, err := h.provisioner.ProvisionBundle(r.Context(), claims.TenantID, req.BundleSlug)
+		_, err := h.provisioner.ProvisionBundle(context.Background(), claims.TenantID, req.BundleSlug)
 		if err != nil {
-			errCh <- err
-		} else {
-			resultCh <- result
+			logrus.WithError(err).WithField("tenant_id", claims.TenantID).Error("Bundle provisioning failed")
 		}
 	}()
 
-	// Wait for result (or timeout after 5 minutes)
-	select {
-	case result := <-resultCh:
-		w.Header().Set("Content-Type", "application/json")
-		if result.Status == StatusActive {
-			w.WriteHeader(http.StatusOK)
-		} else {
-			w.WriteHeader(http.StatusPartialContent) // 206: some components failed
-		}
-		json.NewEncoder(w).Encode(result)
-
-	case err := <-errCh:
-		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Error("Bundle provisioning failed")
-		writeJSONError(w, http.StatusInternalServerError, "Provisioning failed. Check server logs for details.")
-
-	case <-r.Context().Done():
-		writeJSONError(w, http.StatusRequestTimeout, "Provisioning timed out")
-	}
+	// Return immediately — frontend polls GET /v1/provisioning/status for progress
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":    "provisioning",
+		"tenant_id": claims.TenantID,
+		"message":   "Provisioning started. Poll /v1/provisioning/status for progress.",
+	})
 }
 
 // HandleGetProvisioningStatus returns the current provisioning state.

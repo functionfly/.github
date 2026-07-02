@@ -178,6 +178,8 @@ func registerAuthRoutes(
 	api.HandleFunc("/users/{username}/activity", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserActivity))).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/contributions", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserContributions))).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/skills", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserSkills))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/{username}/trust", usernameValidator(publicRateLimiter.Limit(usersHandler.HandleGetUserTrust))).Methods("GET", "OPTIONS")
+	api.HandleFunc("/users/me/trust", authMiddleware.RequireAuth(usersHandler.HandleGetMyTrust)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/users/{username}/report", authMiddleware.RequireAuth(usersHandler.HandleReportProfile)).Methods("POST", "OPTIONS")
 
 	// ── Tenant Auth Settings (Backend-in-a-Box) ─────────────────────────────
@@ -282,6 +284,7 @@ func registerAuthRoutes(
 	// Bundle catalog and details
 	api.HandleFunc("/billing/bundles", billingHandler.HandleGetBundles).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/bundles/stats", billingHandler.HandleGetBundleStats).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/bundles/analytics/founder-mode", authMiddleware.RequireAuth(billingHandler.HandleGetFounderModeAnalytics)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/bundles/{slug}", billingHandler.HandleGetBundle).Methods("GET", "OPTIONS")
 	// Immediate bundle checkout
 	api.HandleFunc("/billing/bundles/{slug}/checkout", authMiddleware.RequireAuth(csrfMiddleware.RequireCSRF(billingHandler.HandleCreateBundleCheckout))).Methods("POST", "OPTIONS")

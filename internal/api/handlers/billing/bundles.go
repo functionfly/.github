@@ -11,6 +11,7 @@ import (
 	"github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -70,7 +71,7 @@ func (h *Handler) HandleGetBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slug := r.PathValue("slug")
+	slug := mux.Vars(r)["slug"]
 	if slug == "" {
 		writeJSONError(w, http.StatusBadRequest, "Bundle slug is required")
 		return
@@ -304,7 +305,7 @@ func (h *Handler) HandleRegisterFounderMode(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	slug := r.PathValue("slug")
+	slug := mux.Vars(r)["slug"]
 	if slug == "" {
 		writeJSONError(w, http.StatusBadRequest, "Bundle slug is required")
 		return
@@ -444,7 +445,7 @@ func (h *Handler) HandleCreateBundleCheckout(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	slug := r.PathValue("slug")
+	slug := mux.Vars(r)["slug"]
 	if slug == "" {
 		writeJSONError(w, http.StatusBadRequest, "Bundle slug is required")
 		return
@@ -776,7 +777,7 @@ func (h *Handler) HandleDeployBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slug := r.PathValue("slug")
+	slug := mux.Vars(r)["slug"]
 	if slug == "" {
 		writeJSONError(w, http.StatusBadRequest, "Bundle slug is required")
 		return
@@ -785,6 +786,34 @@ func (h *Handler) HandleDeployBundle(w http.ResponseWriter, r *http.Request) {
 	validSlugs := map[string]bool{"saas-starter": true, "marketplace": true, "ai-app": true}
 	if !validSlugs[slug] {
 		writeJSONError(w, http.StatusBadRequest, "Invalid bundle slug")
+		return
+	}
+
+	// Paywall check: user must have an active subscription or founder mode registration
+	bundle, err := h.repo.GetPricingBundleBySlug(r.Context(), slug)
+	if err != nil || bundle == nil {
+		writeJSONError(w, http.StatusNotFound, "Bundle not found")
+		return
+	}
+
+	hasAccess := false
+
+	// Check for active bundle subscription
+	sub, err := h.repo.GetBundleSubscriptionByTenant(r.Context(), claims.TenantID)
+	if err == nil && sub != nil && sub.BundleID == bundle.ID && (sub.Status == "active" || sub.Status == "deferred") {
+		hasAccess = true
+	}
+
+	// Check for active founder mode registration
+	if !hasAccess {
+		founderMode, err := h.repo.GetActiveFounderMode(r.Context(), claims.TenantID, bundle.ID)
+		if err == nil && founderMode != nil && founderMode.Status == "active" {
+			hasAccess = true
+		}
+	}
+
+	if !hasAccess {
+		writeJSONError(w, http.StatusPaymentRequired, "Payment or founder mode registration required. Please select 'Pay Now' or 'Start Free' first.")
 		return
 	}
 
@@ -797,15 +826,14 @@ func (h *Handler) HandleDeployBundle(w http.ResponseWriter, r *http.Request) {
 		req.Region = "us-east-1"
 	}
 
-	// Get bundle to validate
-	bundle, err := h.repo.GetPricingBundleBySlug(r.Context(), slug)
-	if err != nil || bundle == nil {
-		writeJSONError(w, http.StatusNotFound, "Bundle not found")
-		return
-	}
-
 	// Trigger async provisioning (idempotent - safe to call multiple times) and create app/backend
-	app, err := ProvisionBundleAppAndBackend(h.repo, claims.TenantID, slug)
+	// When isolated provisioning is available, skip creating backend/functions in the shared DB
+	// — the BundleProvisioner handles them in the tenant's dedicated database.
+	var provisionOpts []func(*ProvisionBundleOpts)
+	if h.provisionBundleFn != nil {
+		provisionOpts = append(provisionOpts, WithIsolatedProvisioning())
+	}
+	app, err := ProvisionBundleAppAndBackend(h.repo, claims.TenantID, slug, provisionOpts...)
 	if err != nil {
 		logrus.WithError(err).WithField("tenant_id", claims.TenantID).Error("billing deploy: failed to provision app and backend")
 		writeJSONError(w, http.StatusInternalServerError, "Failed to create deployment")
@@ -856,6 +884,27 @@ func (h *Handler) HandleDeployBundle(w http.ResponseWriter, r *http.Request) {
 		BackendID:    "",
 		Steps:        steps,
 	})
+}
+
+// HandleGetFounderModeAnalytics returns aggregate analytics for the founder mode funnel
+// GET /v1/billing/bundles/analytics/founder-mode
+func (h *Handler) HandleGetFounderModeAnalytics(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	analytics, err := h.repo.GetFounderModeAnalytics(r.Context())
+	if err != nil {
+		logrus.WithError(err).Error("billing founder mode analytics: failed to get analytics")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve analytics")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(analytics)
 }
 
 // bundleToResponse converts a PricingBundle to BundleResponse
@@ -913,7 +962,7 @@ func (h *Handler) HandleGetDeploymentStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	deploymentID := r.PathValue("deploymentId")
+	deploymentID := mux.Vars(r)["deploymentId"]
 	if deploymentID == "" {
 		writeJSONError(w, http.StatusBadRequest, "Deployment ID is required")
 		return

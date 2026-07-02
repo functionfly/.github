@@ -1,9 +1,15 @@
 package utils
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"net/http"
+	"net/textproto"
+	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
@@ -12,6 +18,69 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/functionfly/functionfly/internal/apierror"
 )
+
+type edgeContextKey int
+
+const originalPathKey edgeContextKey = iota
+
+// SetOriginalPath stores the original request path (before EdgeSlugMiddleware
+// rewriting) in the context.
+func SetOriginalPath(ctx context.Context, path string) context.Context {
+	return context.WithValue(ctx, originalPathKey, path)
+}
+
+// OriginalPathFromContext returns the original request path stored by
+// EdgeSlugMiddleware before rewriting. Returns empty string if not set.
+func OriginalPathFromContext(ctx context.Context) string {
+	if v, ok := ctx.Value(originalPathKey).(string); ok {
+		return v
+	}
+	return ""
+}
+
+var (
+	proxyTimeout time.Duration
+	proxyOnce    sync.Once
+	// clientPool reuses http.Client per backend URL to preserve connection pools.
+	clientPool   sync.Map // map[string]*http.Client
+)
+
+func getProxyTimeout() time.Duration {
+	proxyOnce.Do(func() {
+		proxyTimeout = 30 * time.Second
+		if v := os.Getenv("PROXY_TIMEOUT_MS"); v != "" {
+			if ms, err := strconv.Atoi(v); err == nil && ms > 0 {
+				proxyTimeout = time.Duration(ms) * time.Millisecond
+			}
+		}
+		if v := os.Getenv("PROXY_TIMEOUT"); v != "" {
+			if d, err := time.ParseDuration(v); err == nil {
+				proxyTimeout = d
+			}
+		}
+	})
+	return proxyTimeout
+}
+
+func getProxyClient(backendURL string) *http.Client {
+	if v, ok := clientPool.Load(backendURL); ok {
+		return v.(*http.Client)
+	}
+	client := &http.Client{Timeout: getProxyTimeout()}
+	actual, _ := clientPool.LoadOrStore(backendURL, client)
+	return actual.(*http.Client)
+}
+
+func extractAppSlug(r *http.Request) string {
+	if slug := mux.Vars(r)["appSlug"]; slug != "" {
+		return slug
+	}
+	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(parts) >= 1 {
+		return parts[0]
+	}
+	return ""
+}
 
 // ProxyResult captures the outcome of a proxy operation
 type ProxyResult struct {
@@ -23,8 +92,15 @@ type ProxyResult struct {
 	ErrorMessage string        // Error message if failed
 }
 
-// proxyToBackend proxies the request to the selected backend with failover support
-func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *storage.Backend, failoverBackends []*storage.Backend, requestID string) *ProxyResult {
+// CircuitRecorder records circuit breaker failures immediately on proxy errors.
+type CircuitRecorder interface {
+	RecordFailure(backendID uuid.UUID)
+}
+
+// ProxyToBackend proxies the request to the selected backend with failover support.
+// If circuitRecorder is non-nil, failures are recorded immediately into the circuit breaker
+// (in addition to the 5-second health monitor loop).
+func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *storage.Backend, failoverBackends []*storage.Backend, requestID string, circuitRecorder CircuitRecorder) *ProxyResult {
 	backends := []*storage.Backend{primaryBackend}
 	backends = append(backends, failoverBackends...)
 
@@ -37,23 +113,40 @@ func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *stor
 	var lastErr error
 	result := &ProxyResult{
 		Success:      false,
-		BackendID:    primaryBackend.ID, // Default to primary, will be updated if failover succeeds
+		BackendID:    primaryBackend.ID,
 		Outcome:      "failure",
 	}
+
+	// Propagate W3C trace context
+	traceparent := r.Header.Get("Traceparent")
+
 	for i, backend := range backends {
-		// Create a new request for each backend attempt
 		backendURL := backend.URL
 		if !strings.HasSuffix(backendURL, "/") {
 			backendURL += "/"
 		}
 
-		// Build the target URL
-		targetURL := backendURL + strings.TrimPrefix(r.URL.Path, "/"+mux.Vars(r)["appSlug"]+"/")
+		appSlug := extractAppSlug(r)
+
+		// Use the original path (before EdgeSlugMiddleware rewrote it) so the
+		// backend receives the path the client actually requested. Without this,
+		// a root request "/" gets rewritten to "/{slug}/index" and the backend
+		// receives "/index" instead of "/".
+		origPath := OriginalPathFromContext(r.Context())
+		if origPath == "" {
+			origPath = r.URL.Path
+		}
+		// Strip the app slug prefix that EdgeSlugMiddleware added.
+		trimmed := strings.TrimPrefix(origPath, "/"+appSlug+"/")
+		if trimmed == origPath {
+			// Prefix didn't match (direct path, not edge-rewritten); use as-is.
+			trimmed = strings.TrimPrefix(origPath, "/")
+		}
+		targetURL := backendURL + trimmed
 		if r.URL.RawQuery != "" {
 			targetURL += "?" + r.URL.RawQuery
 		}
 
-		// Create proxy request
 		proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, targetURL, r.Body)
 		if err != nil {
 			lastErr = err
@@ -67,14 +160,22 @@ func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *stor
 			}
 		}
 
+		// Strip Accept-Encoding so Go's http.Transport auto-decompresses
+		// gzip responses. Without this, the Transport sees an explicit
+		// Accept-Encoding and passes compressed bytes through unchanged,
+		// which causes Caddy (or any upstream proxy) to see a mismatched
+		// Content-Encoding/body and fail with "gzip: invalid header".
+		proxyReq.Header.Del("Accept-Encoding")
+
 		// Add FunctionFly headers
 		proxyReq.Header.Set("X-FunctionFly-Request-ID", requestID)
-		proxyReq.Header.Set("X-FunctionFly-App-Slug", mux.Vars(r)["appSlug"])
-
-		// Set timeout for backend request
-		client := &http.Client{
-			Timeout: 30 * time.Second, // Configurable timeout
+		proxyReq.Header.Set("X-FunctionFly-App-Slug", appSlug)
+		if traceparent != "" {
+			proxyReq.Header.Set("Traceparent", traceparent)
 		}
+
+		// Reuse http.Client per backend (connection pooling)
+		client := getProxyClient(backend.URL)
 
 		start := time.Now()
 		resp, err := client.Do(proxyReq)
@@ -89,15 +190,18 @@ func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *stor
 			}).Warn("Backend request failed")
 
 			lastErr = err
-			// Update result with failure information
 			result.LatencyMs = latency.Milliseconds()
 			result.BackendID = backend.ID
 			result.Outcome = "backend_error"
 			result.ErrorMessage = err.Error()
+
+			// Immediate circuit breaker feedback
+			if circuitRecorder != nil {
+				circuitRecorder.RecordFailure(backend.ID)
+			}
 			continue
 		}
 
-		// Check if response is successful or if we should retry
 		if resp.StatusCode >= 500 && i < len(backends)-1 {
 			logrus.WithFields(logrus.Fields{
 				"backend_url": backend.URL,
@@ -107,27 +211,33 @@ func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *stor
 			}).Warn("Backend returned 5xx, trying failover")
 
 			resp.Body.Close()
+
+			// Immediate circuit breaker feedback on 5xx
+			if circuitRecorder != nil {
+				circuitRecorder.RecordFailure(backend.ID)
+			}
 			continue
 		}
 
-		// Success - populate result and copy response
+		// Success
 		result.Success = true
 		result.StatusCode = resp.StatusCode
 		result.LatencyMs = latency.Milliseconds()
 		result.BackendID = backend.ID
 		result.Outcome = "success"
 
-		// Copy response headers
+		// Copy response headers, stripping hop-by-hop and encoding headers
+		// that may be stale after Go's Transport auto-decompressed the body.
 		for key, values := range resp.Header {
+			if isHopByHopHeader(key) {
+				continue
+			}
 			for _, value := range values {
 				w.Header().Add(key, value)
 			}
 		}
 
-		// Set status code
 		w.WriteHeader(resp.StatusCode)
-
-		// Copy response body
 		io.Copy(w, resp.Body)
 		resp.Body.Close()
 
@@ -149,7 +259,7 @@ func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *stor
 	}
 
 	logrus.WithError(lastErr).WithFields(logrus.Fields{
-		"app_slug":   mux.Vars(r)["appSlug"],
+		"app_slug":   extractAppSlug(r),
 		"backends":   len(backends),
 		"request_id": requestID,
 	}).Error("All backends failed")
@@ -158,8 +268,7 @@ func ProxyToBackend(w http.ResponseWriter, r *http.Request, primaryBackend *stor
 	return result
 }
 
-
-// isIdempotentMethod checks if an HTTP method is considered idempotent for fast failover
+// IsIdempotentMethod checks if an HTTP method is considered idempotent for fast failover
 func IsIdempotentMethod(method string) bool {
 	switch method {
 	case http.MethodGet, http.MethodHead, http.MethodPut, http.MethodDelete:
@@ -167,4 +276,102 @@ func IsIdempotentMethod(method string) bool {
 	default:
 		return false
 	}
+}
+
+// LatencyTracker maintains a rolling window of latencies for percentile computation.
+type LatencyTracker struct {
+	mu     sync.Mutex
+	window []int64
+	pos    int
+	size   int
+	full   bool
+}
+
+// NewLatencyTracker creates a tracker with the given window size.
+func NewLatencyTracker(windowSize int) *LatencyTracker {
+	if windowSize <= 0 {
+		windowSize = 100
+	}
+	return &LatencyTracker{
+		window: make([]int64, windowSize),
+		size:   windowSize,
+	}
+}
+
+// Record adds a latency sample to the tracker.
+func (t *LatencyTracker) Record(latencyMs int64) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.window[t.pos] = latencyMs
+	t.pos = (t.pos + 1) % t.size
+	if t.pos == 0 {
+		t.full = true
+	}
+}
+
+// Percentiles returns P50, P95, P99 latency from the rolling window.
+func (t *LatencyTracker) Percentiles() (p50, p95, p99 int64) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	count := t.size
+	if !t.full {
+		count = t.pos
+	}
+	if count == 0 {
+		return 0, 0, 0
+	}
+
+	// Copy and sort
+	sorted := make([]int64, count)
+	copy(sorted, t.window[:count])
+	sortInt64s(sorted)
+
+	p50 = sorted[count*50/100]
+	p95Idx := int(float64(count) * 0.95)
+	if p95Idx >= count {
+		p95Idx = count - 1
+	}
+	p95 = sorted[p95Idx]
+	p99Idx := int(float64(count) * 0.99)
+	if p99Idx >= count {
+		p99Idx = count - 1
+	}
+	p99 = sorted[p99Idx]
+	return
+}
+
+func sortInt64s(a []int64) {
+	for i := 1; i < len(a); i++ {
+		key := a[i]
+		j := i - 1
+		for j >= 0 && a[j] > key {
+			a[j+1] = a[j]
+			j--
+		}
+		a[j+1] = key
+	}
+}
+
+// ErrCircuitOpen is a sentinel for circuit-breaker-gated routing decisions.
+var ErrCircuitOpen = fmt.Errorf("circuit breaker open")
+
+// hopByHopHeaders are headers that must not be forwarded by proxies (RFC 7230 §6.1)
+// plus Content-Encoding/Content-Length which become stale when Go's Transport
+// transparently decompresses the response body.
+var hopByHopHeaders = map[string]bool{
+	"Connection":          true,
+	"Keep-Alive":          true,
+	"Proxy-Authenticate":  true,
+	"Proxy-Authorization": true,
+	"Te":                  true,
+	"Trailers":            true,
+	"Transfer-Encoding":   true,
+	"Upgrade":             true,
+	"Content-Encoding":    true,
+	"Content-Length":      true,
+}
+
+func isHopByHopHeader(key string) bool {
+	return hopByHopHeaders[textproto.CanonicalMIMEHeaderKey(key)]
 }

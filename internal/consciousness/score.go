@@ -177,7 +177,7 @@ func (sc *ScoreComputer) computeScalabilityScore(ctx context.Context, tenantID u
 
 	var usage int64
 	err := sc.db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM usage_events WHERE tenant_id = $1 AND created_at > DATE_TRUNC('month', NOW())",
+		"SELECT COUNT(*) FROM usage_events WHERE tenant_id = $1 AND timestamp > DATE_TRUNC('month', NOW())",
 		tenantID).Scan(&usage)
 	if err != nil && err != sql.ErrNoRows {
 		return 70, err

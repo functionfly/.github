@@ -769,6 +769,10 @@ func (db *PostgresDB) CountRecentSuccessfulDeployments(ctx context.Context) (int
 	return db.billingRepository.CountRecentSuccessfulDeployments(ctx)
 }
 
+func (db *PostgresDB) GetFounderModeAnalytics(ctx context.Context) (*FounderModeAnalytics, error) {
+	return db.billingRepository.GetFounderModeAnalytics(ctx)
+}
+
 func (db *PostgresDB) CreateAuthAuditLog(ctx context.Context, log *TenantAuthAuditLog) error {
 	return db.billingRepository.CreateAuthAuditLog(ctx, log)
 }

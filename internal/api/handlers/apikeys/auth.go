@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/functionfly/functionfly/internal/apikey"
+	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -114,7 +115,8 @@ func (h *APIKeyAuthHandler) HandleAuthenticate(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// generateJWT generates a JWT token for the authenticated API key
+// generateJWT generates a JWT token for the authenticated API key.
+// Uses auth.Claims so the token passes auth.ValidateToken (audience + issuer checks).
 func (h *APIKeyAuthHandler) generateJWT(apiKey *apikey.APIKey) (string, time.Time, error) {
 	if len(h.jwtSecret) == 0 {
 		return "", time.Time{}, fmt.Errorf("JWT secret not configured")
@@ -123,16 +125,22 @@ func (h *APIKeyAuthHandler) generateJWT(apiKey *apikey.APIKey) (string, time.Tim
 	now := time.Now()
 	expiresAt := now.Add(24 * time.Hour)
 
-	// Create API key-specific claims
-	claims := jwt.MapClaims{
-		"tenant_id": apiKey.TenantID.String(),
-		"user_id":   apiKey.UserID.String(),
-		"key_id":    apiKey.ID.String(),
-		"key_name":  apiKey.Name,
-		"key_type":  string(apiKey.KeyType),
-		"exp":       expiresAt.Unix(),
-		"iat":       now.Unix(),
-		"iss":       "functionfly",
+	claims := auth.Claims{
+		UserID:   apiKey.UserID,
+		TenantID: apiKey.TenantID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    auth.Issuer,
+			Audience:  []string{auth.Audience},
+			Subject:   apiKey.UserID.String(),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(now),
+		},
+	}
+
+	// Default permissions for API key auth (same as base user role)
+	claims.Permissions = []string{
+		auth.PermMemoryRead,
+		auth.PermMemoryWrite,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

@@ -1,88 +1,60 @@
 package dna
 
 import (
-	"sync"
 	"time"
+
+	"github.com/functionfly/functionfly/internal/circuitbreaker"
 )
 
-const (
-	stateClosed   = iota // normal operation
-	stateOpen            // failing fast
-	stateHalfOpen        // testing recovery
-)
-
-// circuitBreaker prevents cascading failures by short-circuiting calls to a
-// failing service. After `threshold` consecutive failures the breaker opens
-// and rejects calls for `cooldown`. A single success in half-open resets it.
+// circuitBreaker is a thin wrapper around the shared circuitbreaker.Breaker,
+// maintaining the DNA-specific metrics integration (SetCircuitBreakerState, etc.).
 type circuitBreaker struct {
-	mu          sync.Mutex
-	state       int
-	failures    int
-	threshold   int
-	cooldown    time.Duration
-	lastFailure time.Time
+	inner *circuitbreaker.Breaker
 }
 
 func newCircuitBreaker(threshold int, cooldown time.Duration) *circuitBreaker {
+	cfg := circuitbreaker.Config{
+		FailureThreshold:    threshold,
+		SuccessThreshold:    1,
+		BaseCooldown:        cooldown,
+		MaxCooldown:         cooldown,
+		BackoffMultiplier:   1.0,
+		HalfOpenMaxRequests: 1,
+		OnStateChange: func(_ string, _ circuitbreaker.State, to circuitbreaker.State) {
+			SetCircuitBreakerState(float64(to))
+		},
+	}
 	return &circuitBreaker{
-		state:     stateClosed,
-		threshold: threshold,
-		cooldown:  cooldown,
+		inner: circuitbreaker.New("dna-ai", cfg),
 	}
 }
 
-// allow returns true if the call should proceed.
 func (cb *circuitBreaker) allow() bool {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-
-	switch cb.state {
-	case stateClosed:
+	state := cb.inner.State()
+	switch state {
+	case circuitbreaker.StateClosed:
 		SetCircuitBreakerState(0)
-		return true
-	case stateOpen:
+	case circuitbreaker.StateOpen:
 		SetCircuitBreakerState(1)
-		if time.Since(cb.lastFailure) > cb.cooldown {
-			cb.state = stateHalfOpen
-			SetCircuitBreakerState(2)
-			return true
-		}
-		return false
-	case stateHalfOpen:
+	case circuitbreaker.StateHalfOpen:
 		SetCircuitBreakerState(2)
-		return true
-	default:
-		return true
 	}
+	return cb.inner.Allow()
 }
 
-// recordSuccess resets the breaker to closed state.
 func (cb *circuitBreaker) recordSuccess() {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-	cb.failures = 0
-	cb.state = stateClosed
+	cb.inner.RecordSuccess()
 	SetCircuitBreakerState(0)
-	SetCircuitBreakerSuccesses(1) // increment success counter for monitoring
-	SetCircuitBreakerFailures(0)  // reset failure counter
+	SetCircuitBreakerSuccesses(1)
+	SetCircuitBreakerFailures(0)
 }
 
-// recordFailure increments the failure counter and trips the breaker if threshold is reached.
 func (cb *circuitBreaker) recordFailure() {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-	cb.failures++
-	cb.lastFailure = time.Now()
-	SetCircuitBreakerFailures(float64(cb.failures)) // expose failure count for early warning
-	if cb.failures >= cb.threshold {
-		cb.state = stateOpen
-		SetCircuitBreakerState(1)
-	}
+	cb.inner.RecordFailure()
+	snap := cb.inner.Snapshot()
+	SetCircuitBreakerFailures(float64(snap.Failures))
 }
 
-// GetState returns the current circuit breaker state for health checks.
 func (cb *circuitBreaker) GetState() int {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
-	return cb.state
+	return int(cb.inner.State())
 }

@@ -716,9 +716,15 @@ func (e *TriggerEngine) worker(ctx context.Context) {
 	}
 }
 
-// pollingWorker is a single worker that processes legacy triggers
+// pollingWorker is a single worker that processes legacy triggers.
+// It uses adaptive backoff: when no active triggers are found, the interval
+// extends to 30s to avoid wasted queries. When triggers are found, it resets
+// to the configured PollInterval.
 func (e *TriggerEngine) pollingWorker(ctx context.Context) {
-	ticker := time.NewTicker(e.config.PollInterval)
+	const emptyBackoff = 30 * time.Second
+
+	interval := e.config.PollInterval
+	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for {
@@ -728,7 +734,16 @@ func (e *TriggerEngine) pollingWorker(ctx context.Context) {
 		case <-e.stopChan:
 			return
 		case <-ticker.C:
-			e.processLegacyTriggers(ctx)
+			found := e.processLegacyTriggers(ctx)
+
+			// Adapt polling interval based on result
+			if found == 0 && interval < emptyBackoff {
+				interval = emptyBackoff
+				ticker.Reset(interval)
+			} else if found > 0 && interval != e.config.PollInterval {
+				interval = e.config.PollInterval
+				ticker.Reset(interval)
+			}
 		}
 	}
 }
@@ -981,8 +996,9 @@ func (e *TriggerEngine) processRetries(ctx context.Context) {
 	}
 }
 
-// processLegacyTriggers processes legacy triggers (backward compatibility)
-func (e *TriggerEngine) processLegacyTriggers(ctx context.Context) {
+// processLegacyTriggers processes legacy triggers (backward compatibility).
+// Returns the number of active triggers found.
+func (e *TriggerEngine) processLegacyTriggers(ctx context.Context) int {
 	// Find active triggers
 	var triggers []StateTrigger
 	err := e.db.WithContext(ctx).
@@ -992,15 +1008,15 @@ func (e *TriggerEngine) processLegacyTriggers(ctx context.Context) {
 
 	if err != nil {
 		e.logger.WithError(err).Error("Failed to fetch active triggers")
-		return
+		return 0
 	}
 
 	for _, trigger := range triggers {
 		select {
 		case <-ctx.Done():
-			return
+			return 0
 		case <-e.stopChan:
-			return
+			return 0
 		default:
 		}
 
@@ -1021,6 +1037,8 @@ func (e *TriggerEngine) processLegacyTriggers(ctx context.Context) {
 		// Execute trigger
 		go e.executeLegacyTrigger(ctx, trigger)
 	}
+
+	return len(triggers)
 }
 
 // executeLegacyTrigger executes a legacy trigger

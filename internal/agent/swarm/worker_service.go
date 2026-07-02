@@ -90,23 +90,79 @@ func (ws *WorkerService) pollChildren(ctx context.Context) {
 
 func (ws *WorkerService) processAllChildren(ctx context.Context) {
 	children, err := ws.getSwarmChildren(ctx)
-	if err != nil {
+	if err != nil || len(children) == 0 {
 		return
 	}
 
-	for _, child := range children {
+	// Build agent ID list and lookup map for O(1) child resolution.
+	childMap := make(map[string]*identity.AgentIdentity, len(children))
+	agentIDs := make([]string, len(children))
+	for i, child := range children {
+		agentIDs[i] = child.AgentID
+		childMap[child.AgentID] = child
+	}
+
+	// Fetch all inboxes in a single query instead of N separate SELECTs.
+	// This reduces DB round-trips from len(children) to 1.
+	inboxMap, err := ws.messageSvc.GetInboxForAgents(ctx, agentIDs, 10)
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to fetch inboxes for swarm children")
+		return
+	}
+
+	// Process tasks concurrently per child, then collect all IDs for a single batch UPDATE.
+	var (
+		wg         sync.WaitGroup
+		mu         sync.Mutex
+		allReadIDs []uuid.UUID
+	)
+
+	for agentID, messages := range inboxMap {
+		if len(messages) == 0 {
+			continue
+		}
+		child, ok := childMap[agentID]
+		if !ok {
+			continue
+		}
+
 		// SECURITY FIX: Use semaphore to limit concurrent goroutines
-		// This prevents goroutine exhaustion attacks that could cause OOM
 		select {
 		case ws.semaphore <- struct{}{}:
-			go func(c *identity.AgentIdentity) {
-				defer func() { <-ws.semaphore }()
-				ws.processChildTasks(ctx, c)
-			}(child)
+			wg.Add(1)
+			go func(c *identity.AgentIdentity, msgs []identity.AgentMessage) {
+				defer func() {
+					<-ws.semaphore
+					wg.Done()
+				}()
+
+				var localIDs []uuid.UUID
+				for i := range msgs {
+					ws.handleTask(ctx, c, &msgs[i])
+					localIDs = append(localIDs, msgs[i].ID)
+				}
+
+				if len(localIDs) > 0 {
+					mu.Lock()
+					allReadIDs = append(allReadIDs, localIDs...)
+					mu.Unlock()
+				}
+			}(child, messages)
 		case <-ctx.Done():
+			wg.Wait()
 			return
 		case <-ws.stopChan:
+			wg.Wait()
 			return
+		}
+	}
+
+	// Wait for all task processing to finish, then mark everything read in one UPDATE.
+	wg.Wait()
+
+	if len(allReadIDs) > 0 {
+		if err := ws.messageSvc.MarkReadBatch(ctx, allReadIDs); err != nil {
+			logrus.WithError(err).Warn("Failed to batch-mark swarm messages as read")
 		}
 	}
 }
@@ -125,9 +181,18 @@ func (ws *WorkerService) processChildTasks(ctx context.Context, child *identity.
 		return
 	}
 
+	// Collect IDs of messages that need to be marked as read.
+	// We process all messages first, then batch-mark them read in a single UPDATE
+	// instead of one UPDATE per message (N round-trips → 1).
+	var readIDs []uuid.UUID
 	for _, msg := range inbox {
 		ws.handleTask(ctx, child, &msg)
-		ws.messageSvc.MarkRead(ctx, msg.ID)
+		readIDs = append(readIDs, msg.ID)
+	}
+	if len(readIDs) > 0 {
+		if err := ws.messageSvc.MarkReadBatch(ctx, readIDs); err != nil {
+			logrus.WithError(err).WithField("agent_id", child.AgentID).Warn("Failed to batch-mark messages as read")
+		}
 	}
 }
 

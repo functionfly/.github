@@ -63,6 +63,11 @@ func NewTenantDBProvisioner(config *TenantDatabaseConfig, platformDB *PostgresDB
 	return provisioner, nil
 }
 
+// IsEnabled reports whether tenant database provisioning is enabled.
+func (p *TenantDBProvisioner) IsEnabled() bool {
+	return p.config != nil && p.config.Enabled
+}
+
 // loadTenantMigrationFiles loads tenant schema migration files
 func loadTenantMigrationFiles() []string {
 	migrationsDir := filepath.Join("internal/storage/sql/tenant_migrations")

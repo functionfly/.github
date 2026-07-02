@@ -37,6 +37,7 @@ func (r *Repository) CreateWallet(ctx context.Context, req WalletCreationRequest
 		WalletType:         req.WalletType,
 		BalanceUSD:         req.InitialBalanceUSD,
 		SpendCapMonthlyUSD: req.SpendCapMonthlyUSD,
+		SpendCapWeeklyUSD:  req.SpendCapWeeklyUSD,
 		SpendCapDailyUSD:   req.SpendCapDailyUSD,
 		BillingMode:        req.BillingMode,
 		TeamID:             req.TeamID,
@@ -156,13 +157,16 @@ func (r *Repository) UpdateWalletStatus(ctx context.Context, walletID uuid.UUID,
 }
 
 // UpdateSpendCaps updates the spend caps for a wallet
-func (r *Repository) UpdateSpendCaps(ctx context.Context, walletID uuid.UUID, dailyCap, monthlyCap *float64) error {
+func (r *Repository) UpdateSpendCaps(ctx context.Context, walletID uuid.UUID, dailyCap, weeklyCap, monthlyCap *float64) error {
 	updates := map[string]interface{}{
 		"updated_at": time.Now(),
 	}
 
 	if dailyCap != nil {
 		updates["spend_cap_daily_usd"] = *dailyCap
+	}
+	if weeklyCap != nil {
+		updates["spend_cap_weekly_usd"] = *weeklyCap
 	}
 	if monthlyCap != nil {
 		updates["spend_cap_monthly_usd"] = *monthlyCap

@@ -508,11 +508,11 @@ func modelCheckConfig(provider, modelID string) (endpoint string, headers map[st
 		headers["Authorization"] = "Bearer " + os.Getenv("GROQ_API_KEY")
 		body = fmt.Sprintf(`{"model":"%s","messages":[{"role":"user","content":"ping"}],"max_tokens":1}`, modelID)
 	case "mimo":
-		endpoint = "https://api.mimo.ai/v1/chat/completions"
+		endpoint = "https://api.xiaomimimo.com/v1/chat/completions"
 		headers["Authorization"] = "Bearer " + os.Getenv("MIMO_API_KEY")
 		body = fmt.Sprintf(`{"model":"%s","messages":[{"role":"user","content":"ping"}],"max_tokens":1}`, modelID)
 	case "minimax":
-		endpoint = "https://api.minimaxi.com/v1/chat/completions"
+		endpoint = "https://api.minimax.io/v1/chat/completions"
 		headers["Authorization"] = "Bearer " + os.Getenv("MINIMAX_API_KEY")
 		body = fmt.Sprintf(`{"model":"%s","messages":[{"role":"user","content":"ping"}],"max_tokens":1}`, modelID)
 	case "stepfun":

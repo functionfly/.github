@@ -212,7 +212,7 @@ func (a *RedundancyAnalyzer) findCoOccurrenceRedundancy(ctx context.Context, ten
 		AND rf_a.category IS NOT NULL
 		AND rf_a.category != ''
 		AND co.co_occurrence_count >= $2
-		AND co.last_cooccurred_at > NOW() - INTERVAL '30 days'
+		AND co.last_co_occurred_at > NOW() - INTERVAL '30 days'
 		ORDER BY co.co_occurrence_count DESC
 		LIMIT $3`
 

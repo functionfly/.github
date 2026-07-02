@@ -31,15 +31,15 @@ func (a *TrafficAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, param
 			SELECT function_id, COUNT(*) as current_count
 			FROM usage_events
 			WHERE tenant_id = $1
-			AND created_at > NOW() - INTERVAL '24 hours'
+			AND timestamp > NOW() - INTERVAL '24 hours'
 			GROUP BY function_id
 		),
 		historical_period AS (
 			SELECT function_id, COUNT(*) / 7.0 as daily_avg
 			FROM usage_events
 			WHERE tenant_id = $1
-			AND created_at > NOW() - INTERVAL '7 days'
-			AND created_at <= NOW() - INTERVAL '24 hours'
+			AND timestamp > NOW() - INTERVAL '7 days'
+			AND timestamp <= NOW() - INTERVAL '24 hours'
 			GROUP BY function_id
 		)
 		SELECT c.function_id, c.current_count, h.daily_avg

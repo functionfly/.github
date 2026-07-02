@@ -52,6 +52,10 @@ func (m *MockRepository) InsertRoutingEvent(ctx context.Context, appID, backendI
 	return nil
 }
 
+func (m *MockRepository) GetRecentRoutingEventsByBackend(ctx context.Context, backendID uuid.UUID, limit int) ([]*storage.RoutingEvent, error) {
+	return nil, nil
+}
+
 // setupBenchmarkRouter creates a router with mock storage for benchmarking
 func setupBenchmarkRouter(b *testing.B) (*Router, func()) {
 	mockRepo := NewMockRepository()

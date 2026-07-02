@@ -1204,11 +1204,11 @@ func (h *SwarmHandler) RegisterRoutes(router *mux.Router, basePath string, authM
 	agent.HandleFunc("/{id}/kill-switch", auth(h.TriggerKillSwitch)).Methods(http.MethodPost)
 	agent.HandleFunc("/{id}/health", auth(h.CheckSwarmHealth)).Methods(http.MethodGet)
 
-	marketplace := router.PathPrefix(basePath + "/marketplace").Subrouter()
-	marketplace.HandleFunc("/agents", h.SearchAgents).Methods(http.MethodGet)
-	marketplace.HandleFunc("/agent/list", auth(h.CreateListing)).Methods(http.MethodPost)
-	marketplace.HandleFunc("/hire", auth(h.HireAgent)).Methods(http.MethodPost)
-	marketplace.HandleFunc("/purchase", auth(h.PurchaseFunction)).Methods(http.MethodPost)
+	marketplaceBase := basePath + "/marketplace"
+	router.HandleFunc(marketplaceBase+"/agents", h.SearchAgents).Methods(http.MethodGet)
+	router.HandleFunc(marketplaceBase+"/agent/list", auth(h.CreateListing)).Methods(http.MethodPost)
+	router.HandleFunc(marketplaceBase+"/hire", auth(h.HireAgent)).Methods(http.MethodPost)
+	router.HandleFunc(marketplaceBase+"/purchase", auth(h.PurchaseFunction)).Methods(http.MethodPost)
 
 	logrus.Infof("SwarmHandler: All routes registered successfully")
 }

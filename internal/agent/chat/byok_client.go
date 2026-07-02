@@ -19,7 +19,7 @@ var providerBaseURLs = map[string]string{
 	"fireworks":        "https://api.fireworks.ai/inference/v1",
 	"deepinfra":        "https://api.deepinfra.com/v1/openai",
 	"together":         "https://api.together.xyz/v2",
-	"mimo":             "https://api.mimo.ai/v1",
+	"mimo":             "https://api.xiaomimimo.com/v1",
 	"stepfun":          "https://api.stepfun.com/v1",
 	"minimax":          "https://api.minimax.io/v1",
 	"minimax-token-plan": "https://api.minimax.io/v1",

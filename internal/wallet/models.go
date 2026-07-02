@@ -79,6 +79,7 @@ type Wallet struct {
 	LifetimeEarningsUSD   float64         `json:"lifetime_earnings_usd" gorm:"type:decimal(14,4);not null;default:0"`
 	LifetimeSpentUSD      float64         `json:"lifetime_spent_usd" gorm:"type:decimal(14,4);not null;default:0"`
 	SpendCapMonthlyUSD    *float64        `json:"spend_cap_monthly_usd,omitempty" gorm:"type:decimal(10,2)"`
+	SpendCapWeeklyUSD     *float64        `json:"spend_cap_weekly_usd,omitempty" gorm:"type:decimal(10,2)"`
 	SpendCapDailyUSD      *float64        `json:"spend_cap_daily_usd,omitempty" gorm:"type:decimal(10,2)"`
 	AlertThresholds       pq.Float64Array `json:"alert_thresholds" gorm:"type:decimal[];default:'{0.5,0.8,0.95}'"`
 	BillingMode           string          `json:"billing_mode" gorm:"not null;default:'per_wallet'"`
@@ -240,6 +241,7 @@ type WalletCreationRequest struct {
 	WalletType         string
 	InitialBalanceUSD  float64
 	SpendCapMonthlyUSD *float64
+	SpendCapWeeklyUSD  *float64
 	SpendCapDailyUSD   *float64
 	BillingMode        string
 	TeamID             *uuid.UUID

@@ -8,6 +8,7 @@ import (
 	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"math/big"
 )
 
@@ -45,6 +46,12 @@ type Signer interface {
 	// VerifyAttestationSignature verifies the signature on an attestation
 	// using this signer's public key.
 	VerifyAttestationSignature(att *TrustAttestation) (bool, error)
+}
+
+// CloseableSigner is an optional interface for signers that need cleanup
+type CloseableSigner interface {
+	Signer
+	io.Closer
 }
 
 // ecdsaSig is the ASN.1 structure for ECDSA signatures.

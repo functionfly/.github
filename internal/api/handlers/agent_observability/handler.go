@@ -475,6 +475,92 @@ func (h *Handler) HandleStreamEvents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) HandleStreamAgentEvents(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		apierror.WriteError(w, apierror.NewUnauthorized("unauthorized"))
+		return
+	}
+
+	vars := mux.Vars(r)
+	agentID := vars["agentId"]
+	if agentID == "" {
+		apierror.WriteError(w, apierror.NewBadRequest("agent_id is required"))
+		return
+	}
+
+	conn, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		h.logger.WithError(err).Error("failed to upgrade WebSocket")
+		return
+	}
+	defer conn.Close()
+
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	for {
+		run, err := h.repo.GetLatestRunByAgent(ctx, claims.TenantID, agentID)
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(5 * time.Second):
+					continue
+				}
+			}
+			h.logger.WithError(err).Error("failed to get latest run for agent")
+			return
+		}
+
+		events, errs := h.atlasClient.StreamEvents(ctx, run.AtlasRunID)
+
+		streamDone := false
+		for !streamDone {
+			select {
+			case event, ok := <-events:
+				if !ok {
+					streamDone = true
+					break
+				}
+				var parentID string
+				if event.Parent != nil {
+					parentID = *event.Parent
+				}
+				resp := &EventResponse{
+					EventID:     event.EventID,
+					Sequence:    event.Sequence,
+					Kind:        string(event.Kind),
+					TimestampNs: event.TimestampNs,
+					SystemID:    event.SystemID,
+					Payload:     event.Payload,
+					ParentID:    parentID,
+				}
+				if err := conn.WriteJSON(resp); err != nil {
+					h.logger.WithError(err).Error("failed to write event to WebSocket")
+					return
+				}
+			case err, ok := <-errs:
+				if !ok {
+					streamDone = true
+					break
+				}
+				h.logger.WithError(err).Error("error from Atlas stream")
+				streamDone = true
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(3 * time.Second):
+		}
+	}
+}
+
 func (h *Handler) HandleGetStats(w http.ResponseWriter, r *http.Request) {
 	claims := middleware.GetUserFromContext(r)
 	if claims == nil {

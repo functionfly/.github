@@ -17,7 +17,7 @@ TEST_COUNT := -count=1
 # Detect available CPUs for parallel builds
 NCPU := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
-.PHONY: help build build-fast build-ci build-local-runtime build-microvm-orchestrator build-python-runtime test test-short test-parallel test-fast test-changed test-watch clean docker-up docker-down dev dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-coming-soon deploy-coming-soon deploy-admin-dashboard
+.PHONY: help build build-fast build-ci build-local-runtime build-microvm-orchestrator build-python-runtime test test-short test-parallel test-fast test-changed test-watch clean docker-up docker-down dev dev-full dev-neon api api-local health-monitor migrate migrate-local migrate-down migrate-status migrate-version staging-up staging-down staging-logs staging-migrate staging-api staging-health-monitor test-db-setup test-db-up test-db-migrate test-db-status test-api-cmds load-test-init load-test-tpcb load-test-mixed load-test-custom load-test-stress bench bench-db bench-db-profile db-maintenance venv build-coming-soon deploy-coming-soon deploy-admin-dashboard
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -254,11 +254,11 @@ dev: ## Start development environment (Orchestrator + NATS). Set DB_PORT=5434 fo
 		sleep 1; \
 	fi
 	@# Start Orchestrator API (foreground)
-	@DB_HOST=$${DB_HOST:-localhost} DB_PORT=$${DB_PORT:-5432} DB_USER=$${DB_USER:-postgres} \
-	DB_PASSWORD=$${DB_PASSWORD:-postgres} DB_NAME=$${DB_NAME:-functionfly} DB_SSLMODE=$${DB_SSLMODE:-disable} \
-	REDIS_ADDR=$${REDIS_ADDR:-localhost:6379} PROMETHEUS_URL=$${PROMETHEUS_URL:-http://127.0.0.1:9091} DEVELOPMENT=true \
-	SKIP_MIGRATION_VALIDATION=true \
-	go run ./cmd/orchestrator-api
+	@source .env 2>/dev/null || true; \
+	DB_HOST=localhost DB_PORT=5432 DB_USER=postgres DB_PASSWORD=postgres \
+	DB_NAME=functionfly DB_SSLMODE=disable REDIS_ADDR=localhost:6379 \
+	DEVELOPMENT=true SKIP_MIGRATION_VALIDATION=true VERIFICATION_ENABLED=false \
+	./bin/orchestrator-api --skip-migrations
 
 api: ## Run orchestrator API (local services). Set DB_PORT=5434 for Docker Postgres.
 	@./scripts/run-api-local.sh
@@ -281,7 +281,7 @@ dev-python-runtime: build-python-runtime ## Start Python WASM runtime service (r
 	MAX_MEMORY_MB=$${MAX_MEMORY_MB:-512} \
 	./bin/python-runtime
 
-dev: ## Start development environment (Orchestrator + NATS + Python Runtime). Set DB_PORT=5434 for Docker Postgres.
+dev-full: ## Start full dev environment (Orchestrator + NATS + Python Runtime). Set DB_PORT=5434 for Docker Postgres.
 	@echo "Using local services: DB_PORT=$${DB_PORT:-5432}, REDIS_ADDR=$${REDIS_ADDR:-localhost:6379}"
 	@# Start NATS if not already running
 	@if ! pgrep -x nats-server > /dev/null 2>&1; then \

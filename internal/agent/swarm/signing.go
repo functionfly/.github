@@ -7,6 +7,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -22,6 +23,11 @@ const (
 type SigningService struct {
 	redisClient *redis.Client
 	logger      *logrus.Logger
+
+	// In-memory nonce store used when Redis is nil.
+	// Key: "agentID:nonce" → expiry time.
+	nonceStore   sync.Map
+	nonceCleanup sync.Once
 }
 
 func NewSigningService(redisClient *redis.Client) *SigningService {
@@ -69,6 +75,34 @@ func (s *SigningService) CheckAndStoreNonce(ctx context.Context, agentID, nonce 
 }
 
 func (s *SigningService) checkAndStoreNonceInMemory(agentID, nonce string) (bool, error) {
+	key := agentID + ":" + nonce
+	now := time.Now()
+
+	// Lazy expiry cleanup on a background goroutine (once).
+	s.nonceCleanup.Do(func() {
+		go func() {
+			ticker := time.NewTicker(5 * time.Minute)
+			defer ticker.Stop()
+			for range ticker.C {
+				s.nonceStore.Range(func(k, v any) bool {
+					if exp, ok := v.(time.Time); ok && now.After(exp) {
+						s.nonceStore.Delete(k)
+					}
+					return true
+				})
+			}
+		}()
+	})
+
+	// Check if nonce already exists and hasn't expired
+	if v, loaded := s.nonceStore.Load(key); loaded {
+		if exp, ok := v.(time.Time); ok && now.Before(exp) {
+			return false, nil // replay detected
+		}
+	}
+
+	// Store nonce with expiry
+	s.nonceStore.Store(key, now.Add(nonceCacheTTL))
 	return true, nil
 }
 

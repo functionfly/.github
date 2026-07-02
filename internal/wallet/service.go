@@ -404,7 +404,7 @@ func (s *Service) GetAgentSpendSummary(ctx context.Context, agentID string, peri
 }
 
 // UpdateAgentSpendCaps updates spend caps (compatible with old billing.Controller)
-func (s *Service) UpdateAgentSpendCaps(ctx context.Context, agentID string, dailyCap, monthlyCap *float64) error {
+func (s *Service) UpdateAgentSpendCaps(ctx context.Context, agentID string, dailyCap, weeklyCap, monthlyCap *float64) error {
 	wallet, err := s.GetAgentWallet(ctx, agentID)
 	if err != nil {
 		return err
@@ -413,7 +413,7 @@ func (s *Service) UpdateAgentSpendCaps(ctx context.Context, agentID string, dail
 		return fmt.Errorf("wallet not found for agent: %s", agentID)
 	}
 
-	return s.repo.UpdateSpendCaps(ctx, wallet.ID, dailyCap, monthlyCap)
+	return s.repo.UpdateSpendCaps(ctx, wallet.ID, dailyCap, weeklyCap, monthlyCap)
 }
 
 // HasUserWalletCreditReference checks if a credit was already applied (compatible with old PlatformFeeRepository)
@@ -431,8 +431,8 @@ func (s *Service) CheckSpendCap(ctx context.Context, walletID uuid.UUID, amountU
 }
 
 // UpdateSpendCaps updates spend caps for a wallet
-func (s *Service) UpdateSpendCaps(ctx context.Context, walletID uuid.UUID, dailyCap, monthlyCap *float64) error {
-	return s.repo.UpdateSpendCaps(ctx, walletID, dailyCap, monthlyCap)
+func (s *Service) UpdateSpendCaps(ctx context.Context, walletID uuid.UUID, dailyCap, weeklyCap, monthlyCap *float64) error {
+	return s.repo.UpdateSpendCaps(ctx, walletID, dailyCap, weeklyCap, monthlyCap)
 }
 
 // ============================================

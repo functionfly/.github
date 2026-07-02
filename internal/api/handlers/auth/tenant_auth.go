@@ -11,6 +11,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -237,7 +238,7 @@ func (h *TenantAuthHandler) DeleteOAuthProvider(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	provider := r.PathValue("provider")
+	provider := mux.Vars(r)["provider"]
 	if !storage.IsValidOAuthProvider(provider) {
 		writeJSONError(w, http.StatusBadRequest, "Invalid OAuth provider")
 		return
@@ -385,7 +386,7 @@ func (h *TenantAuthHandler) AcceptInvite(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	code := r.PathValue("code")
+	code := mux.Vars(r)["code"]
 
 	invite, err := 	h.repo.GetInviteCode(ctx, code)
 	if err != nil {
@@ -447,7 +448,7 @@ func (h *TenantAuthHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	userIDStr := r.PathValue("userId")
+	userIDStr := mux.Vars(r)["userId"]
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "Invalid user ID")
@@ -511,7 +512,7 @@ func (h *TenantAuthHandler) RemoveMember(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	userIDStr := r.PathValue("userId")
+	userIDStr := mux.Vars(r)["userId"]
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "Invalid user ID")
@@ -573,7 +574,7 @@ func (h *TenantAuthHandler) ListPendingInvites(w http.ResponseWriter, r *http.Re
 // RevokeInvite handles DELETE /v1/auth/invites/:code
 func (h *TenantAuthHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	code := r.PathValue("code")
+	code := mux.Vars(r)["code"]
 
 	if err := 	h.repo.RevokeInviteCode(ctx, code); err != nil {
 		logrus.WithError(err).Error("Failed to revoke invite")

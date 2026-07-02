@@ -175,6 +175,9 @@ type Tenant struct {
 	TaxExempt           bool      `json:"tax_exempt" gorm:"column:tax_exempt;default:false"`
 	StripeTaxLocationID *string   `json:"stripe_tax_location_id,omitempty" gorm:"column:stripe_tax_location_id;size:255"`
 	StripeCustomerTaxID *string   `json:"stripe_customer_tax_id,omitempty" gorm:"column:stripe_customer_tax_id;size:255"`
+	DegradedMode        bool      `json:"degraded_mode" gorm:"column:degraded_mode;default:false"`
+	DegradationReason   string    `json:"degradation_reason,omitempty" gorm:"column:degradation_reason"`
+	DegradationUpdatedAt *time.Time `json:"degradation_updated_at,omitempty" gorm:"column:degradation_updated_at"`
 	Users               []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
 	Apps                []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
 	Teams               []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`
@@ -1248,6 +1251,28 @@ type BundleSubscription struct {
 	CanceledAt               *time.Time `json:"canceled_at,omitempty"`
 	CreatedAt                time.Time  `json:"created_at"`
 	UpdatedAt                time.Time  `json:"updated_at"`
+
+	// Deployment tracking (added by bundle auto-deploy)
+	DeployStatus  string     `json:"deploy_status"`
+	DeployAttempts int       `json:"deploy_attempts"`
+	DeployError   string     `json:"deploy_error,omitempty"`
+	DeployedAt    *time.Time `json:"deployed_at,omitempty"`
+	ProviderID    *uuid.UUID `json:"provider_id,omitempty"`
+	ScriptName    string     `json:"script_name,omitempty"`
+	NextRetryAt   *time.Time `json:"next_retry_at,omitempty"`
+}
+
+// BundleFunctionTemplate represents a function template within a bundle.
+type BundleFunctionTemplate struct {
+	ID           uuid.UUID `json:"id"`
+	BundleSlug   string    `json:"bundle_slug"`
+	FunctionName string    `json:"function_name"`
+	Runtime      string    `json:"runtime"`
+	Code         string    `json:"code"`
+	RoutePath    string    `json:"route_path"`
+	Version      int       `json:"version"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // DeferredBillingConfig represents configuration for deferred billing triggers

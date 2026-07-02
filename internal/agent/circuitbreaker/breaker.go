@@ -1,40 +1,29 @@
+// Package circuitbreaker provides a circuit breaker implementation for agent operations.
+// This is a thin wrapper around the shared internal/circuitbreaker package,
+// maintaining backward compatibility for agent subsystems.
 package circuitbreaker
 
 import (
-	"errors"
-	"sync"
 	"time"
+
+	cb "github.com/functionfly/functionfly/internal/circuitbreaker"
 )
 
 // State represents the circuit breaker state
-type State int
+type State = cb.State
 
 const (
 	// StateClosed allows requests to pass through
-	StateClosed State = iota
+	StateClosed = cb.StateClosed
 	// StateOpen blocks all requests
-	StateOpen
+	StateOpen = cb.StateOpen
 	// StateHalfOpen allows limited test requests
-	StateHalfOpen
+	StateHalfOpen = cb.StateHalfOpen
 )
-
-// String returns the string representation of the state
-func (s State) String() string {
-	switch s {
-	case StateClosed:
-		return "closed"
-	case StateOpen:
-		return "open"
-	case StateHalfOpen:
-		return "half-open"
-	default:
-		return "unknown"
-	}
-}
 
 var (
 	// ErrCircuitOpen is returned when the circuit breaker is open
-	ErrCircuitOpen = errors.New("circuit breaker is open")
+	ErrCircuitOpen = cb.ErrCircuitOpen
 )
 
 // Config holds circuit breaker configuration
@@ -61,35 +50,29 @@ func DefaultConfig() Config {
 	}
 }
 
-// Breaker implements the circuit breaker pattern
+// Breaker implements the circuit breaker pattern using the shared implementation.
 type Breaker struct {
-	mu            sync.RWMutex
-	state         State
-	failures      int
-	successes     int
-	lastFailure   time.Time
-	halfOpenCount int
-	config        Config
+	inner *cb.Breaker
 }
 
 // New creates a new circuit breaker with the given configuration
 func New(config Config) *Breaker {
-	if config.FailureThreshold == 0 {
-		config.FailureThreshold = 5
+	sharedConfig := cb.Config{
+		FailureThreshold:    config.FailureThreshold,
+		SuccessThreshold:    config.SuccessThreshold,
+		BaseCooldown:        config.CooldownDuration,
+		MaxCooldown:         config.CooldownDuration, // No backoff in agent context
+		BackoffMultiplier:   1.0,                      // No backoff
+		HalfOpenMaxRequests: config.HalfOpenMaxRequests,
 	}
-	if config.SuccessThreshold == 0 {
-		config.SuccessThreshold = 2
-	}
-	if config.CooldownDuration == 0 {
-		config.CooldownDuration = 30 * time.Second
-	}
-	if config.HalfOpenMaxRequests == 0 {
-		config.HalfOpenMaxRequests = 1
+	if config.OnStateChange != nil {
+		sharedConfig.OnStateChange = func(_ string, from, to cb.State) {
+			config.OnStateChange(from, to)
+		}
 	}
 
 	return &Breaker{
-		state:  StateClosed,
-		config: config,
+		inner: cb.New("agent", sharedConfig),
 	}
 }
 
@@ -106,110 +89,30 @@ func (b *Breaker) Execute(fn func() error) error {
 
 // Allow returns true if the circuit breaker allows a request
 func (b *Breaker) Allow() bool {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-
-	switch b.state {
-	case StateClosed:
-		return true
-	case StateOpen:
-		// Check if cooldown has elapsed
-		if time.Since(b.lastFailure) > b.config.CooldownDuration {
-			// Transition to half-open
-			b.mu.RUnlock()
-			b.mu.Lock()
-			b.transitionTo(StateHalfOpen)
-			b.mu.Unlock()
-			b.mu.RLock()
-			return true
-		}
-		return false
-	case StateHalfOpen:
-		return b.halfOpenCount < b.config.HalfOpenMaxRequests
-	}
-	return false
+	return b.inner.Allow()
 }
 
 // Record records the result of a request
 func (b *Breaker) Record(err error) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	if err != nil {
-		b.recordFailure()
-	} else {
-		b.recordSuccess()
-	}
-}
-
-func (b *Breaker) recordFailure() {
-	b.failures++
-	b.successes = 0
-	b.lastFailure = time.Now()
-
-	switch b.state {
-	case StateClosed:
-		if b.failures >= b.config.FailureThreshold {
-			b.transitionTo(StateOpen)
-		}
-	case StateHalfOpen:
-		// Any failure in half-open transitions back to open
-		b.transitionTo(StateOpen)
-	}
-}
-
-func (b *Breaker) recordSuccess() {
-	b.successes++
-	b.failures = 0
-
-	switch b.state {
-	case StateHalfOpen:
-		b.halfOpenCount++
-		if b.successes >= b.config.SuccessThreshold {
-			b.transitionTo(StateClosed)
-		}
-	}
-}
-
-func (b *Breaker) transitionTo(newState State) {
-	oldState := b.state
-	b.state = newState
-	b.failures = 0
-	b.successes = 0
-	b.halfOpenCount = 0
-
-	if b.config.OnStateChange != nil {
-		go b.config.OnStateChange(oldState, newState)
-	}
+	b.inner.Record(err)
 }
 
 // State returns the current state of the circuit breaker
 func (b *Breaker) State() State {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return b.state
+	return b.inner.State()
 }
 
 // Failures returns the current failure count
 func (b *Breaker) Failures() int {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return b.failures
+	return b.inner.Snapshot().Failures
 }
 
 // Successes returns the current success count
 func (b *Breaker) Successes() int {
-	b.mu.RLock()
-	defer b.mu.RUnlock()
-	return b.successes
+	return b.inner.Snapshot().Successes
 }
 
 // Reset resets the circuit breaker to its initial state
 func (b *Breaker) Reset() {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-	b.state = StateClosed
-	b.failures = 0
-	b.successes = 0
-	b.halfOpenCount = 0
+	b.inner.Reset()
 }

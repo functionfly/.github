@@ -2,27 +2,53 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/utils"
+	"github.com/functionfly/functionfly/internal/circuitbreaker"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/functionfly/functionfly/internal/tracing"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/functionfly/functionfly/internal/apierror"
 )
 
+// proxyCircuitRecorder bridges the utils.CircuitRecorder interface to the shared breaker manager.
+type proxyCircuitRecorder struct {
+	breakerMgr *circuitbreaker.Manager
+}
+
+func (r *proxyCircuitRecorder) RecordFailure(backendID uuid.UUID) {
+	r.breakerMgr.ForBackend(backendID).RecordFailure()
+}
+
 // handlePublicRoute handles public routing to deployed applications
 func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
+	// Start tracing span for public route handling
+	ctx, _ := tracing.StartSpan(r.Context(), "handle-public-route")
+	defer tracing.Finish(ctx)
+	r = r.WithContext(ctx)
+
 	logger := middleware.GetRequestLogger(r)
 
-	// Extract appSlug from path
-	vars := mux.Vars(r)
-	appSlug := vars["appSlug"]
+	// Extract appSlug from route vars (path-based) or first path segment (edge rewrite).
+	// The MatcherFunc-based route doesn't set mux vars, so fall back to path parsing.
+	appSlug := mux.Vars(r)["appSlug"]
+	if appSlug == "" {
+		parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+		if len(parts) >= 1 {
+			appSlug = parts[0]
+		}
+	}
 
 	logger = logger.WithField("app_slug", appSlug)
+	tracing.SetAttribute(ctx, "app_slug", appSlug)
 
 	if appSlug == "" {
 		logger.Warn("Invalid app slug")
@@ -47,6 +73,8 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 		"app_id":    app.ID,
 		"tenant_id": app.TenantID,
 	})
+	tracing.SetAttribute(ctx, "app_id", app.ID.String())
+	tracing.SetAttribute(ctx, "tenant_id", app.TenantID.String())
 
 	// Get tenant and check request limits
 	tenant, err := s.repo.GetTenantByID(r.Context(), app.TenantID)
@@ -117,6 +145,10 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 		"backend_region":      decision.SelectedBackend.Region,
 		"routing_reason":      decision.Reason,
 	})
+	tracing.SetAttribute(ctx, "selected_backend_id", decision.SelectedBackend.ID.String())
+	tracing.SetAttribute(ctx, "backend_provider", decision.SelectedBackend.Provider)
+	tracing.SetAttribute(ctx, "backend_region", decision.SelectedBackend.Region)
+	tracing.SetAttribute(ctx, "routing_reason", decision.Reason)
 
 	logger.Info("Routing request to backend")
 
@@ -125,8 +157,11 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 		monitoring.RecordEdgeRequestAndMetric()
 	}
 
-	// Proxy to selected backend and capture the result
-	result := utils.ProxyToBackend(w, r, decision.SelectedBackend, decision.FailoverBackends, requestID)
+	// Proxy to selected backend and capture the result.
+	// Pass a circuit recorder for immediate failure feedback to the circuit breaker.
+	result := utils.ProxyToBackend(w, r, decision.SelectedBackend, decision.FailoverBackends, requestID, &proxyCircuitRecorder{
+		breakerMgr: s.healthMonitor.GetBreakerManager(),
+	})
 
 	// Record the actual routing result
 	err = s.routingSvc.RecordRoutingResult(app.ID, result.BackendID, int(result.LatencyMs), result.Outcome, requestID)
@@ -136,5 +171,13 @@ func (s *Server) handlePublicRoute(w http.ResponseWriter, r *http.Request) {
 			"outcome":    result.Outcome,
 			"latency_ms": result.LatencyMs,
 		}).Error("Failed to record routing result")
+	}
+
+	// Record tracing attributes for the proxy result
+	tracing.SetAttribute(ctx, "proxy_outcome", result.Outcome)
+	tracing.SetAttribute(ctx, "proxy_status_code", result.StatusCode)
+	tracing.SetAttribute(ctx, "proxy_latency_ms", result.LatencyMs)
+	if result.Outcome != "success" {
+		tracing.RecordError(ctx, fmt.Errorf("proxy outcome: %s", result.Outcome))
 	}
 }

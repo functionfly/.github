@@ -480,6 +480,23 @@ func (r *TenantRepository) UpdateTenantStatus(ctx context.Context, tenantID uuid
 	return nil
 }
 
+// SetTenantDegradedMode marks a tenant as running in degraded mode (shared-DB fallback)
+// or clears the degraded flag when isolated provisioning recovers.
+func (r *TenantRepository) SetTenantDegradedMode(ctx context.Context, tenantID uuid.UUID, degraded bool, reason string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE tenants
+		SET degraded_mode = $1,
+		    degradation_reason = $2,
+		    degradation_updated_at = NOW(),
+		    updated_at = NOW()
+		WHERE id = $3
+	`, degraded, reason, tenantID)
+	if err != nil {
+		return fmt.Errorf("failed to set tenant degraded mode: %w", err)
+	}
+	return nil
+}
+
 // UpdateTenantTaxSettings updates a tenant's tax-related fields including billing
 // location and tax ID information.
 func (r *TenantRepository) UpdateTenantTaxSettings(ctx context.Context, tenantID uuid.UUID, settings *TaxSettings) error {

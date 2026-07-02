@@ -183,13 +183,13 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Platform fee charging - check exemption, verify balance, and charge
+	isNewFunction := existingFn == nil
 	var feeCharged bool
 	var feeAmountUSD float64
 	var feeType string
 	platformFeePaid := false
 
 	if h.platformFeeRepo != nil && !storageregistry.IsAuthorExempt(req.Author) {
-		isNewFunction := existingFn == nil
 		feeAmountUSD = storageregistry.CalculatePublishFee(req.Author)
 		feeType = storageregistry.FeeTypePublish
 
@@ -706,6 +706,17 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+
+	// Award reputation points for publishing
+	if h.repHooker != nil {
+		if existingFn == nil {
+			h.repHooker.Award(user.UserID, user.TenantID, "function_published",
+				"Published function: "+req.Name, fnID)
+		} else {
+			h.repHooker.Award(user.UserID, user.TenantID, "function_updated",
+				"Updated function: "+req.Name, fnID)
+		}
+	}
 }
 
 // bundleFunctionToWasm bundles function source code to WebAssembly

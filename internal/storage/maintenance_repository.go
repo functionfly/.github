@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/types"
@@ -14,6 +15,11 @@ import (
 // MaintenanceRepository handles platform maintenance mode data access
 type MaintenanceRepository struct {
 	db *gorm.DB
+
+	// In-memory cache for GetEnabledMaintenance to avoid hitting DB every 2-3 seconds
+	mu                 sync.RWMutex
+	cachedEnabled      *types.PlatformMaintenance
+	cachedEnabledExpiry time.Time
 }
 
 // NewMaintenanceRepository creates a new maintenance repository
@@ -34,16 +40,39 @@ func (r *MaintenanceRepository) GetPlatformMaintenance(ctx context.Context) (*ty
 	return &maintenance, nil
 }
 
-// GetEnabledMaintenance gets the current enabled maintenance configuration
+// GetEnabledMaintenance gets the current enabled maintenance configuration.
+// Results are cached in-memory for 30 seconds to reduce DB load from the
+// maintenance middleware that polls every 2-3 seconds.
 func (r *MaintenanceRepository) GetEnabledMaintenance(ctx context.Context) (*types.PlatformMaintenance, error) {
+	r.mu.RLock()
+	if r.cachedEnabled != nil && time.Now().Before(r.cachedEnabledExpiry) {
+		result := r.cachedEnabled
+		r.mu.RUnlock()
+		return result, nil
+	}
+	r.mu.RUnlock()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if r.cachedEnabled != nil && time.Now().Before(r.cachedEnabledExpiry) {
+		return r.cachedEnabled, nil
+	}
+
 	var maintenance types.PlatformMaintenance
 	err := r.db.WithContext(ctx).Where("enabled = ?", true).First(&maintenance).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
+			r.cachedEnabled = nil
+			r.cachedEnabledExpiry = time.Now().Add(30 * time.Second)
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get enabled maintenance: %w", err)
 	}
+
+	r.cachedEnabled = &maintenance
+	r.cachedEnabledExpiry = time.Now().Add(30 * time.Second)
 	return &maintenance, nil
 }
 
@@ -54,6 +83,7 @@ func (r *MaintenanceRepository) UpdatePlatformMaintenance(ctx context.Context, m
 	if err != nil {
 		return fmt.Errorf("failed to update platform maintenance: %w", err)
 	}
+	r.invalidateEnabledCache()
 	return nil
 }
 
@@ -65,6 +95,7 @@ func (r *MaintenanceRepository) EnableMaintenance(ctx context.Context, maintenan
 	if err != nil {
 		return fmt.Errorf("failed to enable maintenance: %w", err)
 	}
+	r.invalidateEnabledCache()
 	return nil
 }
 
@@ -76,7 +107,16 @@ func (r *MaintenanceRepository) DisableMaintenance(ctx context.Context, maintena
 	if err != nil {
 		return fmt.Errorf("failed to disable maintenance: %w", err)
 	}
+	r.invalidateEnabledCache()
 	return nil
+}
+
+// invalidateEnabledCache clears the cached enabled maintenance result
+func (r *MaintenanceRepository) invalidateEnabledCache() {
+	r.mu.Lock()
+	r.cachedEnabled = nil
+	r.cachedEnabledExpiry = time.Time{}
+	r.mu.Unlock()
 }
 
 // GetMaintenanceTemplate gets a maintenance page template by name

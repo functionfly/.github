@@ -21,6 +21,11 @@ func NewRevocationRepository(db *gorm.DB) *RevocationRepository {
 	return &RevocationRepository{db: db}
 }
 
+// DB returns the underlying gorm.DB instance
+func (r *RevocationRepository) DB() *gorm.DB {
+	return r.db
+}
+
 // CreateRevocation creates a new trust revocation record
 func (r *RevocationRepository) CreateRevocation(revocation *TrustRevocation) error {
 	if revocation.ID == uuid.Nil {

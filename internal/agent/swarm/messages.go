@@ -75,26 +75,36 @@ func (s *MessageService) startAsyncWorkers() {
 	}
 }
 
-// asyncMessageWorker processes messages from the async channel
+// asyncMessageWorker processes messages from the async channel.
+// Messages are accumulated and flushed either when the batch is full
+// or when the periodic ticker fires.  The previous "flush on empty channel"
+// heuristic is removed — it defeated batching for low-frequency messages
+// (heartbeats, capability discovery) by flushing each message individually.
 func (s *MessageService) asyncMessageWorker(workerID int) {
 	defer s.asyncWg.Done()
 
 	batch := make([]*identity.AgentMessage, 0, 100)
-	ticker := time.NewTicker(10 * time.Millisecond)
+	// 50ms ticker balances latency vs. batching efficiency.
+	// Heartbeats (sent every ~5s) will be batched with any co-occurring messages;
+	// worst-case added latency is 50ms which is negligible for async work.
+	ticker := time.NewTicker(50 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-s.asyncStopCh:
-			// Drain remaining messages
+			// Flush anything still buffered
+			if len(batch) > 0 {
+				s.flushBatch(batch)
+			}
+			// Drain remaining messages in channel
 			for msg := range s.asyncChan {
 				s.sendMessageSync(msg)
 			}
 			return
 		case msg := <-s.asyncChan:
 			batch = append(batch, msg)
-			// Flush when batch is full or channel is draining
-			if len(batch) >= 100 || len(s.asyncChan) == 0 {
+			if len(batch) >= 100 {
 				s.flushBatch(batch)
 				batch = batch[:0]
 			}
@@ -381,10 +391,22 @@ func (s *MessageService) MarkDelivered(ctx context.Context, messageID uuid.UUID)
 	return nil
 }
 
-// MarkRead marks a message as read
+// MarkRead marks a single message as read.
 func (s *MessageService) MarkRead(ctx context.Context, messageID uuid.UUID) error {
 	result := s.db.WithContext(ctx).Model(&identity.AgentMessage{}).
 		Where("id = ?", messageID).
+		Update("status", "read")
+	return result.Error
+}
+
+// MarkReadBatch marks multiple messages as read in a single UPDATE.
+// This is significantly faster than calling MarkRead in a loop (1 round-trip vs N).
+func (s *MessageService) MarkReadBatch(ctx context.Context, messageIDs []uuid.UUID) error {
+	if len(messageIDs) == 0 {
+		return nil
+	}
+	result := s.db.WithContext(ctx).Model(&identity.AgentMessage{}).
+		Where("id IN ?", messageIDs).
 		Update("status", "read")
 	return result.Error
 }

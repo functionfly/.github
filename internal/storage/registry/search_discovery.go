@@ -252,20 +252,39 @@ func (r *RegistryRepository) UpdateFunctionPopularityScore(ctx context.Context, 
 	return nil
 }
 
-// ListFunctionsByOwner lists registry functions owned by a specific user (all visibilities)
+// ListFunctionsByOwner lists registry functions owned by a specific user (all visibilities).
+// Uses COUNT(*) OVER() window function to fetch the result set and total count in a single
+// round-trip instead of separate COUNT + SELECT queries.  Requires the composite index
+// idx_registry_functions_owner_created (owner_user_id, created_at DESC).
 func (r *RegistryRepository) ListFunctionsByOwner(ownerUserID uuid.UUID, limit, offset int) ([]RegistryFunction, int, error) {
-	var total int64
-	if err := r.db.Model(&RegistryFunction{}).Where("owner_user_id = ?", ownerUserID).Count(&total).Error; err != nil {
-		return nil, 0, fmt.Errorf("failed to count functions by owner: %w", err)
+	// Helper struct to capture the window-function total alongside the row data.
+	type row struct {
+		RegistryFunction
+		Total int64 `gorm:"column:__total"`
 	}
 
-	var functions []RegistryFunction
-	if err := r.db.Where("owner_user_id = ?", ownerUserID).
-		Order("created_at DESC").Limit(limit).Offset(offset).Find(&functions).Error; err != nil {
+	var rows []row
+	if err := r.db.Raw(`
+		SELECT rf.*, COUNT(*) OVER() AS __total
+		FROM registry_functions rf
+		WHERE rf.owner_user_id = ?
+		ORDER BY rf.created_at DESC
+		LIMIT ? OFFSET ?
+	`, ownerUserID, limit, offset).Scan(&rows).Error; err != nil {
 		return nil, 0, fmt.Errorf("failed to list functions by owner: %w", err)
 	}
 
-	return functions, int(total), nil
+	if len(rows) == 0 {
+		return []RegistryFunction{}, 0, nil
+	}
+
+	total := int(rows[0].Total)
+	functions := make([]RegistryFunction, len(rows))
+	for i := range rows {
+		functions[i] = rows[i].RegistryFunction
+	}
+
+	return functions, total, nil
 }
 
 // GetPopularFunctionsByCategory gets popular functions in a specific category

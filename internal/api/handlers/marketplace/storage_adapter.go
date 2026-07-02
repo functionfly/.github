@@ -138,6 +138,8 @@ func (a *StorageAdapter) ListRatings(ctx context.Context, extensionID string, li
 			TenantID:    r.TenantID,
 			Rating:      r.Rating,
 			Review:      r.Review,
+			Username:    r.Username,
+			UserName:    r.UserName,
 			CreatedAt:   r.CreatedAt,
 			UpdatedAt:   r.UpdatedAt,
 		}

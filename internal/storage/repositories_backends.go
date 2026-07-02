@@ -54,6 +54,10 @@ func (db *PostgresDB) GetRecentHealthChecks(ctx context.Context, backendID uuid.
 	return db.backendRepository.GetRecentHealthChecks(ctx, backendID, limit)
 }
 
+func (db *PostgresDB) DeleteHealthChecksBefore(ctx context.Context, before time.Time) (int64, error) {
+	return db.backendRepository.DeleteHealthChecksBefore(ctx, before)
+}
+
 func (db *PostgresDB) GetCircuitState(ctx context.Context, backendID uuid.UUID) (*CircuitState, error) {
 	return db.backendRepository.GetCircuitState(ctx, backendID)
 }
@@ -72,6 +76,10 @@ func (db *PostgresDB) InsertRoutingEvent(ctx context.Context, appID, backendID u
 
 func (db *PostgresDB) GetRecentRoutingEvents(ctx context.Context, limit int, since time.Time) ([]*RoutingEvent, error) {
 	return db.backendRepository.GetRecentRoutingEvents(ctx, limit, since)
+}
+
+func (db *PostgresDB) GetRecentRoutingEventsByBackend(ctx context.Context, backendID uuid.UUID, limit int) ([]*RoutingEvent, error) {
+	return db.backendRepository.GetRecentRoutingEventsByBackend(ctx, backendID, limit)
 }
 
 // App analytics operations

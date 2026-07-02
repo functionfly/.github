@@ -3,9 +3,14 @@ package routing
 import (
 	"context"
 	"fmt"
+	"math"
 	"net/http"
+	"os"
 	"sort"
+	"sync"
+	"time"
 
+	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -17,20 +22,25 @@ type RouterRepository interface {
 	GetCircuitState(ctx context.Context, backendID uuid.UUID) (*storage.CircuitState, error)
 	GetRecentHealthChecks(ctx context.Context, backendID uuid.UUID, limit int) ([]*storage.HealthCheck, error)
 	InsertRoutingEvent(ctx context.Context, appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error
+	GetRecentRoutingEventsByBackend(ctx context.Context, backendID uuid.UUID, limit int) ([]*storage.RoutingEvent, error)
 }
 
 // Router handles backend selection and routing decisions
 type Router struct {
-	repo RouterRepository
+	repo         RouterRepository
+	healthMon    *health.Monitor
+	decisionCache sync.Map // map[uuid.UUID]*cachedDecision
+	cacheTTL      time.Duration
+	ewmaSource    string   // "health" or "real"
 }
 
 // BackendScore represents a backend with its routing score
 type BackendScore struct {
-	Backend     *storage.Backend
-	Score       float64
+	Backend      *storage.Backend
+	Score        float64
 	CircuitState string
-	HealthOK    bool
-	LatencyMs   int
+	HealthOK     bool
+	LatencyMs    int
 }
 
 // RoutingDecision represents the result of a routing decision
@@ -41,14 +51,46 @@ type RoutingDecision struct {
 	Reason           string           `json:"reason"`
 }
 
-// NewRouter creates a new router instance
-func NewRouter(repo RouterRepository) *Router {
-	return &Router{repo: repo}
+// cachedDecision holds a routing decision cached for a short TTL.
+type cachedDecision struct {
+	decision *RoutingDecision
+	cachedAt time.Time
 }
 
-// SelectBackend selects the best backend for routing based on health, circuit state, and latency
+// NewRouter creates a new router instance
+func NewRouter(repo RouterRepository) *Router {
+	ewmaSource := os.Getenv("EWMA_SOURCE")
+	if ewmaSource != "real" {
+		ewmaSource = "health"
+	}
+	return &Router{
+		repo:       repo,
+		cacheTTL:   1 * time.Second,
+		ewmaSource: ewmaSource,
+	}
+}
+
+// SetHealthMonitor provides the health monitor for circuit breaker access.
+func (r *Router) SetHealthMonitor(mon *health.Monitor) {
+	r.healthMon = mon
+}
+
+// InvalidateCache removes a cached routing decision for the given app.
+func (r *Router) InvalidateCache(appID uuid.UUID) {
+	r.decisionCache.Delete(appID)
+}
+
+// SelectBackend selects the best backend for routing based on health, circuit state, and latency.
+// Uses a 1-second decision cache to avoid repeated DB queries under high traffic.
 func (r *Router) SelectBackend(appID uuid.UUID, method string, requestID string, plan string) (*RoutingDecision, error) {
-	// Get all backends for the app
+	// Check decision cache
+	if v, ok := r.decisionCache.Load(appID); ok {
+		cached := v.(*cachedDecision)
+		if time.Since(cached.cachedAt) < r.cacheTTL {
+			return cached.decision, nil
+		}
+	}
+
 	backends, err := r.repo.ListBackendsByAppID(context.Background(), appID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list backends: %w", err)
@@ -60,10 +102,7 @@ func (r *Router) SelectBackend(appID uuid.UUID, method string, requestID string,
 		}, nil
 	}
 
-	// Score all backends
 	scoredBackends := r.scoreBackends(backends)
-
-	// Filter healthy backends (circuit not open)
 	healthyBackends := r.filterHealthyBackends(scoredBackends)
 
 	if len(healthyBackends) == 0 {
@@ -73,7 +112,6 @@ func (r *Router) SelectBackend(appID uuid.UUID, method string, requestID string,
 		}, nil
 	}
 
-	// Select the best backend(s)
 	selectedBackends := r.selectBestBackend(healthyBackends, method, plan)
 	if len(selectedBackends) == 0 {
 		return &RoutingDecision{
@@ -82,7 +120,6 @@ func (r *Router) SelectBackend(appID uuid.UUID, method string, requestID string,
 		}, nil
 	}
 
-	// Prepare failover backends (all except the first)
 	var failoverBackends []*storage.Backend
 	if len(selectedBackends) > 1 {
 		for _, backend := range selectedBackends[1:] {
@@ -90,12 +127,20 @@ func (r *Router) SelectBackend(appID uuid.UUID, method string, requestID string,
 		}
 	}
 
-	return &RoutingDecision{
+	decision := &RoutingDecision{
 		SelectedBackend:  selectedBackends[0].Backend,
 		FailoverBackends: failoverBackends,
 		AllBackends:      scoredBackends,
 		Reason:           r.buildSelectionReason(selectedBackends, method),
-	}, nil
+	}
+
+	// Cache the decision
+	r.decisionCache.Store(appID, &cachedDecision{
+		decision: decision,
+		cachedAt: time.Now(),
+	})
+
+	return decision, nil
 }
 
 // scoreBackends calculates routing scores for all backends
@@ -108,7 +153,6 @@ func (r *Router) scoreBackends(backends []*storage.Backend) []*BackendScore {
 			Score:   0.0,
 		}
 
-		// Get circuit state
 		circuitState, err := r.repo.GetCircuitState(context.Background(), backend.ID)
 		if err != nil {
 			logrus.WithError(err).WithField("backend_id", backend.ID).Error("Failed to get circuit state")
@@ -119,11 +163,10 @@ func (r *Router) scoreBackends(backends []*storage.Backend) []*BackendScore {
 			score.HealthOK = circuitState.State != "open"
 		}
 
-		// Calculate EWMA score if healthy
 		if score.HealthOK {
 			ewmaScore := r.calculateEWMAScore(backend.ID)
 			score.Score = ewmaScore
-			score.LatencyMs = int(ewmaScore) // Approximate latency for display
+			score.LatencyMs = int(ewmaScore)
 		}
 
 		scored = append(scored, score)
@@ -132,20 +175,49 @@ func (r *Router) scoreBackends(backends []*storage.Backend) []*BackendScore {
 	return scored
 }
 
-// calculateEWMAScore calculates the exponentially weighted moving average latency score
+// calculateEWMAScore calculates the EWMA latency score.
+// Supports shadow mode: always computes health-check EWMA, and optionally
+// computes routing-event EWMA for comparison logging.
 func (r *Router) calculateEWMAScore(backendID uuid.UUID) float64 {
-	// Get recent health checks (last 10)
+	healthEWMA := r.calculateEWMAFromHealthChecks(backendID)
+
+	if r.ewmaSource == "real" {
+		realEWMA := r.calculateEWMAFromRoutingEvents(backendID)
+		if realEWMA > 0 {
+			return realEWMA
+		}
+		// Fall back to health if no routing events yet
+		return healthEWMA
+	}
+
+	// Shadow mode: compute real EWMA for comparison but use health EWMA
+	realEWMA := r.calculateEWMAFromRoutingEvents(backendID)
+	if realEWMA > 0 && healthEWMA > 0 {
+		delta := math.Abs(healthEWMA-realEWMA) / healthEWMA * 100
+		if delta > 20 {
+			logrus.WithFields(logrus.Fields{
+				"backend_id":  backendID,
+				"health_ewma": healthEWMA,
+				"real_ewma":   realEWMA,
+				"delta_pct":   delta,
+			}).Debug("EWMA shadow comparison")
+		}
+	}
+
+	return healthEWMA
+}
+
+func (r *Router) calculateEWMAFromHealthChecks(backendID uuid.UUID) float64 {
 	checks, err := r.repo.GetRecentHealthChecks(context.Background(), backendID, 10)
 	if err != nil {
 		logrus.WithError(err).WithField("backend_id", backendID).Error("Failed to get health checks")
-		return 1000.0 // Default high latency
+		return 1000.0
 	}
 
 	if len(checks) == 0 {
-		return 1000.0 // No data, assume high latency
+		return 1000.0
 	}
 
-	// Filter successful checks
 	var latencies []float64
 	for _, check := range checks {
 		if check.OK && check.LatencyMs > 0 {
@@ -154,16 +226,38 @@ func (r *Router) calculateEWMAScore(backendID uuid.UUID) float64 {
 	}
 
 	if len(latencies) == 0 {
-		return 1000.0 // No successful checks
+		return 1000.0
 	}
 
-	// Calculate EWMA (alpha = 0.3 for recent bias)
+	return computeEWMA(latencies)
+}
+
+func (r *Router) calculateEWMAFromRoutingEvents(backendID uuid.UUID) float64 {
+	events, err := r.repo.GetRecentRoutingEventsByBackend(context.Background(), backendID, 20)
+	if err != nil || len(events) == 0 {
+		return 0
+	}
+
+	var latencies []float64
+	for _, event := range events {
+		if event.Outcome == "success" && event.LatencyMs > 0 {
+			latencies = append(latencies, float64(event.LatencyMs))
+		}
+	}
+
+	if len(latencies) == 0 {
+		return 0
+	}
+
+	return computeEWMA(latencies)
+}
+
+func computeEWMA(latencies []float64) float64 {
 	alpha := 0.3
 	ewma := latencies[0]
 	for i := 1; i < len(latencies); i++ {
 		ewma = alpha*latencies[i] + (1-alpha)*ewma
 	}
-
 	return ewma
 }
 
@@ -179,50 +273,38 @@ func (r *Router) filterHealthyBackends(backends []*BackendScore) []*BackendScore
 }
 
 // selectBestBackend selects the backend(s) with the lowest score(s) (latency)
-// For idempotent methods, returns top 3 backends for fast failover
-// For non-idempotent methods, returns only the best backend
 func (r *Router) selectBestBackend(backends []*BackendScore, method string, plan string) []*BackendScore {
 	if len(backends) == 0 {
 		return nil
 	}
 
-	// Sort backends based on plan
 	if plan == "professional" {
-		// For Pro plan: sort by priority (asc, nulls last) then by score (lower is better)
 		sort.Slice(backends, func(i, j int) bool {
-			// Handle null priorities (nulls last)
 			iPriority := backends[i].Backend.Priority
 			jPriority := backends[j].Backend.Priority
 
 			if iPriority == nil && jPriority == nil {
-				// Both null, compare by score
 				return backends[i].Score < backends[j].Score
 			}
 			if iPriority == nil {
-				// i is null, j comes first
 				return false
 			}
 			if jPriority == nil {
-				// j is null, i comes first
 				return true
 			}
 
-			// Both have priorities, compare them first
 			if *iPriority != *jPriority {
 				return *iPriority < *jPriority
 			}
 
-			// Same priority, compare by score
 			return backends[i].Score < backends[j].Score
 		})
 	} else {
-		// For Starter plan: sort by score only (existing behavior)
 		sort.Slice(backends, func(i, j int) bool {
 			return backends[i].Score < backends[j].Score
 		})
 	}
 
-	// For idempotent methods, return top 3 backends for fast failover
 	if IsIdempotentMethod(method) {
 		maxFailover := 3
 		if len(backends) < maxFailover {
@@ -231,12 +313,13 @@ func (r *Router) selectBestBackend(backends []*BackendScore, method string, plan
 		return backends[:maxFailover]
 	}
 
-	// For non-idempotent methods, return only the best backend
 	return backends[:1]
 }
 
 // RecordRoutingResult records the result of a routing attempt for future scoring
 func (r *Router) RecordRoutingResult(appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error {
+	// Invalidate decision cache for this app on any routing result
+	r.InvalidateCache(appID)
 	return r.repo.InsertRoutingEvent(context.Background(), appID, backendID, latencyMs, outcome, requestID)
 }
 

@@ -491,6 +491,8 @@ type MarketplaceRating struct {
 	TenantID    string    `json:"tenant_id"`
 	Rating      int       `json:"rating"`
 	Review      string    `json:"review,omitempty"`
+	Username    string    `json:"username,omitempty"`
+	UserName    string    `json:"user_name,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -564,10 +566,13 @@ func (r *MarketplaceRepository) ListRatings(ctx context.Context, extensionID str
 		limit = 50
 	}
 	query := `
-		SELECT id, extension_id, tenant_id, rating, COALESCE(review, ''), created_at, updated_at
-		FROM marketplace_ratings
-		WHERE extension_id = $1
-		ORDER BY created_at DESC
+		SELECT mr.id, mr.extension_id, mr.tenant_id, mr.rating, COALESCE(mr.review, ''),
+			COALESCE(u.username, ''), COALESCE(u.name, ''),
+			mr.created_at, mr.updated_at
+		FROM marketplace_ratings mr
+		LEFT JOIN users u ON u.tenant_id = mr.tenant_id
+		WHERE mr.extension_id = $1
+		ORDER BY mr.created_at DESC
 		LIMIT $2
 	`
 	rows, err := r.db.QueryContext(ctx, query, extensionID, limit)
@@ -581,7 +586,8 @@ func (r *MarketplaceRepository) ListRatings(ctx context.Context, extensionID str
 		var rating MarketplaceRating
 		if err := rows.Scan(
 			&rating.ID, &rating.ExtensionID, &rating.TenantID, &rating.Rating,
-			&rating.Review, &rating.CreatedAt, &rating.UpdatedAt,
+			&rating.Review, &rating.Username, &rating.UserName,
+			&rating.CreatedAt, &rating.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan rating: %w", err)
 		}

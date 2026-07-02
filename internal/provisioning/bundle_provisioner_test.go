@@ -45,7 +45,7 @@ func TestBundleProvisioner_ProvisionBundle_SaaSStarter(t *testing.T) {
 		assert.Equal(t, StatusActive, compState.Status, "Component %s should be active", comp)
 	}
 
-	assert.Less(t, result.Duration, 5*time.Second, "Provisioning should complete quickly")
+	assert.Less(t, result.Duration, int64(5000), "Provisioning should complete quickly")
 }
 
 func TestBundleProvisioner_ProvisionBundle_Marketplace(t *testing.T) {
@@ -165,7 +165,7 @@ func TestProvisionResult_JSON(t *testing.T) {
 		},
 		StartedAt:  time.Now(),
 		FinishedAt: time.Now(),
-		Duration:   2 * time.Second,
+		Duration:   2000,
 		ErrorLog:   []string{},
 	}
 
@@ -231,9 +231,9 @@ func TestBundleProvisioner_ProvisionResult_Duration(t *testing.T) {
 		FinishedAt: end,
 	}
 
-	result.Duration = result.FinishedAt.Sub(result.StartedAt)
+	result.Duration = result.FinishedAt.Sub(result.StartedAt).Milliseconds()
 
-	assert.Equal(t, 1500*time.Millisecond, result.Duration)
+	assert.Equal(t, int64(1500), result.Duration)
 }
 
 func TestNewBundleProvisioner(t *testing.T) {

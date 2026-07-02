@@ -233,8 +233,10 @@ func (h *testHostHandler) AIInference(_ string, _ []byte, _ string) (string, err
 func (h *testHostHandler) StateGet(_ string) (string, error)         { return "", nil }
 func (h *testHostHandler) StateSet(_, _ string) error                { return nil }
 func (h *testHostHandler) StateDelete(_ string) error                { return nil }
-func (h *testHostHandler) StateGetFabric(_ string) (string, error)   { return "", nil }
+func (h *testHostHandler) StateGetFabric(_ string) (string, error)         { return "", nil }
 func (h *testHostHandler) StateCreateSnapshot(_, _ string) (string, error) { return "", nil }
+func (h *testHostHandler) GetAttestation(_ string) (string, error)         { return "", nil }
+func (h *testHostHandler) Delegate(_, _, _ string) (string, error)         { return "", nil }
 func (h *testHostHandler) Call(_ context.Context, _ string, _ ...interface{}) (interface{}, error) {
 	return nil, nil
 }

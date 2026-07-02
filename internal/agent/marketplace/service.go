@@ -492,3 +492,177 @@ func (s *Service) GetFunctionListingByURI(ctx context.Context, author, name stri
 
 	return &listing, nil
 }
+
+// AgentRating represents a per-tenant rating for an agent
+type AgentRating struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	AgentID   string    `json:"agent_id" gorm:"not null"`
+	TenantID  uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null"`
+	Rating    int       `json:"rating" gorm:"not null"`
+	Review    string    `json:"review"`
+	Username  string    `json:"username,omitempty" gorm:"-"`
+	UserName  string    `json:"user_name,omitempty" gorm:"-"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (AgentRating) TableName() string {
+	return "agent_ratings"
+}
+
+// RateAgent creates or updates a rating for an agent from a tenant
+func (s *Service) RateAgent(ctx context.Context, agentID string, tenantID uuid.UUID, rating int, review string) error {
+	if rating < 1 || rating > 5 {
+		return fmt.Errorf("rating must be between 1 and 5")
+	}
+	r := &AgentRating{
+		AgentID:  agentID,
+		TenantID: tenantID,
+		Rating:   rating,
+		Review:   review,
+	}
+	return s.db.WithContext(ctx).
+		Where("agent_id = ? AND tenant_id = ?", agentID, tenantID).
+		Assign(AgentRating{Rating: rating, Review: review, UpdatedAt: time.Now()}).
+		FirstOrCreate(r).Error
+}
+
+// GetAgentRating returns a tenant's rating for an agent, or nil if none exists
+func (s *Service) GetAgentRating(ctx context.Context, agentID string, tenantID uuid.UUID) (*AgentRating, error) {
+	var r AgentRating
+	err := s.db.WithContext(ctx).
+		Where("agent_id = ? AND tenant_id = ?", agentID, tenantID).
+		First(&r).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// ListAgentRatings returns ratings for an agent with usernames
+func (s *Service) ListAgentRatings(ctx context.Context, agentID string, limit int) ([]AgentRating, error) {
+	type row struct {
+		ID        uuid.UUID `gorm:"column:id"`
+		AgentID   string    `gorm:"column:agent_id"`
+		TenantID  uuid.UUID `gorm:"column:tenant_id"`
+		Rating    int       `gorm:"column:rating"`
+		Review    string    `gorm:"column:review"`
+		CreatedAt time.Time `gorm:"column:created_at"`
+		UpdatedAt time.Time `gorm:"column:updated_at"`
+		Username  string    `gorm:"column:username"`
+		UserName  string    `gorm:"column:user_name"`
+	}
+	var rows []row
+	err := s.db.WithContext(ctx).
+		Raw(`SELECT ar.id, ar.agent_id, ar.tenant_id, ar.rating, ar.review,
+		        ar.created_at, ar.updated_at, u.username, u.name AS user_name
+			FROM agent_ratings ar
+			LEFT JOIN users u ON u.tenant_id = ar.tenant_id
+			WHERE ar.agent_id = ?
+			ORDER BY ar.created_at DESC
+			LIMIT ?`, agentID, limit).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	ratings := make([]AgentRating, len(rows))
+	for i, r := range rows {
+		ratings[i] = AgentRating{
+			ID: r.ID, AgentID: r.AgentID, TenantID: r.TenantID,
+			Rating: r.Rating, Review: r.Review,
+			CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+			Username: r.Username, UserName: r.UserName,
+		}
+	}
+	return ratings, nil
+}
+
+// FunctionUserRating represents a per-tenant rating for a function
+type FunctionUserRating struct {
+	ID         uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	FunctionID uuid.UUID `json:"function_id" gorm:"type:uuid;not null"`
+	TenantID   uuid.UUID `json:"tenant_id" gorm:"type:uuid;not null"`
+	Rating     int       `json:"rating" gorm:"not null"`
+	Review     string    `json:"review"`
+	Username   string    `json:"username,omitempty" gorm:"-"`
+	UserName   string    `json:"user_name,omitempty" gorm:"-"`
+	CreatedAt  time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (FunctionUserRating) TableName() string {
+	return "function_user_ratings"
+}
+
+// RateFunction creates or updates a rating for a function from a tenant
+func (s *Service) RateFunction(ctx context.Context, functionID uuid.UUID, tenantID uuid.UUID, rating int, review string) error {
+	if rating < 1 || rating > 5 {
+		return fmt.Errorf("rating must be between 1 and 5")
+	}
+	r := &FunctionUserRating{
+		FunctionID: functionID,
+		TenantID:   tenantID,
+		Rating:     rating,
+		Review:     review,
+	}
+	return s.db.WithContext(ctx).
+		Where("function_id = ? AND tenant_id = ?", functionID, tenantID).
+		Assign(FunctionUserRating{Rating: rating, Review: review, UpdatedAt: time.Now()}).
+		FirstOrCreate(r).Error
+}
+
+// GetFunctionRating returns a tenant's rating for a function, or nil if none exists
+func (s *Service) GetFunctionRating(ctx context.Context, functionID uuid.UUID, tenantID uuid.UUID) (*FunctionUserRating, error) {
+	var r FunctionUserRating
+	err := s.db.WithContext(ctx).
+		Where("function_id = ? AND tenant_id = ?", functionID, tenantID).
+		First(&r).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &r, nil
+}
+
+// ListFunctionRatings returns ratings for a function with usernames
+func (s *Service) ListFunctionRatings(ctx context.Context, functionID uuid.UUID, limit int) ([]FunctionUserRating, error) {
+	type row struct {
+		ID         uuid.UUID `gorm:"column:id"`
+		FunctionID uuid.UUID `gorm:"column:function_id"`
+		TenantID   uuid.UUID `gorm:"column:tenant_id"`
+		Rating     int       `gorm:"column:rating"`
+		Review     string    `gorm:"column:review"`
+		CreatedAt  time.Time `gorm:"column:created_at"`
+		UpdatedAt  time.Time `gorm:"column:updated_at"`
+		Username   string    `gorm:"column:username"`
+		UserName   string    `gorm:"column:user_name"`
+	}
+	var rows []row
+	err := s.db.WithContext(ctx).
+		Raw(`SELECT fr.id, fr.function_id, fr.tenant_id, fr.rating, fr.review,
+		        fr.created_at, fr.updated_at, u.username, u.name AS user_name
+			FROM function_user_ratings fr
+			LEFT JOIN users u ON u.tenant_id = fr.tenant_id
+			WHERE fr.function_id = ?
+			ORDER BY fr.created_at DESC
+			LIMIT ?`, functionID, limit).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	ratings := make([]FunctionUserRating, len(rows))
+	for i, r := range rows {
+		ratings[i] = FunctionUserRating{
+			ID: r.ID, FunctionID: r.FunctionID, TenantID: r.TenantID,
+			Rating: r.Rating, Review: r.Review,
+			CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt,
+			Username: r.Username, UserName: r.UserName,
+		}
+	}
+	return ratings, nil
+}

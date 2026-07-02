@@ -42,7 +42,7 @@ func (a *ScalingAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, param
 		SELECT COUNT(*) as daily_executions
 		FROM usage_events
 		WHERE tenant_id = $1
-		AND created_at > NOW() - INTERVAL '7 days'`
+		AND timestamp > NOW() - INTERVAL '7 days'`
 
 	var weeklyExecutions int64
 	if err := a.db.QueryRowContext(ctx, query, tenantID).Scan(&weeklyExecutions); err != nil && err != sql.ErrNoRows {
@@ -58,7 +58,7 @@ func (a *ScalingAnalyzer) Analyze(ctx context.Context, tenantID uuid.UUID, param
 	currentQuery := `
 		SELECT COUNT(*) FROM usage_events
 		WHERE tenant_id = $1
-		AND created_at > DATE_TRUNC('month', NOW())`
+		AND timestamp > DATE_TRUNC('month', NOW())`
 	if err := a.db.QueryRowContext(ctx, currentQuery, tenantID).Scan(&currentUsage); err != nil && err != sql.ErrNoRows {
 		a.logger.WithError(err).Error("Failed to scan current usage")
 		return nil, err

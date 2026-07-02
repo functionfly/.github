@@ -274,7 +274,7 @@ func TestService_CheckSpendCap_NilRepo(t *testing.T) {
 func TestService_UpdateSpendCaps_NilRepo(t *testing.T) {
 	svc := NewService(nil, nil)
 	dailyCap := 100.0
-	err := svc.UpdateSpendCaps(context.Background(), testUUID(), &dailyCap, nil)
+	err := svc.UpdateSpendCaps(context.Background(), testUUID(), &dailyCap, nil, nil)
 	assert.Error(t, err)
 }
 
@@ -312,7 +312,7 @@ func TestService_GetAgentSpendSummary_NilRepo(t *testing.T) {
 func TestService_UpdateAgentSpendCaps_NilRepo(t *testing.T) {
 	svc := NewService(nil, nil)
 	dailyCap := 100.0
-	err := svc.UpdateAgentSpendCaps(context.Background(), "agent_123", &dailyCap, nil)
+	err := svc.UpdateAgentSpendCaps(context.Background(), "agent_123", &dailyCap, nil, nil)
 	assert.Error(t, err)
 }
 

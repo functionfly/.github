@@ -224,7 +224,7 @@ func providerTestConfig(provider, apiKey string) (endpoint, method string, heade
 		endpoint = "https://api.together.xyz/v2/models"
 		headers["Authorization"] = "Bearer " + apiKey
 	case "mimo":
-		endpoint = "https://api.mimo.ai/v1/models"
+		endpoint = "https://api.xiaomimimo.com/v1/models"
 		headers["Authorization"] = "Bearer " + apiKey
 	case "mimo-token-plan":
 		endpoint = "https://token-plan-sgp.xiaomimimo.com/v1/models"

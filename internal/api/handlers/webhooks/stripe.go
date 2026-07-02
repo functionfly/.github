@@ -92,6 +92,8 @@ type StripeWebhookHandler struct {
 	certRepo        *storage.CertificationRepository
 	disputeResponseManager *billingpkg.DisputeResponseManager
 	pciAuditHelper  *helpers.PCIAuditHelper
+	// provisionBundleFn delegates to the isolated BundleProvisioner for dedicated tenant DB provisioning.
+	provisionBundleFn func(ctx context.Context, tenantID uuid.UUID, bundleSlug string) (string, int, error)
 }
 
 // PayoutWebhookProcessor handles payout-related webhook events.
@@ -167,6 +169,11 @@ func (h *StripeWebhookHandler) SetRefundRepository(repo *storage.RefundRepositor
 // SetDunningManager sets the dunning manager for automated payment retry
 func (h *StripeWebhookHandler) SetDunningManager(dm *billingpkg.DunningManager) {
 	h.dunningManager = dm
+}
+
+// SetBundleProvisioner injects the isolated bundle provisioner for dedicated tenant DB provisioning.
+func (h *StripeWebhookHandler) SetBundleProvisioner(fn func(ctx context.Context, tenantID uuid.UUID, bundleSlug string) (string, int, error)) {
+	h.provisionBundleFn = fn
 }
 
 // SetOperationalRepository sets the billing operational repository for webhook storage
@@ -675,8 +682,14 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 	}).Info("Bundle subscription created/updated successfully")
 
 	// Trigger provisioning of bundle resources (app, backend, functions)
-	// This is called for both new purchases and conversions from founder mode
-	app, appErr := billing.ProvisionBundleAppAndBackend(h.userRepo, tenantID, bundleSlug)
+	// This is called for both new purchases and conversions from founder mode.
+	// When isolated provisioning is available, skip shared-DB backend/function creation
+	// — the BundleProvisioner handles them in the tenant's dedicated database.
+	var provisionOpts []func(*billing.ProvisionBundleOpts)
+	if h.provisionBundleFn != nil {
+		provisionOpts = append(provisionOpts, billing.WithIsolatedProvisioning())
+	}
+	app, appErr := billing.ProvisionBundleAppAndBackend(h.userRepo, tenantID, bundleSlug, provisionOpts...)
 	if appErr != nil {
 		logrus.WithError(appErr).WithField("tenant_id", tenantID).Warn("Failed to provision bundle app and backend")
 	} else if app != nil {
@@ -685,6 +698,41 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 		if updateErr := h.userRepo.UpdateBundleSubscription(r.Context(), sub); updateErr != nil {
 			logrus.WithError(updateErr).WithField("tenant_id", tenantID).Warn("Failed to update subscription with app ID")
 		}
+	}
+
+	// Trigger isolated bundle provisioning (creates dedicated DB + all tenant resources)
+	// If isolated provisioning fails, fall back to shared-DB provisioning with degraded_mode flag.
+	if h.provisionBundleFn != nil {
+		go func() {
+			status, count, err := h.provisionBundleFn(context.Background(), tenantID, bundleSlug)
+			if err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"tenant_id": tenantID,
+					"bundle":    bundleSlug,
+				}).Error("Isolated bundle provisioning failed — falling back to shared-DB mode")
+
+				// Graceful degradation: create backend/functions in shared DB
+				if _, fallbackErr := billing.ProvisionBundleAppAndBackend(h.userRepo, tenantID, bundleSlug); fallbackErr != nil {
+					logrus.WithError(fallbackErr).WithField("tenant_id", tenantID).Error("Shared-DB fallback provisioning also failed")
+				}
+
+				// Mark tenant as degraded
+				if degradeErr := h.userRepo.SetTenantDegradedMode(r.Context(), tenantID, true, fmt.Sprintf("isolated provisioning failed: %v", err)); degradeErr != nil {
+					logrus.WithError(degradeErr).WithField("tenant_id", tenantID).Warn("Failed to set tenant degraded mode")
+				}
+			} else {
+				logrus.WithFields(logrus.Fields{
+					"tenant_id":  tenantID,
+					"status":     status,
+					"components": count,
+				}).Info("Isolated bundle provisioning complete")
+
+				// Clear degraded mode if it was previously set
+				if degradeErr := h.userRepo.SetTenantDegradedMode(r.Context(), tenantID, false, ""); degradeErr != nil {
+					logrus.WithError(degradeErr).WithField("tenant_id", tenantID).Warn("Failed to clear tenant degraded mode")
+				}
+			}
+		}()
 	}
 
 	// Also provision general bundle resources (auth, analytics, vector collections)

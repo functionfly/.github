@@ -122,6 +122,13 @@ func (db *PostgresDB) UpdateFounderVote(ctx context.Context, voteID uuid.UUID, u
 	return nil
 }
 
+func (db *PostgresDB) DeleteFounderVote(ctx context.Context, voteID uuid.UUID) error {
+	if err := db.GORM.WithContext(ctx).Where("id = ?", voteID).Delete(&FounderVote{}).Error; err != nil {
+		return fmt.Errorf("failed to delete founder vote: %w", err)
+	}
+	return nil
+}
+
 func (db *PostgresDB) GetFounderVoteResponse(ctx context.Context, voteID, userID uuid.UUID) (*FounderVoteResponse, error) {
 	var response FounderVoteResponse
 	if err := db.GORM.WithContext(ctx).

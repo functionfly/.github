@@ -12,19 +12,25 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 )
 
 func newAuthedRequest(method, url string, body *bytes.Buffer) *http.Request {
+	return newAuthedRequestWithTenant(method, url, body, uuid.New().String())
+}
+
+func newAuthedRequestWithTenant(method, url string, body *bytes.Buffer, tenantID string) *http.Request {
 	var req *http.Request
 	if body != nil {
 		req = httptest.NewRequest(method, url, body)
 	} else {
 		req = httptest.NewRequest(method, url, nil)
 	}
+	tid, _ := uuid.Parse(tenantID)
 	claims := &auth.Claims{
 		UserID:   uuid.New(),
 		Email:    "test@example.com",
-		TenantID: uuid.New(),
+		TenantID: tid,
 		Role:     "user",
 	}
 	return middleware.SetUserInContext(req, claims)
@@ -437,6 +443,7 @@ func TestHandleRateExtension(t *testing.T) {
 	t.Run("invalid rating value", func(t *testing.T) {
 		body := bytes.NewBufferString(`{"rating":10,"review":"too high"}`)
 		req := newAuthedRequest(http.MethodPost, "/api/marketplace/extensions/ext-1/rate", body)
+		req = mux.SetURLVars(req, map[string]string{"id": "ext-1"})
 		w := httptest.NewRecorder()
 		h.HandleRateExtension(w, req)
 		if w.Code != http.StatusBadRequest {
@@ -447,6 +454,7 @@ func TestHandleRateExtension(t *testing.T) {
 	t.Run("valid rating", func(t *testing.T) {
 		body := bytes.NewBufferString(`{"rating":5,"review":"excellent"}`)
 		req := newAuthedRequest(http.MethodPost, "/api/marketplace/extensions/ext-1/rate", body)
+		req = mux.SetURLVars(req, map[string]string{"id": "ext-1"})
 		w := httptest.NewRecorder()
 		h.HandleRateExtension(w, req)
 		if w.Code != http.StatusOK {
@@ -458,11 +466,14 @@ func TestHandleRateExtension(t *testing.T) {
 func TestHandleGetMyRating(t *testing.T) {
 	repo := newMockRepo()
 	repo.extensions["ext-1"] = &Extension{ID: "ext-1"}
-	repo.ratings["ext-1:tenant-1"] = &Rating{ExtensionID: "ext-1", TenantID: "tenant-1", Rating: 4, Review: "good"}
+	tenantID := uuid.New().String()
+	repo.ratings["ext-1:"+tenantID] = &Rating{ExtensionID: "ext-1", TenantID: tenantID, Rating: 4, Review: "good"}
 	h := NewHandler(repo)
 
 	t.Run("returns existing rating", func(t *testing.T) {
-		req := newAuthedRequest(http.MethodGet, "/api/marketplace/extensions/ext-1/my-rating", nil)
+		body := bytes.NewBuffer(nil)
+		req := newAuthedRequestWithTenant(http.MethodGet, "/api/marketplace/extensions/ext-1/my-rating", body, tenantID)
+		req = mux.SetURLVars(req, map[string]string{"id": "ext-1"})
 		w := httptest.NewRecorder()
 		h.HandleGetMyRating(w, req)
 		if w.Code != http.StatusOK {
@@ -481,6 +492,7 @@ func TestHandleGetMyRating(t *testing.T) {
 
 	t.Run("returns null for missing rating", func(t *testing.T) {
 		req := newAuthedRequest(http.MethodGet, "/api/marketplace/extensions/ext-1/my-rating", nil)
+		req = mux.SetURLVars(req, map[string]string{"id": "ext-1"})
 		w := httptest.NewRecorder()
 		h.HandleGetMyRating(w, req)
 		if w.Code != http.StatusOK {
@@ -500,7 +512,7 @@ func TestHandleCheckUpdates(t *testing.T) {
 	}
 	h := NewHandler(repo)
 
-	body := bytes.NewBufferString(`{"installed_plugins":[{"id":"p1","name":"test","version":"1.0.0"}]}`)
+	body := bytes.NewBufferString(`[{"id":"p1","name":"test","version":"1.0.0"}]`)
 	req := newAuthedRequest(http.MethodPost, "/api/marketplace/extensions/check-updates", body)
 	w := httptest.NewRecorder()
 	h.HandleCheckUpdates(w, req)
@@ -514,6 +526,7 @@ func TestHandleInstallExtensionWithPlugin_MissingID(t *testing.T) {
 	h := NewHandler(repo)
 
 	req := newAuthedRequest(http.MethodPost, "/api/marketplace/extensions//install", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": ""})
 	w := httptest.NewRecorder()
 	h.HandleInstallExtensionWithPlugin(w, req)
 	if w.Code != http.StatusBadRequest {
@@ -526,10 +539,11 @@ func TestHandleInstallExtensionWithPlugin_NotFound(t *testing.T) {
 	h := NewHandler(repo)
 
 	req := newAuthedRequest(http.MethodPost, "/api/marketplace/extensions/missing/install", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "missing"})
 	w := httptest.NewRecorder()
 	h.HandleInstallExtensionWithPlugin(w, req)
 	if w.Code != http.StatusNotFound {
-		t.Errorf("expected 404, got %d", w.Code)
+		t.Errorf("expected 404, got %d: %s", w.Code, w.Body.String())
 	}
 }
 
@@ -558,6 +572,7 @@ func TestHandleInstallExtensionWithPlugin_Success(t *testing.T) {
 	h := NewHandler(repo)
 
 	req := newAuthedRequest(http.MethodPost, "/api/marketplace/extensions/ext-1/install", nil)
+	req = mux.SetURLVars(req, map[string]string{"id": "ext-1"})
 	w := httptest.NewRecorder()
 	h.HandleInstallExtensionWithPlugin(w, req)
 	if w.Code != http.StatusCreated {

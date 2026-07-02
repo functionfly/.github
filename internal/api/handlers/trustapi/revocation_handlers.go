@@ -816,7 +816,7 @@ func (h *ExtendedHandler) HandleGetPublicKey(w http.ResponseWriter, r *http.Requ
 	h.writeJSON(w, http.StatusOK, map[string]interface{}{
 		"public_key":   signer.PublicKeyHex(),
 		"key_id":       signer.KeyID(),
-		"algorithm":    "Ed25519",
+		"algorithm":    string(signer.Algorithm()),
 		"key_encoding": "hex",
 	})
 }
@@ -848,7 +848,7 @@ func (h *ExtendedHandler) HandleVerifyChain(w http.ResponseWriter, r *http.Reque
 		"chain_length":  chainLength,
 		"verified_at":   time.Now(),
 		"signing_key_id": signer.KeyID(),
-		"algorithm":     "Ed25519",
+		"algorithm":     string(signer.Algorithm()),
 	})
 }
 func (h *ExtendedHandler) HandleGetAttestations(w http.ResponseWriter, r *http.Request) {
@@ -1012,8 +1012,15 @@ func (h *ExtendedHandler) HandleVerifyAttestation(w http.ResponseWriter, r *http
 	signatureValid := false
 	if attestation.Signature != "" {
 		signer := trustapi.GetSigner()
-		if verified, err := signer.VerifyAttestationSignature(attestation); err == nil {
-			signatureValid = verified
+		if verified, err := signer.VerifyAttestationSignature(attestation); err == nil && verified {
+			signatureValid = true
+		} else if attestation.PublicKeyID != "" && attestation.PublicKeyID != signer.KeyID() {
+			// Try historical keys if current key doesn't match
+			if historicalKey, err := trustapi.GetKeyByID(attestation.PublicKeyID); err == nil && historicalKey != nil {
+				if verified, err := trustapi.VerifyAttestationSignatureWithKey(attestation, historicalKey.PublicKeyHex, historicalKey.Algorithm); err == nil {
+					signatureValid = verified
+				}
+			}
 		}
 	}
 
@@ -1024,7 +1031,7 @@ func (h *ExtendedHandler) HandleVerifyAttestation(w http.ResponseWriter, r *http
 		"proof_hash":         attestation.ProofHash,
 		"signature":          attestation.Signature,
 		"public_key_id":      attestation.PublicKeyID,
-		"algorithm":          "Ed25519",
+		"algorithm":          string(trustapi.GetSigner().Algorithm()),
 		"verified_at":        time.Now(),
 	}
 
@@ -1094,7 +1101,7 @@ func (h *ExtendedHandler) HandleGetAttestationChain(w http.ResponseWriter, r *ht
 		"function_id":       functionID,
 		"chain_length":      len(chain),
 		"chain_valid":       chainIntegrityValid,
-		"signing_algorithm": "Ed25519",
+		"signing_algorithm": string(trustapi.GetSigner().Algorithm()),
 		"attestations":      chain,
 	}
 
@@ -2239,5 +2246,176 @@ func (h *ExtendedHandler) HandleGetFunctionDelegationChains(w http.ResponseWrite
 		"function_id": functionID,
 		"chains":      chains,
 		"total":       len(chains),
+	})
+}
+
+// HandleGetSignerStatus handles GET /v1/trust/signer/status
+// Returns the active signer backend health and key information
+func (h *ExtendedHandler) HandleGetSignerStatus(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		return
+	}
+
+	isAdmin := claims.Role == "super_admin" || claims.Role == "admin"
+
+	signer := trustapi.GetSigner()
+
+	testPayload := []byte("signer-status-health-check")
+	start := time.Now()
+	sig, err := signer.Sign(testPayload)
+	signLatency := time.Since(start).Milliseconds()
+
+	healthy := false
+	var verifyLatency int64 = 0
+	if err == nil && sig != "" {
+		start = time.Now()
+		_, verifyErr := signer.Verify(testPayload, sig)
+		verifyLatency = time.Since(start).Milliseconds()
+		healthy = verifyErr == nil
+	}
+
+	backend := "unknown"
+	switch signer.(type) {
+	case *trustapi.SoftwareSigner:
+		backend = "software"
+	case *trustapi.PKCS11Signer:
+		backend = "pkcs11"
+	case *trustapi.AWSSigner:
+		backend = "awskms"
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"healthy":         healthy,
+		"backend":         backend,
+		"algorithm":       string(signer.Algorithm()),
+		"key_id":          signer.KeyID(),
+		"public_key_hex":  signer.PublicKeyHex(),
+		"sign_latency_ms": signLatency,
+		"verify_latency_ms": verifyLatency,
+		"is_admin":        isAdmin,
+	})
+}
+
+// HandleTestSigner handles POST /v1/trust/signer/test
+// Signs a test payload, verifies the signature, and returns the result
+func (h *ExtendedHandler) HandleTestSigner(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		return
+	}
+
+	if claims.Role != "super_admin" && claims.Role != "admin" {
+		h.writeError(w, http.StatusForbidden, "Admin access required", "admin_required")
+		return
+	}
+
+	signer := trustapi.GetSigner()
+
+	testPayload := []byte("signer-test-payload-12345")
+	start := time.Now()
+	sig, err := signer.Sign(testPayload)
+	signLatency := time.Since(start).Milliseconds()
+
+	testPass := false
+	var verifyLatency int64 = 0
+	if err == nil && sig != "" {
+		start = time.Now()
+		valid, verifyErr := signer.Verify(testPayload, sig)
+		verifyLatency = time.Since(start).Milliseconds()
+		testPass = verifyErr == nil && valid
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"pass":             testPass,
+		"algorithm":        string(signer.Algorithm()),
+		"sign_latency_ms":  signLatency,
+		"verify_latency_ms": verifyLatency,
+		"key_id":           signer.KeyID(),
+		"error":            func() string { if err != nil { return err.Error() }; return "" }(),
+	})
+}
+
+// HandleListSigningKeys handles GET /v1/trust/signer/keys
+// Returns all historical signing keys for audit and rotation tracking
+func (h *ExtendedHandler) HandleListSigningKeys(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		return
+	}
+
+	keys, err := trustapi.GetAllKeys()
+	if err != nil {
+		h.logger.WithError(err).Error("Failed to list signing keys")
+		h.writeError(w, http.StatusInternalServerError, "Failed to list keys", "internal_error")
+		return
+	}
+
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"keys":  keys,
+		"total": len(keys),
+	})
+}
+
+// HandleRotateSigningKey handles POST /v1/trust/signer/rotate
+// Records the current key as historical and prepares for key rotation.
+// Note: actual key generation depends on the backend (software generates new PEM,
+// PKCS#11/AWS KMS require external key rotation).
+func (h *ExtendedHandler) HandleRotateSigningKey(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil {
+		h.writeError(w, http.StatusUnauthorized, "Unauthorized", "unauthorized")
+		return
+	}
+
+	if claims.Role != "super_admin" && claims.Role != "admin" {
+		h.writeError(w, http.StatusForbidden, "Admin access required", "admin_required")
+		return
+	}
+
+	currentSigner := trustapi.GetSigner()
+
+	// Deactivate current key in history
+	if err := trustapi.DeactivateKeyByID(currentSigner.KeyID()); err != nil {
+		h.logger.WithError(err).Warn("Failed to deactivate old key in history (may not exist)")
+	}
+
+	// For software backend, generate a new key by resetting the singleton
+	backend := "unknown"
+	switch currentSigner.(type) {
+	case *trustapi.SoftwareSigner:
+		backend = "software"
+	case *trustapi.PKCS11Signer:
+		backend = "pkcs11"
+	case *trustapi.AWSSigner:
+		backend = "awskms"
+	}
+
+	if backend == "software" {
+		trustapi.ResetSigner()
+		newSigner := trustapi.GetSigner()
+		if err := trustapi.RecordKey(newSigner, backend); err != nil {
+			h.logger.WithError(err).Error("Failed to record new key")
+		}
+		h.writeJSON(w, http.StatusOK, map[string]interface{}{
+			"success":       true,
+			"backend":       backend,
+			"old_key_id":    currentSigner.KeyID(),
+			"new_key_id":    newSigner.KeyID(),
+			"new_algorithm": string(newSigner.Algorithm()),
+			"message":       "Software key rotated successfully",
+		})
+		return
+	}
+
+	// For HSM backends, rotation must happen externally
+	h.writeJSON(w, http.StatusOK, map[string]interface{}{
+		"success":    true,
+		"backend":    backend,
+		"old_key_id": currentSigner.KeyID(),
+		"message":    fmt.Sprintf("Key rotation for %s backend must be performed externally. After rotating, restart the service to pick up the new key.", backend),
 	})
 }

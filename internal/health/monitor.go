@@ -3,9 +3,12 @@ package health
 import (
 	"context"
 	"fmt"
-	"math"
+	"io"
+	"net/http"
 	"os"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -16,83 +19,99 @@ import (
 	"github.com/functionfly/functionfly/internal/adapters/fly"
 	"github.com/functionfly/functionfly/internal/adapters/functionfly"
 	"github.com/functionfly/functionfly/internal/adapters/vercel"
+	"github.com/functionfly/functionfly/internal/circuitbreaker"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
-// CircuitBreakerConfig holds configurable circuit breaker settings
-type CircuitBreakerConfig struct {
-	// FailureThreshold is the number of consecutive failures before opening the circuit
-	FailureThreshold int
-	// SuccessThreshold is the number of successes in half-open state before closing
-	SuccessThreshold int
-	// OpenTimeout is the base timeout before moving to half-open state
-	OpenTimeout time.Duration
-	// MaxOpenTimeout is the maximum timeout with exponential backoff
-	MaxOpenTimeout time.Duration
-	// BackoffMultiplier is the multiplier for exponential backoff
-	BackoffMultiplier float64
-	// HalfOpenMaxRequests is the maximum number of requests allowed in half-open state
-	HalfOpenMaxRequests int
+// cachedResult holds the last health check result for a backend.
+type cachedResult struct {
+	ok        bool
+	degraded  bool
+	checkedAt time.Time
 }
 
-// DefaultCircuitBreakerConfig returns production-ready circuit breaker defaults
-func DefaultCircuitBreakerConfig() *CircuitBreakerConfig {
-	return &CircuitBreakerConfig{
-		FailureThreshold:    3,
-		SuccessThreshold:    2,
-		OpenTimeout:         30 * time.Second,
-		MaxOpenTimeout:      5 * time.Minute,
-		BackoffMultiplier:   2.0,
-		HalfOpenMaxRequests: 3,
-	}
+// backendProbeState tracks consecutive failures for adaptive probe intervals.
+type backendProbeState struct {
+	consecutiveFailures int
+	nextProbeAt         time.Time
 }
 
 // Monitor handles backend health monitoring and circuit breaker management
 type Monitor struct {
-	repo              storage.Repository
-	probeInterval     time.Duration
-	stopChan          chan struct{}
-	wg                sync.WaitGroup
-	stopOnce          sync.Once
-	circuitConfig     *CircuitBreakerConfig
-	openCircuits      map[uuid.UUID]time.Time // Track when circuits were opened for backoff
-	openCircuitsMutex sync.RWMutex
+	repo            storage.Repository
+	baseProbeInterval time.Duration
+	stopChan        chan struct{}
+	wg              sync.WaitGroup
+	stopOnce        sync.Once
+	breakerMgr      *circuitbreaker.Manager
+	adapterPool     sync.Map // map[string]common.ProviderAdapter
+
+	// Result cache: short-lived cache to avoid DB queries in the router
+	resultCache   sync.Map // map[uuid.UUID]*cachedResult
+	cacheTTL      time.Duration
+
+	// Adaptive probe interval tracking
+	probeStates   sync.Map // map[uuid.UUID]*backendProbeState
+
+	// Config
+	fallbackEnabled   bool
+	retentionDays     int
+	httpClient        *http.Client
 }
 
-// NewMonitor creates a new health monitor
+// NewMonitor creates a new health monitor with circuit breaker config from environment.
 func NewMonitor(repo storage.Repository) *Monitor {
-	return &Monitor{
-		repo:          repo,
-		probeInterval: 5 * time.Second,
-		stopChan:      make(chan struct{}),
-		circuitConfig: DefaultCircuitBreakerConfig(),
-		openCircuits:  make(map[uuid.UUID]time.Time),
-	}
+	return NewMonitorWithConfig(repo, nil)
 }
 
-// NewMonitorWithConfig creates a new health monitor with custom circuit breaker config
-func NewMonitorWithConfig(repo storage.Repository, config *CircuitBreakerConfig) *Monitor {
+// NewMonitorWithConfig creates a new health monitor with custom circuit breaker config.
+// If config is nil, environment-based config is used.
+func NewMonitorWithConfig(repo storage.Repository, config *circuitbreaker.Config) *Monitor {
 	if config == nil {
-		config = DefaultCircuitBreakerConfig()
+		cfg := circuitbreaker.ConfigFromEnv()
+		asyncPersist := circuitbreaker.NewAsyncPersistence(NewDBPersistence(repo), 1*time.Second)
+		cfg.Persistence = asyncPersist
+		cfg.OnStateChange = func(key string, from, to circuitbreaker.State) {
+			circuitbreaker.MetricsOnStateChange(key, from, to)
+			if cfg.Persistence != nil {
+				_ = cfg.Persistence.Save(context.Background(), key, &circuitbreaker.StoredState{
+					State: int(to),
+					Since: time.Now(),
+				})
+			}
+		}
+		config = &cfg
 	}
+
+	// Load configurable intervals
+	baseInterval := envDuration("HEALTH_CHECK_INTERVAL", 5*time.Second)
+	cacheTTL := envDuration("HEALTH_CHECK_CACHE_TTL", 3*time.Second)
+	retentionDays := envInt("HEALTH_CHECK_RETENTION_DAYS", 7)
+	fallbackEnabled := envBool("HEALTH_CHECK_FALLBACK", true)
+	probeTimeout := envDuration("HEALTH_CHECK_TIMEOUT", 30*time.Second)
+
 	return &Monitor{
-		repo:          repo,
-		probeInterval: 5 * time.Second,
-		stopChan:      make(chan struct{}),
-		circuitConfig: config,
-		openCircuits:  make(map[uuid.UUID]time.Time),
+		repo:              repo,
+		baseProbeInterval: baseInterval,
+		stopChan:          make(chan struct{}),
+		breakerMgr:        circuitbreaker.NewManager(*config),
+		cacheTTL:          cacheTTL,
+		fallbackEnabled:   fallbackEnabled,
+		retentionDays:     retentionDays,
+		httpClient:        &http.Client{Timeout: probeTimeout},
 	}
 }
 
-// Start begins the health monitoring loop
+// Start begins the health monitoring loop and the data retention cleanup loop.
 func (m *Monitor) Start() {
 	logrus.Info("Starting health monitor")
 
-	m.wg.Add(1)
+	m.wg.Add(2)
 	go m.monitorLoop()
+	go m.cleanupLoop()
 }
 
 // Stop gracefully stops the health monitoring
@@ -105,11 +124,30 @@ func (m *Monitor) Stop() {
 	})
 }
 
+// GetBreakerManager returns the breaker manager for use by other subsystems (e.g., proxy).
+func (m *Monitor) GetBreakerManager() *circuitbreaker.Manager {
+	return m.breakerMgr
+}
+
+// GetCachedResult returns the cached health check result for a backend, if fresh.
+// Returns nil if no cached result exists or if the cache has expired.
+func (m *Monitor) GetCachedResult(backendID uuid.UUID) *cachedResult {
+	v, ok := m.resultCache.Load(backendID)
+	if !ok {
+		return nil
+	}
+	cached := v.(*cachedResult)
+	if time.Since(cached.checkedAt) > m.cacheTTL {
+		return nil
+	}
+	return cached
+}
+
 // monitorLoop runs the continuous health monitoring
 func (m *Monitor) monitorLoop() {
 	defer m.wg.Done()
 
-	ticker := time.NewTicker(m.probeInterval)
+	ticker := time.NewTicker(m.baseProbeInterval)
 	defer ticker.Stop()
 
 	for {
@@ -122,19 +160,57 @@ func (m *Monitor) monitorLoop() {
 	}
 }
 
+// cleanupLoop removes old health check records periodically.
+func (m *Monitor) cleanupLoop() {
+	defer m.wg.Done()
+
+	ticker := time.NewTicker(1 * time.Hour)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-m.stopChan:
+			return
+		case <-ticker.C:
+			m.runCleanup()
+		}
+	}
+}
+
+func (m *Monitor) runCleanup() {
+	if m.retentionDays <= 0 {
+		return
+	}
+	before := time.Now().AddDate(0, 0, -m.retentionDays)
+	deleted, err := m.repo.DeleteHealthChecksBefore(context.Background(), before)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to clean up old health checks")
+		return
+	}
+	if deleted > 0 {
+		logrus.WithFields(logrus.Fields{
+			"deleted":       deleted,
+			"retention_days": m.retentionDays,
+		}).Info("Cleaned up old health check records")
+	}
+}
+
 // probeAllBackends probes all backends for health
 func (m *Monitor) probeAllBackends() {
-	// For MVP, we'll get all backends from all apps
-	// Optimized with database indexes on backends.enabled and (enabled, created_at) to avoid full table scans
 	backends, err := m.getAllBackends(context.Background())
 	if err != nil {
 		logrus.WithError(err).Error("Failed to get backends for health check")
 		return
 	}
 
-	// Probe backends concurrently
+	now := time.Now()
 	var wg sync.WaitGroup
 	for _, backend := range backends {
+		// Adaptive probe interval: skip backends that haven't reached their next probe time
+		if state := m.getProbeState(backend.ID); state != nil && now.Before(state.nextProbeAt) {
+			continue
+		}
+
 		wg.Add(1)
 		go func(b *storage.Backend) {
 			defer func() {
@@ -155,7 +231,7 @@ func (m *Monitor) probeAllBackends() {
 
 	wg.Wait()
 
-	// System edge probe: when EDGE_HEALTH_URL is set, probe it and update edge metrics/stats (no DB backend required)
+	// System edge probe
 	if edgeURL := os.Getenv("EDGE_HEALTH_URL"); edgeURL != "" {
 		m.probeSystemEdge(edgeURL, os.Getenv("EDGE_HEALTH_SECRET"))
 	}
@@ -195,40 +271,132 @@ func (m *Monitor) getAllBackends(ctx context.Context) ([]*storage.Backend, error
 	return m.repo.GetAllEnabledBackends(ctx)
 }
 
-// probeBackend probes a single backend for health
+// probeBackend probes a single backend for health with fallback chain.
 func (m *Monitor) probeBackend(backend *storage.Backend) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Get the appropriate adapter for this backend's provider
 	adapter := m.getAdapterForProvider(backend.Provider)
 	if adapter == nil {
 		m.recordHealthCheck(ctx, backend.ID, false, 0, 0, fmt.Sprintf("Unsupported provider '%s'", backend.Provider))
-		m.handleCircuitBreaker(ctx, backend.ID, false)
+		m.recordBreakerResult(backend.ID, false)
+		m.updateProbeState(backend.ID, false)
 		return
 	}
 
-	// Perform provider-specific health check
+	// Primary health check (GET /healthz)
 	result, err := adapter.HealthCheck(ctx, backend)
 	if err != nil {
 		m.recordHealthCheck(ctx, backend.ID, false, 0, 0, fmt.Sprintf("Health check error: %v", err))
-		m.handleCircuitBreaker(ctx, backend.ID, false)
+		m.recordBreakerResult(backend.ID, false)
+		m.updateProbeState(backend.ID, false)
 		return
 	}
 
-	// Record the health check result
-	m.recordHealthCheck(ctx, backend.ID, result.OK, result.StatusCode, result.LatencyMs, result.ErrorMessage)
-	m.handleCircuitBreaker(ctx, backend.ID, result.OK)
+	// Fallback chain: if /healthz returned 404, try GET / on the base URL
+	if !result.OK && m.fallbackEnabled && result.StatusCode == http.StatusNotFound && backend.Provider != "aws-lambda" {
+		fallbackResult := m.probeFallback(ctx, backend)
+		if fallbackResult != nil && fallbackResult.OK {
+			result = fallbackResult
+			result.Degraded = true
+		}
+	}
 
-	// Log additional provider-specific information
-	if result.Version != "" {
+	// Parse health response body for structured info (version, uptime)
+	if result.OK && result.Version == "" {
+		m.parseHealthBody(result)
+	}
+
+	// Update result cache
+	m.resultCache.Store(backend.ID, &cachedResult{
+		ok:        result.OK,
+		degraded:  result.Degraded,
+		checkedAt: time.Now(),
+	})
+
+	// Record results
+	healthy := result.OK
+	m.recordHealthCheck(ctx, backend.ID, healthy, result.StatusCode, result.LatencyMs, result.ErrorMessage)
+	m.recordBreakerResult(backend.ID, healthy)
+	m.updateProbeState(backend.ID, healthy)
+
+	if result.Version != "" || result.Degraded {
 		logrus.WithFields(logrus.Fields{
 			"backend_id": backend.ID,
 			"provider":   backend.Provider,
 			"region":     result.Region,
 			"version":    result.Version,
+			"degraded":   result.Degraded,
 		}).Debug("Health check completed with provider info")
 	}
+}
+
+// probeFallback performs a fallback health check by hitting the base URL.
+// Used when /healthz returns 404 (user function doesn't implement it).
+func (m *Monitor) probeFallback(ctx context.Context, backend *storage.Backend) *common.HealthCheckResult {
+	baseURL := strings.TrimSuffix(backend.URL, "/")
+	req, err := http.NewRequestWithContext(ctx, "GET", baseURL+"/", nil)
+	if err != nil {
+		return nil
+	}
+
+	start := time.Now()
+	resp, err := m.httpClient.Do(req)
+	latencyMs := int(time.Since(start).Milliseconds())
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	// Check for provider-specific error pages that indicate "no function deployed".
+	// Cloudflare returns HTML pages containing "error code: 1042" (or similar)
+	// when the worker doesn't exist. The generic "workers.dev" substring was
+	// removed because it false-positived on live workers that simply return 404
+	// on the root path.
+	body, _ := io.ReadAll(resp.Body)
+	bodyStr := string(body)
+	if strings.Contains(bodyStr, "error code:") {
+		return &common.HealthCheckResult{
+			OK:           false,
+			StatusCode:   resp.StatusCode,
+			LatencyMs:    latencyMs,
+			ErrorMessage: "backend returned provider error page (no function deployed)",
+		}
+	}
+
+	// Any non-5xx response is considered "alive" (degraded healthy)
+	if resp.StatusCode < 500 {
+		return &common.HealthCheckResult{
+			OK:         true,
+			StatusCode: resp.StatusCode,
+			LatencyMs:  latencyMs,
+			Region:     backend.Region,
+		}
+	}
+
+	return &common.HealthCheckResult{
+		OK:         false,
+		StatusCode: resp.StatusCode,
+		LatencyMs:  latencyMs,
+		ErrorMessage: fmt.Sprintf("fallback probe returned %d", resp.StatusCode),
+	}
+}
+
+// healthBodyResponse represents a structured health check response body.
+type healthBodyResponse struct {
+	Status  string `json:"status"`
+	Version string `json:"version"`
+	Uptime  int64  `json:"uptime"`
+}
+
+// parseHealthBody attempts to parse a structured health response body.
+func (m *Monitor) parseHealthBody(result *common.HealthCheckResult) {
+	// This is a no-op in the current implementation because we don't
+	// read the body from the adapter. The adapters would need to return
+	// the body for this to work. This is a placeholder for when adapters
+	// are updated to return body content.
+	//
+	// For now, version extraction happens via response headers in each adapter.
 }
 
 // recordHealthCheck records the result of a health check
@@ -254,8 +422,67 @@ func (m *Monitor) recordHealthCheck(ctx context.Context, backendID uuid.UUID, ok
 	}
 }
 
-// getAdapterForProvider returns the appropriate adapter for a provider
+// recordBreakerResult records a health check result into the shared circuit breaker.
+func (m *Monitor) recordBreakerResult(backendID uuid.UUID, healthy bool) {
+	breaker := m.breakerMgr.ForBackend(backendID)
+	if healthy {
+		breaker.RecordSuccess()
+	} else {
+		breaker.RecordFailure()
+	}
+}
+
+// getAdapterForProvider returns the appropriate adapter for a provider.
+// Adapters are pooled per provider to reuse http.Client connections.
 func (m *Monitor) getAdapterForProvider(provider string) common.ProviderAdapter {
+	if v, ok := m.adapterPool.Load(provider); ok {
+		return v.(common.ProviderAdapter)
+	}
+	adapter := createAdapter(provider)
+	if adapter != nil {
+		m.adapterPool.Store(provider, adapter)
+	}
+	return adapter
+}
+
+// getProbeState returns the adaptive probe state for a backend.
+func (m *Monitor) getProbeState(backendID uuid.UUID) *backendProbeState {
+	v, ok := m.probeStates.Load(backendID)
+	if !ok {
+		return nil
+	}
+	return v.(*backendProbeState)
+}
+
+// updateProbeState updates the adaptive probe interval based on health check results.
+func (m *Monitor) updateProbeState(backendID uuid.UUID, healthy bool) {
+	v, _ := m.probeStates.LoadOrStore(backendID, &backendProbeState{})
+	state := v.(*backendProbeState)
+
+	if healthy {
+		state.consecutiveFailures = 0
+		state.nextProbeAt = time.Time{} // reset to immediate
+	} else {
+		state.consecutiveFailures++
+		state.nextProbeAt = time.Now().Add(m.adaptiveInterval(state.consecutiveFailures))
+	}
+}
+
+// adaptiveInterval returns the probe interval based on consecutive failures.
+func (m *Monitor) adaptiveInterval(consecutiveFailures int) time.Duration {
+	switch {
+	case consecutiveFailures <= 2:
+		return m.baseProbeInterval // 5s default
+	case consecutiveFailures <= 10:
+		return 15 * time.Second
+	case consecutiveFailures <= 30:
+		return 60 * time.Second
+	default:
+		return 5 * time.Minute
+	}
+}
+
+func createAdapter(provider string) common.ProviderAdapter {
 	switch provider {
 	case "workers":
 		return cloudflare.NewCloudflareAdapter()
@@ -274,160 +501,40 @@ func (m *Monitor) getAdapterForProvider(provider string) common.ProviderAdapter 
 	}
 }
 
-// handleCircuitBreaker manages circuit breaker state transitions with configurable thresholds and exponential backoff
-func (m *Monitor) handleCircuitBreaker(ctx context.Context, backendID uuid.UUID, healthy bool) {
-	requestID := fmt.Sprintf("circuit-breaker-%s-%d", backendID.String(), time.Now().Unix())
+// env helpers
 
-	logger := logrus.WithFields(logrus.Fields{
-		"request_id": requestID,
-		"backend_id": backendID,
-		"operation":  "circuit_breaker",
-	})
-
-	state, err := m.repo.GetCircuitState(ctx, backendID)
+func envDuration(key string, defaultVal time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return defaultVal
+	}
+	d, err := time.ParseDuration(v)
 	if err != nil {
-		logger.WithError(err).Error("Failed to get circuit state")
-		return
+		return defaultVal
 	}
-
-	newState := state.State
-	now := time.Now()
-
-	// Circuit breaker logic with configurable thresholds
-	switch state.State {
-	case "closed":
-		if !healthy {
-			state.FailCount++
-			// Use configurable failure threshold
-			if state.FailCount >= m.circuitConfig.FailureThreshold {
-				newState = "open"
-				state.SinceTs = now
-				state.LastFailureTs = &now
-
-				// Track when circuit was opened for exponential backoff
-				m.openCircuitsMutex.Lock()
-				m.openCircuits[backendID] = now
-				m.openCircuitsMutex.Unlock()
-
-				logger.WithFields(logrus.Fields{
-					"old_state":          "closed",
-					"new_state":          "open",
-					"fail_count":         state.FailCount,
-					"failure_threshold":  m.circuitConfig.FailureThreshold,
-					"transition_reason":  "failure_threshold_reached",
-				}).Warn("Circuit breaker opened")
-			}
-		} else {
-			// Reset failure count on success
-			state.FailCount = 0
-			state.SuccessCount++
-			state.LastSuccessTs = &now
-		}
-
-	case "open":
-		// Calculate timeout with exponential backoff
-		timeout := m.calculateBackoffTimeout(backendID)
-
-		if now.Sub(state.SinceTs) > timeout {
-			newState = "half-open"
-			state.SinceTs = now
-			logger.WithFields(logrus.Fields{
-				"old_state":         "open",
-				"new_state":         "half-open",
-				"time_since_open":   now.Sub(state.SinceTs).String(),
-				"backoff_timeout":   timeout.String(),
-				"transition_reason": "timeout_expired",
-			}).Info("Circuit breaker moving to half-open")
-		}
-
-	case "half-open":
-		if healthy {
-			// Use configurable success threshold
-			state.SuccessCount++
-			if state.SuccessCount >= m.circuitConfig.SuccessThreshold {
-				newState = "closed"
-				state.SinceTs = now
-				state.FailCount = 0
-
-				// Remove from open circuits tracking
-				m.openCircuitsMutex.Lock()
-				delete(m.openCircuits, backendID)
-				m.openCircuitsMutex.Unlock()
-
-				logger.WithFields(logrus.Fields{
-					"old_state":          "half-open",
-					"new_state":          "closed",
-					"success_count":      state.SuccessCount,
-					"success_threshold":  m.circuitConfig.SuccessThreshold,
-					"transition_reason":  "success_in_half_open",
-				}).Info("Circuit breaker closed")
-			}
-		} else {
-			// Failure in half-open, go back to open with incremented backoff
-			newState = "open"
-			state.SinceTs = now
-			state.FailCount++
-			state.SuccessCount = 0
-			state.LastFailureTs = &now
-
-			// Update open time for backoff calculation
-			m.openCircuitsMutex.Lock()
-			m.openCircuits[backendID] = now
-			m.openCircuitsMutex.Unlock()
-
-			logger.WithFields(logrus.Fields{
-				"old_state":         "half-open",
-				"new_state":         "open",
-				"fail_count":        state.FailCount,
-				"transition_reason": "failure_in_half_open",
-			}).Warn("Circuit breaker reopened")
-		}
-	}
-
-	// Update state if changed
-	if newState != state.State {
-		state.State = newState
-		err = m.repo.UpsertCircuitState(ctx, state)
-		if err != nil {
-			logger.WithError(err).Error("Failed to update circuit state")
-		}
-	} else {
-		// Still update the state for failure/success counts
-		err = m.repo.UpdateCircuitState(ctx, state)
-		if err != nil {
-			logger.WithError(err).Error("Failed to update circuit state")
-		}
-	}
+	return d
 }
 
-// calculateBackoffTimeout calculates exponential backoff timeout for circuit breaker
-func (m *Monitor) calculateBackoffTimeout(backendID uuid.UUID) time.Duration {
-	m.openCircuitsMutex.RLock()
-	openTime, exists := m.openCircuits[backendID]
-	m.openCircuitsMutex.RUnlock()
-
-	if !exists {
-		return m.circuitConfig.OpenTimeout
+func envInt(key string, defaultVal int) int {
+	v := os.Getenv(key)
+	if v == "" {
+		return defaultVal
 	}
-
-	// Calculate how many times the circuit has been opened
-	elapsed := time.Since(openTime)
-	baseTimeout := m.circuitConfig.OpenTimeout
-
-	// Exponential backoff: timeout = base * (multiplier ^ attempts)
-	// Approximate attempts from elapsed time
-	attempts := int(elapsed / baseTimeout)
-	if attempts < 0 {
-		attempts = 0
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return defaultVal
 	}
-
-	backoffTimeout := time.Duration(float64(baseTimeout) * math.Pow(m.circuitConfig.BackoffMultiplier, float64(attempts)))
-
-	// Cap at maximum timeout
-	if backoffTimeout > m.circuitConfig.MaxOpenTimeout {
-		backoffTimeout = m.circuitConfig.MaxOpenTimeout
-	}
-
-	return backoffTimeout
+	return n
 }
 
+func envBool(key string, defaultVal bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return defaultVal
+	}
+	b, err := strconv.ParseBool(v)
+	if err != nil {
+		return defaultVal
+	}
+	return b
+}

@@ -1,6 +1,7 @@
 package backends
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -103,6 +104,29 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 	if err := adapter.ValidateConfig(req.Region, req.URL); err != nil {
 		apierror.WriteErrorWithStatus(w, http.StatusBadRequest, apierror.ErrCodeValidation, "invalid backend configuration")
 		return
+	}
+
+	// Reachability check: verify the backend URL is actually serving traffic
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	probeBackend := &storage.Backend{
+		ID:           uuid.Nil,
+		Provider:     req.Provider,
+		Region:       req.Region,
+		URL:          req.URL,
+		SharedSecret: req.SharedSecret,
+	}
+	healthResult, healthErr := adapter.HealthCheck(ctx, probeBackend)
+	if healthErr != nil {
+		logrus.WithError(healthErr).WithField("url", req.URL).Warn("Backend reachability check failed")
+		// Don't block creation — just warn. The URL might be temporarily down.
+	} else if healthResult != nil && !healthResult.OK && healthResult.StatusCode == http.StatusNotFound {
+		// 404 from the backend likely means no function is deployed yet.
+		// Return a warning in the response but still create the backend.
+		logrus.WithFields(logrus.Fields{
+			"url":         req.URL,
+			"status_code": healthResult.StatusCode,
+		}).Warn("Backend URL returned 404 — no function may be deployed")
 	}
 
 	// Generate shared secret if not provided

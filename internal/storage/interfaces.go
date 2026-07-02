@@ -336,6 +336,7 @@ type Repository interface {
 	UpdateTenant(ctx context.Context, tenantID uuid.UUID, updates map[string]interface{}) (*Tenant, error)
 	UpdateTenantStatus(ctx context.Context, tenantID uuid.UUID, status string) error
 	UpdateTenantTaxSettings(ctx context.Context, tenantID uuid.UUID, settings *TaxSettings) error
+	SetTenantDegradedMode(ctx context.Context, tenantID uuid.UUID, degraded bool, reason string) error
 	DeleteTenant(ctx context.Context, tenantID uuid.UUID) error
 	CountUsersByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
 	CountRoutingEventsForTenantSince(ctx context.Context, tenantID uuid.UUID, since time.Time) (int, error)
@@ -517,6 +518,7 @@ type Repository interface {
 	UpdatePricingBundleStripePrice(ctx context.Context, slug, stripePriceID string) error
 	CountActiveFounderModeRegistrations(ctx context.Context) (int, error)
 	CountRecentSuccessfulDeployments(ctx context.Context) (int, error)
+	GetFounderModeAnalytics(ctx context.Context) (*FounderModeAnalytics, error)
 
 	// Database-Driven Agent Tier Pricing (replaces hardcoded constants)
 	GetAgentTierPricingBySlug(ctx context.Context, slug string) (*AgentTierPricing, error)
@@ -548,6 +550,9 @@ type Repository interface {
 	GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*BundleSubscription, error)
 	GetBundleSubscriptionByStripeID(ctx context.Context, stripeSubID string) (*BundleSubscription, error)
 	ListBundleSubscriptionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error)
+	ListBundleTemplates(ctx context.Context, bundleSlug string) ([]*BundleFunctionTemplate, error)
+	ListPendingDeployments(ctx context.Context) ([]*BundleSubscription, error)
+	ListAwaitingProvider(ctx context.Context, tenantID uuid.UUID) ([]*BundleSubscription, error)
 
 	// App operations
 	CreateApp(ctx context.Context, name, slug string, tenantID uuid.UUID) (*App, error)
@@ -575,6 +580,7 @@ type Repository interface {
 	// Health check operations
 	InsertHealthCheck(ctx context.Context, backendID uuid.UUID, ok bool, statusCode, latencyMs int, errorMessage string) error
 	GetRecentHealthChecks(ctx context.Context, backendID uuid.UUID, limit int) ([]*HealthCheck, error)
+	DeleteHealthChecksBefore(ctx context.Context, before time.Time) (int64, error)
 
 	// Circuit breaker operations
 	GetCircuitState(ctx context.Context, backendID uuid.UUID) (*CircuitState, error)
@@ -584,6 +590,7 @@ type Repository interface {
 	// Routing operations
 	InsertRoutingEvent(ctx context.Context, appID, backendID uuid.UUID, latencyMs int, outcome, requestID string) error
 	GetRecentRoutingEvents(ctx context.Context, limit int, since time.Time) ([]*RoutingEvent, error)
+	GetRecentRoutingEventsByBackend(ctx context.Context, backendID uuid.UUID, limit int) ([]*RoutingEvent, error)
 
 	// App analytics operations
 	GetAppAnalyticsSummary(ctx context.Context, appID uuid.UUID, since time.Time) (*AppAnalyticsSummary, error)
@@ -1393,6 +1400,9 @@ type Repository interface {
 	GetFounderVoteResponse(ctx context.Context, voteID, userID uuid.UUID) (*FounderVoteResponse, error)
 	GetFounderVoteResults(ctx context.Context, voteID uuid.UUID) (map[string]int, int, error)
 	CastFounderVote(ctx context.Context, voteID, userID uuid.UUID, optionID string) error
+	CreateFounderVote(ctx context.Context, vote *FounderVote) error
+	UpdateFounderVote(ctx context.Context, voteID uuid.UUID, updates map[string]interface{}) error
+	DeleteFounderVote(ctx context.Context, voteID uuid.UUID) error
 }
 
 // Untyped re-exports of typed string constants from the types package.

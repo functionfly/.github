@@ -12,6 +12,7 @@ func registerAgentObservabilityRoutes(
 	authMiddleware *middleware.AuthMiddleware,
 	agentObsHandler *agent_observability.Handler,
 ) {
+	api.HandleFunc("/agent-observability/agents/{agentId}/stream", authMiddleware.RequireAuth(agentObsHandler.HandleStreamAgentEvents)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/agent-observability/runs", authMiddleware.RequireAuth(agentObsHandler.HandleListRuns)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/agent-observability/runs", authMiddleware.RequireAuth(agentObsHandler.HandleCreateRun)).Methods("POST", "OPTIONS")
 	api.HandleFunc("/agent-observability/runs/{id}", authMiddleware.RequireAuth(agentObsHandler.HandleGetRun)).Methods("GET", "OPTIONS")

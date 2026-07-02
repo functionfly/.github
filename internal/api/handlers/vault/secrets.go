@@ -13,6 +13,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/plans"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/functionfly/functionfly/internal/storage/vault"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -152,6 +153,15 @@ func (h *Handler) HandleCreateSecret(w http.ResponseWriter, r *http.Request) {
 
 	// Create secret in database
 	if err := h.repo.CreateSecret(r.Context(), secret); err != nil {
+		errStr := err.Error()
+		if storage.IsDuplicateKeyError(err) ||
+			strings.Contains(errStr, "duplicate key") ||
+			strings.Contains(errStr, "unique constraint") ||
+			strings.Contains(errStr, "SQLSTATE 23505") {
+			apierror.WriteError(w, apierror.NewConflict(
+				fmt.Sprintf("A secret named %q already exists", req.Name)))
+			return
+		}
 		h.logger.WithError(err).Error("Failed to create secret")
 		apierror.WriteError(w, apierror.NewInternal("Failed to create secret"))
 		return

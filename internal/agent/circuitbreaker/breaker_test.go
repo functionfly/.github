@@ -40,7 +40,10 @@ func TestBreaker_HalfOpenToClosed(t *testing.T) {
 	// Wait for cooldown
 	time.Sleep(2 * time.Millisecond)
 
-	// Record successes
+	// Trigger open→half-open transition via Allow()
+	b.Allow()
+
+	// Record successes in half-open
 	b.Record(nil)
 	b.Record(nil)
 
@@ -64,6 +67,9 @@ func TestBreaker_HalfOpenToOpen(t *testing.T) {
 
 	// Wait for cooldown
 	time.Sleep(2 * time.Millisecond)
+
+	// Trigger open→half-open transition via Allow()
+	b.Allow()
 
 	// Record failure in half-open
 	b.Record(errors.New("fail"))
@@ -228,12 +234,15 @@ func TestBreaker_HalfOpenMaxRequests(t *testing.T) {
 	// Wait for cooldown
 	time.Sleep(2 * time.Millisecond)
 
-	// First request should be allowed
+	// First request should be allowed (transitions to half-open)
 	if !b.Allow() {
 		t.Error("expected first request to be allowed in HALF_OPEN")
 	}
 
-	// Second request should not be allowed
+	// Record success to consume the half-open slot
+	b.Record(nil)
+
+	// Second request should not be allowed (halfOpenCount >= max)
 	if b.Allow() {
 		t.Error("expected second request to be denied in HALF_OPEN")
 	}

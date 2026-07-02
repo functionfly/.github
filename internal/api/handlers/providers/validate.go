@@ -81,7 +81,7 @@ func (h *Handler) validateProviderToken(provider, token string) ProviderValidati
 func (h *Handler) validateCloudflareToken(token string) ProviderValidationResponse {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	req, err := http.NewRequest("GET", "https://api.cloudflare.com/client/v4/user/tokens/verify", nil)
+	req, err := http.NewRequest("GET", "https://api.cloudflare.com/client/v4/accounts", nil)
 	if err != nil {
 		return ProviderValidationResponse{
 			IsValid: false,
@@ -107,9 +107,9 @@ func (h *Handler) validateCloudflareToken(token string) ProviderValidationRespon
 			Code    int    `json:"code"`
 			Message string `json:"message"`
 		} `json:"errors"`
-		Result struct {
-			ID     string `json:"id"`
-			Status string `json:"status"`
+		Result []struct {
+			ID   string `json:"id"`
+			Name string `json:"name"`
 		} `json:"result"`
 	}
 
@@ -131,11 +131,18 @@ func (h *Handler) validateCloudflareToken(token string) ProviderValidationRespon
 		}
 	}
 
+	if len(result.Result) == 0 {
+		return ProviderValidationResponse{
+			IsValid: false,
+			Message: "token is valid but has no accessible accounts",
+		}
+	}
+
 	return ProviderValidationResponse{
 		IsValid: true,
 		Message: "Cloudflare token validated successfully",
-		UserID:  result.Result.ID,
-		Email:   "",
+		UserID:  result.Result[0].ID,
+		Email:   result.Result[0].Name,
 	}
 }
 

@@ -66,6 +66,8 @@ type Handler struct {
 	// ReceiptMilestoneHook is called after a successful public execution receipt is created.
 	// Set by the receipt milestone wiring in routes.go.
 	ReceiptMilestoneHook func(ctx context.Context, functionID uuid.UUID, tenantID *uuid.UUID, publicID string)
+	// repHooker awards reputation points for platform actions (optional)
+	repHooker *services.ReputationHooker
 	// atlasTracer records execution traces to Atlas Memory Engine (optional)
 	atlasTracer *atlas.Tracer
 }
@@ -73,6 +75,11 @@ type Handler struct {
 // SetWalletService sets the wallet service for unified wallet operations
 func (h *Handler) SetWalletService(walletSvc *wallet.Service) {
 	h.walletSvc = walletSvc
+}
+
+// SetReputationHooker sets the reputation hooker for awarding points
+func (h *Handler) SetReputationHooker(reputer *services.ReputationHooker) {
+	h.repHooker = reputer
 }
 
 // NewHandler creates a new registry handler.

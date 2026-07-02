@@ -39,6 +39,10 @@ func registerTrustAPIRoutes(
 	// Initialize revocation repository for extended functionality
 	revocationRepo := trustapirepo.NewRevocationRepository(s.postgresDB.GORM)
 
+	// Initialize signing key repository for key rotation support
+	signingKeyRepo := trustapirepo.NewSigningKeyRepository(s.postgresDB.GORM)
+	trustapirepo.SetSigningKeyRepository(signingKeyRepo)
+
 	// Initialize webhook repository and service
 	webhookRepo := trustapirepo.NewWebhookRepository(s.postgresDB.GORM)
 	webhookService := trustapirepo.NewWebhookService(webhookRepo)
@@ -155,6 +159,15 @@ func registerTrustAPIRoutes(
 	trustAuthRouter.HandleFunc("/attestations/public-key", extendedHandler.HandleGetPublicKey).Methods("GET")
 	// Blog-referenced aliases
 	trustAuthRouter.HandleFunc("/keys", extendedHandler.HandleGetPublicKey).Methods("GET")
+
+	// Signer status endpoint (JWT auth, admin or Pro+ plan)
+	trustAuthRouter.HandleFunc("/signer/status", extendedHandler.HandleGetSignerStatus).Methods("GET")
+	// Signer test endpoint (JWT auth, admin only)
+	trustAuthRouter.HandleFunc("/signer/test", extendedHandler.HandleTestSigner).Methods("POST")
+	// Signing key history (JWT auth)
+	trustAuthRouter.HandleFunc("/signer/keys", extendedHandler.HandleListSigningKeys).Methods("GET")
+	// Key rotation (JWT auth, admin only)
+	trustAuthRouter.HandleFunc("/signer/rotate", extendedHandler.HandleRotateSigningKey).Methods("POST")
 
 	// Attestation create: API key partners need attestation:create scope + startup tier,
 	// JWT users need Professional+ plan (attestation_create feature)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // PostStatus represents thread state.
@@ -43,12 +44,13 @@ type Post struct {
 	CategoryID         uuid.UUID  `json:"category_id" gorm:"type:uuid;not null"`
 	AuthorID           uuid.UUID  `json:"author_id" gorm:"type:uuid;not null"`
 	Title              string     `json:"title" gorm:"size:300;not null"`
+	Slug               string     `json:"slug" gorm:"size:320;not null;uniqueIndex"`
 	Body               string     `json:"body" gorm:"type:text;not null"`
 	Status             PostStatus `json:"status" gorm:"size:20;not null;default:'open'"`
 	VoteScore          int        `json:"vote_score" gorm:"not null;default:0"`
 	ReplyCount         int        `json:"reply_count" gorm:"not null;default:0"`
 	ViewCount          int        `json:"view_count" gorm:"not null;default:0"`
-	Tags               []string   `json:"tags" gorm:"type:text[];not null;default:'{}'"`
+	Tags               pq.StringArray `json:"tags" gorm:"type:text[];not null;default:'{}'"`
 	IsPinned           bool       `json:"is_pinned" gorm:"not null;default:false"`
 	AcceptedCommentID  *uuid.UUID `json:"accepted_comment_id,omitempty" gorm:"type:uuid"`
 	CreatedAt          time.Time  `json:"created_at" gorm:"not null;default:now()"`
@@ -88,9 +90,10 @@ func (Vote) TableName() string { return "community_votes" }
 
 // AuthorSummary is denormalized author info for API responses.
 type AuthorSummary struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username,omitempty"`
-	Name     string    `json:"name,omitempty"`
+	ID        uuid.UUID `json:"id"`
+	Username  string    `json:"username,omitempty"`
+	Name      string    `json:"name,omitempty"`
+	AvatarURL string    `json:"avatar_url,omitempty"`
 }
 
 // PostListItem extends Post with category and author for list views.
@@ -116,3 +119,77 @@ type CommentWithAuthor struct {
 	Author   AuthorSummary `json:"author"`
 	UserVote *int          `json:"user_vote,omitempty"`
 }
+
+// CategoryWithCount extends Category with a post count for sidebar display.
+type CategoryWithCount struct {
+	Category
+	PostCount int `json:"post_count"`
+}
+
+// Bookmark records a user saving a post for later.
+type Bookmark struct {
+	ID        uuid.UUID `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID    uuid.UUID `json:"user_id" gorm:"type:uuid;not null"`
+	PostID    uuid.UUID `json:"post_id" gorm:"type:uuid;not null"`
+	CreatedAt time.Time `json:"created_at" gorm:"not null;default:now()"`
+}
+
+func (Bookmark) TableName() string { return "community_bookmarks" }
+
+// Notification represents a community notification (reply, accept, upvote).
+type Notification struct {
+	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID    uuid.UUID  `json:"user_id" gorm:"type:uuid;not null"`
+	ActorID   uuid.UUID  `json:"actor_id" gorm:"type:uuid;not null"`
+	Type      string     `json:"type" gorm:"size:32;not null"`
+	PostID    *uuid.UUID `json:"post_id,omitempty" gorm:"type:uuid"`
+	CommentID *uuid.UUID `json:"comment_id,omitempty" gorm:"type:uuid"`
+	IsRead    bool       `json:"is_read" gorm:"not null;default:false"`
+	CreatedAt time.Time  `json:"created_at" gorm:"not null;default:now()"`
+}
+
+func (Notification) TableName() string { return "community_notifications" }
+
+// NotificationWithActor includes actor info for display.
+type NotificationWithActor struct {
+	Notification
+	Actor    AuthorSummary `json:"actor"`
+	PostSlug string        `json:"post_slug,omitempty"`
+	PostTitle string       `json:"post_title,omitempty"`
+}
+
+// RuleCategory groups rules by domain.
+type RuleCategory string
+
+const (
+	RuleCatConduct    RuleCategory = "conduct"
+	RuleCatContent    RuleCategory = "content"
+	RuleCatSafety     RuleCategory = "safety"
+	RuleCatLegal      RuleCategory = "legal"
+	RuleCatModeration RuleCategory = "moderation"
+)
+
+// RuleEnforcement defines what happens on violation.
+type RuleEnforcement string
+
+const (
+	EnforceInfo      RuleEnforcement = "info"
+	EnforceWarning   RuleEnforcement = "warning"
+	EnforceDeletion  RuleEnforcement = "deletion"
+	EnforceSuspension RuleEnforcement = "suspension"
+)
+
+// Rule is a community guideline managed by admins.
+type Rule struct {
+	ID          uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Title       string          `json:"title" gorm:"size:200;not null"`
+	Description string          `json:"description" gorm:"type:text;not null;default:''"`
+	Category    RuleCategory    `json:"category" gorm:"size:32;not null;default:'conduct'"`
+	Enforcement RuleEnforcement `json:"enforcement" gorm:"size:16;not null;default:'warning'"`
+	SortOrder   int             `json:"sort_order" gorm:"not null;default:0"`
+	IsActive    bool            `json:"is_active" gorm:"not null;default:true"`
+	CreatedAt   time.Time       `json:"created_at" gorm:"not null;default:now()"`
+	UpdatedAt   time.Time       `json:"updated_at" gorm:"not null;default:now()"`
+}
+
+func (Rule) TableName() string { return "community_rules" }

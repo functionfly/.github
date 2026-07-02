@@ -532,7 +532,9 @@ func NewServer(db *storage.PostgresDB) *Server {
 		}
 		mainHandler.ServeHTTP(w, r)
 	})
-	s.httpServer.Handler = handlerWithMetrics
+	// Edge slug rewriting wraps the entire router so X-FF-Slug → /{appSlug}/...
+	// happens BEFORE gorilla/mux route matching (mux.Use runs after matching).
+	s.httpServer.Handler = EdgeSlugMiddleware(handlerWithMetrics)
 
 	return s
 }
@@ -554,7 +556,7 @@ func (w *corsResponseWriter) WriteHeader(code int) {
 	if w.origin != "" {
 		w.Header().Set("Access-Control-Allow-Origin", w.origin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment, x-provider-key")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
 	w.ResponseWriter.WriteHeader(code)
@@ -588,7 +590,7 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 			if origin != "" && isLocalhost {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment, x-provider-key")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Max-Age", "86400")
 			}
@@ -602,7 +604,7 @@ func localhostCORSWrapper(next http.Handler) http.Handler {
 			if isLocalhost && isDev {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment")
+				w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, X-FFLY-Timestamp, X-FFLY-Signature, x-neon-client-info, X-Device-Fingerprint, x-device-fingerprint, X-Environment, x-provider-key")
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 			next.ServeHTTP(w, r)
@@ -1008,6 +1010,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	// Shutdown the persistent SandboxClient daemon
 	regexec.ShutdownSandboxClient()
+
+	// Close the attestation signer if it implements CloseableSigner (e.g., PKCS#11 HSM)
+	trustapirepo.CloseSigner()
 
 	// Shutdown the RuntimeRouter (kills nodeJS daemon, closes WASM pools, etc.)
 	if s.runtimeRouter != nil {

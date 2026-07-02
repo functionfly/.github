@@ -179,10 +179,12 @@ func CreateCheckoutSession(
 			},
 		},
 		AllowPromotionCodes: stripe.Bool(true),
-		// Enable automatic tax calculation via Stripe Tax
-		// This handles EU VAT, US sales tax, and global tax compliance
 		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
 			Enabled: stripe.Bool(true),
+		},
+		CustomerUpdate: &stripe.CheckoutSessionCustomerUpdateParams{
+			Address: stripe.String("auto"),
+			Name:    stripe.String("auto"),
 		},
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
 			Metadata: map[string]string{
@@ -259,9 +261,12 @@ func CreateStateFabricAddonCheckoutSession(
 			},
 		},
 		AllowPromotionCodes: stripe.Bool(true),
-		// Enable automatic tax calculation via Stripe Tax
 		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
 			Enabled: stripe.Bool(true),
+		},
+		CustomerUpdate: &stripe.CheckoutSessionCustomerUpdateParams{
+			Address: stripe.String("auto"),
+			Name:    stripe.String("auto"),
 		},
 		Metadata: map[string]string{
 			"purpose":   "state_fabric_addon",
@@ -317,13 +322,13 @@ func CreateBundleCheckoutSession(
 	successURL := req.SuccessURL
 	cancelURL := req.CancelURL
 	if successURL == "" {
-		successURL = appURL + "/dashboard?bundle=" + req.BundleSlug + "&success=true"
+		successURL = appURL + "/overview?bundle=" + req.BundleSlug + "&success=true"
 	}
 	if cancelURL == "" {
-		cancelURL = appURL + "/pricing/bundles"
+		cancelURL = appURL + "/bundles"
 	}
 
-	successURL = SanitizeReturnURL(successURL, appURL+"/dashboard?bundle="+req.BundleSlug+"&success=true")
+	successURL = SanitizeReturnURL(successURL, appURL+"/overview?bundle="+req.BundleSlug+"&success=true")
 	cancelURL = SanitizeReturnURL(cancelURL, appURL+"/pricing/bundles")
 
 	// Build metadata map
@@ -348,9 +353,12 @@ func CreateBundleCheckoutSession(
 			},
 		},
 		AllowPromotionCodes: stripe.Bool(true),
-		// Enable automatic tax calculation via Stripe Tax
 		AutomaticTax: &stripe.CheckoutSessionAutomaticTaxParams{
 			Enabled: stripe.Bool(true),
+		},
+		CustomerUpdate: &stripe.CheckoutSessionCustomerUpdateParams{
+			Address: stripe.String("auto"),
+			Name:    stripe.String("auto"),
 		},
 		Metadata: metadata,
 		SubscriptionData: &stripe.CheckoutSessionSubscriptionDataParams{
