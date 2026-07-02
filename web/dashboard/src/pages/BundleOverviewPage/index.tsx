@@ -1,8 +1,34 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import {
+  CheckCircle,
+  Rocket,
+  Shield,
+  CreditCard,
+  Mail,
+  BarChart3,
+  Store,
+  MessageSquare,
+  Bell,
+  Brain,
+  Cpu,
+  Database,
+  Sparkles,
+  Settings,
+  ExternalLink,
+  ArrowRight,
+  Zap,
+  Clock,
+  TrendingUp,
+  Server,
+  Code,
+  Loader2,
+  AlertCircle,
+  Cloud,
+} from 'lucide-react';
 import { appsApi } from '@/api/apps';
-import { billingApi } from '@/api/billing';
+import { getBundleSubscription } from '@/api/billing';
 import { usePageTitle } from '@/hooks';
 
 // ─── Bundle metadata ─────────────────────────────────────────────────────────
@@ -97,8 +123,7 @@ export default function BundleOverviewPage() {
     queryKey: ['bundle-subscription', bundleSlug],
     queryFn: async () => {
       try {
-        const res = await billingApi.getBundleSubscription();
-        return res;
+        return await getBundleSubscription();
       } catch {
         return null;
       }
