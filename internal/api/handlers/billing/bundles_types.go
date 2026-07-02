@@ -72,6 +72,8 @@ type CreateBundleCheckoutRequest struct {
 	BundleSlug string `json:"bundle_slug"`
 	SuccessURL string `json:"success_url"`
 	CancelURL  string `json:"cancel_url"`
+	Provider   string `json:"provider,omitempty"`
+	ProviderID string `json:"provider_id,omitempty"`
 }
 
 // ConvertToPaidRequest for manually converting from founder mode

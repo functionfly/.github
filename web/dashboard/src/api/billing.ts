@@ -680,7 +680,9 @@ export async function getBundle(slug: string): Promise<Bundle> {
 export async function createBundleCheckout(
   slug: string,
   successUrl: string,
-  cancelUrl: string
+  cancelUrl: string,
+  provider?: string,
+  providerId?: string
 ): Promise<CreateCheckoutSessionResponse> {
   const csrfToken = await apiClient.fetchCSRFToken();
   const headers: Record<string, string> = {};
@@ -690,9 +692,35 @@ export async function createBundleCheckout(
 
   return apiClient.post<CreateCheckoutSessionResponse>(
     `/v1/billing/bundles/${slug}/checkout`,
-    { success_url: successUrl, cancel_url: cancelUrl },
+    { success_url: successUrl, cancel_url: cancelUrl, provider, provider_id: providerId },
     { headers }
   );
+}
+
+export interface BundleSubscription {
+  id: string;
+  tenant_id: string;
+  bundle_id: string;
+  status: string;
+  deploy_status: string;
+  deploy_attempts: number;
+  deploy_error?: string;
+  deployed_at?: string;
+  provider_id?: string;
+  script_name?: string;
+  created_at: string;
+}
+
+/**
+ * Get the current bundle subscription for the tenant.
+ * GET /v1/billing/bundles/subscription
+ */
+export async function getBundleSubscription(): Promise<BundleSubscription | null> {
+  try {
+    return await apiClient.get<BundleSubscription>('/v1/billing/bundles/subscription');
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -785,7 +813,7 @@ export interface DeploymentStatusResponse {
  * Initiate a bundle deployment.
  * POST /v1/billing/bundles/{slug}/deploy
  */
-export async function deployBundle(slug: string, region?: string): Promise<DeploymentResponse> {
+export async function deployBundle(slug: string, region?: string, providerId?: string): Promise<DeploymentResponse> {
   const csrfToken = await apiClient.fetchCSRFToken();
   const headers: Record<string, string> = {};
   if (csrfToken) {
@@ -794,7 +822,7 @@ export async function deployBundle(slug: string, region?: string): Promise<Deplo
 
   return apiClient.post<DeploymentResponse>(
     `/v1/billing/bundles/${slug}/deploy`,
-    { bundle_slug: slug, region },
+    { bundle_slug: slug, region, provider_id: providerId },
     { headers }
   );
 }

@@ -1,31 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import {
-  CheckCircle,
-  Rocket,
-  Shield,
-  CreditCard,
-  Mail,
-  BarChart3,
-  Store,
-  MessageSquare,
-  Bell,
-  Brain,
-  Cpu,
-  Database,
-  Sparkles,
-  Settings,
-  ExternalLink,
-  ArrowRight,
-  Zap,
-  Clock,
-  TrendingUp,
-  Server,
-  Code,
-  Loader2,
-} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { appsApi } from '@/api/apps';
+import { billingApi } from '@/api/billing';
 import { usePageTitle } from '@/hooks';
 
 // ─── Bundle metadata ─────────────────────────────────────────────────────────
@@ -116,6 +93,23 @@ export default function BundleOverviewPage() {
     },
   });
 
+  const { data: subscription } = useQuery({
+    queryKey: ['bundle-subscription', bundleSlug],
+    queryFn: async () => {
+      try {
+        const res = await billingApi.getBundleSubscription();
+        return res;
+      } catch {
+        return null;
+      }
+    },
+    refetchInterval: (query) => {
+      const status = query.state.data?.deploy_status;
+      if (status === 'deploying' || status === 'pending') return 5000;
+      return false;
+    },
+  });
+
   const apps = appsData ?? [];
   const latestApp = apps[0];
 
@@ -162,6 +156,59 @@ export default function BundleOverviewPage() {
                   </Link>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deploy Status Banner */}
+      {bundle && subscription?.deploy_status && subscription.deploy_status !== 'deployed' && (
+        <div className="mb-6 overflow-hidden rounded-2xl border p-[1px]" style={{
+          borderColor: subscription.deploy_status === 'deploying' ? 'var(--color-primary)' :
+                       subscription.deploy_status === 'awaiting_provider' ? '#f59e0b' :
+                       subscription.deploy_status === 'failed' ? '#ef4444' : '#d4d4d8'
+        }}>
+          <div className="rounded-2xl bg-white p-4 dark:bg-zinc-900">
+            <div className="flex items-center gap-3">
+              {subscription.deploy_status === 'deploying' && (
+                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+              )}
+              {subscription.deploy_status === 'awaiting_provider' && (
+                <Cloud className="h-5 w-5 text-amber-500" />
+              )}
+              {subscription.deploy_status === 'failed' && (
+                <AlertCircle className="h-5 w-5 text-red-500" />
+              )}
+              <div className="flex-1">
+                <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                  {subscription.deploy_status === 'deploying' && 'Deploying to your provider...'}
+                  {subscription.deploy_status === 'awaiting_provider' && 'Connect a provider to deploy'}
+                  {subscription.deploy_status === 'failed' && `Deployment failed: ${subscription.deploy_error || 'Unknown error'}`}
+                  {subscription.deploy_status === 'pending' && 'Deployment pending...'}
+                </p>
+                {subscription.deploy_status === 'awaiting_provider' && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Your bundle is ready. Connect Cloudflare Workers, Vercel, or another provider to go live.
+                  </p>
+                )}
+              </div>
+              {subscription.deploy_status === 'awaiting_provider' && (
+                <a
+                  href="/providers"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
+                >
+                  <Cloud className="h-3.5 w-3.5" />
+                  Connect Provider
+                </a>
+              )}
+              {subscription.deploy_status === 'failed' && (
+                <button
+                  onClick={() => {/* TODO: trigger retry */}}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
+                >
+                  Retry
+                </button>
+              )}
             </div>
           </div>
         </div>

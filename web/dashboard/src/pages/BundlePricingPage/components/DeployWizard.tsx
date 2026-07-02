@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { deployBundle, getDeploymentStatus, type Bundle, type DeploymentStep } from '@/api/billing';
+import { providersApi } from '@/api/providers';
+import type { ConnectedProvider } from '@/types';
 import { Modal } from '@/components/containment/Modal';
 import { SealedButton } from '@/components/containment/SealedButton';
 import { FrameButton } from '@/components/containment/FrameButton';
@@ -20,6 +22,8 @@ import {
   Settings,
   Mail,
   Package,
+  Cloud,
+  Globe,
 } from 'lucide-react';
 
 interface DeployWizardProps {
@@ -57,7 +61,23 @@ export function DeployWizard({ open, onOpenChange, bundle, pricingMode, onDeploy
   const [backendId, setBackendId] = useState<string | null>(null);
   const [selectedRegion, setSelectedRegion] = useState('us-east-1');
   const [isDeploying, setIsDeploying] = useState(false);
+  const [connectedProviders, setConnectedProviders] = useState<ConnectedProvider[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<ConnectedProvider | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (open) {
+      providersApi.getConnectedProviders().then((providers) => {
+        const deployable = providers.filter(p =>
+          p.status === 'active' && ['workers', 'vercel', 'deno', 'fly'].includes(p.name)
+        );
+        setConnectedProviders(deployable);
+        if (deployable.length > 0) {
+          setSelectedProvider(deployable[0]);
+        }
+      }).catch(console.error);
+    }
+  }, [open]);
 
   const pollDeploymentStatus = useCallback(async (id: string) => {
     try {
@@ -121,7 +141,7 @@ export function DeployWizard({ open, onOpenChange, bundle, pricingMode, onDeploy
     setCurrentStep('deploying');
 
     try {
-      const response = await deployBundle(bundle.slug, selectedRegion);
+      const response = await deployBundle(bundle.slug, selectedRegion, selectedProvider?.id);
       setDeploymentId(response.deployment_id);
       if (response.steps) {
         setDeploymentSteps(response.steps);
@@ -226,6 +246,36 @@ export function DeployWizard({ open, onOpenChange, bundle, pricingMode, onDeploy
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Provider Selector */}
+            <div className="sc-deploy-wizard__field">
+              <label className="sc-deploy-wizard__label">Deploy To</label>
+              {connectedProviders.length > 0 ? (
+                <div className="sc-deploy-wizard__regions">
+                  {connectedProviders.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedProvider(p)}
+                      className={`sc-deploy-wizard__region ${selectedProvider?.id === p.id ? 'active' : ''}`}
+                    >
+                      <span className="sc-deploy-wizard__region-flag">
+                        {p.name === 'workers' ? '☁️' : p.name === 'vercel' ? '▲' : p.name === 'deno' ? '🦕' : '🚀'}
+                      </span>
+                      <span className="sc-deploy-wizard__region-label">
+                        {p.name === 'workers' ? 'Cloudflare Workers' : p.name === 'vercel' ? 'Vercel' : p.name === 'deno' ? 'Deno Deploy' : 'Fly.io'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="sc-deploy-wizard__info">
+                  <p className="sc-deploy-wizard__info-text">
+                    <Cloud size={16} style={{ marginRight: 8, verticalAlign: 'middle' }} />
+                    No provider connected. <a href="/dashboard/providers" style={{ color: 'var(--color-primary)' }}>Connect a provider</a> to deploy to your own infrastructure.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* What's Included */}

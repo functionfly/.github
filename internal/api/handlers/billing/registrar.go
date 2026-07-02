@@ -71,6 +71,7 @@ func (r *RouteRegistrar) Register(router *mux.Router, api *mux.Router, protected
 	billingRouter.HandleFunc("/bundles/founder-status", r.handler.HandleGetFounderModeStatus).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/bundles/deferred-status", r.handler.HandleGetDeferredBillingStatus).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/bundles/checkout", r.handler.HandleCreateBundleCheckout).Methods("POST", "OPTIONS")
+	billingRouter.HandleFunc("/bundles/subscription", r.handler.HandleGetBundleSubscription).Methods("GET", "OPTIONS")
 	billingRouter.HandleFunc("/bundles/convert", r.handler.HandleConvertToPaid).Methods("POST", "OPTIONS")
 
 	// Revenue/plans

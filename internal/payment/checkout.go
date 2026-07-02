@@ -84,6 +84,8 @@ type CreateBundleCheckoutSessionRequest struct {
 	TenantID      uuid.UUID
 	BundleSlug    string
 	FounderModeID string
+	Provider      string
+	ProviderID    string
 }
 
 // IsValidReturnURL validates that a return URL is safe to use.
@@ -339,6 +341,12 @@ func CreateBundleCheckoutSession(
 	}
 	if req.FounderModeID != "" {
 		metadata["founder_mode_id"] = req.FounderModeID
+	}
+	if req.Provider != "" {
+		metadata["provider"] = req.Provider
+	}
+	if req.ProviderID != "" {
+		metadata["provider_id"] = req.ProviderID
 	}
 
 	params := &stripe.CheckoutSessionParams{

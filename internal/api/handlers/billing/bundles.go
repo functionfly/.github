@@ -510,6 +510,8 @@ func (h *Handler) HandleCreateBundleCheckout(w http.ResponseWriter, r *http.Requ
 			SuccessURL: req.SuccessURL,
 			CancelURL:  req.CancelURL,
 			BundleSlug: bundle.Slug,
+			Provider:   req.Provider,
+			ProviderID: req.ProviderID,
 		},
 	)
 	if err != nil {
@@ -1046,4 +1048,26 @@ func (h *Handler) HandleGetDeploymentStatus(w http.ResponseWriter, r *http.Reque
 		AppID:        result.AppID,
 		BackendID:    result.BackendID,
 	})
+}
+
+// HandleGetBundleSubscription returns the current bundle subscription for the tenant.
+func (h *Handler) HandleGetBundleSubscription(w http.ResponseWriter, r *http.Request) {
+	claims := middleware.GetUserFromContext(r)
+	if claims == nil || claims.TenantID == uuid.Nil {
+		writeJSONError(w, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	sub, err := h.repo.GetBundleSubscriptionByTenant(r.Context(), claims.TenantID)
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve subscription")
+		return
+	}
+	if sub == nil {
+		writeJSONError(w, http.StatusNotFound, "No bundle subscription found")
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(sub)
 }
