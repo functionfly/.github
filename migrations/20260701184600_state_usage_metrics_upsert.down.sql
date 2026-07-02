@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_state_usage_metrics_tenant_aggregate_unique;
+DROP INDEX IF EXISTS idx_state_usage_metrics_state_unique;
