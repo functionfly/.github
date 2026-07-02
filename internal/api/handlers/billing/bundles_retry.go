@@ -82,8 +82,7 @@ func (h *Handler) TriggerPendingDeployments(ctx context.Context, tenantID string
 		})
 		log.Info("Provider connected, triggering bundle deployment")
 
-		pid, _ := uuid.Parse(providerID)
-		sub.ProviderID = &pid
+		sub.ProviderID = &providerID
 		sub.DeployStatus = "deploying"
 		if err := h.repo.UpdateBundleSubscription(ctx, sub); err != nil {
 			log.WithError(err).Error("Failed to update subscription for deployment")

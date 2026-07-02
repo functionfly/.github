@@ -750,8 +750,7 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 	if providerSlug != "" && providerIDStr != "" {
 		sub.DeployStatus = "deploying"
 		sub.ScriptName = scriptName
-		pid, _ := uuid.Parse(providerIDStr)
-		sub.ProviderID = &pid
+		sub.ProviderID = &providerIDStr
 		if err := h.userRepo.UpdateBundleSubscription(r.Context(), sub); err != nil {
 			logrus.WithError(err).Error("Failed to set deploy status on subscription")
 		}

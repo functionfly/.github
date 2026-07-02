@@ -3,7 +3,7 @@ ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS deploy_status TEXT NOT
 ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS deploy_attempts INT NOT NULL DEFAULT 0;
 ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS deploy_error TEXT;
 ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS deployed_at TIMESTAMPTZ;
-ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS provider_id UUID REFERENCES providers(id);
+ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS provider_id VARCHAR(255) REFERENCES providers(id);
 ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS script_name TEXT;
 ALTER TABLE bundle_subscriptions ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ;
 

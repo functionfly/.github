@@ -1257,7 +1257,7 @@ type BundleSubscription struct {
 	DeployAttempts int       `json:"deploy_attempts"`
 	DeployError   string     `json:"deploy_error,omitempty"`
 	DeployedAt    *time.Time `json:"deployed_at,omitempty"`
-	ProviderID    *uuid.UUID `json:"provider_id,omitempty"`
+	ProviderID    *string    `json:"provider_id,omitempty"`
 	ScriptName    string     `json:"script_name,omitempty"`
 	NextRetryAt   *time.Time `json:"next_retry_at,omitempty"`
 }

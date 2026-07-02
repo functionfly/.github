@@ -25,7 +25,7 @@ func (h *Handler) DeployBundle(ctx context.Context, sub *storage.BundleSubscript
 	log.Info("Starting bundle deployment")
 
 	// Load provider record
-	provider, err := h.repo.GetProviderByID(ctx, sub.ProviderID.String())
+	provider, err := h.repo.GetProviderByID(ctx, *sub.ProviderID)
 	if err != nil || provider == nil {
 		h.failDeploy(sub, "provider not found: %v", err)
 		return

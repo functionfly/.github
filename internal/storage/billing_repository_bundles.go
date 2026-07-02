@@ -486,8 +486,8 @@ func (r *BillingRepository) GetBundleSubscriptionByTenant(ctx context.Context, t
 		sub.DeployedAt = &deployedAt.Time
 	}
 	if providerID.Valid {
-		id, _ := uuid.Parse(providerID.String)
-		sub.ProviderID = &id
+		s := providerID.String
+		sub.ProviderID = &s
 	}
 	if scriptName.Valid {
 		sub.ScriptName = scriptName.String
@@ -550,8 +550,8 @@ func (r *BillingRepository) GetBundleSubscriptionByStripeID(ctx context.Context,
 		sub.DeployedAt = &deployedAt.Time
 	}
 	if providerID.Valid {
-		id, _ := uuid.Parse(providerID.String)
-		sub.ProviderID = &id
+		s := providerID.String
+		sub.ProviderID = &s
 	}
 	if scriptName.Valid {
 		sub.ScriptName = scriptName.String
@@ -665,8 +665,8 @@ func (r *BillingRepository) ListBundleSubscriptionsByTenant(ctx context.Context,
 			sub.DeployedAt = &deployedAt.Time
 		}
 		if providerID.Valid {
-			id, _ := uuid.Parse(providerID.String)
-			sub.ProviderID = &id
+			s := providerID.String
+			sub.ProviderID = &s
 		}
 		if scriptName.Valid {
 			sub.ScriptName = scriptName.String
@@ -1034,8 +1034,8 @@ func (r *BillingRepository) ListPendingDeployments(ctx context.Context) ([]*Bund
 			sub.DeployedAt = &deployedAt.Time
 		}
 		if providerID.Valid {
-			id, _ := uuid.Parse(providerID.String)
-			sub.ProviderID = &id
+			s := providerID.String
+			sub.ProviderID = &s
 		}
 		if scriptName.Valid {
 			sub.ScriptName = scriptName.String
@@ -1097,8 +1097,8 @@ func (r *BillingRepository) ListAwaitingProvider(ctx context.Context, tenantID u
 			sub.DeployedAt = &deployedAt.Time
 		}
 		if providerID.Valid {
-			id, _ := uuid.Parse(providerID.String)
-			sub.ProviderID = &id
+			s := providerID.String
+			sub.ProviderID = &s
 		}
 		if scriptName.Valid {
 			sub.ScriptName = scriptName.String
