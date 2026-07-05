@@ -105,6 +105,21 @@ async fn main() -> Result<()> {
             "FUNCTIONFLY_MICROVM_API_TOKEN is required in production (ENVIRONMENT=production). \
              Set the token and restart."
         );
+    } else if let Some(ref token) = api_token {
+        // Minimum entropy: 32 characters. Refusing short tokens prevents
+        // operators from accidentally shipping weak shared secrets.
+        if token.len() < 32 && is_production {
+            anyhow::bail!(
+                "FUNCTIONFLY_MICROVM_API_TOKEN is too short ({} chars). Production \
+                 requires >= 32 chars of entropy (recommend 64+ hex chars).",
+                token.len()
+            );
+        } else if token.len() < 32 {
+            tracing::warn!(
+                "FUNCTIONFLY_MICROVM_API_TOKEN is only {} chars — recommend >= 32 for production",
+                token.len()
+            );
+        }
     }
 
     info!("Starting FunctionFly MicroVM Orchestrator");
@@ -137,7 +152,12 @@ async fn main() -> Result<()> {
         .collect();
 
     let cors = if allowed_origins.is_empty() {
-        // No CORS origins configured — disable CORS entirely (API-to-API only)
+        // SECURITY: No CORS origins configured — CORS is disabled entirely
+        // (no Access-Control-Allow-Origin header is sent). Browsers will block
+        // any cross-origin request, leaving this an API-to-API service only.
+        // To enable browser access, set CORS_ALLOWED_ORIGINS to a comma-separated
+        // list of allowed origins. We do NOT default to "*" — that would
+        // expose authenticated endpoints to any origin.
         CorsLayer::new()
             .allow_methods(Any)
             .allow_headers(Any)
@@ -148,11 +168,36 @@ async fn main() -> Result<()> {
             .allow_headers(Any)
     };
 
-    let app = http_server::router(state).layer(cors);
+    let app = http_server::router(state)
+        // Limit request body to 4 MiB. CPython source + packages + input can be
+        // large, but we don't want an attacker to OOM the orchestrator with a
+        // 1 GB request.
+        .layer(axum::extract::DefaultBodyLimit::max(4 * 1024 * 1024))
+        .layer(cors);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], args.port));
+    // SECURITY: We bind to 0.0.0.0 because the Firecracker orchestrator is
+    // expected to run on a network-isolated host (e.g. behind a reverse proxy
+    // or in a dedicated subnet) so the Go orchestrator can reach it. If you
+    // are running this on a shared host, set FUNCTIONFLY_MICROVM_BIND_ADDR
+    // to 127.0.0.1 to bind to loopback only.
+    let bind_addr: std::net::IpAddr = std::env::var("FUNCTIONFLY_MICROVM_BIND_ADDR")
+        .ok()
+        .and_then(|s| s.trim().parse().ok())
+        .unwrap_or_else(|| "0.0.0.0".parse().expect("0.0.0.0 is a valid IP"));
+    let addr = SocketAddr::from((bind_addr, args.port));
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    info!("MicroVM Orchestrator HTTP API listening on http://{}", addr);
+    info!(
+        bind_addr = %bind_addr,
+        port = args.port,
+        "MicroVM Orchestrator HTTP API listening"
+    );
+    if bind_addr.is_unspecified() {
+        info!(
+            "WARNING: binding to 0.0.0.0 exposes this service on all network \
+             interfaces. Set FUNCTIONFLY_MICROVM_BIND_ADDR=127.0.0.1 if the \
+             host is not network-isolated."
+        );
+    }
 
     let server = axum::serve(listener, app);
 

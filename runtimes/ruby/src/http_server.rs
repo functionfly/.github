@@ -210,6 +210,38 @@ pub enum ValidationError {
     TimeoutTooLarge { value: u64 },
 }
 
+/// Security headers middleware. See bun/src/main.rs for full rationale.
+pub async fn security_headers_middleware(
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-content-type-options"),
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-frame-options"),
+        axum::http::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("referrer-policy"),
+        axum::http::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("content-security-policy"),
+        axum::http::HeaderValue::from_static(
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        ),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("strict-transport-security"),
+        axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    response
+}
+
 /// Create the Axum router
 pub fn create_app(state: AppState) -> Router {
     Router::new()
@@ -217,9 +249,10 @@ pub fn create_app(state: AppState) -> Router {
         .route("/ready", get(ready_handler))
         .route("/metrics", get(metrics_handler))
         .route("/execute", post(execute_handler))
-        .route("/execute/:function_id/:version", post(execute_versioned_handler))
+        .route("/execute/{function_id}/{version}", post(execute_versioned_handler))
         .route("/shutdown", post(shutdown_handler))
         .with_state(state)
+        .layer(axum::middleware::from_fn(security_headers_middleware))
 }
 
 /// Health check handler
@@ -481,7 +514,11 @@ pub async fn run_server(
         api_token,
     };
 
-    let app = create_app(state);
+    let app = create_app(state)
+        // Limit request body to 1 MiB. Ruby code is small; without this cap,
+        // a single 100 MB payload could exhaust the process before the
+        // executor even sees it.
+        .layer(axum::extract::DefaultBodyLimit::max(1 * 1024 * 1024));
 
     let addr: SocketAddr = format!("127.0.0.1:{}", port).parse()?;
     let listener = TcpListener::bind(addr).await?;

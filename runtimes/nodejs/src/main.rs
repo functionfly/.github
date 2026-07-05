@@ -357,6 +357,38 @@ fn base64_decode(input: &str) -> Result<Vec<u8>, &'static str> {
         .map_err(|_| "invalid base64")
 }
 
+/// Security headers middleware. See bun/src/main.rs for full rationale.
+async fn security_headers_middleware(
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-content-type-options"),
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-frame-options"),
+        axum::http::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("referrer-policy"),
+        axum::http::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("content-security-policy"),
+        axum::http::HeaderValue::from_static(
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        ),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("strict-transport-security"),
+        axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    response
+}
+
 async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize the global JS runtime
     tracing::info!("Initializing daemon JS runtime...");
@@ -380,6 +412,24 @@ async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std:
         } else {
             tracing::warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
         }
+    } else if let Some(ref token) = api_token {
+        // Minimum entropy: 32 characters. Refusing short tokens prevents
+        // operators from accidentally shipping weak shared secrets.
+        if token.len() < 32 {
+            if is_production {
+                return Err(format!(
+                    "RUNTIME_API_TOKEN is too short ({} chars). Production requires >= 32 chars \
+                     of entropy (recommend 64+ hex chars).",
+                    token.len()
+                )
+                .into());
+            } else {
+                tracing::warn!(
+                    "RUNTIME_API_TOKEN is only {} chars — recommend >= 32 for production",
+                    token.len()
+                );
+            }
+        }
     }
 
     let state = DaemonState { network_enabled, api_token };
@@ -389,6 +439,12 @@ async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std:
         .route("/health", post(health_handler).get(health_handler))
         .route("/execute/{function_id}/{version}", post(execute_handler))
         .with_state(state)
+        // Limit request body to 4 MiB. Node.js daemon accepts base64-encoded
+        // WASM and JSON bundles which can be substantial, but we still cap
+        // to prevent OOM attacks. The default Axum limit is 2 MiB.
+        .layer(axum::extract::DefaultBodyLimit::max(4 * 1024 * 1024))
+        // Security headers: see `security_headers_middleware` above.
+        .layer(axum::middleware::from_fn(security_headers_middleware))
         .layer(TraceLayer::new_for_http());
 
 

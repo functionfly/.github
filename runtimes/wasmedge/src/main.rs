@@ -32,7 +32,7 @@ struct Args {
 impl Default for Args {
     fn default() -> Self {
         Self {
-            port: 8092,
+            port: 8093,
             max_concurrent: 100,
             max_memory_mb: 512,
             max_fuel: 10_000_000,
@@ -62,9 +62,9 @@ impl Args {
 
         Self {
             port: std::env::var("PORT")
-                .unwrap_or_else(|_| "8092".to_string())
+                .unwrap_or_else(|_| "8093".to_string())
                 .parse()
-                .unwrap_or(8092),
+                .unwrap_or(8093),
             max_concurrent: std::env::var("MAX_CONCURRENT")
                 .unwrap_or_else(|_| "100".to_string())
                 .parse()
@@ -171,6 +171,23 @@ async fn main() -> anyhow::Result<()> {
         } else {
             tracing::warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
         }
+    } else if let Some(ref token) = api_token {
+        // Minimum entropy: 32 characters. Refusing short tokens prevents
+        // operators from accidentally shipping weak shared secrets.
+        if token.len() < 32 {
+            if is_production {
+                anyhow::bail!(
+                    "RUNTIME_API_TOKEN is too short ({} chars). Production requires >= 32 chars \
+                     of entropy (recommend 64+ hex chars).",
+                    token.len()
+                );
+            } else {
+                tracing::warn!(
+                    "RUNTIME_API_TOKEN is only {} chars — recommend >= 32 for production",
+                    token.len()
+                );
+            }
+        }
     }
 
     let limits = functionfly_wasmedge_runtime::config::ExecutionLimits {
@@ -207,6 +224,38 @@ async fn main() -> anyhow::Result<()> {
     run_server_with_state(args.port, state).await;
 
     Ok(())
+}
+
+/// Security headers middleware. See bun/src/main.rs for full rationale.
+async fn security_headers_middleware(
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-content-type-options"),
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-frame-options"),
+        axum::http::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("referrer-policy"),
+        axum::http::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("content-security-policy"),
+        axum::http::HeaderValue::from_static(
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        ),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("strict-transport-security"),
+        axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    response
 }
 
 /// Run server with runtime state
@@ -314,6 +363,12 @@ async fn run_server_with_state(port: u16, state: RuntimeState) {
         .route("/ready", get(ready_handler))
         .route("/metrics", get(metrics_handler))
         .route("/execute", post(execute_handler))
+        // Limit request body to 4 MiB. WASM binaries for C/C++ compilation
+        // can be larger than typical JS code, but we still want a hard cap to
+        // prevent an attacker from OOMing the process before validation.
+        .layer(axum::extract::DefaultBodyLimit::max(4 * 1024 * 1024))
+        // Security headers: see `security_headers_middleware` above.
+        .layer(axum::middleware::from_fn(security_headers_middleware))
         .with_state(app_state);
 
     let addr: SocketAddr = format!("127.0.0.1:{}", port).parse().expect("invalid address");

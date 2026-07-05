@@ -12,6 +12,7 @@ use tracing::{info, error, debug};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod cli;
+mod http_server;
 
 use prism_runtime::runtime::RuntimeContext;
 use prism_runtime::core::{CellId, CellConfig, CellStatus, ExecutionTarget, ExecutionMetrics};
@@ -21,6 +22,14 @@ use prism_runtime::ucl::{Capability, CapabilityCategory};
 use prism_runtime::neural::{ExecutionProfile, ExecutionOutcome, ExecutionFeatures};
 use chrono::{Timelike, Datelike};
 
+// =============================================================================
+// Legacy rate-limit types (kept for the CLI tools / direct binary use).
+// The new axum-based HTTP server in `http_server.rs` has its own bounded
+// per-IP token-bucket limiter. The types below are no longer wired into
+// the request path but remain compilable so they can be re-used if the
+// CLI ever exposes a raw TCP listener.
+// =============================================================================
+#[allow(dead_code)]
 /// Token bucket rate limiter for DoS protection
 #[derive(Clone)]
 struct RateLimiter {
@@ -30,6 +39,7 @@ struct RateLimiter {
     last_refill: Arc<std::sync::Mutex<Instant>>,
 }
 
+#[allow(dead_code)]
 impl RateLimiter {
     fn new(max_tokens: u64, refill_per_second: u64) -> Self {
         Self {
@@ -62,17 +72,41 @@ impl RateLimiter {
     }
 }
 
+#[allow(dead_code)]
 /// Per-tenant rate limiters
+///
+/// SECURITY: We bound the size of `limiters` to prevent an attacker from
+/// exhausting memory by sending requests with random tenant IDs. Once the
+/// cap is reached, the oldest entry is evicted (LRU-style via insertion
+/// order tracking) and a new entry is created for the requested tenant.
 struct TenantRateLimiters {
+    /// Bounded map of tenant_id → limiter. Bounded to `MAX_TENANT_LIMITERS`
+    /// entries to prevent memory-exhaustion DoS via random tenant IDs.
     limiters: dashmap::DashMap<String, RateLimiter>,
+    /// Fallback limiter for `tenant_id == ""` or `tenant_id == "anonymous"`.
     default_limit: RateLimiter,
+    /// Maximum number of distinct tenant limiters we will retain.
+    /// Older entries are evicted FIFO when this cap is reached.
+    max_entries: usize,
+    /// Insertion-order queue used to evict the oldest entry when full.
+    insertion_order: std::sync::Mutex<std::collections::VecDeque<String>>,
 }
 
+#[allow(dead_code)]
+/// Maximum number of distinct tenant rate limiters retained in memory.
+/// Sized to comfortably hold a few thousand tenants (each entry is ~100
+/// bytes of Arc pointers plus the RateLimiter state), capping memory at
+/// roughly a few hundred KB even under attack.
+const MAX_TENANT_LIMITERS: usize = 4096;
+
+#[allow(dead_code)]
 impl TenantRateLimiters {
     fn new(_requests_per_second: u64, max_tokens: u64) -> Self {
         Self {
             limiters: dashmap::DashMap::new(),
             default_limit: RateLimiter::new(max_tokens, 1000),
+            max_entries: MAX_TENANT_LIMITERS,
+            insertion_order: std::sync::Mutex::new(std::collections::VecDeque::new()),
         }
     }
 
@@ -80,9 +114,24 @@ impl TenantRateLimiters {
         if tenant_id.is_empty() || tenant_id == "anonymous" {
             return self.default_limit.clone();
         }
-        self.limiters.entry(tenant_id.to_string())
-            .or_insert_with(|| RateLimiter::new(100, 100))
-            .clone()
+
+        // Fast path: tenant already tracked.
+        if let Some(limiter) = self.limiters.get(tenant_id) {
+            return limiter.clone();
+        }
+
+        // Slow path: insert new entry, evicting the oldest if at capacity.
+        let limiter = RateLimiter::new(100, 100);
+        self.limiters.insert(tenant_id.to_string(), limiter.clone());
+
+        let mut order = self.insertion_order.lock().unwrap();
+        order.push_back(tenant_id.to_string());
+        while order.len() > self.max_entries {
+            if let Some(oldest) = order.pop_front() {
+                self.limiters.remove(&oldest);
+            }
+        }
+        limiter
     }
 }
 
@@ -250,13 +299,8 @@ async fn start_runtime(address: String, mesh: bool, _config_path: &str) -> anyho
     }
 
     let runtime_clone = runtime.clone();
-    let addr: SocketAddr = address.parse()?;
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    let _addr: SocketAddr = address.parse()?;
     info!("Prism Runtime listening on {}", address);
-
-    // Rate limiters for DoS protection - 1000 req/s global, 100 req/s per tenant
-    let rate_limiters = Arc::new(TenantRateLimiters::new(1000, 5000));
-    let global_limiter = Arc::new(RateLimiter::new(10000, 10000));
 
     let api_token: Option<String> = std::env::var("RUNTIME_API_TOKEN").ok().filter(|t| !t.is_empty());
     let is_production = std::env::var("ENVIRONMENT")
@@ -272,213 +316,46 @@ async fn start_runtime(address: String, mesh: bool, _config_path: &str) -> anyho
         } else {
             info!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
         }
+    } else if let Some(ref token) = api_token {
+        // Minimum entropy: 32 characters. Refusing short tokens prevents
+        // operators from accidentally shipping weak shared secrets.
+        if token.len() < 32 {
+            if is_production {
+                anyhow::bail!(
+                    "RUNTIME_API_TOKEN is too short ({} chars). Production requires >= 32 chars \
+                     of entropy (recommend 64+ hex chars).",
+                    token.len()
+                );
+            } else {
+                tracing::warn!(
+                    "RUNTIME_API_TOKEN is only {} chars — recommend >= 32 for production",
+                    token.len()
+                );
+            }
+        }
     }
 
-    let api_token = Arc::new(api_token);
+    let api_token_arc = Arc::new(api_token);
 
-    loop {
-        let (mut stream, _peer) = listener.accept().await?;
-        let rt = runtime_clone.clone();
-        let rl = rate_limiters.clone();
-        let gl = global_limiter.clone();
-        let token = api_token.clone();
+    // ===========================================================================
+    // HTTP server (axum-based; replaces the previous hand-rolled HTTP loop).
+    //
+    // The previous loop had a 2 KiB read buffer that silently truncated large
+    // request bodies, case-sensitive method matching that could route wrong,
+    // and substring-based header parsing that broke on edge cases like extra
+    // whitespace in `Authorization: Bearer <token>`. The new server uses
+    // axum which parses HTTP/1.1 properly, enforces a 2 MiB body limit,
+    // requires bearer auth on protected routes, emits security headers, and
+    // applies a per-IP token-bucket rate limiter capped at 4096 entries.
+    // ===========================================================================
+    let addr: SocketAddr = address.parse()?;
+    let api_token_for_server = api_token_arc.as_ref().clone();
+    http_server::run_server(runtime_clone, addr, api_token_for_server).await?;
 
-        tokio::spawn(async move {
-            use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-            // Check global rate limit first
-            if !gl.try_acquire() {
-                let resp = json_response(429, "Rate limit exceeded - try again later");
-                let _ = stream.write_all(resp.as_bytes()).await;
-                return;
-            }
-
-            let mut buf = [0u8; 2048];
-            let mut stream = stream;
-            let n = match stream.read(&mut buf).await {
-                Ok(n) if n == 0 => return,
-                Ok(n) => n,
-                Err(_) => return,
-            };
-
-            // Extract tenant ID for per-tenant rate limiting
-            let request = String::from_utf8_lossy(&buf[..n]).to_string();
-            let tenant_id = extract_tenant_id(&request);
-            let limiter = rl.get_or_create(&tenant_id);
-
-            // Check per-tenant rate limit
-            if !limiter.try_acquire() {
-                debug!(tenant = %tenant_id, "Tenant rate limit exceeded");
-                let resp = json_response(429, "Rate limit exceeded for tenant - try again later");
-                let _ = stream.write_all(resp.as_bytes()).await;
-                return;
-            }
-
-            let request_line = request.lines().next().unwrap_or("");
-            debug!(request_line = %request_line, "Received request");
-            let response = if request.starts_with("GET /health") {
-                let status = rt.get_status().await;
-                serde_json::json!({
-                    "status_code": 200,
-                    "body": {
-                        "version": status.version,
-                        "healthy": status.healthy,
-                        "active_cells": status.active_cells,
-                        "total_cells": status.total_cells,
-                        "mesh_enabled": status.mesh_enabled,
-                    }
-                }).to_string()
-            } else if request.starts_with("POST /cells/") && request.contains("/snapshot") {
-                // Snapshot cell - must come before generic POST /cells/... creation
-                debug!("Routing to snapshot handler");
-                handle_http_snapshot_cell(&rt, &request).await
-            } else if request.starts_with("POST /cells/") && !request.contains("/snapshot") && !request.contains("/execute") {
-                // Generic cell creation with path like /cells/ID - exclude /snapshot and /execute
-                debug!("Routing to cell creation handler");
-                handle_http_create_cell(&rt, &request).await
-            } else if request.starts_with("POST /cells") && !request.contains("/snapshots") && !request.contains("/execute") {
-                // Generic cell creation - exclude /snapshots and /execute paths
-                handle_http_create_cell(&rt, &request).await
-            } else if request.starts_with("POST /execute") {
-                // Auth check for execute endpoint
-                if let Some(ref expected_token) = *token {
-                    let auth_ok = request.lines()
-                        .find(|line| line.to_lowercase().starts_with("authorization:"))
-                        .and_then(|line| line.split(':').nth(1))
-                        .map(|val| constant_time_eq::constant_time_eq(val.trim().as_bytes(), format!("Bearer {}", expected_token).as_bytes()))
-                        .unwrap_or(false);
-                    if !auth_ok {
-                        json_response(401, "unauthorized")
-                    } else {
-                        // Clone Arcs so all captured data is owned for spawn_blocking
-                        let rt_exec = rt.clone();
-                        let req_owned = request.clone();
-                        let result = tokio::task::spawn_blocking(move || {
-                            tokio::runtime::Handle::current()
-                                .block_on(handle_http_execute(&rt_exec, &req_owned))
-                        }).await;
-                        match result {
-                            Ok(resp) => resp,
-                            Err(e) => json_response(500, &format!("Internal error: {}", e)),
-                        }
-                    }
-                } else {
-                    // No token configured — allow in dev mode
-                    let rt_exec = rt.clone();
-                    let req_owned = request.clone();
-                    let result = tokio::task::spawn_blocking(move || {
-                        tokio::runtime::Handle::current()
-                            .block_on(handle_http_execute(&rt_exec, &req_owned))
-                    }).await;
-                    match result {
-                        Ok(resp) => resp,
-                        Err(e) => json_response(500, &format!("Internal error: {}", e)),
-                    }
-                }
-            } else if request.starts_with("GET /cells/") && request.contains("/snapshots") {
-                handle_http_list_snapshots(&rt, &request).await
-            } else if request.starts_with("GET /cells/") && !request.contains("/snapshots") {
-                // GET /cells/{id} - list specific cell (fallback for cell with no action)
-                let cells = rt.list_cells().await;
-                // Extract just the UUID part from path like "GET /cells/UUID HTTP/1.1" or "GET /cells/UUID?query=val"
-                let request_path = request.lines().next().unwrap_or("");
-                // Split by space to get method and path: "GET" vs "/cells/UUID HTTP/1.1"
-                let mut parts = request_path.split_whitespace();
-                let path_only = parts.nth(1).unwrap_or("");
-                let after_cells = path_only.split("/cells/").nth(1).unwrap_or("");
-                // UUID is the first path segment before / or ?
-                let cell_id_str = after_cells.split(|c: char| c == '/' || c == '?').next().unwrap_or("");
-                if let Ok(uuid) = uuid::Uuid::parse_str(cell_id_str) {
-                    let cell_id = CellId::from_uuid(uuid);
-                    if let Some(cell) = cells.iter().find(|c| c.id == cell_id) {
-                        serde_json::json!({
-                            "status_code": 200,
-                            "body": {
-                                "id": cell.id.to_string(),
-                                "tenant": cell.tenant_id,
-                                "status": format!("{:?}", cell.status),
-                                "name": cell.metadata.name,
-                                "memory_mb": cell.config.memory_limit_mb,
-                            }
-                        }).to_string()
-                    } else {
-                        json_response(404, "Cell not found")
-                    }
-                } else {
-                    json_response(400, &format!("Invalid cell ID: {}", cell_id_str))
-                }
-            } else if request.starts_with("GET /cells") {
-                // GET /cells - list all cells
-                let cells = rt.list_cells().await;
-                let entries: Vec<serde_json::Value> = cells.iter().map(|c| {
-                    serde_json::json!({
-                        "id": c.id.to_string(),
-                        "tenant": c.tenant_id,
-                        "status": format!("{:?}", c.status),
-                        "name": c.metadata.name,
-                        "memory_mb": c.config.memory_limit_mb,
-                    })
-                }).collect();
-                serde_json::json!({
-                    "status_code": 200,
-                    "body": entries
-                }).to_string()
-            } else if request.starts_with("POST /snapshots/") && request.contains("/restore") {
-                // POST /snapshots/{id}/restore - Restore from snapshot
-                handle_http_restore_snapshot(&rt, &request).await
-            } else if request.starts_with("DELETE /snapshots/") {
-                // DELETE /snapshots/{id} - Delete a snapshot
-                handle_http_delete_snapshot(&rt, &request).await
-            } else if request.starts_with("POST /capabilities") && request.contains("/invoke") {
-                // POST /capabilities/invoke - Invoke a capability
-                handle_http_invoke_capability(&rt, &request).await
-            } else if request.starts_with("POST /capabilities") {
-                // POST /capabilities - Register a capability
-                handle_http_register_capability(&rt, &request).await
-            } else if request.starts_with("GET /capabilities") {
-                // GET /capabilities - List all capabilities
-                handle_http_list_capabilities(&rt, &request).await
-            } else if request.starts_with("POST /swarms") && !request.contains("/join") && !request.contains("/leave") {
-                // POST /swarms - Create a swarm
-                handle_http_create_swarm(&rt, &request).await
-            } else if request.starts_with("GET /swarms") {
-                // GET /swarms - List all swarms
-                handle_http_list_swarms(&rt, &request).await
-            } else if request.starts_with("POST /swarms/") && request.contains("/join") {
-                // POST /swarms/{id}/join - Join a swarm
-                handle_http_join_swarm(&rt, &request).await
-            } else if request.starts_with("POST /swarms/") && request.contains("/leave") {
-                // POST /swarms/{id}/leave - Leave a swarm
-                handle_http_leave_swarm(&rt, &request).await
-            } else if request.starts_with("GET /optimize/") {
-                // GET /optimize/{cell_id} - Get optimization suggestion
-                handle_http_get_optimization(&rt, &request).await
-            } else {
-                json_response(404, "Not Found")
-            };
-
-            // Parse status code from JSON response
-            let (status_line, _body) = if let Ok(json) = serde_json::from_str::<serde_json::Value>(&response) {
-                let code = json.get("status_code").and_then(|v| v.as_u64()).unwrap_or(200) as u16;
-                let body_str = json.get("body").map(|v| v.to_string()).unwrap_or_default();
-                let status_text = match code {
-                    200 => "OK",
-                    201 => "Created",
-                    400 => "Bad Request",
-                    404 => "Not Found",
-                    500 => "Internal Server Error",
-                    _ => "Unknown",
-                };
-                (format!("HTTP/1.1 {} {}\r\nContent-Type: application/json\r\n\r\n{}", code, status_text, body_str), body_str)
-            } else {
-                (format!("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\n{}", response), response)
-            };
-
-            let _ = stream.write_all(status_line.as_bytes()).await;
-        });
-    }
+    Ok(())
 }
 
+#[allow(dead_code)]
 async fn handle_http_create_cell(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     if parts.len() < 2 {
@@ -517,6 +394,7 @@ async fn handle_http_create_cell(rt: &Arc<RuntimeContext>, request: &str) -> Str
     }
 }
 
+#[allow(dead_code)]
 async fn handle_http_execute(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     if parts.len() < 2 {
@@ -646,6 +524,7 @@ fn extract_json_field(json: &str, field: &str) -> Option<String> {
     }
 }
 
+#[allow(dead_code)]
 /// Extract tenant ID from request for rate limiting
 fn extract_tenant_id(request: &str) -> String {
     // Try to get tenant from header first
@@ -916,6 +795,7 @@ fn json_response_data(status: u16, data: &str) -> String {
 }
 
 /// Handle POST /cells/{id}/snapshot - Create a snapshot of a cell
+#[allow(dead_code)]
 async fn handle_http_snapshot_cell(rt: &Arc<RuntimeContext>, request: &str) -> String {
     // Extract cell_id from URL path, not body
     let path = request.lines().next().unwrap_or("");
@@ -964,6 +844,7 @@ async fn handle_http_snapshot_cell(rt: &Arc<RuntimeContext>, request: &str) -> S
 }
 
 /// Handle GET /cells/{id}/snapshots - List snapshots for a cell
+#[allow(dead_code)]
 async fn handle_http_list_snapshots(rt: &Arc<RuntimeContext>, request: &str) -> String {
     // Extract cell_id from request path
     let path = request.lines().next().unwrap_or("");
@@ -992,6 +873,7 @@ async fn handle_http_list_snapshots(rt: &Arc<RuntimeContext>, request: &str) -> 
 }
 
 /// Handle POST /snapshots/{id}/restore - Restore a cell from a snapshot
+#[allow(dead_code)]
 async fn handle_http_restore_snapshot(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     if parts.len() < 2 {
@@ -1015,6 +897,7 @@ async fn handle_http_restore_snapshot(rt: &Arc<RuntimeContext>, request: &str) -
 }
 
 /// Handle DELETE /snapshots/{id} - Delete a snapshot
+#[allow(dead_code)]
 async fn handle_http_delete_snapshot(rt: &Arc<RuntimeContext>, request: &str) -> String {
     // Extract snapshot_id from path like "DELETE /snapshots/{id} HTTP/1.1"
     let path = request.lines().next().unwrap_or("");
@@ -1038,6 +921,7 @@ async fn handle_http_delete_snapshot(rt: &Arc<RuntimeContext>, request: &str) ->
 }
 
 /// Handle POST /capabilities/invoke - Invoke a capability
+#[allow(dead_code)]
 async fn handle_http_invoke_capability(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     if parts.len() < 2 {
@@ -1059,6 +943,7 @@ async fn handle_http_invoke_capability(rt: &Arc<RuntimeContext>, request: &str) 
 }
 
 /// Handle POST /capabilities - Register a capability
+#[allow(dead_code)]
 async fn handle_http_register_capability(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     if parts.len() < 2 {
@@ -1088,6 +973,7 @@ async fn handle_http_register_capability(rt: &Arc<RuntimeContext>, request: &str
 }
 
 /// Handle GET /capabilities - List all capabilities
+#[allow(dead_code)]
 async fn handle_http_list_capabilities(rt: &Arc<RuntimeContext>, _request: &str) -> String {
     let caps = rt.list_capabilities().await;
     let entries: Vec<serde_json::Value> = caps.iter().map(|c| {
@@ -1110,6 +996,7 @@ async fn handle_http_list_capabilities(rt: &Arc<RuntimeContext>, _request: &str)
 }
 
 /// Handle POST /swarms - Create a swarm
+#[allow(dead_code)]
 async fn handle_http_create_swarm(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     if parts.len() < 2 {
@@ -1128,6 +1015,7 @@ async fn handle_http_create_swarm(rt: &Arc<RuntimeContext>, request: &str) -> St
 }
 
 /// Handle GET /swarms - List all swarms
+#[allow(dead_code)]
 async fn handle_http_list_swarms(rt: &Arc<RuntimeContext>, _request: &str) -> String {
     let swarms = rt.list_swarms().await;
     let entries: Vec<serde_json::Value> = swarms.iter().map(|s| {
@@ -1152,6 +1040,7 @@ async fn handle_http_list_swarms(rt: &Arc<RuntimeContext>, _request: &str) -> St
 }
 
 /// Handle POST /swarms/{id}/join - Join a swarm
+#[allow(dead_code)]
 async fn handle_http_join_swarm(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     let (swarm_id, cell_id_str) = if parts.len() >= 2 {
@@ -1183,6 +1072,7 @@ async fn handle_http_join_swarm(rt: &Arc<RuntimeContext>, request: &str) -> Stri
 }
 
 /// Handle POST /swarms/{id}/leave - Leave a swarm
+#[allow(dead_code)]
 async fn handle_http_leave_swarm(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let parts: Vec<&str> = request.split("\r\n\r\n").collect();
     let (swarm_id, cell_id_str) = if parts.len() >= 2 {
@@ -1214,6 +1104,7 @@ async fn handle_http_leave_swarm(rt: &Arc<RuntimeContext>, request: &str) -> Str
 }
 
 /// Handle GET /optimize/{cell_id} - Get optimization suggestion
+#[allow(dead_code)]
 async fn handle_http_get_optimization(rt: &Arc<RuntimeContext>, request: &str) -> String {
     let path = request.lines().next().unwrap_or("");
     let cell_id_str = path.split("/optimize/").nth(1).unwrap_or("")

@@ -12,7 +12,6 @@ pub mod execution;
 pub mod sandbox;
 pub mod security;
 pub mod metrics;
-pub mod http_server;
 pub mod orchestrator_client;
 
 pub use config::{RuntimeConfig, ExecutionLimits, SecurityPolicy};
@@ -20,7 +19,6 @@ pub use execution::{Executor, ExecutionRequest, ExecutionResponse};
 pub use sandbox::{Sandbox, SandboxConfig, SandboxResult};
 pub use security::{SecurityManager, Permission, PermissionSet};
 pub use metrics::{MetricsCollector, RuntimeMetrics};
-pub use http_server::{create_app, run_server, AppState};
 pub use orchestrator_client::{
     OrchestratorClient, FunctionExecutionRequest, FunctionExecutionResponse,
 };

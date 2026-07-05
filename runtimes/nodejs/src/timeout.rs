@@ -15,8 +15,8 @@ pub struct TimeoutManager {
     /// Maximum timeout in milliseconds
     max_timeout_ms: u64,
 
-    /// Active execution tracking
-    active_timeouts: RwLock<Vec<TimeoutEntry>>,
+    /// Active execution tracking (Arc-shared with TimeoutManagerInner)
+    active_timeouts: Arc<RwLock<Vec<TimeoutEntry>>>,
 
     /// Statistics
     total_timeouts: AtomicU64,
@@ -37,7 +37,7 @@ impl TimeoutManager {
     pub fn new(max_timeout_ms: u64) -> Self {
         Self {
             max_timeout_ms,
-            active_timeouts: RwLock::new(Vec::new()),
+            active_timeouts: Arc::new(RwLock::new(Vec::new())),
             total_timeouts: AtomicU64::new(0),
             cancelled_timeouts: AtomicU64::new(0),
             active_guards: AtomicU64::new(0),
@@ -58,6 +58,14 @@ impl TimeoutManager {
         // Increment counters
         self.total_timeouts.fetch_add(1, Ordering::Relaxed);
         self.active_guards.fetch_add(1, Ordering::Relaxed);
+
+        // Add entry to active_timeouts for tracking
+        let entry = TimeoutEntry {
+            execution_id: execution_id.to_string(),
+            started_at: Instant::now(),
+            duration_ms: timeout,
+        };
+        self.active_timeouts.write().push(entry);
 
         // Create a callback for cleanup that the guard will call on drop
         let exec_id = execution_id.to_string();
@@ -119,7 +127,7 @@ impl TimeoutManager {
     fn clone_inner(&self) -> TimeoutManagerInner {
         TimeoutManagerInner {
             max_timeout_ms: self.max_timeout_ms,
-            active_timeouts: RwLock::new(Vec::new()), // Empty in cloned inner
+            active_timeouts: Arc::clone(&self.active_timeouts),
             total_timeouts: Arc::new(AtomicU64::new(self.total_timeouts.load(Ordering::Relaxed))),
             cancelled_timeouts: Arc::new(AtomicU64::new(self.cancelled_timeouts.load(Ordering::Relaxed))),
             active_guards: Arc::new(AtomicU64::new(self.active_guards.load(Ordering::Relaxed))),
@@ -131,7 +139,7 @@ impl Clone for TimeoutManager {
     fn clone(&self) -> Self {
         Self {
             max_timeout_ms: self.max_timeout_ms,
-            active_timeouts: RwLock::new(Vec::new()), // Don't clone active
+            active_timeouts: Arc::new(RwLock::new(Vec::new())), // Fresh empty list for clone
             total_timeouts: AtomicU64::new(self.total_timeouts.load(Ordering::Relaxed)),
             cancelled_timeouts: AtomicU64::new(self.cancelled_timeouts.load(Ordering::Relaxed)),
             active_guards: AtomicU64::new(self.active_guards.load(Ordering::Relaxed)),
@@ -142,7 +150,7 @@ impl Clone for TimeoutManager {
 /// Inner struct shared between TimeoutManager and TimeoutGuard
 struct TimeoutManagerInner {
     max_timeout_ms: u64,
-    active_timeouts: RwLock<Vec<TimeoutEntry>>,
+    active_timeouts: Arc<RwLock<Vec<TimeoutEntry>>>,
     total_timeouts: Arc<AtomicU64>,
     cancelled_timeouts: Arc<AtomicU64>,
     active_guards: Arc<AtomicU64>,

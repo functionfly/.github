@@ -2,6 +2,13 @@
 //!
 //! Handles communication with the FunctionFly orchestrator via NATS
 //! for registration, heartbeat, and function execution messages.
+//!
+//! ## Why `async-nats` and not `nats`
+//!
+//! The synchronous `nats` crate (v0.26, RUSTSEC-2024-0381) is unmaintained and
+//! pulls in an old `rustls 0.22` / `rustls-webpki 0.102` with multiple
+//! outstanding CRL / name-constraint vulnerabilities (RUSTSEC-2026-0049,
+//! 0098, 0099, 0104). `async-nats 0.49` uses `rustls 0.23+` with the fixes.
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -9,6 +16,11 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+
+#[cfg(feature = "nats-client")]
+use async_nats::Client as NatsClient;
+#[cfg(feature = "nats-client")]
+use bytes::Bytes;
 
 /// NATS configuration
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -98,8 +110,8 @@ pub enum RuntimeStatus {
 /// Orchestrator client for NATS communication
 pub struct OrchestratorClient {
     config: NatsConfig,
-    nats_conn: Option<Arc<RwLock<nats::Connection>>>,
-    subscriptions: Arc<RwLock<Vec<nats::Subscription>>>,
+    #[cfg(feature = "nats-client")]
+    nats_conn: Option<Arc<RwLock<NatsClient>>>,
 }
 
 impl OrchestratorClient {
@@ -107,8 +119,8 @@ impl OrchestratorClient {
     pub fn new(config: NatsConfig) -> Self {
         Self {
             config,
+            #[cfg(feature = "nats-client")]
             nats_conn: None,
-            subscriptions: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
@@ -118,13 +130,13 @@ impl OrchestratorClient {
     }
 
     /// Connect to NATS
+    #[cfg(feature = "nats-client")]
     pub async fn connect(&mut self) -> Result<()> {
         let nats_url = &self.config.url;
 
-        let opts = nats::Options::new()
-            .with_name(&self.config.runtime_id);
-
-        let conn = opts.connect(nats_url)?;
+        let conn = async_nats::connect(nats_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to connect to NATS at {}: {}", nats_url, e))?;
 
         self.nats_conn = Some(Arc::new(RwLock::new(conn)));
         tracing::info!("Connected to NATS at {}", nats_url);
@@ -132,35 +144,44 @@ impl OrchestratorClient {
         Ok(())
     }
 
+    #[cfg(not(feature = "nats-client"))]
+    pub async fn connect(&mut self) -> Result<()> {
+        Ok(())
+    }
+
     /// Check if connected to NATS
     pub fn is_connected(&self) -> bool {
-        self.nats_conn.is_some()
+        #[cfg(feature = "nats-client")]
+        return self.nats_conn.is_some();
+        #[cfg(not(feature = "nats-client"))]
+        return false;
     }
 
     /// Publish a message to a subject
+    #[cfg(feature = "nats-client")]
     pub async fn publish(&self, subject: &str, msg: &OrchestratorMessage) -> Result<()> {
-        let conn = self.nats_conn.as_ref()
+        let conn_arc = self
+            .nats_conn
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("not connected to NATS"))?;
 
-        let conn = conn.read().await;
-        let payload = serde_json::to_vec(msg)?;
+        // Hold the lock only to clone the Client, then drop the guard before
+        // the await so the lock isn't held across an .await point.
+        let conn = {
+            let guard = conn_arc.read().await;
+            guard.clone()
+        };
 
-        conn.publish(subject, &payload)?;
+        let payload = serde_json::to_vec(msg)?;
+        conn.publish(subject.to_string(), Bytes::from(payload))
+            .await
+            .map_err(|e| anyhow::anyhow!("failed to publish to {}: {}", subject, e))?;
 
         Ok(())
     }
 
-    /// Subscribe to a subject
-    pub async fn subscribe(&mut self, subject: &str) -> Result<()> {
-        let conn = self.nats_conn.as_ref()
-            .ok_or_else(|| anyhow::anyhow!("not connected to NATS"))?;
-
-        let conn = conn.read().await;
-        let sub = conn.subscribe(subject)?;
-
-        let mut subs = self.subscriptions.write().await;
-        subs.push(sub);
-
+    #[cfg(not(feature = "nats-client"))]
+    pub async fn publish(&self, _subject: &str, _msg: &OrchestratorMessage) -> Result<()> {
         Ok(())
     }
 
@@ -276,14 +297,23 @@ pub async fn start_heartbeat_loop(
     loop {
         interval_timer.tick().await;
 
-        let client = client.read().await;
-        if !client.is_connected() {
+        // Clone is implicit via Drop — read the lock briefly, copy, then drop.
+        let (is_connected, runtime_id) = {
+            let client = client.read().await;
+            (client.is_connected(), client.runtime_id().to_string())
+        };
+
+        if !is_connected {
             continue;
         }
 
         let status = RuntimeStatus::Ready;
-        if let Err(e) = client.heartbeat(status).await {
-            tracing::warn!("Failed to send heartbeat: {}", e);
+        // Re-acquire for the actual heartbeat send.
+        {
+            let client = client.read().await;
+            if let Err(e) = client.heartbeat(status).await {
+                tracing::warn!(runtime_id = %runtime_id, "Failed to send heartbeat: {}", e);
+            }
         }
     }
 }
@@ -301,20 +331,28 @@ pub async fn start_metrics_loop(
     loop {
         interval_timer.tick().await;
 
-        let client = client.read().await;
-        if !client.is_connected() {
+        let is_connected = {
+            let client = client.read().await;
+            client.is_connected()
+        };
+
+        if !is_connected {
             continue;
         }
 
         let runtime_metrics = metrics.get_metrics().await;
 
-        if let Err(e) = client.report_metrics(
-            runtime_metrics.total_executions,
-            runtime_metrics.successful_executions,
-            runtime_metrics.failed_executions,
-            runtime_metrics.avg_execution_time_ms,
-            runtime_metrics.current_memory_mb,
-        ).await {
+        let client = client.read().await;
+        if let Err(e) = client
+            .report_metrics(
+                runtime_metrics.total_executions,
+                runtime_metrics.successful_executions,
+                runtime_metrics.failed_executions,
+                runtime_metrics.avg_execution_time_ms,
+                runtime_metrics.current_memory_mb,
+            )
+            .await
+        {
             tracing::warn!("Failed to report metrics: {}", e);
         }
     }

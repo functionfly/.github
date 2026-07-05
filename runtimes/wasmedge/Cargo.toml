@@ -7,11 +7,11 @@ authors = ["FunctionFly Team"]
 license = "MIT"
 
 [features]
-default = ["wasm-sandbox", "secure-execution", "resource-limits", "nats-client"]
+default = ["wasm-sandbox", "secure-execution", "resource-limits"]
 secure-execution = ["dep:seccomp", "dep:landlock"]
 wasm-sandbox = ["dep:wasmedge-sdk"]
 resource-limits = []
-nats-client = ["dep:nats"]
+nats-client = ["dep:async-nats", "dep:bytes"]
 
 [dependencies]
 constant_time_eq = "0.5.0"
@@ -40,7 +40,8 @@ landlock = { version = "0.4.5", optional = true }
 wasmedge-sdk = { version = "0.14", optional = true }
 
 # NATS client for orchestrator communication
-nats = { version = "0.26", optional = true }
+async-nats = { version = "0.49.1", optional = true }
+bytes = { version = "1.5", optional = true }
 
 # Rate limiting
 governor = "0.10.4"
@@ -56,8 +57,27 @@ mockall = "0.14.0"
 
 [profile.release]
 opt-level = 3
-lto = true
+lto = "thin"
 codegen-units = 1
+strip = "symbols"
+panic = "abort"
+overflow-checks = false
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true
+strip = "none"
+
+[profile.test]
+opt-level = 1
+debug = true
+overflow-checks = true
+lto = false
+
+[profile.fast-test]
+inherits = "test"
+opt-level = 2
+codegen-units = 4
 
 [profile.dev]
 opt-level = 0

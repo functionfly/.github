@@ -1,5 +1,5 @@
 //! FunctionFly Node.js Runtime Library
-//! 
+//!
 //! This module provides a high-performance JavaScript execution runtime
 //! using QuickJS compiled to WebAssembly for secure, isolated function execution.
 
@@ -40,22 +40,22 @@ pub use config::{RuntimeConfig, RuntimeVersion};
 pub enum RuntimeError {
     #[error("Compilation error: {0}")]
     Compilation(String),
-    
+
     #[error("Execution error: {0}")]
     Execution(String),
-    
+
     #[error("Timeout after {0}ms")]
     Timeout(u64),
-    
+
     #[error("Memory limit exceeded: {0}")]
     MemoryLimit(String),
-    
+
     #[error("Sandbox violation: {0}")]
     SecurityViolation(String),
-    
+
     #[error("Invalid input: {0}")]
     InvalidInput(String),
-    
+
     #[error("Runtime not ready: {0}")]
     NotReady(String),
 }
@@ -255,14 +255,14 @@ pub async fn execute_simple(
     input: &str,
 ) -> Result<String, RuntimeError> {
     let runtime = create_default_runtime()?;
-    
+
     let exec_input = ExecutionInput {
         data: serde_json::Value::String(input.to_string()),
         metadata: ExecutionMetadata::default(),
     };
-    
+
     let result = runtime.execute(code, exec_input).await;
-    
+
     if result.success {
         result
             .output
@@ -283,7 +283,7 @@ mod tests {
     async fn test_runtime_info() {
         let runtime = create_default_runtime().unwrap();
         let info = runtime.info();
-        
+
         assert_eq!(info.name, "functionfly-nodejs");
         assert!(!info.supported_runtimes.is_empty());
     }
@@ -295,7 +295,7 @@ mod tests {
                 return "Hello, " + input + "!";
             }
         "#;
-        
+
         let result = execute_simple(code, "World").await;
         assert!(result.is_ok());
     }

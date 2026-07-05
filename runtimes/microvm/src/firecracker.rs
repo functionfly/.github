@@ -305,35 +305,26 @@ impl FirecrackerClient {
     }
 }
 
-/// Generate a random MAC address for the VM
+/// Generate a random MAC address for the VM.
+///
+/// Uses `getrandom` (cryptographically secure, draws from the kernel CSPRNG
+/// via `getrandom(2)` on Linux / `arc4random_buf` on macOS / `BCryptGenRandom`
+/// on Windows) so that VMs cannot be predicted by an attacker who knows the
+/// spawn time or process tree. The first byte is forced to `0x02` so the
+/// MAC is locally-administered and unicast, matching the Firecracker default
+/// and avoiding collisions with vendor-assigned OUIs.
 pub fn generate_mac() -> String {
-    let bytes: [u8; 6] = rand::random();
-    format!("02:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-            bytes[1], bytes[2], bytes[3], bytes[4], bytes[5])
-}
-
-mod rand {
-    use std::collections::hash_map::RandomState;
-    use std::hash::{BuildHasher, Hasher};
-
-    pub fn random() -> [u8; 6] {
-        let state = RandomState::new();
-        let mut hasher = state.build_hasher();
-        hasher.write_u128(std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos());
-
-        let hash = hasher.finish();
-        [
-            (hash >> 40) as u8,
-            (hash >> 32) as u8,
-            (hash >> 24) as u8,
-            (hash >> 16) as u8,
-            (hash >> 8) as u8,
-            hash as u8,
-        ]
-    }
+    let mut bytes = [0u8; 6];
+    // Fill with CSPRNG bytes. `getrandom::fill` blocks until the OS provides
+    // entropy; on modern Linux this is essentially instantaneous (urandom has
+    // been seeded at boot since 5.10).
+    getrandom::fill(&mut bytes).expect("OS RNG failed; cannot generate MAC");
+    // Locally-administered, unicast (bit 1 of first octet = 0, bit 0 = 0)
+    bytes[0] = 0x02;
+    format!(
+        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]
+    )
 }
 
 #[cfg(test)]

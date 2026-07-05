@@ -287,8 +287,10 @@ impl SecurityManager {
                 replacement: None,
             },
             // Null byte injection
+            // Note: regex crate doesn't support \0 as a backreference escape,
+            // so we use \\x00 which matches a literal NUL byte (0x00).
             DangerousPattern {
-                pattern: r#"\0"#,
+                pattern: r#"\x00"#,
                 severity: ViolationSeverity::Critical,
                 description: "Null byte injection",
                 replacement: None,
@@ -679,10 +681,10 @@ mod tests {
         policy.allow_filesystem = true;
         let manager = SecurityManager::new(policy);
 
-        // Should allow reading files when filesystem is permitted
+        // Should allow reading safe files when filesystem is permitted.
+        // `/safe/file.txt` does not contain `../`, so it must be allowed.
         let result = manager.validate_code("File.read('/safe/file.txt')");
-        // Path traversal should still be blocked
-        assert!(result.is_err());
+        assert!(result.is_ok(), "expected safe file path to be allowed, got: {:?}", result);
     }
 
     #[test]

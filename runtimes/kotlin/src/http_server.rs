@@ -31,10 +31,10 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(executor: Executor, metrics: MetricsCollector, config: RuntimeConfig) -> Self {
+    pub fn new(executor: Executor, metrics: Arc<MetricsCollector>, config: RuntimeConfig) -> Self {
         Self {
             executor: Arc::new(executor),
-            metrics: Arc::new(metrics),
+            metrics,
             config,
             api_token: None,
         }
@@ -198,6 +198,38 @@ async fn root_handler() -> &'static str {
     "FunctionFly Kotlin Runtime\n=======================\n\nVersion: 0.1.0\n\nEndpoints:\n  GET  /health      - Health check\n  GET  /ready       - Readiness check\n  GET  /metrics     - Metrics (JSON)\n  GET  /metrics/prom - Metrics (Prometheus)\n  POST /execute     - Execute Kotlin code\n  POST /validate    - Validate Kotlin code\n"
 }
 
+/// Security headers middleware. See bun/src/main.rs for full rationale.
+pub async fn security_headers_middleware(
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-content-type-options"),
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-frame-options"),
+        axum::http::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("referrer-policy"),
+        axum::http::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("content-security-policy"),
+        axum::http::HeaderValue::from_static(
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        ),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("strict-transport-security"),
+        axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    response
+}
+
 /// Create the Axum router
 pub fn create_app(state: AppState) -> Router {
     Router::new()
@@ -209,6 +241,7 @@ pub fn create_app(state: AppState) -> Router {
         .route("/execute", post(execute_handler))
         .route("/validate", post(validate_handler))
         .with_state(state)
+        .layer(axum::middleware::from_fn(security_headers_middleware))
         .layer(TraceLayer::new_for_http())
 }
 
@@ -216,7 +249,7 @@ pub fn create_app(state: AppState) -> Router {
 pub async fn run_server(
     addr: SocketAddr,
     executor: Executor,
-    metrics: MetricsCollector,
+    metrics: Arc<MetricsCollector>,
     config: RuntimeConfig,
 ) -> Result<()> {
     let state = AppState::new(executor, metrics, config);
@@ -235,7 +268,7 @@ pub async fn run_server(
 pub async fn run_server_with_shutdown(
     addr: SocketAddr,
     executor: Executor,
-    metrics: MetricsCollector,
+    metrics: Arc<MetricsCollector>,
     config: RuntimeConfig,
     shutdown_signal: impl std::future::Future<Output = ()> + Send + 'static,
 ) -> Result<()> {
@@ -282,7 +315,7 @@ mod tests {
     async fn test_ready_handler() {
         let metrics = Arc::new(MetricsCollector::new("test".to_string()));
         let executor = Executor::with_defaults(metrics.clone()).unwrap();
-        let state = AppState::new(executor, (*metrics).clone(), RuntimeConfig::default());
+        let state = AppState::new(executor, Arc::clone(&metrics), RuntimeConfig::default());
 
         let response = ready_handler(State(state)).await;
         assert!(response.ready);

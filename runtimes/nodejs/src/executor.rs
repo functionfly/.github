@@ -33,7 +33,19 @@ impl JsContext {
     }
 
     pub fn load_module(&mut self, code: &str) -> Result<(), RuntimeError> {
-        let code_bytes: Vec<u8> = code.as_bytes().to_vec();
+        // QuickJS `Context::eval` runs code in *script* mode, which does not
+        // understand ES-module syntax (`export function foo`, `export default`,
+        // `import ... from`). However, our public API documents that
+        // handlers may use ESM-style declarations for clarity. To bridge the
+        // two, we strip `export ` keywords (and `import` statements that
+        // reference bundled modules we cannot resolve here) before eval.
+        //
+        // This is a conservative transformation: we only strip leading
+        // `export ` (with a single space) and `export default `. We do NOT
+        // attempt to rewrite arbitrary import specifiers — handlers that
+        // need external modules must be pre-bundled at publish time.
+        let stripped = strip_esm_keywords(code);
+        let code_bytes: Vec<u8> = stripped.into_bytes();
         let result: Result<(), RuntimeError> = self.context.with(move |ctx| {
             match ctx.eval::<(), _>(code_bytes.as_slice()) {
                 Ok(_) => Ok(()),
@@ -74,6 +86,12 @@ struct CachedCode { compiled_at: Instant }
 impl NodeExecutor {
     pub fn new(config: RuntimeConfig) -> Result<Self, RuntimeError> {
         config.validate()?;
+        // SECURITY: clamp max_code_size_bytes to the sandbox's hard limit
+        // (1 MiB) so the executor never tries to push a 10 MiB bundle through
+        // a sandbox that only accepts 1 MiB. This also prevents accidental
+        // OOMs when callers trust the configured limit without knowing the
+        // sandbox's internal ceiling.
+        let max_code_size_bytes = (10 * 1024 * 1024).min(crate::sandbox::MAX_CODE_SIZE_BYTES);
         let sandbox = Sandbox::new(SandboxConfig {
             runtime_version: config.version.clone(),
             max_memory_mb: config.max_memory_mb,
@@ -82,7 +100,7 @@ impl NodeExecutor {
             blocked_modules: config.blocked_modules.clone(),
             network_enabled: config.network_enabled,
             env_vars: config.environment.clone(),
-            max_code_size_bytes: 10 * 1024 * 1024,
+            max_code_size_bytes,
             strict_mode: true,
         })?;
         info!("Created NodeExecutor runtime: {:?} memory: {}MB timeout: {}ms",
@@ -184,6 +202,31 @@ fn code_cache_key(code: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(code.as_bytes());
     hex::encode(hasher.finalize())
+}
+
+/// Strip ESM `export ` keywords so the code parses as a plain script in
+/// QuickJS's `eval` context. Conservative: only matches the leading
+/// `export ` / `export default ` forms; does NOT attempt to rewrite
+/// `import ... from` specifiers (those require pre-bundling).
+fn strip_esm_keywords(code: &str) -> String {
+    let mut out = String::with_capacity(code.len());
+    for line in code.lines() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("export default ") {
+            // `export default function f(){}` -> `function f(){}`
+            // `export default expr` -> `return expr` (handled at call site)
+            out.push_str(&trimmed["export default ".len()..]);
+        } else if trimmed.starts_with("export ") {
+            // `export function handler(...)` -> `function handler(...)`
+            // `export const x = ...` -> `const x = ...`
+            // `export async function ...` -> `async function ...`
+            out.push_str(&trimmed["export ".len()..]);
+        } else {
+            out.push_str(line);
+        }
+        out.push('\n');
+    }
+    out
 }
 
 #[cfg(test)]

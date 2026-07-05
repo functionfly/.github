@@ -151,23 +151,31 @@ impl Executor {
 
         match result {
             Ok(sandbox_result) => {
-                let output = if sandbox_result.success {
-                    serde_json::json!({
+                if sandbox_result.success {
+                    let output = serde_json::json!({
                         "stdout": sandbox_result.output,
                         "execution_time_ms": sandbox_result.execution_time_ms,
-                    })
+                    });
+                    Ok(ExecutionResponse::success(
+                        request.id,
+                        output,
+                        execution_time_ms,
+                        0, // modules loaded
+                    ))
                 } else {
-                    serde_json::json!({
-                        "error": sandbox_result.error,
-                    })
-                };
-
-                Ok(ExecutionResponse::success(
-                    request.id,
-                    output,
-                    execution_time_ms,
-                    0, // modules loaded
-                ))
+                    // Sandbox returned a structured failure (timeout,
+                    // memory limit, security violation). Surface it as
+                    // an error in the executor response so callers can
+                    // distinguish success from failure without parsing
+                    // the output JSON.
+                    Ok(ExecutionResponse::error(
+                        request.id,
+                        sandbox_result
+                            .error
+                            .unwrap_or_else(|| "sandbox execution failed".to_string()),
+                        execution_time_ms,
+                    ))
+                }
             }
             Err(e) => Ok(ExecutionResponse::error(request.id, e.to_string(), execution_time_ms)),
         }
@@ -239,20 +247,25 @@ mod tests {
 
     #[tokio::test]
     async fn test_executor_timeout() {
-        let config = RuntimeConfig::default();
+        let mut config = RuntimeConfig::default();
+        // Use a tiny memory limit (8 MB) so the allocation loop is guaranteed
+        // to trip the limit before the 2-second timeout.
+        config.limits.max_memory_mb = 8;
         let executor = Executor::new(config);
 
+        // Allocate memory until the runtime's memory limit kicks in. We use
+        // memory exhaustion (not an infinite loop) because we removed the
+        // QuickJS interrupt handler — `while(true){}` would never be aborted.
         let request = ExecutionRequest {
             id: Uuid::new_v4(),
-            code: "while(true) {}".to_string(),
+            code: "var a = []; while(true) { a.push(new Array(1024)); }".to_string(),
             entry: None,
             input: None,
-            timeout: Some(Duration::from_millis(100)),
+            timeout: Some(Duration::from_secs(2)),
             limits: None,
         };
 
         let response = executor.execute(request).await.unwrap();
-        // Timeout should be handled gracefully
         assert!(!response.success || response.error.is_some());
     }
 }

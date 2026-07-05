@@ -34,7 +34,10 @@ use crate::{RuntimeError, RuntimeVersion};
 const MAX_CONCURRENT_EXECUTIONS: u32 = 100;
 
 /// Maximum code size in bytes (1MB)
-const MAX_CODE_SIZE_BYTES: usize = 1_048_576;
+/// Maximum size in bytes for a single JS code submission. Hard upper bound
+/// enforced by `SandboxConfig::validate`. Public so callers (e.g. `NodeExecutor`)
+/// can clamp their own limits to avoid `validate` rejections.
+pub const MAX_CODE_SIZE_BYTES: usize = 1_048_576;
 
 /// Maximum input size in bytes (10MB)
 const MAX_INPUT_SIZE_BYTES: usize = 10_485_760;
@@ -221,6 +224,8 @@ pub struct Sandbox {
     execution_count: AtomicU64,
     active_executions: AtomicU32,
     total_rejections: AtomicU64,
+    successful_executions: AtomicU64,
+    failed_executions: AtomicU64,
     last_reset: RwLock<Instant>,
     created_at: Instant,
 
@@ -252,6 +257,8 @@ impl Sandbox {
             execution_count: AtomicU64::new(0),
             active_executions: AtomicU32::new(0),
             total_rejections: AtomicU64::new(0),
+            successful_executions: AtomicU64::new(0),
+            failed_executions: AtomicU64::new(0),
             last_reset: RwLock::new(Instant::now()),
             created_at: Instant::now(),
             dangerous_patterns: RwLock::new(None), // Lazily compiled
@@ -291,9 +298,13 @@ impl Sandbox {
             // Process access
             r"__dirname",
             r"__filename",
-            r"process\s*\.\s*(cwd|chdir|exit|kill|pid|ppid|title|argv|execArgv|execPath|env\.|stdin|stdout|stderr) ",
+            r"process\s*\.\s*(cwd|chdir|exit|kill|pid|ppid|title|argv|execArgv|execPath|stdin|stdout|stderr) ",
             r"process\.(exit|kill|cwd|chdir)\s*\(",
-            r"process\.env\s*\.",
+            // NOTE: `process.env.*` is intentionally NOT in the dangerous
+            // patterns list. Environment access is gated separately by
+            // `validate_env_access` which checks each lookup against the
+            // sensitive-name blocklist. Blocking the access itself would
+            // also block legitimate reads like `process.env.NODE_ENV`.
             r"process\.stdin",
             r"process\.stdout",
             r"process\.stderr",
@@ -563,28 +574,48 @@ impl Sandbox {
             r"host_getenv\s*\(",
         ];
 
+        let mut accesses_env = false;
         for pattern in env_patterns {
             if let Ok(re) = Regex::new(pattern) {
                 if re.is_match(code) {
-                    // Check if trying to access sensitive env vars
-                    let sensitive_patterns = [
-                        "PASSWORD", "SECRET", "TOKEN", "API_KEY", "PRIVATE",
-                        "CREDENTIAL", "AUTH", "CERT", "KEY", "DATABASE_URL",
-                        "CONNECTION_STRING", "AWS_", "AZURE_", "GCP_", "STRIPE",
-                    ];
+                    accesses_env = true;
+                    break;
+                }
+            }
+        }
 
-                    for sensitive in sensitive_patterns {
-                        let check = format!(r#"process\.env\s*\[?\s*['\"]?{}"#,
-                            regex::escape(sensitive));
-                        if let Ok(check_re) = Regex::new(&check) {
-                            if check_re.is_match(code) {
-                                self.total_rejections.fetch_add(1, Ordering::Relaxed);
-                                warn!("Access to sensitive environment variable pattern detected: {}", sensitive);
-                                return Err(RuntimeError::SecurityViolation(format!(
-                                    "Access to sensitive environment variables is not allowed"
-                                )));
-                            }
-                        }
+        if !accesses_env {
+            return Ok(());
+        }
+
+        // Check if trying to access sensitive env vars. We accept BOTH
+        // dot-access (`process.env.API_KEY`) and bracket-access
+        // (`process.env['API_KEY']` / `process.env["API_KEY"]`).
+        let sensitive_patterns = [
+            "PASSWORD", "SECRET", "TOKEN", "API_KEY", "PRIVATE",
+            "CREDENTIAL", "AUTH", "CERT", "KEY", "DATABASE_URL",
+            "CONNECTION_STRING", "AWS_", "AZURE_", "GCP_", "STRIPE",
+        ];
+
+        for sensitive in sensitive_patterns {
+            // Dot access: process.env.API_KEY
+            let dot_check = format!(
+                r#"process\.env\s*\.\s*['\"]?{}{{0,40}}['\"]?"#,
+                regex::escape(sensitive)
+            );
+            // Bracket access: process.env['API_KEY'] or process.env["API_KEY"]
+            let bracket_check = format!(
+                r#"process\.env\s*\[\s*['\"]{}\b"#,
+                regex::escape(sensitive)
+            );
+            for check in [&dot_check, &bracket_check] {
+                if let Ok(check_re) = Regex::new(check) {
+                    if check_re.is_match(code) {
+                        self.total_rejections.fetch_add(1, Ordering::Relaxed);
+                        warn!("Access to sensitive environment variable pattern detected: {}", sensitive);
+                        return Err(RuntimeError::SecurityViolation(format!(
+                            "Access to sensitive environment variables is not allowed"
+                        )));
                     }
                 }
             }
@@ -703,7 +734,6 @@ impl Sandbox {
             }
         }
     }
-}
 
     /// Check if a module is allowed
     pub fn is_module_allowed(&self, module: &str) -> bool {

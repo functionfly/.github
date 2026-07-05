@@ -2,6 +2,13 @@
 //!
 //! Handles runtime registration, function dispatch, heartbeat, and metrics
 //! reporting to the FunctionFly orchestrator via NATS.
+//!
+//! ## Why `async-nats` and not `nats`
+//!
+//! The synchronous `nats` crate (v0.26, RUSTSEC-2024-0381) is unmaintained and
+//! pulls in an old `rustls 0.22` / `rustls-webpki 0.102` with multiple
+//! outstanding CRL / name-constraint vulnerabilities (RUSTSEC-2026-0049,
+//! 0098, 0099, 0104). `async-nats 0.49` uses `rustls 0.23+` with the fixes.
 
 use crate::config::{ExecutionLimits, RuntimeConfig};
 use crate::sandbox::{Sandbox, SandboxConfig, SandboxResult};
@@ -14,8 +21,9 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 #[cfg(feature = "nats-client")]
-use nats::Connection;
-
+use async_nats::Client as NatsClient;
+#[cfg(feature = "nats-client")]
+use bytes::Bytes;
 #[cfg(feature = "nats-client")]
 use serde_json::json;
 
@@ -57,12 +65,13 @@ impl OrchestratorMessage {
 }
 
 /// Orchestrator client for runtime-orchestrator communication
+#[derive(Clone)]
 pub struct OrchestratorClient {
     runtime_id: String,
     runtime_type: String,
     nats_url: Option<String>,
     #[cfg(feature = "nats-client")]
-    connection: Option<Connection>,
+    connection: Option<NatsClient>,
     registered: bool,
 }
 
@@ -87,9 +96,10 @@ impl OrchestratorClient {
 
     /// Connect to NATS
     #[cfg(feature = "nats-client")]
-    pub fn connect(&mut self) -> Result<()> {
-        if let Some(ref url) = self.nats_url {
-            let conn = nats::connect(url)
+    pub async fn connect(&mut self) -> Result<()> {
+        if let Some(ref url) = self.nats_url.clone() {
+            let conn = async_nats::connect(url)
+                .await
                 .map_err(|e| anyhow!("failed to connect to NATS: {}", e))?;
             self.connection = Some(conn);
             Ok(())
@@ -99,7 +109,7 @@ impl OrchestratorClient {
     }
 
     #[cfg(not(feature = "nats-client"))]
-    pub fn connect(&mut self) -> Result<()> {
+    pub async fn connect(&mut self) -> Result<()> {
         Ok(())
     }
 
@@ -113,7 +123,7 @@ impl OrchestratorClient {
 
     /// Register this runtime with the orchestrator
     #[cfg(feature = "nats-client")]
-    pub fn register_runtime(&mut self, functions: Vec<String>) -> Result<()> {
+    pub async fn register_runtime(&mut self, functions: Vec<String>) -> Result<()> {
         let connection = self.connection.as_ref()
             .ok_or_else(|| anyhow!("not connected to NATS"))?;
 
@@ -126,7 +136,8 @@ impl OrchestratorClient {
         .with_runtime_id(&self.runtime_id);
 
         let payload = serde_json::to_vec(&msg)?;
-        connection.publish("runtime.registered", &payload)
+        connection.publish("runtime.registered", Bytes::from(payload))
+            .await
             .map_err(|e| anyhow!("failed to publish registration: {}", e))?;
 
         // Also publish available functions
@@ -137,7 +148,8 @@ impl OrchestratorClient {
                 "function": func,
             });
             let func_payload = serde_json::to_vec(&func_msg)?;
-            connection.publish("runtime.functions.available", &func_payload)
+            connection.publish("runtime.functions.available", Bytes::from(func_payload))
+                .await
                 .map_err(|e| anyhow!("failed to publish function availability: {}", e))?;
         }
 
@@ -146,14 +158,14 @@ impl OrchestratorClient {
     }
 
     #[cfg(not(feature = "nats-client"))]
-    pub fn register_runtime(&mut self, _functions: Vec<String>) -> Result<()> {
+    pub async fn register_runtime(&mut self, _functions: Vec<String>) -> Result<()> {
         self.registered = true;
         Ok(())
     }
 
     /// Send heartbeat to orchestrator
     #[cfg(feature = "nats-client")]
-    pub fn send_heartbeat(&self, status: &str) -> Result<()> {
+    pub async fn send_heartbeat(&self, status: &str) -> Result<()> {
         let connection = self.connection.as_ref()
             .ok_or_else(|| anyhow!("not connected to NATS"))?;
 
@@ -166,18 +178,20 @@ impl OrchestratorClient {
         .with_runtime_id(&self.runtime_id);
 
         let payload = serde_json::to_vec(&msg)?;
-        connection.publish("runtime.heartbeat", &payload)?;
+        connection.publish("runtime.heartbeat", Bytes::from(payload))
+            .await
+            .map_err(|e| anyhow!("failed to publish heartbeat: {}", e))?;
         Ok(())
     }
 
     #[cfg(not(feature = "nats-client"))]
-    pub fn send_heartbeat(&self, _status: &str) -> Result<()> {
+    pub async fn send_heartbeat(&self, _status: &str) -> Result<()> {
         Ok(())
     }
 
     /// Report metrics to orchestrator
     #[cfg(feature = "nats-client")]
-    pub fn report_metrics(&self, cpu_percent: f64, memory_bytes: u64, total_executions: u64) -> Result<()> {
+    pub async fn report_metrics(&self, cpu_percent: f64, memory_bytes: u64, total_executions: u64) -> Result<()> {
         let connection = self.connection.as_ref()
             .ok_or_else(|| anyhow!("not connected to NATS"))?;
 
@@ -192,18 +206,20 @@ impl OrchestratorClient {
         .with_runtime_id(&self.runtime_id);
 
         let payload = serde_json::to_vec(&msg)?;
-        connection.publish("runtime.metrics", &payload)?;
+        connection.publish("runtime.metrics", Bytes::from(payload))
+            .await
+            .map_err(|e| anyhow!("failed to publish metrics: {}", e))?;
         Ok(())
     }
 
     #[cfg(not(feature = "nats-client"))]
-    pub fn report_metrics(&self, _cpu_percent: f64, _memory_bytes: u64, _total_executions: u64) -> Result<()> {
+    pub async fn report_metrics(&self, _cpu_percent: f64, _memory_bytes: u64, _total_executions: u64) -> Result<()> {
         Ok(())
     }
 
     /// Deregister this runtime from the orchestrator
     #[cfg(feature = "nats-client")]
-    pub fn deregister_runtime(&self) -> Result<()> {
+    pub async fn deregister_runtime(&self) -> Result<()> {
         let connection = self.connection.as_ref()
             .ok_or_else(|| anyhow!("not connected to NATS"))?;
 
@@ -215,12 +231,14 @@ impl OrchestratorClient {
         .with_runtime_id(&self.runtime_id);
 
         let payload = serde_json::to_vec(&msg)?;
-        connection.publish("runtime.deregistered", &payload)?;
+        connection.publish("runtime.deregistered", Bytes::from(payload))
+            .await
+            .map_err(|e| anyhow!("failed to publish deregistration: {}", e))?;
         Ok(())
     }
 
     #[cfg(not(feature = "nats-client"))]
-    pub fn deregister_runtime(&self) -> Result<()> {
+    pub async fn deregister_runtime(&self) -> Result<()> {
         Ok(())
     }
 
@@ -284,5 +302,59 @@ impl FunctionExecutionResponse {
             execution_time_ms,
             memory_used_mb: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_orchestrator_client_creation() {
+        let client = OrchestratorClient::new("bun");
+        assert!(client.runtime_id().starts_with("bun-"));
+        assert!(!client.is_connected());
+        assert!(!client.is_registered());
+    }
+
+    // Tests that publish/send require a real NATS broker. Without the
+    // `nats-client` feature the publish path is a no-op success; with it,
+    // we cannot publish because we are not connected. We exercise both
+    // code paths but skip the network-dependent assertions when the feature
+    // is enabled.
+    #[tokio::test]
+    async fn test_register_without_nats() {
+        let mut client = OrchestratorClient::new("bun");
+        let res = client.register_runtime(vec![]).await;
+        #[cfg(not(feature = "nats-client"))]
+        {
+            assert!(res.is_ok());
+            assert!(client.is_registered());
+        }
+        #[cfg(feature = "nats-client")]
+        {
+            // Not connected → expected error.
+            assert!(res.is_err());
+        }
+    }
+
+    #[tokio::test]
+    async fn test_heartbeat_without_nats() {
+        let client = OrchestratorClient::new("bun");
+        let res = client.send_heartbeat("healthy").await;
+        #[cfg(not(feature = "nats-client"))]
+        assert!(res.is_ok());
+        #[cfg(feature = "nats-client")]
+        assert!(res.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_metrics_without_nats() {
+        let client = OrchestratorClient::new("bun");
+        let res = client.report_metrics(0.5, 1024, 10).await;
+        #[cfg(not(feature = "nats-client"))]
+        assert!(res.is_ok());
+        #[cfg(feature = "nats-client")]
+        assert!(res.is_err());
     }
 }

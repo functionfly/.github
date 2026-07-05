@@ -103,6 +103,38 @@ async fn require_token(
     next.run(req).await
 }
 
+/// Security headers middleware. See bun/src/main.rs for full rationale.
+pub async fn security_headers_middleware(
+    req: Request<Body>,
+    next: Next,
+) -> Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        header::HeaderName::from_static("x-content-type-options"),
+        header::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("x-frame-options"),
+        header::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("referrer-policy"),
+        header::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        header::HeaderName::from_static("content-security-policy"),
+        header::HeaderValue::from_static(
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        ),
+    );
+    headers.insert(
+        header::HeaderName::from_static("strict-transport-security"),
+        header::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    response
+}
+
 /// Build the HTTP router.
 ///
 /// `/health` and `/metrics` are unauthenticated (scraped by Prometheus).
@@ -118,6 +150,7 @@ pub fn router(state: AppState) -> Router {
         .route("/health", get(handle_health))
         .route("/metrics", get(handle_metrics))
         .with_state(state)
+        .layer(middleware::from_fn(security_headers_middleware))
 }
 
 /// Handle POST /execute

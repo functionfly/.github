@@ -130,6 +130,23 @@ async fn main() -> Result<()> {
         } else {
             tracing::warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
         }
+    } else if let Some(ref token) = api_token {
+        // Minimum entropy: 32 characters. Refusing short tokens prevents
+        // operators from accidentally shipping weak shared secrets.
+        if token.len() < 32 {
+            if is_production {
+                anyhow::bail!(
+                    "RUNTIME_API_TOKEN is too short ({} chars). Production requires >= 32 chars \
+                     of entropy (recommend 64+ hex chars).",
+                    token.len()
+                );
+            } else {
+                tracing::warn!(
+                    "RUNTIME_API_TOKEN is only {} chars — recommend >= 32 for production",
+                    token.len()
+                );
+            }
+        }
     }
 
     // Build configuration
@@ -195,11 +212,15 @@ async fn main() -> Result<()> {
 
     // Clone config for server
     let config_clone = config.clone();
-    let metrics_for_server = MetricsCollector::new("kotlin-runtime");
+    let metrics_for_server = Arc::new(MetricsCollector::new("kotlin-runtime"));
 
     axum::serve(listener, kotlin_runtime::http_server::create_app(
         AppState::new(executor, metrics_for_server, config_clone).with_auth(api_token)
-    ))
+    )
+    // Limit request body to 2 MiB. Without this, a single large `code`
+    // payload could OOM the JVM-hosted executor. The default Axum limit is
+    // 2 MiB but we set it explicitly here for clarity.
+    .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024)))
     .with_graceful_shutdown(shutdown)
     .await?;
 

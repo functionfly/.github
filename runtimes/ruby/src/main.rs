@@ -32,7 +32,7 @@ struct Args {
 impl Default for Args {
     fn default() -> Self {
         Self {
-            port: 8092,
+            port: 8094,
             max_concurrent: 100,
             max_memory_mb: 256,
             max_execution_time_secs: 30,
@@ -59,9 +59,9 @@ impl Args {
 
         Self {
             port: std::env::var("PORT")
-                .unwrap_or_else(|_| "8092".to_string())
+                .unwrap_or_else(|_| "8094".to_string())
                 .parse()
-                .unwrap_or(8092),
+                .unwrap_or(8094),
             max_concurrent: std::env::var("MAX_CONCURRENT")
                 .unwrap_or_else(|_| "100".to_string())
                 .parse()
@@ -113,6 +113,23 @@ async fn main() -> anyhow::Result<()> {
         } else {
             warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
         }
+    } else if let Some(ref token) = api_token {
+        // Minimum entropy: 32 characters. Refusing short tokens prevents
+        // operators from accidentally shipping weak shared secrets.
+        if token.len() < 32 {
+            if is_production {
+                anyhow::bail!(
+                    "RUNTIME_API_TOKEN is too short ({} chars). Production requires >= 32 chars \
+                     of entropy (recommend 64+ hex chars).",
+                    token.len()
+                );
+            } else {
+                warn!(
+                    "RUNTIME_API_TOKEN is only {} chars — recommend >= 32 for production",
+                    token.len()
+                );
+            }
+        }
     }
 
     let config = RuntimeConfig {
@@ -162,13 +179,16 @@ async fn main() -> anyhow::Result<()> {
     let mut orchestrator = OrchestratorClient::new("ruby");
     if let Some(ref nats_url) = args.nats_url {
         orchestrator = orchestrator.with_nats_url(nats_url);
-        if let Err(e) = orchestrator.connect() {
-            warn!(error = %e, "Failed to connect to NATS, running in standalone mode");
-        } else {
-            if let Err(e) = orchestrator.register_runtime(vec!["ruby".to_string()]) {
-                warn!(error = %e, "Failed to register with orchestrator");
-            } else {
-                info!(runtime_id = %orchestrator.runtime_id(), "Registered with orchestrator");
+        match orchestrator.connect().await {
+            Err(e) => {
+                warn!(error = %e, "Failed to connect to NATS, running in standalone mode");
+            }
+            Ok(_) => {
+                if let Err(e) = orchestrator.register_runtime(vec!["ruby".to_string()]).await {
+                    warn!(error = %e, "Failed to register with orchestrator");
+                } else {
+                    info!(runtime_id = %orchestrator.runtime_id(), "Registered with orchestrator");
+                }
             }
         }
     }
@@ -185,9 +205,12 @@ async fn main() -> anyhow::Result<()> {
         loop {
             interval.tick().await;
 
-            let client = orchestrator_for_heartbeat.read();
+            // Clone the client (it is Clone) so we can release the parking_lot
+            // RwLock guard before awaiting. Holding a sync guard across an
+            // await is unsound.
+            let client = orchestrator_for_heartbeat.read().clone();
             if client.is_registered() {
-                if let Err(e) = client.send_heartbeat("healthy") {
+                if let Err(e) = client.send_heartbeat("healthy").await {
                     warn!(error = %e, "Failed to send heartbeat");
                 }
             }
@@ -200,9 +223,9 @@ async fn main() -> anyhow::Result<()> {
         loop {
             interval.tick().await;
 
-            let client = orchestrator_for_metrics.read();
+            let client = orchestrator_for_metrics.read().clone();
             if client.is_registered() {
-                if let Err(e) = client.report_metrics(0.0, 0, 0) {
+                if let Err(e) = client.report_metrics(0.0, 0, 0).await {
                     warn!(error = %e, "Failed to report metrics");
                 }
             }

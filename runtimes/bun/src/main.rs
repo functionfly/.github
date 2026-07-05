@@ -149,6 +149,23 @@ async fn main() -> anyhow::Result<()> {
         } else {
             warn!("RUNTIME_API_TOKEN not set — /execute endpoint is unauthenticated (dev mode)");
         }
+    } else if let Some(ref token) = args.api_token {
+        // Minimum entropy: 32 characters. Refusing short tokens prevents
+        // operators from accidentally shipping weak shared secrets.
+        if token.len() < 32 {
+            if args.is_production {
+                anyhow::bail!(
+                    "RUNTIME_API_TOKEN is too short ({} chars). Production requires >= 32 chars \
+                     of entropy (recommend 64+ hex chars).",
+                    token.len()
+                );
+            } else {
+                warn!(
+                    "RUNTIME_API_TOKEN is only {} chars — recommend >= 32 for production",
+                    token.len()
+                );
+            }
+        }
     }
 
     let config = RuntimeConfig {
@@ -176,18 +193,40 @@ async fn main() -> anyhow::Result<()> {
         security,
     ));
 
+    // Apply OS-level resource limits (RLIMIT_AS / RLIMIT_CPU on Linux).
+    // This is a defense-in-depth measure: even if a sandbox escape or JS
+    // engine bug allows memory growth, the kernel will SIGKILL the process
+    // before it can OOM the host.
+    if let Err(e) = sandbox.apply_os_resource_limits() {
+        if args.is_production {
+            anyhow::bail!(
+                "Failed to apply OS resource limits in production: {}. \
+                 Refusing to start — host cannot guarantee memory containment.",
+                e
+            );
+        } else {
+            tracing::warn!(
+                "OS resource limits not applied ({}); in-process limits only",
+                e
+            );
+        }
+    }
+
     // Create orchestrator client
     let mut orchestrator = OrchestratorClient::new("bun");
     if let Some(ref nats_url) = args.nats_url {
         orchestrator = orchestrator.with_nats_url(nats_url);
-        if let Err(e) = orchestrator.connect() {
-            warn!(error = %e, "Failed to connect to NATS, running in standalone mode");
-        } else {
-            // Register with orchestrator
-            if let Err(e) = orchestrator.register_runtime(vec![]) {
-                warn!(error = %e, "Failed to register with orchestrator");
-            } else {
-                info!(runtime_id = %orchestrator.runtime_id(), "Registered with orchestrator");
+        match orchestrator.connect().await {
+            Err(e) => {
+                warn!(error = %e, "Failed to connect to NATS, running in standalone mode");
+            }
+            Ok(_) => {
+                // Register with orchestrator
+                if let Err(e) = orchestrator.register_runtime(vec![]).await {
+                    warn!(error = %e, "Failed to register with orchestrator");
+                } else {
+                    info!(runtime_id = %orchestrator.runtime_id(), "Registered with orchestrator");
+                }
             }
         }
     }
@@ -215,9 +254,14 @@ async fn main() -> anyhow::Result<()> {
         loop {
             interval.tick().await;
 
-            let client = orchestrator_for_heartbeat.read();
+            // Clone the client (it is Clone) so we can drop the parking_lot
+            // RwLock guard before awaiting — sync guards are not Send-safe.
+            let client = {
+                let guard = orchestrator_for_heartbeat.read();
+                guard.clone()
+            };
             if client.is_registered() {
-                if let Err(e) = client.send_heartbeat("healthy") {
+                if let Err(e) = client.send_heartbeat("healthy").await {
                     warn!(error = %e, "Failed to send heartbeat");
                 }
             }
@@ -230,10 +274,13 @@ async fn main() -> anyhow::Result<()> {
         loop {
             interval.tick().await;
 
-            let client = orchestrator_for_metrics.read();
+            let client = {
+                let guard = orchestrator_for_metrics.read();
+                guard.clone()
+            };
             if client.is_registered() {
                 let total = total_exec_clone.load(std::sync::atomic::Ordering::Relaxed);
-                if let Err(e) = client.report_metrics(0.0, 0, total) {
+                if let Err(e) = client.report_metrics(0.0, 0, total).await {
                     warn!(error = %e, "Failed to report metrics");
                 }
             }
@@ -244,6 +291,50 @@ async fn main() -> anyhow::Result<()> {
     run_server_with_state(config, args.port, state).await?;
 
     Ok(())
+}
+
+/// Security headers middleware.
+///
+/// Adds the following headers to every response:
+///
+/// - `X-Content-Type-Options: nosniff` — prevents MIME sniffing
+/// - `X-Frame-Options: DENY` — prevents clickjacking
+/// - `Referrer-Policy: strict-origin-when-cross-origin` — leaks minimal
+///   referrer info to third parties
+/// - `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`
+///   — denies all resource loading; safe because we serve JSON only
+/// - `Strict-Transport-Security: max-age=31536000; includeSubDomains` —
+///   forces HTTPS for one year (only effective behind HTTPS terminators
+///   but harmless otherwise)
+async fn security_headers_middleware(
+    req: axum::http::Request<axum::body::Body>,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(req).await;
+    let headers = response.headers_mut();
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-content-type-options"),
+        axum::http::HeaderValue::from_static("nosniff"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("x-frame-options"),
+        axum::http::HeaderValue::from_static("DENY"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("referrer-policy"),
+        axum::http::HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("content-security-policy"),
+        axum::http::HeaderValue::from_static(
+            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+        ),
+    );
+    headers.insert(
+        axum::http::header::HeaderName::from_static("strict-transport-security"),
+        axum::http::HeaderValue::from_static("max-age=31536000; includeSubDomains"),
+    );
+    response
 }
 
 /// Run server with additional runtime state
@@ -331,6 +422,14 @@ async fn run_server_with_state(
         .route("/ready", get(ready_handler))
         .route("/metrics", get(metrics_handler))
         .route("/execute", post(execute_handler))
+        // Limit request body to 2 MiB. Without this, a single 100 MB
+        // `code` payload will OOM the process. The default Axum limit is 2 MiB
+        // but we set it explicitly here for clarity.
+        .layer(axum::extract::DefaultBodyLimit::max(2 * 1024 * 1024))
+        // Emit security headers on every response (HSTS, nosniff, no
+        // framing, referrer policy, CSP deny-all). These are safe to set
+        // on JSON API endpoints since we never serve HTML.
+        .layer(axum::middleware::from_fn(security_headers_middleware))
         .with_state(app_state);
 
     let addr: SocketAddr = format!("127.0.0.1:{}", port).parse()?;
