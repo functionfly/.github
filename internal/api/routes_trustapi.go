@@ -83,7 +83,7 @@ func registerTrustAPIRoutes(
 	registrationRateLimiter := trustapi.NewRegistrationRateLimiter(5, 1*time.Hour)
 
 	// Get internal auth middleware for JWT-protected routes
-	internalAuthMiddleware := middleware.NewAuthMiddleware(s.authSvc)
+	internalAuthMiddleware := middleware.NewAuthMiddleware(s.authSvc, apikeyRepo, s.repo)
 
 	// Feature middleware for plan-based access control (JWT-authenticated users)
 	featureMiddleware := middleware.NewFeatureMiddleware()

@@ -9,12 +9,13 @@ import (
 
 // API Response types
 type AppResponse struct {
-	ID        string    `json:"id"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-	TenantID  string    `json:"tenant_id"`
-	DeployUrl string    `json:"deploy_url"`
-	CreatedAt time.Time `json:"created_at"`
+	ID             string    `json:"id"`
+	Name           string    `json:"name"`
+	Slug           string    `json:"slug"`
+	TenantID       string    `json:"tenant_id"`
+	DeployUrl      string    `json:"deploy_url"`
+	DeployUrlIntent string   `json:"deploy_url_intent,omitempty"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type BackendResponse struct {

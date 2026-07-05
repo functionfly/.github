@@ -41,6 +41,7 @@ func registerRegistryRoutes(
 	recommendationHandler *recommendations.Handler,
 	anchoringService drehandler.AnchorServicer,
 	demoHandler *demo.Handler,
+	localUploadHandler *registryhandler.LocalUploadHandler,
 ) {
 	// Inline init for registry-specific sub-handlers
 	canaryHandler := registryhandler.NewCanaryHandler(
@@ -97,6 +98,33 @@ func registerRegistryRoutes(
 		version := vars["version"]
 		executionSecurityMW.SecureExecution(fn.ID, version)(registryHandler.HandleExecute).ServeHTTP(w, r)
 	}
+
+	// NOTE: Publish routes MUST be registered BEFORE the {author}/{name}
+	// catch-alls below, otherwise POST /v1/registry/publish is matched as
+	// author="registry", name="publish" by the execute handler.
+	api.HandleFunc("/registry/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST", "OPTIONS")
+	apiV2.HandleFunc("/registry/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST", "OPTIONS")
+
+	// Direct-to-R2 artifact upload. The dashboard calls this first for large
+	// payloads, gets a presigned URL + the storage keys to use, uploads the
+	// file to R2, then calls POST /registry/publish with presigned_upload_complete=true.
+	api.HandleFunc("/registry/publish/presign", authMiddleware.RequireAuth(registryHandler.HandlePublishPresign)).Methods("POST", "OPTIONS")
+	apiV2.HandleFunc("/registry/publish/presign", authMiddleware.RequireAuth(registryHandler.HandlePublishPresign)).Methods("POST", "OPTIONS")
+
+	// Presigned GET for browser-side source/WASM preview.
+	api.HandleFunc("/artifacts/download", authMiddleware.RequireAuth(registryHandler.HandleArtifactDownload)).Methods("POST", "OPTIONS")
+
+	// Health probe for the artifact store wiring.
+	api.HandleFunc("/artifacts/health", registryHandler.HandleArtifactHealth).Methods("GET", "OPTIONS")
+
+	// Local-upload/download are only available when the artifact store is the
+	// local filesystem backend (dev / --skip-migrations). The wrapping is a
+	// no-op when LocalUploadHandler is nil; the routes return 503 cleanly.
+	if localUploadHandler != nil {
+		api.Handle("/artifacts/local-upload", localUploadHandler).Methods("PUT", "OPTIONS")
+		api.Handle("/artifacts/local-download", localUploadHandler.LocalDownloadHandler()).Methods("GET", "OPTIONS")
+	}
+
 	if verificationMiddleware != nil {
 		api.Handle("/{author}/{name}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")
 		api.Handle("/{author}/{name}@{version}", verificationMiddleware.RequireVerifiedFunction("standard")(http.HandlerFunc(secureExecuteHandler))).Methods("POST", "OPTIONS")

@@ -127,9 +127,10 @@ func (r *Repository) CreatePreGenerated(ctx context.Context, apiKey *APIKey) err
 // GetByID retrieves an API key by its ID
 func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (*APIKey, error) {
 	var apiKey APIKey
+	// Use Take() instead of First() to avoid unnecessary ORDER BY on primary key
 	err := r.db.WithContext(ctx).
 		Where("id = ?", id).
-		First(&apiKey).Error
+		Take(&apiKey).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("API key not found: %s", id)
@@ -142,11 +143,12 @@ func (r *Repository) GetByID(ctx context.Context, id uuid.UUID) (*APIKey, error)
 // GetByIDWithAssociations retrieves an API key by its ID with permissions and environments
 func (r *Repository) GetByIDWithAssociations(ctx context.Context, id uuid.UUID) (*APIKey, error) {
 	var apiKey APIKey
+	// Use Take() instead of First() to avoid unnecessary ORDER BY on primary key
 	err := r.db.WithContext(ctx).
 		Preload("Permissions").
 		Preload("Environments").
 		Where("id = ?", id).
-		First(&apiKey).Error
+		Take(&apiKey).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("API key not found: %s", id)
@@ -604,7 +606,7 @@ func (r *Repository) ValidateAPIKey(rawKey string) (*APIKey, error) {
 	}
 
 	var apiKey APIKey
-	err := r.db.Where("key_hash = ?", keyHash).First(&apiKey).Error
+	err := r.db.Where("key_hash = ?", keyHash).Take(&apiKey).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("invalid API key")
@@ -736,7 +738,7 @@ func (r *Repository) GetAPIKeyByKeyID(ctx context.Context, keyID string) (*APIKe
 	var apiKey APIKey
 	// For new format keys, key_id is the full key (fft_v1_xxx_xx)
 	// For legacy keys, key_id is fft_xxx (just the raw key without hash)
-	err := r.db.WithContext(ctx).Where("key_id = ?", keyID).First(&apiKey).Error
+	err := r.db.WithContext(ctx).Where("key_id = ?", keyID).Take(&apiKey).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("API key not found")

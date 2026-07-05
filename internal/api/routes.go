@@ -31,6 +31,7 @@ import (
 	"github.com/functionfly/functionfly/internal/analytics"
 	"github.com/functionfly/functionfly/internal/analytics/unified"
 	"github.com/functionfly/functionfly/internal/api/docs"
+	"github.com/functionfly/functionfly/internal/artifacts"
 	"github.com/functionfly/functionfly/internal/api/handlers/admin"
 	agenthandler "github.com/functionfly/functionfly/internal/api/handlers/agent"
 	agentmemoryhandler "github.com/functionfly/functionfly/internal/api/handlers/agent_memory"
@@ -54,6 +55,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/content"
 	"github.com/functionfly/functionfly/internal/api/handlers/dashboard"
 	"github.com/functionfly/functionfly/internal/api/handlers/decisions"
+	"github.com/functionfly/functionfly/internal/adapters/fly"
 	"github.com/functionfly/functionfly/internal/api/handlers/demo"
 	"github.com/functionfly/functionfly/internal/api/handlers/deploykeys"
 	"github.com/functionfly/functionfly/internal/api/handlers/deployments"
@@ -61,6 +63,8 @@ import (
 	enterprisePkg "github.com/functionfly/functionfly/internal/api/handlers/enterprise"
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
+	flymachines "github.com/functionfly/functionfly/internal/api/handlers/flymachines"
+	flyhandler "github.com/functionfly/functionfly/internal/api/handlers/fly"
 	followHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/follow"
 	foundershandler "github.com/functionfly/functionfly/internal/api/handlers/founders"
 	"github.com/functionfly/functionfly/internal/api/handlers/function_webhooks"
@@ -180,7 +184,31 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	appsHandler := apps.NewHandler(s.repo)
 	backendsHandler := backends.NewHandler(s.repo, s.routingSvc)
 	deploymentsHandler := deployments.NewHandler(s.repo, s.deploySvc)
+
+	// Initialize the function artifact store (R2 by default; local FS for dev)
+	// before constructing handlers that need it. Sharing this across handlers
+	// keeps the AWS SDK client + LRU cache warm.
+	artifactStore, artifactLRU, artifactErr := artifacts.FromEnv(context.Background())
+	if artifactErr != nil {
+		logging.Logger().WithError(artifactErr).Warn("artifacts: init failed; falling back to legacy DB storage")
+	}
+	if artifactStore != nil {
+		logging.Logger().WithField("backend", artifactStore.Backend()).Info("artifacts: store ready")
+	}
+
+	// Stand up the dev-mode local upload/download endpoints when the artifact
+	// store is the local filesystem backend. In production (R2), the dashboard
+	// talks directly to R2 via presigned URLs and these handlers aren't
+	// needed.
+	var localUploadHandler *registryhandler.LocalUploadHandler
+	if ls, ok := artifactStore.(*artifacts.LocalStore); ok {
+		localUploadHandler = &registryhandler.LocalUploadHandler{LocalStore: ls}
+	}
+
 	pasteHandler := functions.NewPasteHandler(s.repo, nil)
+	if artifactStore != nil {
+		pasteHandler.SetArtifactStore(artifactStore)
+	}
 	functionsHandler := functions.NewHandler(s.repo, s.deploySvc, pasteHandler)
 	unifiedAnalyticsSvc := unified.NewService(s.postgresDB.GORM, s.usageMetricsAgg)
 	adminHandler := admin.NewHandler(s.repo, s.postgresDB.LoginAttemptRepository(), s.postgresDB.AnalyticsRepository(), s.authSvc, unifiedAnalyticsSvc, sfAddonRepo)
@@ -297,6 +325,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Initialize state usage handler for state fabric billing/quota integration
 	stateUsageHandler := billinghandler.NewStateUsageHandler(s.stateUsageAggregator, s.repo)
 
+	// Inject state usage aggregator into billing handler for bundle storage metering
+	billingHandler.SetStateUsageAggregator(s.stateUsageAggregator)
+
 	// Initialize cost allocation handler for detailed cost tracking
 	costAllocationHandler := billinghandler.NewCostAllocationHandler(s.repo)
 
@@ -399,6 +430,10 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	registryHandler := registryhandler.NewHandler(registryRepo, s.repo, functionRepo, cacheService, cdnService, edgeCache, s.realtimeMonitor, platformFeeRepo, s.recommendationSvc, realtimeUsageTracker)
 	registryHandler.SetWalletService(s.walletService)
 	registryHandler.SetReputationHooker(repHooker)
+
+	if artifactStore != nil {
+		registryHandler.SetArtifactStore(artifactStore, artifactLRU)
+	}
 
 	// Initialize privacy service and wire it into the registry handler
 	privacyRepo := privacy.NewRepository(s.postgresDB)
@@ -512,6 +547,20 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	)
 	// Wire up MicroVM repository for execution tracking and billing
 	registryHandler.SetMicroVMRepo(microvmRepo)
+
+	// Create Fly Machines client for enterprise Python execution (optional - nil if FLY_API_TOKEN not set)
+	var flyMachinesClient *fly.FlyMachinesClient
+	if flyToken := os.Getenv("FLY_API_TOKEN"); flyToken != "" {
+		flyMachinesClient = fly.NewFlyMachinesClient(flyToken)
+	} else {
+		s.logger.Warn("FLY_API_TOKEN not set - Fly Machines enterprise execution disabled")
+	}
+
+	// Create flymachines handler for code serve / result receive
+	flymachinesHandler := flymachines.NewFlyMachinesHandler(s.redisClient)
+
+	// Create Fly webhook handler for machine lifecycle events
+	flyWebhookHandler := flyhandler.NewFlyWebhookHandler(microvmRepo)
 	marketplaceRepo := storage.NewMarketplaceRepository(s.postgresDB.DB)
 	marketplaceStorageAdapter := marketplacehandler.NewStorageAdapterWithPlugins(marketplaceRepo, pluginRepo)
 	marketplaceHandler := marketplacehandler.NewHandler(marketplaceStorageAdapter)
@@ -599,7 +648,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	}
 	defer wmgr.Close()
 
-	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath)
+	runtimeRouter := registryexecution.BuildRuntimeRouter(wasmPool, cacheService, bundleSvc, micropythonPath, cpythonPath, cpythonLibPath, flyMachinesClient, microvmRepo)
 	registryHandler.SetRuntimeRouter(runtimeRouter)
 	s.runtimeRouter = runtimeRouter
 
@@ -968,7 +1017,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	recommendationHandler := recommendations.NewHandler(s.recommendationSvc)
 
 	// ── Middleware initialization ─────────────────────────────────────────────
-	authMiddleware := middleware.NewAuthMiddleware(s.authSvc)
+	authMiddleware := middleware.NewAuthMiddleware(s.authSvc, apikeyRepo, s.repo)
 	advancedSecurityMiddleware := middleware.NewAdvancedSecurityMiddleware(s.repo)
 	featureMiddleware := middleware.NewFeatureMiddleware()
 
@@ -1240,6 +1289,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		versionHandler, blogHandler, contentHandler, feedbackHandler, recommendationHandler,
 		anchoringService,
 		demoHandler,
+		localUploadHandler,
 	)
 
 	// ── Unified Function Routes (/v1/fx/*) ──────────────────────────────────
@@ -1547,6 +1597,17 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	protected.HandleFunc("/microvm/executions", authMiddleware.RequireAuth(microvmHandler.CreateExecutionRecord)).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/microvm/executions/{id}", authMiddleware.RequireAuth(microvmHandler.UpdateExecutionStatus)).Methods("PATCH", "OPTIONS")
 
+	// Fly Machines runtime endpoints (used by Fly Machines to fetch code and post results)
+	protected.HandleFunc("/runtime/flymachines/register", authMiddleware.RequireAuth(flymachinesHandler.HandleRegisterExecution)).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/runtime/flymachines/code/{execution_id}", flymachinesHandler.HandleServeCode).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/runtime/flymachines/result/{execution_id}", flymachinesHandler.HandleReceiveResult).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/runtime/flymachines/stop/{execution_id}", flymachinesHandler.HandleStopMachine).Methods("POST", "OPTIONS")
+	protected.HandleFunc("/runtime/flymachines/health/{execution_id}", flymachinesHandler.HandleMachineHealth).Methods("POST", "OPTIONS")
+
+	// Fly webhook handler (receives machine lifecycle events from Fly.io)
+	// Webhooks don't use authMiddleware - they verify HMAC signature instead
+	s.router.HandleFunc("/webhooks/fly", flyWebhookHandler.HandleWebhook).Methods("POST", "OPTIONS")
+
 	// ── Infrastructure endpoints ──────────────────────────────────────────────
 	wellknownHandler := wellknown.NewHandler(registryRepo)
 	s.router.HandleFunc("/.well-known/functionfly.json", wellknownHandler.HandleWellKnown).Methods("GET", "OPTIONS")
@@ -1559,6 +1620,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	api.HandleFunc("/tenant/health", authMiddleware.RequireAuth(s.handleTenantHealth)).Methods("GET", "OPTIONS")
 	s.router.Handle("/metrics", middleware.MetricsAuthMiddleware(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")
+
+	// Artifact store health probe (root + /v1 for compatibility).
+	s.router.HandleFunc("/artifacts/health", registryHandler.HandleArtifactHealth).Methods("GET", "OPTIONS")
 
 	// ── API Documentation (Swagger/OpenAPI) ────────────────────────────────────
 	// OpenAPI spec - JSON endpoint (for OpenAI compatibility and Swagger UI)

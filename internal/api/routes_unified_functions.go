@@ -62,10 +62,6 @@ func registerUnifiedFunctionRoutes(
 	api.HandleFunc("/fx/{author}/{name}/trust", registryHandler.HandleGetFunctionTrustByAuthorName).Methods("GET", "OPTIONS")
 	api.HandleFunc("/fx/{author}/{name}/source", registryHandler.HandleGetFunctionSource).Methods("GET", "OPTIONS")
 
-	// ── Unified Function Publishing (authenticated) ──────────────────────────
-	// POST /v1/fx/publish - Publish new function or version
-	api.HandleFunc("/fx/publish", authMiddleware.RequireAuth(registryHandler.HandlePublish)).Methods("POST", "OPTIONS")
-
 	// ── Unified Function Testing ──────────────────────────────────────────────
 	// POST /v1/fx/{author}/{name}/test - Test function with sample input
 	api.HandleFunc("/fx/{author}/{name}/test", registryHandler.HandleTest).Methods("POST", "OPTIONS")

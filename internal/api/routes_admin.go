@@ -253,6 +253,7 @@ func registerAdminRoutes(
 
 	// Billing management
 	adminRoutes.HandleFunc("/billing/summary", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleBillingSummary)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/billing/founder-mode-analytics", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleFounderModeAnalytics)).Methods("GET", "OPTIONS")
 
 	// Wallet admin management (freeze, suspend, adjustments, reconciliation)
 	adminRoutes.HandleFunc("/wallets", authMiddleware.RequirePermission(auth.PermBillingRead)(adminHandler.HandleListWallets)).Methods("GET", "OPTIONS")

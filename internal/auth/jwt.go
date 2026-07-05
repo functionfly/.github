@@ -183,3 +183,9 @@ func (a *AuthService) getPermissionsForRole(role string) []string {
 		}
 	}
 }
+
+// GetPermissionsForRole returns the permissions for a given role.
+// Exported so auth middleware can use it for API key authentication.
+func (a *AuthService) GetPermissionsForRole(role string) []string {
+	return a.getPermissionsForRole(role)
+}

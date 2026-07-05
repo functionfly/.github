@@ -330,7 +330,7 @@ func NewServer(db *storage.PostgresDB) *Server {
 		logging.Logger().WithError(err).Warn("TenantDBProvisioner: failed to initialize, bundle provisioning may not work")
 		dbProvisioner = nil
 	}
-	bundleProvisioner := provisioning.NewBundleProvisioner(db.DB, repo, dbProvisioner, emailSvc)
+	bundleProvisioner := provisioning.NewBundleProvisioner(db.DB, repo, db.RegistryRepository(), dbProvisioner, emailSvc)
 	provisioningHandler := provisioning.NewHandler(bundleProvisioner, repo)
 
 	// Initialize monitoring services

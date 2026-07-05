@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/functionfly/functionfly/internal/apikey"
 	"github.com/functionfly/functionfly/internal/auth"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
@@ -24,33 +26,103 @@ const (
 
 // AuthMiddleware contains authentication middleware functions
 type AuthMiddleware struct {
-	authSvc *auth.AuthService
+	authSvc   *auth.AuthService
+	apiKeyRepo *apikey.Repository
+	repo       storage.Repository
 }
 
 // NewAuthMiddleware creates a new auth middleware instance
-func NewAuthMiddleware(authSvc *auth.AuthService) *AuthMiddleware {
+func NewAuthMiddleware(authSvc *auth.AuthService, apiKeyRepo *apikey.Repository, repo storage.Repository) *AuthMiddleware {
 	return &AuthMiddleware{
-		authSvc: authSvc,
+		authSvc:   authSvc,
+		apiKeyRepo: apiKeyRepo,
+		repo:       repo,
 	}
 }
 
-// extractUserFromToken extracts user information from JWT token in Authorization header, query param, or httpOnly cookie
+// looksLikeJWT returns true for tokens of the form xxx.yyy.zzz.
+func looksLikeJWT(tok string) bool {
+	if tok == "" {
+		return false
+	}
+	parts := strings.Split(tok, ".")
+	return len(parts) == 3 && parts[0] != "" && parts[1] != "" && parts[2] != ""
+}
+
+// authenticateWithAPIKey validates an API key and returns full Claims with permissions.
+func (m *AuthMiddleware) authenticateWithAPIKey(rawKey string) (*auth.Claims, error) {
+	if m.apiKeyRepo == nil {
+		return nil, fmt.Errorf("API key repository not configured")
+	}
+
+	hasher := apikey.NewHasher()
+	keyHash := hasher.HashDeterministic(rawKey)
+
+	apiKey, err := m.apiKeyRepo.GetByHash(context.Background(), keyHash)
+	if err != nil {
+		return nil, fmt.Errorf("invalid API key: %w", err)
+	}
+	if apiKey == nil {
+		return nil, fmt.Errorf("API key not found")
+	}
+
+	if !apiKey.IsActive {
+		return nil, fmt.Errorf("API key is not active")
+	}
+
+	if apiKey.ExpiresAt != nil && apiKey.ExpiresAt.Before(time.Now()) {
+		return nil, fmt.Errorf("API key has expired")
+	}
+
+	user, err := m.repo.GetUserByID(context.Background(), apiKey.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch user: %w", err)
+	}
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+
+	claims := &auth.Claims{
+		UserID:   user.ID,
+		Email:    user.Email,
+		TenantID: user.TenantID,
+		Role:     user.Role,
+	}
+
+	claims.Permissions = m.authSvc.GetPermissionsForRole(user.Role)
+
+	return claims, nil
+}
+
+// extractUserFromToken extracts user information from JWT token or API key in Authorization header, query param, or httpOnly cookie
 func (m *AuthMiddleware) extractUserFromToken(r *http.Request) (*auth.Claims, error) {
 	// Try Authorization header first (API clients)
 	authHeader := r.Header.Get("Authorization")
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) == 2 && parts[0] == "Bearer" {
-			return m.authSvc.ValidateToken(r.Context(), parts[1])
+			raw := parts[1]
+
+			// Try JWT first if it looks like a JWT
+			if looksLikeJWT(raw) {
+				if claims, err := m.authSvc.ValidateToken(r.Context(), raw); err == nil && claims != nil {
+					return claims, nil
+				}
+				// JWT validation failed - don't fall through to API key for malformed JWTs
+				return nil, fmt.Errorf("invalid JWT token")
+			}
+
+			// Not a JWT - try API key authentication
+			return m.authenticateWithAPIKey(raw)
 		}
 	}
 
-	// Try query parameter (WebSocket connections can't set headers)
+	// Try query parameter (WebSocket connections can't set headers) - JWT only
 	if token := r.URL.Query().Get("token"); token != "" {
 		return m.authSvc.ValidateToken(r.Context(), token)
 	}
 
-	// Fall back to httpOnly cookie (browser clients)
+	// Fall back to httpOnly cookie (browser clients) - JWT only
 	if cookie, err := r.Cookie(auth.CookieNameAccessToken); err == nil && cookie.Value != "" {
 		return m.authSvc.ValidateToken(r.Context(), cookie.Value)
 	}

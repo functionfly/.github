@@ -284,6 +284,8 @@ func registerAuthRoutes(
 	// Bundle catalog and details
 	api.HandleFunc("/billing/bundles", billingHandler.HandleGetBundles).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/bundles/stats", billingHandler.HandleGetBundleStats).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/bundles/catalog", billingHandler.HandleGetBundleCatalog).Methods("GET", "OPTIONS")
+	api.HandleFunc("/billing/bundles/subscription", authMiddleware.RequireAuth(billingHandler.HandleGetBundleSubscription)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/bundles/analytics/founder-mode", authMiddleware.RequireAuth(billingHandler.HandleGetFounderModeAnalytics)).Methods("GET", "OPTIONS")
 	api.HandleFunc("/billing/bundles/{slug}", billingHandler.HandleGetBundle).Methods("GET", "OPTIONS")
 	// Immediate bundle checkout

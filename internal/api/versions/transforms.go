@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // ResponseTransformer handles response transformations between API versions
@@ -265,7 +268,7 @@ func DeepTransform(data interface{}, transformer func(map[string]interface{}) ma
 func SnakeToCamel(s string) string {
 	parts := strings.Split(s, "_")
 	for i := 1; i < len(parts); i++ {
-		parts[i] = strings.Title(parts[i])
+		parts[i] = cases.Title(language.English).String(parts[i])
 	}
 	return strings.Join(parts, "")
 }
