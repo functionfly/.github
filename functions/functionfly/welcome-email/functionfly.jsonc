@@ -1,0 +1,82 @@
+{
+  "author": "functionfly",
+  "name": "welcome-email",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Welcome Email Sender",
+  "description": "Sends a personalized welcome email to a new user after signup. Validates input, sanitizes user-supplied values, and returns delivery status. Designed for use with Resend, SendGrid, SES, or any SMTP-compatible transport via env configuration.",
+  "category": "email",
+  "tags": ["email", "transactional", "welcome", "onboarding"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "to_email": {
+        "type": "string",
+        "description": "Recipient email address. Validated against RFC 5322 with a 254-char cap."
+      },
+      "to_name": {
+        "type": "string",
+        "description": "Recipient display name. Sanitized for header injection and HTML escaping."
+      },
+      "subject": {
+        "type": "string",
+        "description": "Optional custom subject line. Defaults to 'Welcome to {app_name}'."
+      },
+      "app_name": {
+        "type": "string",
+        "description": "The product/company name used in the email body.",
+        "default": "FunctionFly"
+      },
+      "cta_url": {
+        "type": "string",
+        "description": "Optional call-to-action URL (e.g. dashboard or onboarding link)."
+      },
+      "cta_label": {
+        "type": "string",
+        "description": "Optional CTA button label.",
+        "default": "Get Started"
+      },
+      "user_id": {
+        "type": "string",
+        "description": "Optional internal user ID for audit logging."
+      }
+    },
+    "required": ["to_email", "to_name"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "provider": { "type": "string" },
+      "message_id": { "type": "string" },
+      "to": { "type": "string" },
+      "subject": { "type": "string" },
+      "skipped": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "price_per_call": 0.001,
+  "tier": "free",
+  "example": {
+    "input": {
+      "to_email": "user@example.com",
+      "to_name": "Ada Lovelace",
+      "app_name": "FunctionFly",
+      "cta_url": "https://app.functionfly.com/onboarding",
+      "cta_label": "Get Started"
+    },
+    "output": {
+      "ok": true,
+      "provider": "resend",
+      "message_id": "re_abc123",
+      "to": "user@example.com",
+      "subject": "Welcome to FunctionFly",
+      "skipped": false
+    }
+  }
+}

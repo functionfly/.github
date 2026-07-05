@@ -1,0 +1,64 @@
+{
+  "author": "functionfly",
+  "name": "stripe-webhook",
+  "version": "1.0.0",
+  "runtime": "python3.12",
+  "title": "Stripe Webhook Handler",
+  "description": "Production-ready Stripe webhook receiver with HMAC-SHA256 signature verification, replay protection via timestamp tolerance, idempotency cache, and typed handlers for the most common Stripe events (subscriptions, invoices, payments, disputes, refunds, Connect payouts). Configure the shared signing secret via the STRIPE_WEBHOOK_SECRET environment variable (whsec_... from your Stripe dashboard).",
+  "category": "webhook",
+  "tags": ["webhook", "stripe", "payments", "billing", "signature", "hmac"],
+  "input": {
+    "type": "object",
+    "properties": {
+      "stripe_signature": {
+        "type": "string",
+        "description": "Value of the Stripe-Signature header (e.g. 't=1700000000,v1=abcdef...')."
+      },
+      "raw_body": {
+        "type": "string",
+        "description": "Raw, unparsed request body exactly as received (must NOT be re-serialised JSON)."
+      },
+      "event": {
+        "type": "object",
+        "description": "Optional pre-parsed Stripe event for testing. When provided, raw_body is ignored."
+      },
+      "tolerance_seconds": {
+        "type": "number",
+        "description": "Override the default 5-minute timestamp tolerance window.",
+        "default": 300
+      }
+    },
+    "required": ["stripe_signature"]
+  },
+  "output": {
+    "type": "object",
+    "properties": {
+      "ok": { "type": "boolean" },
+      "status": { "type": "string", "enum": ["received", "duplicate", "ignored", "error"] },
+      "event_id": { "type": "string" },
+      "event_type": { "type": "string" },
+      "handled": { "type": "boolean" },
+      "error": { "type": "string" }
+    }
+  },
+  "deterministic": false,
+  "idempotent": true,
+  "cache_ttl": 0,
+  "timeout_ms": 10000,
+  "memory_mb": 128,
+  "price_per_call": 0.0005,
+  "tier": "pro",
+  "example": {
+    "input": {
+      "stripe_signature": "t=1700000000,v1=0a1b2c3d4e5f",
+      "raw_body": "{\"id\":\"evt_test\",\"type\":\"invoice.payment_succeeded\"}"
+    },
+    "output": {
+      "ok": true,
+      "status": "received",
+      "event_id": "evt_test",
+      "event_type": "invoice.payment_succeeded",
+      "handled": true
+    }
+  }
+}
