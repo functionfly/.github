@@ -66,6 +66,9 @@ type Handler struct {
 	ReceiptMilestoneHook func(ctx context.Context, functionID uuid.UUID, tenantID *uuid.UUID, publicID string)
 	// AtlasTracer records execution traces to Atlas Memory Engine (optional).
 	AtlasTracer *atlas.Tracer
+	// ArtifactHydrator populates fnVersion.WasmBinary / SourceCode from
+	// object storage before the engines read them. Optional; nil-safe.
+	ArtifactHydrator *ArtifactHydrator
 }
 
 // PrivacyService interface for privacy and compliance features
@@ -162,3 +165,13 @@ const (
 	OutcomeOOM       ExecutionOutcome = "oom"
 	OutcomeCancelled ExecutionOutcome = "cancelled"
 )
+
+// ExecuteResult contains the result of a WASM execution
+type ExecuteResult struct {
+	Output          json.RawMessage
+	ExecutionTimeMs int64
+	Status          string
+	ErrorMessage    string
+	MemoryUsed      uint64
+	DeterministicID string
+}

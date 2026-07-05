@@ -11,6 +11,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/artifacts"
 	"github.com/functionfly/functionfly/internal/atlas"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
@@ -70,6 +71,13 @@ type Handler struct {
 	repHooker *services.ReputationHooker
 	// atlasTracer records execution traces to Atlas Memory Engine (optional)
 	atlasTracer *atlas.Tracer
+	// artifactStore holds user-uploaded source/WASM/readme bytes in object
+	// storage (R2 by default). When nil the publish path falls back to the
+	// legacy Postgres bytea/text columns.
+	artifactStore artifacts.Store
+	// artifactResolver fetches artifact bytes during execution, transparently
+	// falling back to DB columns for legacy rows during the cutover window.
+	artifactResolver *artifacts.Resolver
 }
 
 // SetWalletService sets the wallet service for unified wallet operations
@@ -165,6 +173,22 @@ func (h *Handler) SetMicroVMRepo(repo *storage.MicroVMRepository) {
 // SetAtlasTracer wires the Atlas Memory Engine tracer for execution tracing.
 func (h *Handler) SetAtlasTracer(tracer *atlas.Tracer) {
 	h.atlasTracer = tracer
+}
+
+// SetArtifactStore wires the object-storage backend used for user-uploaded
+// function artifacts. When store is nil the publish path keeps the legacy
+// Postgres bytea/text storage (no behavior change).
+func (h *Handler) SetArtifactStore(store artifacts.Store, lru *artifacts.DiskLRU) {
+	h.artifactStore = store
+	if store != nil {
+		h.artifactResolver = artifacts.NewResolver(store, lru)
+	}
+}
+
+// ArtifactResolver returns the read-side resolver wired in by
+// SetArtifactStore, or nil if no artifact store is configured.
+func (h *Handler) ArtifactResolver() *artifacts.Resolver {
+	return h.artifactResolver
 }
 
 // SetAutoReadmeService sets the auto-README generator service.

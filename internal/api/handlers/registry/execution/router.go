@@ -47,29 +47,31 @@ type RuntimeEngine interface {
 
 // RuntimeRouter selects the appropriate engine based on runtime and tier.
 type RuntimeRouter struct {
-	wasmEngine    RuntimeEngine       // Wasmtime pool (Rust, Go, C, C++)
-	pythonEngine  RuntimeEngine       // Firecracker MicroVM for enterprise Python
-	cpythonEngine RuntimeEngine       // In-process CPython-WASM for business Python
-	nodeEngine    RuntimeEngine       // Deno/Node V8 isolates
-	fallback      RuntimeEngine       // Legacy executor (RustPython / per-request sandbox)
-	cacheL1       *cache.CacheService // deterministic result cache
-	bundleService *bundler.BundleService
+	wasmEngine       RuntimeEngine       // Wasmtime pool (Rust, Go, C, C++)
+	pythonEngine     RuntimeEngine       // Firecracker MicroVM for enterprise Python
+	cpythonEngine    RuntimeEngine       // In-process CPython-WASM for business Python
+	nodeEngine       RuntimeEngine       // Deno/Node V8 isolates
+	fallback         RuntimeEngine       // Legacy executor (RustPython / per-request sandbox)
+	flyMachinesEngine RuntimeEngine       // Fly Machines API for enterprise Python
+	cacheL1          *cache.CacheService // deterministic result cache
+	bundleService    *bundler.BundleService
 }
 
 // NewRuntimeRouter creates a router with the given engines.
 func NewRuntimeRouter(
-	wasm, python, cpython, node, fallback RuntimeEngine,
+	wasm, python, cpython, node, fallback, flyMachines RuntimeEngine,
 	cacheL1 *cache.CacheService,
 	bundleSvc *bundler.BundleService,
 ) *RuntimeRouter {
 	return &RuntimeRouter{
-		wasmEngine:    wasm,
-		pythonEngine:  python,
-		cpythonEngine: cpython,
-		nodeEngine:    node,
-		fallback:      fallback,
-		cacheL1:       cacheL1,
-		bundleService: bundleSvc,
+		wasmEngine:        wasm,
+		pythonEngine:      python,
+		cpythonEngine:     cpython,
+		nodeEngine:        node,
+		fallback:          fallback,
+		flyMachinesEngine: flyMachines,
+		cacheL1:          cacheL1,
+		bundleService:     bundleSvc,
 	}
 }
 
@@ -107,7 +109,7 @@ func (r *RuntimeRouter) Execute(ctx context.Context, req ExecutionRequest) (Exec
 
 // IsHealthy returns true if at least one engine is healthy.
 func (r *RuntimeRouter) IsHealthy() bool {
-	for _, e := range []RuntimeEngine{r.wasmEngine, r.pythonEngine, r.cpythonEngine, r.nodeEngine, r.fallback} {
+	for _, e := range []RuntimeEngine{r.wasmEngine, r.pythonEngine, r.cpythonEngine, r.nodeEngine, r.fallback, r.flyMachinesEngine} {
 		if e != nil && e.Healthy(context.Background()) {
 			return true
 		}
@@ -130,6 +132,11 @@ func (r *RuntimeRouter) selectEngine(req ExecutionRequest) RuntimeEngine {
 		engine := r.selectPythonEngine(req.Tier)
 		if engine != nil && engine.Healthy(context.Background()) {
 			return engine
+		}
+	case "fly-machines":
+		// Fly Machines API for enterprise Python execution
+		if r.flyMachinesEngine != nil {
+			return r.flyMachinesEngine
 		}
 	}
 	return r.fallback

@@ -3,6 +3,7 @@ package cloudflare
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -131,7 +132,19 @@ func (a *CloudflareAdapter) HealthCheck(ctx context.Context, backend *storage.Ba
 	}
 
 	if !result.OK {
-		result.ErrorMessage = fmt.Sprintf("unexpected status code: %d", resp.StatusCode)
+		// Capture a small snippet of the body so the operator can immediately
+		// see WHY the worker is unhealthy (e.g. Cloudflare's "error code: 1042"
+		// page when the worker is not deployed, or a JS exception body).
+		// Bounded to avoid unbounded memory in pathological responses.
+		bodySnippet := readBoundedBody(resp.Body, 512)
+		switch {
+		case strings.Contains(bodySnippet, "error code:"):
+			result.ErrorMessage = fmt.Sprintf("unexpected status code: %d (provider error page; worker likely not deployed)", resp.StatusCode)
+		case bodySnippet != "":
+			result.ErrorMessage = fmt.Sprintf("unexpected status code: %d (body: %s)", resp.StatusCode, bodySnippet)
+		default:
+			result.ErrorMessage = fmt.Sprintf("unexpected status code: %d", resp.StatusCode)
+		}
 	}
 
 	// Try to extract version info from headers (optional)
@@ -140,6 +153,22 @@ func (a *CloudflareAdapter) HealthCheck(ctx context.Context, backend *storage.Ba
 	}
 
 	return result, nil
+}
+
+// readBoundedBody reads at most maxBytes from r and returns the result as a
+// string with whitespace collapsed. Used to include diagnostic context in
+// health-check error messages without unbounded allocation.
+func readBoundedBody(r io.Reader, maxBytes int) string {
+	if r == nil || maxBytes <= 0 {
+		return ""
+	}
+	limited := io.LimitReader(r, int64(maxBytes))
+	buf, err := io.ReadAll(limited)
+	if err != nil {
+		return ""
+	}
+	s := strings.TrimSpace(string(buf))
+	return s
 }
 
 // SignRequest adds Cloudflare-specific headers and request signing

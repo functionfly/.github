@@ -1,3 +1,5 @@
+//go:build cgo
+
 package execution
 
 import (
@@ -56,16 +58,6 @@ func NewWASMExecutor(pool *wasm.InstancePool, router *wasm.RuntimeRouter, auditL
 		auditLogger: auditLogger,
 		config:      config,
 	}
-}
-
-// ExecuteResult contains the result of a WASM execution
-type ExecuteResult struct {
-	Output          json.RawMessage
-	ExecutionTimeMs int64
-	Status          string
-	ErrorMessage    string
-	MemoryUsed      uint64
-	DeterministicID string
 }
 
 // Execute executes a WASM function with the given input

@@ -133,11 +133,16 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Populate WasmBinary/SourceCode from object storage when applicable.
+	if h.ArtifactHydrator != nil {
+		h.ArtifactHydrator.Hydrate(r.Context(), fnVersion)
+	}
+
 	// Validate runtime for tenant's plan
-	if fnVersion.Runtime == plans.RuntimePythonMicroVM {
+	if plans.IsFlyMachinesRuntime(fnVersion.Runtime) {
 		if fn.TenantID == nil {
 			h.writeError(w, http.StatusForbidden, functionregistry.ErrCodeInvalidInput,
-				"python-microvm runtime requires a tenant-owned function (Enterprise tier)")
+				"fly-machines runtime requires a tenant-owned function (Enterprise tier)")
 			return
 		}
 		tenantPlan := getTenantPlanFromContext(h.BackendRepo, *fn.TenantID)
@@ -269,7 +274,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	var microvmExecutionID uuid.UUID
 	var microvmMemoryMB int
 	var microvmVCPUs int
-	if fnVersion.Runtime == plans.RuntimePythonMicroVM && fn.TenantID != nil && h.MicroVMRepo != nil {
+	if plans.IsFlyMachinesRuntime(fnVersion.Runtime) && fn.TenantID != nil && h.MicroVMRepo != nil {
 		microvmMemoryMB = fnVersion.MemoryMB
 		if microvmMemoryMB == 0 {
 			microvmMemoryMB = plans.EnterpriseDefaultMemoryMB
@@ -332,7 +337,7 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 	durationMs := int(time.Since(startTime).Milliseconds())
 
 	// Enterprise MicroVM billing - log usage metrics for downstream aggregation
-	if fnVersion.Runtime == plans.RuntimePythonMicroVM && fn.TenantID != nil {
+	if plans.IsFlyMachinesRuntime(fnVersion.Runtime) && fn.TenantID != nil {
 		tenantPlan := getTenantPlanFromContext(h.BackendRepo, *fn.TenantID)
 		if billing := plans.CalculateMicroVMBilling(
 			tenantPlan,
@@ -872,6 +877,10 @@ func (h *Handler) HandleTest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.ArtifactHydrator != nil {
+		h.ArtifactHydrator.Hydrate(r.Context(), fnVersion)
+	}
+
 	// Validate function version has code to execute (deployed or source code for lazy bundling)
 	if fnVersion.DeploymentID == nil && fnVersion.BackendID == nil && (!fnVersion.SourceCode.Valid || fnVersion.SourceCode.String == "") {
 		h.writeError(w, http.StatusBadRequest, functionregistry.ErrCodeInvalidInput, "Function version is not deployed")
@@ -1026,6 +1035,10 @@ func (h *Handler) HandleVerifyReplay(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).Error("Failed to get function version")
 		h.writeError(w, http.StatusInternalServerError, functionregistry.ErrCodeInternalError, "Internal error")
 		return
+	}
+
+	if h.ArtifactHydrator != nil {
+		h.ArtifactHydrator.Hydrate(r.Context(), fnVersion)
 	}
 
 	// Perform verification

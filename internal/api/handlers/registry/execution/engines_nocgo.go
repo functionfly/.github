@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"sync"
@@ -208,7 +209,7 @@ func (c *RuntimeClient) Execute(ctx context.Context, code string, input []byte, 
 		defer resp.Body.Close()
 
 		if resp.StatusCode != http.StatusOK {
-			_, _ = io.ReadAll(io.LimitReader(resp.Body, 1024))
+			respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 			lastErr = fmt.Errorf("execution failed with status %d: %s", resp.StatusCode, string(respBody))
 			c.circuitBreaker.recordFailure()
 			continue

@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/adapters/fly"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/manifest"
 	"github.com/functionfly/functionfly/internal/plans"
@@ -309,8 +310,8 @@ func (se *SandboxExecutor) ensureRuntimeRunning(ctx context.Context, wasmPath st
 		"original_runtime": fnVersion.Runtime,
 	}).Info("Starting local runtime HTTP server")
 
-	// Enterprise tier: add args for MicroVM when runtime is python-microvm (must be before exec.Command)
-	if se.enterpriseConf != nil && se.enterpriseConf.Enabled && fnVersion.Runtime == plans.RuntimePythonMicroVM {
+	// Enterprise tier: add args for MicroVM when runtime is fly-machines or python-microvm (must be before exec.Command)
+	if se.enterpriseConf != nil && se.enterpriseConf.Enabled && plans.IsFlyMachinesRuntime(fnVersion.Runtime) {
 		args = append(args,
 			"--enterprise-enabled",
 			"--orchestrator-url", se.enterpriseConf.OrchestratorURL,
@@ -1008,18 +1009,21 @@ func parseMicroVMManifest(manifest json.RawMessage) (pkgs []string, net []string
 	return pkgs, net, pkgCache, strictNet
 }
 
-// buildEnterpriseConfig builds EnterpriseExecutionConfig when tenant has enterprise plan and runtime is python-microvm.
+// buildEnterpriseConfig builds EnterpriseExecutionConfig when tenant has enterprise plan and runtime is fly-machines or python-microvm.
 func buildEnterpriseConfig(fnVersion *storage.RegistryFunctionVersion, fn *storage.RegistryFunction, backendRepo storage.Repository) *EnterpriseExecutionConfig {
-	if fn == nil || fn.TenantID == nil || backendRepo == nil || fnVersion.Runtime != plans.RuntimePythonMicroVM {
+	if fn == nil || fn.TenantID == nil || backendRepo == nil {
+		return nil
+	}
+	if !plans.IsFlyMachinesRuntime(fnVersion.Runtime) {
 		return nil
 	}
 	plan := getTenantPlanFromContext(backendRepo, *fn.TenantID)
-	if plan != plans.PlanEnterprise {
+	if plan != plans.PlanEnterprise && plan != plans.PlanMicroVMEnterprise {
 		return nil
 	}
 	orchestratorURL := os.Getenv("FUNCTIONFLY_ORCHESTRATOR_URL")
 	if orchestratorURL == "" {
-		orchestratorURL = "http://localhost:9090"
+		orchestratorURL = "http://localhost:8080"
 	}
 	pkgs, net, pkgCache, strictNet := parseMicroVMManifest(fnVersion.Manifest)
 	return &EnterpriseExecutionConfig{
@@ -1064,7 +1068,7 @@ func executeWithLazyBundling(fnVersion *storage.RegistryFunctionVersion, input j
 	// python-microvm and other Python runtimes: use Python source directly.
 	// The engine detects Python source code and routes to RustPython or MicroPython executor.
 	// Bundling to WASM is not needed for daemon-mode execution.
-	if fnVersion.Runtime == plans.RuntimePythonMicroVM || strings.HasPrefix(fnVersion.Runtime, "python") {
+	if plans.IsFlyMachinesRuntime(fnVersion.Runtime) || strings.HasPrefix(fnVersion.Runtime, "python") {
 		logrus.WithFields(logrus.Fields{
 			"function_id": fnVersion.FunctionID,
 			"version":     fnVersion.Version,
@@ -1461,6 +1465,122 @@ func (sc *SandboxClient) Execute(fnVersion *storage.RegistryFunctionVersion, inp
 	}).Debug("SandboxClient: function executed via daemon")
 
 	return []byte(result.Result), nil
+}
+
+// executeViaFlyMachine executes a function using Fly Machines API.
+// It creates a Fly Machine, waits for it to start, the Machine fetches code from the
+// orchestrator, executes it, and posts the result back.
+func executeViaFlyMachine(
+	ctx context.Context,
+	fnVersion *storage.RegistryFunctionVersion,
+	input json.RawMessage,
+	maxMemoryMB int,
+	maxCPUTimeMs int,
+	fn *storage.RegistryFunction,
+	backendRepo storage.Repository,
+	flyMachinesClient *fly.FlyMachinesClient,
+	executionID string,
+	tenantID string,
+	plan string,
+) (json.RawMessage, error) {
+	sourceCode := fnVersion.SourceCode.String
+	if sourceCode == "" {
+		return nil, fmt.Errorf("function has no source code to execute")
+	}
+
+	orchestratorURL := os.Getenv("FUNCTIONFLY_ORCHESTRATOR_URL")
+	if orchestratorURL == "" {
+		orchestratorURL = "http://localhost:8080"
+	}
+
+	machineSecret := os.Getenv("FUNCTIONFLY_MACHINE_SECRET")
+
+	machineKind := "shared"
+	if plan == plans.PlanMicroVMEnterprise {
+		machineKind = "performance"
+	}
+
+	cpus := 2
+	if plan == plans.PlanMicroVMEnterprise {
+		cpus = 4
+	}
+
+	memoryMB := maxMemoryMB
+	if memoryMB == 0 {
+		memoryMB = plans.EnterpriseDefaultMemoryMB
+	}
+
+	timeoutSecs := int(maxCPUTimeMs / 1000)
+	if timeoutSecs < 5 {
+		timeoutSecs = 30
+	}
+
+	envVars := map[string]string{
+		"FUNCTIONFLY_ORCHESTRATOR_URL": orchestratorURL,
+		"FUNCTIONFLY_MACHINE_SECRET":   machineSecret,
+		"FLY_EXECUTION_ID":            executionID,
+		"FLY_TIMEOUT_SECONDS":         fmt.Sprintf("%d", timeoutSecs),
+	}
+
+	metadata := map[string]string{
+		"ff_customer_id":  tenantID,
+		"ff_execution_id": executionID,
+		"ff_plan":         plan,
+		"ff_created_at":   time.Now().UTC().Format(time.RFC3339),
+	}
+
+	imageName := os.Getenv("FLY_ENTERPRISE_IMAGE")
+	if imageName == "" {
+		imageName = "registry.fly.io/functionfly-enterprise:latest"
+	}
+
+	createReq := &fly.CreateMachineRequest{
+		Config: fly.MachineConfig{
+			Image: imageName,
+			Guest: fly.GuestConfig{
+				CPUKind:  machineKind,
+				CPUs:     cpus,
+				MemoryMB: memoryMB,
+			},
+			Metadata: metadata,
+			Env:      envVars,
+		},
+	}
+
+	machine, err := flyMachinesClient.CreateMachine(ctx, createReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Fly Machine: %w", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"machine_id":   machine.ID,
+		"execution_id": executionID,
+		"region":       machine.Region,
+	}).Info("Fly Machine created")
+
+	if err := flyMachinesClient.WaitForMachine(ctx, machine.ID, "started", 10*time.Second); err != nil {
+		flyMachinesClient.StopMachine(ctx, machine.ID)
+		flyMachinesClient.DeleteMachine(ctx, machine.ID)
+		return nil, fmt.Errorf("machine failed to start: %w", err)
+	}
+
+	result, err := flyMachinesClient.ExecInMachine(ctx, machine.ID, "", strings.NewReader(`{}`))
+	if err != nil {
+		flyMachinesClient.StopMachine(ctx, machine.ID)
+		flyMachinesClient.DeleteMachine(ctx, machine.ID)
+		return nil, fmt.Errorf("failed to exec in machine: %w", err)
+	}
+
+	flyMachinesClient.StopMachine(ctx, machine.ID)
+	flyMachinesClient.DeleteMachine(ctx, machine.ID)
+
+	logrus.WithFields(logrus.Fields{
+		"machine_id":   machine.ID,
+		"execution_id": executionID,
+		"result_len":   len(result),
+	}).Debug("Fly Machine execution completed")
+
+	return result, nil
 }
 
 // waitForReady polls the daemon health endpoint until it responds.

@@ -27,6 +27,7 @@ func (h *Handler) buildExecHandler() *execution.Handler {
 		BundleService:       h.bundleService,
 		ReceiptMilestoneHook: h.ReceiptMilestoneHook,
 		AtlasTracer:          h.atlasTracer,
+		ArtifactHydrator:    execution.NewArtifactHydrator(h.artifactResolver),
 	}
 }
 

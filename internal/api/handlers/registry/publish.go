@@ -18,6 +18,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/handlers/registry/execution"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/functionfly/functionfly/internal/artifacts"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/functionregistry"
 	"github.com/functionfly/functionfly/internal/manifest"
@@ -26,6 +27,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
+
+func contentTypeForSource(runtime string) string {
+	switch runtime {
+	case "python3.11", "python3.12":
+		return "text/x-python; charset=utf-8"
+	case "node18", "node20", "deno":
+		return "text/javascript; charset=utf-8"
+	case "typescript":
+		return "text/typescript; charset=utf-8"
+	default:
+		return "text/plain; charset=utf-8"
+	}
+}
 
 // isRecordNotFound checks if the error is a GORM record not found error
 func isRecordNotFound(err error) bool {
@@ -339,6 +353,80 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		// wasmBinary remains nil/empty - will be generated lazily
 	}
 
+	// Determine storage backend for this version's artifacts. When an artifact
+	// store is configured and the bytes are non-trivial we write to R2
+	// (content-addressed, dedupe-aware) and keep only metadata + content hash
+	// in Postgres. The legacy DB columns remain populated when no store is
+	// configured, or when this publish is from an admin path that chose DB
+	// explicitly.
+	useArtifactStore := h.artifactStore != nil
+	storageBackend := string(artifacts.BackendDB)
+	if useArtifactStore {
+		storageBackend = string(h.artifactStore.Backend())
+	}
+
+	var (
+		storageKey       sql.NullString
+		sourceStorageKey sql.NullString
+		readmeStorageKey sql.NullString
+		artifactHash     sql.NullString
+	)
+
+	// Helper: upload bytes to the artifact store, deduping on content hash.
+	uploadArtifact := func(kind artifacts.Kind, payload []byte, contentType string) (string, error) {
+		if len(payload) == 0 {
+			return "", nil
+		}
+		// Dedupe: if the store already has this content (rare since content
+		// is keyed by SHA-256), skip the upload entirely.
+		sha := artifacts.ContentHash(payload)
+		key := artifacts.KeyFor(kind, sha, "")
+		if h.artifactStore != nil {
+			if exists, err := h.artifactStore.Exists(r.Context(), key); err == nil && exists {
+				return key, nil
+			}
+		}
+		meta, err := h.artifactStore.Put(r.Context(), kind, bytes.NewReader(payload), contentType)
+		if err != nil {
+			return "", fmt.Errorf("upload %s artifact: %w", kind, err)
+		}
+		return meta.Key, nil
+	}
+
+	var bundleBytes int32
+	if len(wasmBinary) > 0 {
+		bundleBytes = int32(len(wasmBinary))
+	}
+
+	if useArtifactStore {
+		if len(wasmBinary) > 0 {
+			key, err := uploadArtifact(artifacts.KindWASM, wasmBinary, "application/wasm")
+			if err != nil {
+				apierror.LogAndInternal(w, r, err, "upload wasm to artifact store")
+				return
+			}
+			storageKey = sql.NullString{String: key, Valid: true}
+			artifactHash = sql.NullString{String: artifacts.ContentHash(wasmBinary), Valid: true}
+		}
+		if req.Source.Code != "" {
+			ct := contentTypeForSource(m.Runtime)
+			key, err := uploadArtifact(artifacts.KindSource, []byte(req.Source.Code), ct)
+			if err != nil {
+				apierror.LogAndInternal(w, r, err, "upload source to artifact store")
+				return
+			}
+			sourceStorageKey = sql.NullString{String: key, Valid: true}
+		}
+		if req.Source.Readme != "" {
+			key, err := uploadArtifact(artifacts.KindReadme, []byte(req.Source.Readme), "text/markdown; charset=utf-8")
+			if err != nil {
+				logrus.WithError(err).Warn("failed to upload readme to artifact store; continuing")
+			} else {
+				readmeStorageKey = sql.NullString{String: key, Valid: true}
+			}
+		}
+	}
+
 	// Create function version - store as clean JSON (canonical format)
 	// Also store capabilities separately for efficient runtime access
 	capabilitiesJSON, _ := json.Marshal(m.Capabilities)
@@ -356,11 +444,25 @@ func (h *Handler) HandlePublish(w http.ResponseWriter, r *http.Request) {
 		Capabilities:  capabilitiesJSON,
 		WasmBinary:    wasmBinary,
 		SourceHash:    sql.NullString{String: sourceHash, Valid: true},
-		BundleSize:    sql.NullInt32{Int32: int32(len(wasmBinary)), Valid: true},
-		// Store source code for lazy bundling if no WASM binary
-		SourceCode: sql.NullString{String: req.Source.Code, Valid: req.Source.Code != ""},
-		// Store readme for function page documentation
-		Readme: sql.NullString{String: req.Source.Readme, Valid: req.Source.Readme != ""},
+		BundleSize:    sql.NullInt32{Int32: bundleBytes, Valid: bundleBytes > 0},
+		SourceCode:    sql.NullString{String: req.Source.Code, Valid: req.Source.Code != ""},
+		Readme:        sql.NullString{String: req.Source.Readme, Valid: req.Source.Readme != ""},
+		StorageBackend:   storageBackend,
+		StorageKey:       storageKey,
+		SourceStorageKey: sourceStorageKey,
+		ReadmeStorageKey: readmeStorageKey,
+		ArtifactHash:     artifactHash,
+	}
+
+	// When artifacts live in the object store, avoid ballooning TOAST by not
+	// duplicating the same bytes in the legacy columns. The migration worker
+	// nullifies these after cutover; for now we still keep them populated
+	// when the artifact store is disabled so existing call-sites don't break.
+	if useArtifactStore {
+		version.WasmBinary = nil
+		version.SourceCode = sql.NullString{}
+		version.Readme = sql.NullString{}
+		_ = version.SourceCode
 	}
 
 	// Link to deployment if provided

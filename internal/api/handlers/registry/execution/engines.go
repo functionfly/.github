@@ -20,6 +20,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/adapters/fly"
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/cache"
 	"github.com/functionfly/functionfly/internal/plans"
@@ -1006,6 +1007,8 @@ func (e *WasmCellExecutor) writeWasmTemp(data []byte) (string, error) {
 // pythonWASMPath: path to the MicroPython/CPython WASM runtime for pool cells
 // cpythonPath:   path to the CPython-WASM binary (python.wasm)
 // cpythonLib:    path to the CPython stdlib (cpython-wasi/lib)
+// flyMachinesClient: Fly Machines API client (may be nil)
+// microvmRepo:   MicroVM repository for execution tracking (may be nil)
 func BuildRuntimeRouter(
 	wasmPool *wasm.InstancePool,
 	cacheL1 *cache.CacheService,
@@ -1013,6 +1016,8 @@ func BuildRuntimeRouter(
 	pythonWASMPath string,
 	cpythonPath string,
 	cpythonLib string,
+	flyMachinesClient *fly.FlyMachinesClient,
+	microvmRepo *storage.MicroVMRepository,
 ) *RuntimeRouter {
 	// WASM engine: in-process wasmtime cell executor (runtime-aware).
 	wasmEngine := NewWasmCellExecutor(wasmPool, bundleSvc, pythonWASMPath)
@@ -1042,10 +1047,16 @@ func BuildRuntimeRouter(
 		logrus.Warn("BuildRuntimeRouter: functionfly-nodejs binary not found — JS/TS execution will fall back to sandbox (slower cold starts). Build and deploy the binary to enable native QuickJS-WASM execution.")
 	}
 
+	// Fly Machines engine: Fly Machines API for enterprise Python execution.
+	var flyMachinesEngine RuntimeEngine
+	if flyMachinesClient != nil {
+		flyMachinesEngine = NewFlyMachinesEngine(flyMachinesClient, microvmRepo)
+	}
+
 	// Fallback: legacy sandbox (RustPython / per-request spawn).
 	fallback := &sandboxEngine{}
 
-	return NewRuntimeRouter(wasmEngine, pythonEngine, cpythonEngine, nodeEngine, fallback, cacheL1, bundleSvc)
+	return NewRuntimeRouter(wasmEngine, pythonEngine, cpythonEngine, nodeEngine, fallback, flyMachinesEngine, cacheL1, bundleSvc)
 }
 
 // ---------------------------------------------------------------------------
