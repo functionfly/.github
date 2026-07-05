@@ -15,6 +15,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func encodeJSON(w http.ResponseWriter, status int, data interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		logrus.WithError(err).Error("billing bundles: failed to encode response")
+	}
+}
+
 // HandleGetBundles returns all active Backend-in-a-Box pricing bundles
 // GET /v1/billing/bundles
 // NOTE: This endpoint is public — no auth required so pricing is visible to unauthenticated users
@@ -32,9 +40,7 @@ func (h *Handler) HandleGetBundles(w http.ResponseWriter, r *http.Request) {
 		response = append(response, bundleToResponse(b))
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"bundles": response,
 	})
 }
@@ -54,11 +60,9 @@ func (h *Handler) HandleGetBundleStats(w http.ResponseWriter, r *http.Request) {
 		deploymentsCount = 0
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"active_founders":        founderCount,
-		"recent_deployments":     deploymentsCount,
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
+		"active_founders":    founderCount,
+		"recent_deployments": deploymentsCount,
 	})
 }
 
@@ -98,9 +102,7 @@ func (h *Handler) HandleGetBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(bundleToResponse(bundle))
+	encodeJSON(w, http.StatusOK, bundleToResponse(bundle))
 }
 
 // HandleGetBundleUsageStatus returns current usage against bundle limits
@@ -135,65 +137,152 @@ func (h *Handler) HandleGetBundleUsageStatus(w http.ResponseWriter, r *http.Requ
 		totalExecutions += rollup.TotalQuantity
 	}
 
+	aiRollups, _ := h.repo.GetUsageByTenant(ctx, claims.TenantID, "ai_call", periodStart, periodEnd)
+	totalAICalls := 0
+	for _, rollup := range aiRollups {
+		totalAICalls += rollup.TotalQuantity
+	}
+
+	functions, _ := h.repo.ListFunctionsByTenant(ctx, claims.TenantID)
+	functionCount := len(functions)
+
+	providerCount, _ := h.repo.CountBackendsByTenant(ctx, claims.TenantID)
+
 	storageUsedBytes := 0
+	if h.stateUsageAggregator != nil {
+		if stateUsage, err := h.stateUsageAggregator.GetTenantStateUsage(ctx, claims.TenantID); err == nil {
+			storageUsedBytes = int(stateUsage.TotalStorageBytes)
+		}
+	}
 	usersCount, _ := h.repo.CountUsersByTenant(ctx, claims.TenantID)
 
+	workflowCount := 0
+	if _, total, err := h.repo.ListLifecycleWorkflows(ctx, claims.TenantID, 1, 0); err == nil {
+		workflowCount = total
+	}
+
 	executionLimit := bundle.FeatureLimits["function_executions"]
+	aiCallsLimit := bundle.FeatureLimits["ai_calls"]
+	functionsLimit := bundle.FeatureLimits["functions"]
+	providersLimit := bundle.FeatureLimits["providers"]
 	storageLimit := bundle.FeatureLimits["storage_bytes"]
 	userLimit := bundle.FeatureLimits["users"]
+	requestsLimit := bundle.FeatureLimits["requests"]
+	workflowsLimit := bundle.FeatureLimits["workflows"]
 
-	usagePercent := 0.0
+	usage := map[string]interface{}{}
+
 	if executionLimit > 0 {
-		usagePercent = float64(totalExecutions) / float64(executionLimit) * 100
-		if usagePercent > 100 {
-			usagePercent = 100
+		percent := float64(totalExecutions) / float64(executionLimit) * 100
+		if percent > 100 {
+			percent = 100
+		}
+		usage["function_executions"] = map[string]interface{}{
+			"used":   totalExecutions,
+			"limit":  executionLimit,
+			"percent": percent,
 		}
 	}
 
-	storagePercent := 0.0
+	if aiCallsLimit > 0 {
+		percent := float64(totalAICalls) / float64(aiCallsLimit) * 100
+		if percent > 100 {
+			percent = 100
+		}
+		usage["ai_calls"] = map[string]interface{}{
+			"used":   totalAICalls,
+			"limit":  aiCallsLimit,
+			"percent": percent,
+		}
+	}
+
+	if functionsLimit > 0 {
+		percent := float64(functionCount) / float64(functionsLimit) * 100
+		if percent > 100 {
+			percent = 100
+		}
+		usage["functions"] = map[string]interface{}{
+			"used":   functionCount,
+			"limit":  functionsLimit,
+			"percent": percent,
+		}
+	}
+
+	if providersLimit > 0 {
+		percent := float64(providerCount) / float64(providersLimit) * 100
+		if percent > 100 {
+			percent = 100
+		}
+		usage["providers"] = map[string]interface{}{
+			"used":   providerCount,
+			"limit":  providersLimit,
+			"percent": percent,
+		}
+	}
+
 	if storageLimit > 0 {
-		storagePercent = float64(storageUsedBytes) / float64(storageLimit) * 100
-		if storagePercent > 100 {
-			storagePercent = 100
+		percent := float64(storageUsedBytes) / float64(storageLimit) * 100
+		if percent > 100 {
+			percent = 100
+		}
+		usage["storage_bytes"] = map[string]interface{}{
+			"used":   storageUsedBytes,
+			"limit":  storageLimit,
+			"percent": percent,
 		}
 	}
 
-	userPercent := 0.0
 	if userLimit > 0 {
-		userPercent = float64(usersCount) / float64(userLimit) * 100
-		if userPercent > 100 {
-			userPercent = 100
+		percent := float64(usersCount) / float64(userLimit) * 100
+		if percent > 100 {
+			percent = 100
+		}
+		usage["users"] = map[string]interface{}{
+			"used":   usersCount,
+			"limit":  userLimit,
+			"percent": percent,
 		}
 	}
 
-	isAtLimit := totalExecutions >= executionLimit && executionLimit > 0
+	if requestsLimit > 0 {
+		percent := float64(totalExecutions) / float64(requestsLimit) * 100
+		if percent > 100 {
+			percent = 100
+		}
+		usage["requests"] = map[string]interface{}{
+			"used":   totalExecutions,
+			"limit":  requestsLimit,
+			"percent": percent,
+		}
+	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"bundle_slug":           bundle.Slug,
-		"subscription_status":   sub.Status,
-		"period_start":          periodStart.Format("2006-01-02"),
-		"period_end":            periodEnd.Format("2006-01-02"),
-		"usage": map[string]interface{}{
-			"function_executions": map[string]interface{}{
-				"used":   totalExecutions,
-				"limit":  executionLimit,
-				"percent": usagePercent,
-			},
-			"storage_bytes": map[string]interface{}{
-				"used":   storageUsedBytes,
-				"limit":  storageLimit,
-				"percent": storagePercent,
-			},
-			"users": map[string]interface{}{
-				"used":   usersCount,
-				"limit":  userLimit,
-				"percent": userPercent,
-			},
-		},
-		"is_at_limit": isAtLimit,
-		"upgrade_required": isAtLimit,
+	if workflowsLimit > 0 {
+		percent := 0.0
+		if workflowsLimit > 0 {
+			percent = float64(workflowCount) / float64(workflowsLimit) * 100
+			if percent > 100 {
+				percent = 100
+			}
+		}
+		usage["workflows"] = map[string]interface{}{
+			"used":   workflowCount,
+			"limit":  workflowsLimit,
+			"percent": percent,
+		}
+	}
+
+	isAtLimit := (functionsLimit > 0 && functionCount >= functionsLimit) ||
+		(providersLimit > 0 && providerCount >= providersLimit) ||
+		(aiCallsLimit > 0 && totalAICalls >= aiCallsLimit)
+
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
+		"bundle_slug":          bundle.Slug,
+		"subscription_status":  sub.Status,
+		"period_start":         periodStart.Format("2006-01-02"),
+		"period_end":           periodEnd.Format("2006-01-02"),
+		"usage":                usage,
+		"is_at_limit":          isAtLimit,
+		"upgrade_required":     isAtLimit,
 	})
 }
 
@@ -291,9 +380,7 @@ func (h *Handler) HandleChangeBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	encodeJSON(w, http.StatusOK, resp)
 }
 
 // HandleRegisterFounderMode registers a user for founder mode (free until trigger)
@@ -425,9 +512,7 @@ func (h *Handler) HandleRegisterFounderMode(w http.ResponseWriter, r *http.Reque
 	// Trigger auto-provisioning
 	go h.provisionBundleResources(claims.TenantID, bundle)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(founderModeToResponse(registration, bundle.Slug))
+	encodeJSON(w, http.StatusCreated, founderModeToResponse(registration, bundle.Slug))
 }
 
 // HandleCreateBundleCheckout creates a Stripe checkout for immediate bundle subscription
@@ -524,9 +609,7 @@ func (h *Handler) HandleCreateBundleCheckout(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	encodeJSON(w, http.StatusOK, resp)
 }
 
 // HandleGetFounderModeStatus returns the current user's founder mode status
@@ -555,9 +638,7 @@ func (h *Handler) HandleGetFounderModeStatus(w http.ResponseWriter, r *http.Requ
 		response = append(response, founderModeToResponse(reg, slug))
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"founder_modes": response,
 	})
 }
@@ -581,9 +662,7 @@ func (h *Handler) HandleGetDeferredBillingStatus(w http.ResponseWriter, r *http.
 	}
 
 	if len(registrations) == 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		encodeJSON(w, http.StatusOK, map[string]interface{}{
 			"deferred_status": nil,
 			"message":         "No active deferred billing",
 		})
@@ -663,14 +742,12 @@ func (h *Handler) HandleGetDeferredBillingStatus(w http.ResponseWriter, r *http.
 		estimatedDaysLeft = 0
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(DeferredBillingStatus{
-		BundleID:          reg.BundleID,
-		Status:            status,
-		TriggerThresholds: thresholds,
-		CurrentProgress:   progress,
-		ProgressPercent:   progressPercent,
+	encodeJSON(w, http.StatusOK, DeferredBillingStatus{
+		BundleID:           reg.BundleID,
+		Status:             status,
+		TriggerThresholds:  thresholds,
+		CurrentProgress:    progress,
+		ProgressPercent:    progressPercent,
 		EstimatedDaysLeft: &estimatedDaysLeft,
 	})
 }
@@ -765,9 +842,7 @@ func (h *Handler) HandleConvertToPaid(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	encodeJSON(w, http.StatusOK, resp)
 }
 
 // HandleDeployBundle initiates a bundle deployment and returns deployment status
@@ -842,6 +917,17 @@ func (h *Handler) HandleDeployBundle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Update subscription with the default app ID so the bundle overview can link to it
+	if app != nil {
+		bundleSub, subErr := h.repo.GetBundleSubscriptionByTenant(r.Context(), claims.TenantID)
+		if subErr == nil && bundleSub != nil && bundleSub.BundleID == bundle.ID {
+			bundleSub.DefaultAppID = &app.ID
+			if updateErr := h.repo.UpdateBundleSubscription(r.Context(), bundleSub); updateErr != nil {
+				logrus.WithError(updateErr).WithField("tenant_id", claims.TenantID).Warn("Failed to update subscription with app ID")
+			}
+		}
+	}
+
 	// Return deployment response with steps
 	deploymentID := uuid.New().String()
 	steps := []DeploymentStepResponse{
@@ -876,15 +962,13 @@ func (h *Handler) HandleDeployBundle(w http.ResponseWriter, r *http.Request) {
 		h.redisClient.Set(ctx, key, jsonData, time.Hour)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(DeploymentResponse{
+	encodeJSON(w, http.StatusOK, DeploymentResponse{
 		DeploymentID: deploymentID,
-		Status:       "completed",
-		Message:      "Bundle deployed successfully",
-		AppID:        app.ID.String(),
-		BackendID:    "",
-		Steps:        steps,
+		Status:      "completed",
+		Message:     "Bundle deployed successfully",
+		AppID:       app.ID.String(),
+		BackendID:   "",
+		Steps:       steps,
 	})
 }
 
@@ -904,9 +988,7 @@ func (h *Handler) HandleGetFounderModeAnalytics(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(analytics)
+	encodeJSON(w, http.StatusOK, analytics)
 }
 
 // bundleToResponse converts a PricingBundle to BundleResponse
@@ -975,15 +1057,12 @@ func (h *Handler) HandleGetDeploymentStatus(w http.ResponseWriter, r *http.Reque
 	key := fmt.Sprintf("deployment:%s", deploymentID)
 	data, err := h.redisClient.Get(ctx, key).Bytes()
 	if err != nil || len(data) == 0 {
-		// Fallback: check provisioning status from platform DB
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(DeploymentStatusResponse{
+		encodeJSON(w, http.StatusOK, DeploymentStatusResponse{
 			DeploymentID: deploymentID,
-			Status:      "unknown",
-			Message:     "Deployment not found or expired",
-			Progress:    0,
-			Steps:       []DeploymentStepResponse{},
+			Status:       "unknown",
+			Message:      "Deployment not found or expired",
+			Progress:     0,
+			Steps:        []DeploymentStepResponse{},
 		})
 		return
 	}
@@ -1036,17 +1115,15 @@ func (h *Handler) HandleGetDeploymentStatus(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(DeploymentStatusResponse{
+	encodeJSON(w, http.StatusOK, DeploymentStatusResponse{
 		DeploymentID: deploymentID,
 		Status:       status,
 		Message:      fmt.Sprintf("Deployment is %s", status),
 		Progress:     progress,
-		CurrentStep:  "",
+		CurrentStep: "",
 		Steps:        steps,
-		AppID:        result.AppID,
-		BackendID:    result.BackendID,
+		AppID:       result.AppID,
+		BackendID:   result.BackendID,
 	})
 }
 
@@ -1068,6 +1145,156 @@ func (h *Handler) HandleGetBundleSubscription(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	encodeJSON(w, http.StatusOK, sub)
+}
+
+// HandleGetBundleCatalog returns rich metadata for all bundles (features, functions, integrations).
+// This is a public endpoint — no auth required.
+// GET /v1/billing/bundles/catalog
+func (h *Handler) HandleGetBundleCatalog(w http.ResponseWriter, r *http.Request) {
+	bundles, err := h.repo.ListPricingBundles(r.Context(), true)
+	if err != nil {
+		logrus.WithError(err).Error("billing bundles: failed to list bundles for catalog")
+		writeJSONError(w, http.StatusInternalServerError, "Failed to retrieve bundle catalog")
+		return
+	}
+
+	richMetadata := map[string]BundleCatalogItem{
+		"saas-starter": {
+			Slug:     "saas-starter",
+			Name:     "SaaS Starter",
+			Tagline:  "Full SaaS backend ready to customize",
+			PriceUSD: "$29/mo",
+			Icon:     "Rocket",
+			Gradient: "from-blue-500 to-cyan-500",
+			Features: []FeatureWithDetails{
+				{Icon: "Shield", Title: "Authentication", Description: "JWT, OAuth (Google, GitHub), sessions, MFA"},
+				{Icon: "CreditCard", Title: "Payments", Description: "Stripe integration, products, invoices, webhooks"},
+				{Icon: "Mail", Title: "Email Workflows", Description: "20+ templates, welcome sequence, dunning"},
+				{Icon: "BarChart3", Title: "Analytics", Description: "Event tracking, funnels, cohorts, dashboards"},
+			},
+			ProvisioningSteps: []ProvisioningStepMeta{
+				{Label: "Functions", Description: "Explore your pre-configured functions"},
+				{Label: "Integrations", Description: "Set up Stripe, OAuth, and email"},
+				{Label: "Deploy", Description: "Push to production"},
+			},
+			Functions: map[string]FunctionMetadata{
+				"stripe-webhook": {
+					Description:  "Handles Stripe subscription and payment webhook events. Processes customer subscriptions, successful payments, and failed invoices.",
+					Icon:         "Webhook",
+					Capabilities: []string{"Webhook", "Storage"},
+				},
+				"welcome-email": {
+					Description:  "Sends personalized welcome emails to new users after signup using your configured email templates.",
+					Icon:         "Mail",
+					Capabilities: []string{"Email"},
+				},
+			},
+			Integrations: []IntegrationMetadata{
+				{Title: "Stripe Payments", Description: "Subscriptions, invoices, webhooks, and billing management", Icon: "CreditCard"},
+				{Title: "OAuth Providers", Description: "Google, GitHub, and social login authentication", Icon: "Shield"},
+				{Title: "Email Workflows", Description: "Transactional emails, welcome sequences, and dunning flows", Icon: "Mail"},
+				{Title: "Analytics", Description: "Event tracking, funnels, cohorts, and dashboards", Icon: "BarChart3"},
+			},
+		},
+		"marketplace": {
+			Slug:     "marketplace",
+			Name:     "Marketplace",
+			Tagline:  "Multi-vendor marketplace backend",
+			PriceUSD: "$49/mo",
+			Icon:     "Store",
+			Gradient: "from-emerald-500 to-teal-500",
+			Features: []FeatureWithDetails{
+				{Icon: "Store", Title: "Listings", Description: "Categories, variants, reviews, full-text search"},
+				{Icon: "CreditCard", Title: "Stripe Connect", Description: "Split payments, seller payouts, refunds"},
+				{Icon: "MessageSquare", Title: "Messaging", Description: "Buyer-seller conversations, offers, files"},
+				{Icon: "Bell", Title: "Notifications", Description: "22 templates, in-app + email alerts"},
+			},
+			ProvisioningSteps: []ProvisioningStepMeta{
+				{Label: "Functions", Description: "Explore your pre-configured functions"},
+				{Label: "Integrations", Description: "Set up Stripe Connect and messaging"},
+				{Label: "Deploy", Description: "Push to production"},
+			},
+			Functions: map[string]FunctionMetadata{
+				"create-listing": {
+					Description:  "Creates marketplace listings with seller info, pricing, and categories. Stores listing data for search and retrieval.",
+					Icon:         "Store",
+					Capabilities: []string{"Storage"},
+				},
+				"send-message": {
+					Description:  "Enables buyer-seller messaging with persistent conversation threads and file support.",
+					Icon:         "MessageSquare",
+					Capabilities: []string{"Storage"},
+				},
+			},
+			Integrations: []IntegrationMetadata{
+				{Title: "Stripe Connect", Description: "Split payments, seller payouts, and marketplace billing", Icon: "CreditCard"},
+				{Title: "Messaging", Description: "Buyer-seller conversations, offers, and file attachments", Icon: "Webhook"},
+				{Title: "Notifications", Description: "In-app alerts, email notifications, and templates", Icon: "Mail"},
+				{Title: "Listings", Description: "Categories, variants, reviews, and full-text search", Icon: "Settings"},
+			},
+		},
+		"ai-app": {
+			Slug:     "ai-app",
+			Name:     "AI App",
+			Tagline:  "AI-powered backend with vector search",
+			PriceUSD: "$39/mo",
+			Icon:     "Brain",
+			Gradient: "from-violet-500 to-purple-500",
+			Features: []FeatureWithDetails{
+				{Icon: "Cpu", Title: "Vector DB", Description: "pgvector with HNSW indexing, collections"},
+				{Icon: "Database", Title: "Embeddings", Description: "OpenAI embeddings, document chunking, RAG"},
+				{Icon: "MessageSquare", Title: "Chat Workflows", Description: "AI assistants, tool calling, guardrails"},
+				{Icon: "Sparkles", Title: "Memory System", Description: "Long-term semantic memory, user profiles"},
+			},
+			ProvisioningSteps: []ProvisioningStepMeta{
+				{Label: "Functions", Description: "Explore your pre-configured functions"},
+				{Label: "Integrations", Description: "Configure OpenAI and vector collections"},
+				{Label: "Deploy", Description: "Push to production"},
+			},
+			Functions: map[string]FunctionMetadata{
+				"chat-completion": {
+					Description:  "AI chat completions via OpenAI-compatible API with streaming support and conversation context.",
+					Icon:         "Cpu",
+					Capabilities: []string{"AI"},
+				},
+				"embed-and-store": {
+					Description:  "Generates text embeddings and stores them in your vector collection for semantic search and RAG.",
+					Icon:         "Database",
+					Capabilities: []string{"AI", "Storage"},
+				},
+			},
+			Integrations: []IntegrationMetadata{
+				{Title: "OpenAI", Description: "Chat completions, embeddings, and AI model configuration", Icon: "Shield"},
+				{Title: "Vector DB", Description: "pgvector collections, HNSW indexing, and semantic search", Icon: "BarChart3"},
+				{Title: "Memory System", Description: "Long-term semantic memory and user profiles", Icon: "Mail"},
+				{Title: "Chat Workflows", Description: "AI assistants, tool calling, and guardrails", Icon: "Settings"},
+			},
+		},
+	}
+
+	catalogItems := make([]BundleCatalogItem, 0, len(bundles))
+	for _, bundle := range bundles {
+		if metadata, ok := richMetadata[bundle.Slug]; ok {
+			catalogItems = append(catalogItems, metadata)
+		} else {
+			catalogItems = append(catalogItems, BundleCatalogItem{
+				Slug:     bundle.Slug,
+				Name:     bundle.Name,
+				PriceUSD: fmt.Sprintf("$%.2f/mo", float64(bundle.DisplayPriceCents)/100),
+				Icon:     "Box",
+				Gradient: "from-gray-500 to-gray-600",
+			})
+		}
+	}
+
+	catalog := BundleCatalogResponse{
+		Bundles: catalogItems,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sub)
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(catalog); err != nil {
+		logrus.WithError(err).Error("billing bundles: failed to encode catalog response")
+	}
 }

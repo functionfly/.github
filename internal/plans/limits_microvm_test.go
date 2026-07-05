@@ -298,8 +298,17 @@ func TestValidationError_Error(t *testing.T) {
 }
 
 func TestMicroVMConstants(t *testing.T) {
+	if RuntimeFlyMachines != "fly-machines" {
+		t.Errorf("RuntimeFlyMachines = %q, want %q", RuntimeFlyMachines, "fly-machines")
+	}
 	if RuntimePythonMicroVM != "python-microvm" {
-		t.Errorf("RuntimePythonMicroVM = %q, want %q", RuntimePythonMicroVM, "python-microvm")
+		t.Errorf("RuntimePythonMicroVM = %q, want %q (legacy name)", RuntimePythonMicroVM, "python-microvm")
+	}
+	if !IsFlyMachinesRuntime(RuntimeFlyMachines) {
+		t.Errorf("IsFlyMachinesRuntime(%q) = false, want true", RuntimeFlyMachines)
+	}
+	if !IsFlyMachinesRuntime(RuntimePythonMicroVM) {
+		t.Errorf("IsFlyMachinesRuntime(%q) = false, want true", RuntimePythonMicroVM)
 	}
 	if EnterpriseMaxMicroVMs < 1 {
 		t.Errorf("EnterpriseMaxMicroVMs = %d, must be >= 1", EnterpriseMaxMicroVMs)

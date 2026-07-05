@@ -9,6 +9,7 @@ import (
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/services"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 type RevenueRecognitionHandler struct {
@@ -107,7 +108,9 @@ func (h *RevenueRecognitionHandler) HandleGetDeferredRevenue(w http.ResponseWrit
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func (h *RevenueRecognitionHandler) HandleGetRecognizedRevenue(w http.ResponseWriter, r *http.Request) {
@@ -139,7 +142,9 @@ func (h *RevenueRecognitionHandler) HandleGetRecognizedRevenue(w http.ResponseWr
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func (h *RevenueRecognitionHandler) HandleGetRevenueReport(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +181,9 @@ func (h *RevenueRecognitionHandler) HandleGetRevenueReport(w http.ResponseWriter
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func (h *RevenueRecognitionHandler) HandleRecognizeRevenue(w http.ResponseWriter, r *http.Request) {
@@ -209,7 +216,9 @@ func (h *RevenueRecognitionHandler) HandleRecognizeRevenue(w http.ResponseWriter
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "recognized"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "recognized"}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func (h *RevenueRecognitionHandler) HandleAllocateRevenue(w http.ResponseWriter, r *http.Request) {
@@ -291,10 +300,12 @@ func (h *RevenueRecognitionHandler) HandleAllocateRevenue(w http.ResponseWriter,
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(AllocationResponse{
+	if err := json.NewEncoder(w).Encode(AllocationResponse{
 		PerformanceObligationIDs: obligationIDs,
 		ScheduleCount:            len(lineItems),
-	})
+	}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func (h *RevenueRecognitionHandler) HandleGetUnbilledRevenue(w http.ResponseWriter, r *http.Request) {
@@ -312,8 +323,10 @@ func (h *RevenueRecognitionHandler) HandleGetUnbilledRevenue(w http.ResponseWrit
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"tenant_id":              claims.TenantID,
 		"unbilled_revenue_cents": unbilled,
-	})
+	}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }

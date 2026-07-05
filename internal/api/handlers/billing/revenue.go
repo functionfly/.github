@@ -264,9 +264,7 @@ func (h *Handler) HandleGetPlans(w http.ResponseWriter, r *http.Request) {
 		response.Plans = append(response.Plans, planResp)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // =============================================================================
@@ -298,9 +296,7 @@ func (h *Handler) HandleGetVerificationCost(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // =============================================================================
@@ -353,9 +349,7 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(VerifyFunctionResponse{
+		encodeJSON(w, http.StatusOK, VerifyFunctionResponse{
 			PaymentID:   payment.ID,
 			AmountCents: 0,
 			Currency:    "USD",
@@ -470,9 +464,7 @@ func (h *Handler) HandleVerifyFunction(w http.ResponseWriter, r *http.Request) {
 		"checkout_url": checkoutResult.URL,
 	}).Info("Verification checkout session created")
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(VerifyFunctionResponse{
+	encodeJSON(w, http.StatusOK, VerifyFunctionResponse{
 		PaymentID:   paymentRecord.ID,
 		AmountCents: fee.PriceCents,
 		Currency:    fee.Currency,
@@ -549,9 +541,7 @@ func (h *Handler) HandleGetEarnings(w http.ResponseWriter, r *http.Request) {
 		PlatformFeePercent:  storage.DefaultPlatformFeePercent,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // =============================================================================
@@ -670,9 +660,7 @@ func (h *Handler) HandleGetAgentUsage(w http.ResponseWriter, r *http.Request) {
 		RecentUsage:         recentUsage,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // =============================================================================
@@ -1054,7 +1042,7 @@ func (h *Handler) createMeterEvent(ctx context.Context, payload map[string]inter
 	if err != nil {
 		return "", fmt.Errorf("failed to send request to Stripe: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var result struct {
 		ID    string `json:"id"`
@@ -1079,82 +1067,11 @@ func (h *Handler) createMeterEvent(ctx context.Context, payload map[string]inter
 	return result.ID, nil
 }
 
-// =============================================================================
-// reportOverageToStripe reports overage usage to Stripe for all metered items in a subscription
-// =============================================================================
-
-func (h *Handler) reportOverageToStripe(ctx context.Context, tenantID uuid.UUID, subscriptionID string, quantity int, eventType string) error {
-	stripeKey := os.Getenv("STRIPE_SECRET_KEY")
-	if stripeKey == "" {
-		return fmt.Errorf("stripe is not configured")
-	}
-
-	sub, err := subscription.Get(subscriptionID, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get subscription: %w", err)
-	}
-
-	customerID := sub.Customer.ID
-
-	meterEventName := os.Getenv("STRIPE_OVERAGE_METER_NAME")
-	if meterEventName == "" {
-		meterEventName = "functionfly_overage"
-	}
-
-	now := time.Now().UTC()
-
-	reportedItems := 0
-	for _, item := range sub.Items.Data {
-		if item.Price != nil && item.Price.Recurring != nil && item.Price.Recurring.UsageType == "metered" {
-			idempotencyKey := storage.GenerateIdempotencyKey(tenantID, item.ID, now.Unix())
-
-			meterPayload := map[string]interface{}{
-				"event_name": meterEventName,
-				"timestamp":  now.Unix(),
-				"identifier": idempotencyKey,
-				"payload": map[string]string{
-					"value":              fmt.Sprintf("%d", quantity),
-					"stripe_customer_id": customerID,
-					"event_type":        eventType,
-				},
-			}
-
-			eventID, err := h.createMeterEvent(ctx, meterPayload)
-			if err != nil {
-				logrus.WithError(err).WithFields(logrus.Fields{
-					"subscription_item_id": item.ID,
-					"quantity":            quantity,
-				}).Error("Failed to report usage to Stripe")
-				continue
-			}
-
-			reportedItems++
-
-			logrus.WithFields(logrus.Fields{
-				"subscription_item_id": item.ID,
-				"price_id":            item.Price.ID,
-				"quantity":            quantity,
-				"meter_event_id":      eventID,
-				"timestamp":           now.Unix(),
-			}).Info("Successfully reported usage to Stripe")
-		}
-	}
-
-	if reportedItems == 0 {
-		logrus.WithFields(logrus.Fields{
-			"subscription_id": subscriptionID,
-			"customer_id":     customerID,
-			"quantity":       quantity,
-		}).Warn("No metered billing items found for usage reporting")
-		return fmt.Errorf("no metered billing items found in subscription")
-	}
-
-	return nil
-}
-
 // writeJSON is a helper to write JSON responses
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }

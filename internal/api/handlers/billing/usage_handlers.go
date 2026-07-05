@@ -2,7 +2,6 @@ package billing
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -77,8 +76,7 @@ func (h *UsageHandler) GetRealtimeUsage(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	encodeJSON(w, http.StatusOK, status)
 }
 
 // CheckQuota checks if the tenant has available quota without consuming it
@@ -111,8 +109,7 @@ func (h *UsageHandler) CheckQuota(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	encodeJSON(w, http.StatusOK, result)
 }
 
 // GetUsageHistory returns historical usage data for the tenant
@@ -179,8 +176,7 @@ func (h *UsageHandler) GetUsageHistory(w http.ResponseWriter, r *http.Request) {
 		"compute_rollups":  computeRollups,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetUsageByFunction returns usage breakdown by function
@@ -238,8 +234,7 @@ func (h *UsageHandler) GetUsageByFunction(w http.ResponseWriter, r *http.Request
 		"end":        end.Format(time.RFC3339),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetCurrentPeriodUsage returns usage for the current billing period
@@ -313,8 +308,7 @@ func (h *UsageHandler) GetCurrentPeriodUsage(w http.ResponseWriter, r *http.Requ
 		"functions_limit":   limits.FunctionsLimit,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // AdminGetTenantUsage returns usage for any tenant (admin only)
@@ -347,8 +341,7 @@ func (h *UsageHandler) AdminGetTenantUsage(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	encodeJSON(w, http.StatusOK, status)
 }
 
 // GetUsageMetrics returns system-level usage metrics (admin only)
@@ -363,8 +356,7 @@ func (h *UsageHandler) GetUsageMetrics(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics["timestamp"] = time.Now().UTC()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metrics)
+	encodeJSON(w, http.StatusOK, metrics)
 }
 
 // Helper methods
@@ -518,9 +510,7 @@ func (h *UsageHandler) extractLimits(sub *storage.Subscription) services.TenantL
 }
 
 func (h *UsageHandler) writeError(w http.ResponseWriter, statusCode int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, statusCode, map[string]interface{}{
 		"error": map[string]interface{}{
 			"code":    code,
 			"message": message,

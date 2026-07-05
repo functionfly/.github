@@ -20,7 +20,7 @@ func newTestBundleProvisioner() (*BundleProvisioner, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewBundleProvisioner(nil, nil, dbProvisioner, nil), nil
+	return NewBundleProvisioner(nil, nil, nil, dbProvisioner, nil), nil
 }
 
 func TestBundleProvisioner_ProvisionBundle_SaaSStarter(t *testing.T) {
@@ -244,7 +244,7 @@ func TestNewBundleProvisioner(t *testing.T) {
 	dbProvisioner, err := storage.NewTenantDBProvisioner(cfg, nil)
 	require.NoError(t, err)
 
-	bp := NewBundleProvisioner(nil, nil, dbProvisioner, nil)
+	bp := NewBundleProvisioner(nil, nil, nil, dbProvisioner, nil)
 	require.NotNil(t, bp)
 	assert.NotNil(t, bp.authProvisioner)
 	assert.NotNil(t, bp.paymentsProvisioner)

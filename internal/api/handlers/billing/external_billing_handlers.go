@@ -134,9 +134,7 @@ func (h *ExternalBillingHandler) CreateExternalBillingSystem(w http.ResponseWrit
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(h.formatExternalBillingSystem(system, true))
+	encodeJSON(w, http.StatusCreated, h.formatExternalBillingSystem(system, true))
 }
 
 // ListExternalBillingSystems lists all external billing systems for the tenant
@@ -189,8 +187,7 @@ func (h *ExternalBillingHandler) ListExternalBillingSystems(w http.ResponseWrite
 		"total":   len(formatted),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetExternalBillingSystem gets a specific external billing system
@@ -221,8 +218,7 @@ func (h *ExternalBillingHandler) GetExternalBillingSystem(w http.ResponseWriter,
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatExternalBillingSystem(system, true))
+	encodeJSON(w, http.StatusOK, h.formatExternalBillingSystem(system, true))
 }
 
 // UpdateExternalBillingSystem updates an external billing system configuration
@@ -325,8 +321,7 @@ func (h *ExternalBillingHandler) UpdateExternalBillingSystem(w http.ResponseWrit
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatExternalBillingSystem(existing, true))
+	encodeJSON(w, http.StatusOK, h.formatExternalBillingSystem(existing, true))
 }
 
 // DeleteExternalBillingSystem deletes an external billing system configuration
@@ -403,8 +398,7 @@ func (h *ExternalBillingHandler) TestExternalBillingSystem(w http.ResponseWriter
 		"tested_at": time.Now().Format(time.RFC3339),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // ==================== Billing Integration Sync Endpoints ====================
@@ -468,8 +462,7 @@ func (h *ExternalBillingHandler) ListBillingSyncs(w http.ResponseWriter, r *http
 		"total":  len(formatted),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // TriggerBillingSync manually triggers a billing sync
@@ -558,9 +551,7 @@ func (h *ExternalBillingHandler) TriggerBillingSync(w http.ResponseWriter, r *ht
 		h.logger.Debug("Billing sync job not initialized, sync will be processed by background worker")
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(h.formatBillingSync(sync))
+	encodeJSON(w, http.StatusAccepted, h.formatBillingSync(sync))
 }
 
 // GetBillingSync gets a specific billing sync record
@@ -591,8 +582,7 @@ func (h *ExternalBillingHandler) GetBillingSync(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatBillingSync(sync))
+	encodeJSON(w, http.StatusOK, h.formatBillingSync(sync))
 }
 
 // ==================== Billing System Types Endpoints ====================
@@ -667,8 +657,7 @@ func (h *ExternalBillingHandler) GetBillingSystemTypes(w http.ResponseWriter, r 
 		},
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"types": systemTypes,
 	})
 }
@@ -767,7 +756,7 @@ func (h *ExternalBillingHandler) testStripeConnection(ctx context.Context, apiKe
 	if err != nil {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 
@@ -805,7 +794,7 @@ func (h *ExternalBillingHandler) testChargebeeConnection(ctx context.Context, en
 	if err != nil {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 
@@ -844,7 +833,7 @@ func (h *ExternalBillingHandler) testRecurlyConnection(ctx context.Context, endp
 	if err != nil {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case 200:
@@ -883,7 +872,7 @@ func (h *ExternalBillingHandler) testZuoraConnection(ctx context.Context, endpoi
 	if err != nil {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case 200:
@@ -919,7 +908,7 @@ func (h *ExternalBillingHandler) testNetSuiteConnection(ctx context.Context, end
 	if err != nil {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 
@@ -959,7 +948,7 @@ func (h *ExternalBillingHandler) testSalesforceConnection(ctx context.Context, e
 	if err != nil {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	switch resp.StatusCode {
 	case 200:
@@ -1031,7 +1020,7 @@ func (h *ExternalBillingHandler) testCustomConnection(ctx context.Context, endpo
 	if err != nil {
 		return ConnectionTestResult{Success: false, Message: fmt.Sprintf("Connection failed: %v", err)}
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// For custom endpoints, accept 2xx status codes
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
@@ -1120,9 +1109,7 @@ func (h *ExternalBillingHandler) formatBillingSync(sync *storage.BillingIntegrat
 }
 
 func (h *ExternalBillingHandler) writeError(w http.ResponseWriter, statusCode int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, statusCode, map[string]interface{}{
 		"error": map[string]interface{}{
 			"code":    code,
 			"message": message,

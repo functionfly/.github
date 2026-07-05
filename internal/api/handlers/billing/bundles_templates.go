@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/functionfly/functionfly/internal/storage"
 )
 
@@ -21,7 +24,7 @@ func GenerateWorkerScript(templates []*storage.BundleFunctionTemplate) []byte {
 
 	for _, tmpl := range templates {
 		funcName := sanitizeFuncName(tmpl.FunctionName)
-		b.WriteString(fmt.Sprintf("    if (path === '%s') return %s(request, env);\n", tmpl.RoutePath, funcName))
+		fmt.Fprintf(&b, "    if (path === '%s') return %s(request, env);\n", tmpl.RoutePath, funcName)
 	}
 
 	b.WriteString("\n    return new Response('Not found', { status: 404 });\n")
@@ -30,7 +33,7 @@ func GenerateWorkerScript(templates []*storage.BundleFunctionTemplate) []byte {
 
 	for _, tmpl := range templates {
 		funcName := sanitizeFuncName(tmpl.FunctionName)
-		b.WriteString(fmt.Sprintf("async function %s(request, env) {\n", funcName))
+		fmt.Fprintf(&b, "async function %s(request, env) {\n", funcName)
 		b.WriteString("  try {\n")
 
 		// Wrap the template code in a function body.
@@ -53,8 +56,9 @@ func GenerateWorkerScript(templates []*storage.BundleFunctionTemplate) []byte {
 // sanitizeFuncName converts a function name like "stripe-webhook" to "handleStripeWebhook".
 func sanitizeFuncName(name string) string {
 	parts := strings.Split(name, "-")
+	caser := cases.Title(language.English)
 	for i := range parts {
-		parts[i] = strings.Title(parts[i])
+		parts[i] = caser.String(parts[i])
 	}
 	return "handle" + strings.Join(parts, "")
 }

@@ -118,3 +118,49 @@ type DeploymentStatusResponse struct {
 	AppID        string                  `json:"app_id,omitempty"`
 	BackendID    string                  `json:"backend_id,omitempty"`
 }
+
+// FeatureWithDetails represents a bundle feature with icon and description
+type FeatureWithDetails struct {
+	Icon        string `json:"icon"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
+// FunctionMetadata represents a function template in a bundle
+type FunctionMetadata struct {
+	Description  string   `json:"description"`
+	Icon         string   `json:"icon"`
+	Capabilities []string `json:"capabilities"`
+}
+
+// IntegrationMetadata represents an integration in a bundle
+type IntegrationMetadata struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Icon        string `json:"icon"`
+}
+
+// BundleCatalogItem represents rich metadata for a bundle (used in catalog endpoint)
+type BundleCatalogItem struct {
+	Slug              string                 `json:"slug"`
+	Name              string                 `json:"name"`
+	Tagline           string                 `json:"tagline"`
+	PriceUSD          string                 `json:"price_usd"`
+	Icon              string                 `json:"icon"`
+	Gradient          string                 `json:"gradient"`
+	Features          []FeatureWithDetails   `json:"features"`
+	ProvisioningSteps []ProvisioningStepMeta  `json:"provisioning_steps"`
+	Functions         map[string]FunctionMetadata `json:"functions"`
+	Integrations      []IntegrationMetadata  `json:"integrations"`
+}
+
+// ProvisioningStepMeta represents a step in the bundle provisioning flow
+type ProvisioningStepMeta struct {
+	Label       string `json:"label"`
+	Description string `json:"description"`
+}
+
+// BundleCatalogResponse is the response for the bundle catalog endpoint
+type BundleCatalogResponse struct {
+	Bundles []BundleCatalogItem `json:"bundles"`
+}

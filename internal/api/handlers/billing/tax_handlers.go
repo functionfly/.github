@@ -122,9 +122,7 @@ func (h *Handler) HandleGetTaxSettings(w http.ResponseWriter, r *http.Request) {
 		ApplicableTaxType: applicableTaxType,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // HandleUpdateTaxSettings updates the tenant's tax settings
@@ -216,9 +214,7 @@ func (h *Handler) HandleUpdateTaxSettings(w http.ResponseWriter, r *http.Request
 		ApplicableTaxType: applicableTaxType,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // HandleGetTaxTypes returns the applicable tax types for a country
@@ -233,10 +229,7 @@ func (h *Handler) HandleGetTaxTypes(w http.ResponseWriter, r *http.Request) {
 	taxTypes := payment.GetApplicableTaxTypes(country)
 
 	// Check if tax ID is required (has specific type, not "other")
-	required := false
-	if len(taxTypes) > 0 && taxTypes[0]["type"] != "other" {
-		required = true
-	}
+	required := len(taxTypes) > 0 && taxTypes[0]["type"] != "other"
 
 	response := TaxTypesResponse{
 		Country:  country,
@@ -244,9 +237,7 @@ func (h *Handler) HandleGetTaxTypes(w http.ResponseWriter, r *http.Request) {
 		Required: required,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // HandleCalculateTax calculates tax for a hypothetical transaction
@@ -341,9 +332,7 @@ func (h *Handler) HandleCalculateTax(w http.ResponseWriter, r *http.Request) {
 			TaxName:           "Tax calculation unavailable",
 			Jurisdiction:      "",
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		encodeJSON(w, http.StatusOK, response)
 		return
 	}
 
@@ -359,9 +348,7 @@ func (h *Handler) HandleCalculateTax(w http.ResponseWriter, r *http.Request) {
 		StripeCalculationID: result.StripeCalculationID,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // HandleValidateTaxID validates a tax ID format without saving it
@@ -393,13 +380,11 @@ func (h *Handler) HandleValidateTaxID(w http.ResponseWriter, r *http.Request) {
 		Message: message,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	if valid {
-		w.WriteHeader(http.StatusOK)
+		encodeJSON(w, http.StatusOK, response)
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
+		encodeJSON(w, http.StatusBadRequest, response)
 	}
-	json.NewEncoder(w).Encode(response)
 }
 
 // nilIfEmpty returns nil if the string is empty, otherwise returns a pointer to the string

@@ -26,11 +26,8 @@ import (
 // TenantWebhookHandler handles Stripe webhooks for tenant-isolated payments.
 // Each tenant with isolated payments has their own webhook endpoint and signing secret.
 type TenantWebhookHandler struct {
-	repo               storage.Repository
-	webhookSecrets     map[string]string // tenantID -> signing secret
-	tenantIsolationSvc interface {
-		VerifyWebhookSignature(tenantID uuid.UUID, payload []byte, sig string, secret string) bool
-	}
+	repo           storage.Repository
+	webhookSecrets map[string]string // tenantID -> signing secret
 }
 
 // NewTenantWebhookHandler creates a new tenant webhook handler.
@@ -77,7 +74,7 @@ func (h *TenantWebhookHandler) HandleTenantWebhook(w http.ResponseWriter, r *htt
 		apierror.WriteError(w, apierror.NewBadRequest("Failed to read request body"))
 		return
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	// Verify signature for tenant-isolated payments
 	if err := h.verifyTenantWebhookSignature(ctx, tenantID, payload, r.Header.Get("Stripe-Signature")); err != nil {
@@ -370,6 +367,11 @@ func (h *TenantWebhookHandler) handleTenantBundleSubscriptionCheckout(ctx contex
 		"subscription_id": sub.ID,
 		"session_id": session.ID,
 	}).Info("tenant webhook: bundle subscription created/updated")
+
+	// Record invoice for bundle purchase
+	if err := h.repo.CreatePaidInvoiceForStripeCheckoutSession(ctx, tenantID, int(session.AmountTotal), string(session.Currency), session.ID, ""); err != nil {
+		logrus.WithError(err).WithField("session_id", session.ID).Warn("tenant webhook: failed to persist invoice")
+	}
 
 	// Trigger provisioning asynchronously
 	go func() {

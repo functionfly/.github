@@ -1,7 +1,6 @@
 package billing
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -90,8 +89,7 @@ func (h *StateUsageHandler) GetCurrentStateUsage(w http.ResponseWriter, r *http.
 		EstimatedCostCents: estimatedCost,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetStateUsageHistory returns historical state usage for the tenant
@@ -219,8 +217,7 @@ func (h *StateUsageHandler) GetStateUsageHistory(w http.ResponseWriter, r *http.
 		"daily_usage":      dailyUsage,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // AdminGetTenantStateUsage returns state usage for any tenant (admin only)
@@ -258,8 +255,7 @@ func (h *StateUsageHandler) AdminGetTenantStateUsage(w http.ResponseWriter, r *h
 		EstimatedCostCents: estimatedCost,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // AdminListAllStateUsage returns state usage for all tenants (admin only)
@@ -305,8 +301,7 @@ func (h *StateUsageHandler) AdminListAllStateUsage(w http.ResponseWriter, r *htt
 		"usage":        responses,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetStateQuotaStatus returns the state-specific quota status for the authenticated tenant
@@ -425,8 +420,7 @@ func (h *StateUsageHandler) GetStateQuotaStatus(w http.ResponseWriter, r *http.R
 		"last_updated":      time.Now().UTC(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // Helper methods
@@ -479,9 +473,7 @@ func (h *StateUsageHandler) parseDateRange(r *http.Request) (time.Time, time.Tim
 
 // writeError writes a JSON error response
 func writeError(w http.ResponseWriter, statusCode int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, statusCode, map[string]interface{}{
 		"error": message,
 	})
 }

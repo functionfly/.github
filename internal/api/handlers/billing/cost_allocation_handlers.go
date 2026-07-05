@@ -1,7 +1,6 @@
 package billing
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -84,8 +83,7 @@ func (h *CostAllocationHandler) GetCostSummary(w http.ResponseWriter, r *http.Re
 
 	response := h.formatTenantCostSummary(summary)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetCostByFunction returns cost breakdown by function
@@ -178,8 +176,7 @@ func (h *CostAllocationHandler) GetCostByFunction(w http.ResponseWriter, r *http
 		"functions":      functions,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetCostByPeriod returns cost breakdown by time period (daily)
@@ -244,8 +241,7 @@ func (h *CostAllocationHandler) GetCostByPeriod(w http.ResponseWriter, r *http.R
 		"daily_breakdown": daily,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetCostByRegion returns cost breakdown by region
@@ -318,8 +314,7 @@ func (h *CostAllocationHandler) GetCostByRegion(w http.ResponseWriter, r *http.R
 		"regions":      regionsMap,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetCostEntries returns detailed cost allocation entries
@@ -440,8 +435,7 @@ func (h *CostAllocationHandler) GetCostEntries(w http.ResponseWriter, r *http.Re
 		"tenant_id":    tenantID.String(),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetChargebackReport returns chargeback data for internal billing
@@ -521,8 +515,7 @@ func (h *CostAllocationHandler) GetChargebackReport(w http.ResponseWriter, r *ht
 		"chargeback_entries": chargebackEntries,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // AdminGetTenantCostSummary returns cost summary for any tenant (admin only)
@@ -560,8 +553,7 @@ func (h *CostAllocationHandler) AdminGetTenantCostSummary(w http.ResponseWriter,
 
 	response := h.formatTenantCostSummary(summary)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // Helper methods
@@ -666,9 +658,7 @@ func (h *CostAllocationHandler) formatTenantCostSummary(summary *storage.TenantC
 }
 
 func (h *CostAllocationHandler) writeError(w http.ResponseWriter, statusCode int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, statusCode, map[string]interface{}{
 		"error": map[string]interface{}{
 			"code":    code,
 			"message": message,

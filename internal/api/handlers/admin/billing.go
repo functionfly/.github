@@ -1300,3 +1300,21 @@ func (h *Handler) HandleGetCreditNoteStats(w http.ResponseWriter, r *http.Reques
 		"stats": stats,
 	})
 }
+
+// HandleFounderModeAnalytics returns founder mode funnel analytics for the admin dashboard.
+// GET /v1/admin/billing/founder-mode-analytics
+func (h *Handler) HandleFounderModeAnalytics(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	analytics, err := h.repo.GetFounderModeAnalytics(ctx)
+	if err != nil {
+		logrus.WithError(err).Error("failed to get founder mode analytics")
+		apierror.WriteError(w, apierror.NewInternal("Failed to get founder mode analytics"))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"data":    analytics,
+		"success": true,
+	})
+}

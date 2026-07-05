@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -110,8 +111,7 @@ func (h *UsageForecastHandler) GetCurrentForecast(w http.ResponseWriter, r *http
 		"compute_time":  h.formatForecastResponse(computeForecast, tenantID),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetForecastByType returns a forecast for a specific metric type
@@ -138,15 +138,13 @@ func (h *UsageForecastHandler) GetForecastByType(w http.ResponseWriter, r *http.
 	}
 
 	if forecast == nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		encodeJSON(w, http.StatusOK, map[string]interface{}{
 			"error": "No forecast available yet. Insufficient historical data.",
 		})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatForecastResponse(forecast, tenantID))
+	encodeJSON(w, http.StatusOK, h.formatForecastResponse(forecast, tenantID))
 }
 
 // RefreshForecast triggers a fresh forecast generation
@@ -177,8 +175,7 @@ func (h *UsageForecastHandler) RefreshForecast(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "forecasts refreshed"})
+	encodeJSON(w, http.StatusOK, map[string]string{"status": "forecasts refreshed"})
 }
 
 // formatForecastResponse formats a forecast for API response
@@ -196,7 +193,7 @@ func (h *UsageForecastHandler) formatForecastResponse(forecast *storage.UsageFor
 	atRisk := false
 	if forecast.ForecastType == "spend" {
 		// Get spend cap to calculate risk
-		cap, _ := h.alertRepo.GetSpendCapByTenant(nil, tenantID, forecast.PeriodStart)
+		cap, _ := h.alertRepo.GetSpendCapByTenant(context.Background(), tenantID, forecast.PeriodStart)
 		if cap != nil && cap.IsEnabled && cap.CapAmountCents > 0 {
 			percentOfCap := (forecast.PredictedValue / float64(cap.CapAmountCents)) * 100
 			atRisk = percentOfCap >= 80
@@ -295,9 +292,7 @@ func (h *UsageForecastHandler) CreateAlert(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(alert)
+	encodeJSON(w, http.StatusCreated, alert)
 }
 
 // ListAlerts returns all alerts for the tenant
@@ -315,8 +310,7 @@ func (h *UsageForecastHandler) ListAlerts(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(alerts)
+	encodeJSON(w, http.StatusOK, alerts)
 }
 
 // GetAlert returns a specific alert
@@ -347,8 +341,7 @@ func (h *UsageForecastHandler) GetAlert(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(alert)
+	encodeJSON(w, http.StatusOK, alert)
 }
 
 // UpdateAlert updates an existing alert
@@ -398,8 +391,7 @@ func (h *UsageForecastHandler) UpdateAlert(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(existing)
+	encodeJSON(w, http.StatusOK, existing)
 }
 
 // DeleteAlert deletes an alert
@@ -459,8 +451,7 @@ func (h *UsageForecastHandler) GetAlertHistory(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(history)
+	encodeJSON(w, http.StatusOK, history)
 }
 
 // SpendCapRequest represents a request to update spend cap
@@ -495,17 +486,14 @@ func (h *UsageForecastHandler) GetSpendCap(w http.ResponseWriter, r *http.Reques
 	}
 
 	if cap == nil {
-		// Return default response if no cap configured
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		encodeJSON(w, http.StatusOK, map[string]interface{}{
 			"configured": false,
 			"message":    "No spend cap configured. Set a cap to receive proactive alerts.",
 		})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(cap)
+	encodeJSON(w, http.StatusOK, cap)
 }
 
 // UpdateSpendCap creates or updates the spend cap
@@ -552,8 +540,7 @@ func (h *UsageForecastHandler) UpdateSpendCap(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(cap)
+	encodeJSON(w, http.StatusOK, cap)
 }
 
 // GetUsageTrends returns usage trend analysis
@@ -601,11 +588,10 @@ func (h *UsageForecastHandler) GetUsageTrends(w http.ResponseWriter, r *http.Req
 		"spend":     h.calculateTrend(spendHistory, days),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
+		encodeJSON(w, http.StatusOK, response)
+	}
 
-// calculateTrend calculates trend metrics from history
+	// calculateTrend calculates trend metrics from history
 func (h *UsageForecastHandler) calculateTrend(history []*storage.DailyUsagePoint, days int) map[string]interface{} {
 	if len(history) < 2 {
 		return map[string]interface{}{

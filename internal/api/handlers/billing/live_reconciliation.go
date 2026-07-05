@@ -116,9 +116,7 @@ func (h *Handler) HandleGetLiveReconciliationStatus(w http.ResponseWriter, r *ht
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) HandleGetLiveReconciliationSettings(w http.ResponseWriter, r *http.Request) {
@@ -172,9 +170,7 @@ func (h *Handler) HandleGetLiveReconciliationSettings(w http.ResponseWriter, r *
 		NotifyOnFailure:           settings.NotifyOnFailure,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 func (h *Handler) HandleUpdateLiveReconciliationSettings(w http.ResponseWriter, r *http.Request) {
@@ -249,9 +245,7 @@ func (h *Handler) HandleUpdateLiveReconciliationSettings(w http.ResponseWriter, 
 		"audit_export":          req.AuditExportEnabled,
 	}).Info("Live Reconciliation settings updated")
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(LiveReconciliationSettings{
+	encodeJSON(w, http.StatusOK, LiveReconciliationSettings{
 		Plan:                      plan,
 		AutoReconcileEnabled:      settings.AutoReconcileEnabled,
 		ScheduledReconcileEnabled: settings.ScheduledReconcileEnabled,
@@ -327,9 +321,7 @@ func (h *Handler) HandleGetLiveReconciliationUsage(w http.ResponseWriter, r *htt
 		SuccessRate:               successRate,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 func isValidCronExpression(cron string) bool {

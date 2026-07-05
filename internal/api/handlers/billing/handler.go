@@ -14,6 +14,7 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/functionfly/functionfly/internal/payment"
+	"github.com/functionfly/functionfly/internal/services"
 	"github.com/functionfly/functionfly/internal/statefabricaddons"
 	"github.com/functionfly/functionfly/internal/storage"
 	storageregistry "github.com/functionfly/functionfly/internal/storage/registry"
@@ -80,6 +81,8 @@ type Handler struct {
 	pciAuditHelper *helpers.PCIAuditHelper
 	// Billing repository for reconciliation and advanced billing operations
 	billingRepo *storage.BillingRepository
+	// State usage aggregator for storage metering (optional).
+	stateUsageAggregator *services.StateUsageAggregator
 	// Isolated bundle provisioner callback for one-click SaaS Starter provisioning (optional).
 	// Returns (status, componentCount, error). Set via SetBundleProvisioner during server init.
 	provisionBundleFn func(ctx context.Context, tenantID uuid.UUID, bundleSlug string) (string, int, error)
@@ -100,6 +103,11 @@ func (h *Handler) SetPCIAuditHelper(pciAudit *helpers.PCIAuditHelper) {
 // SetBillingRepository injects the billing repository for reconciliation and advanced billing operations.
 func (h *Handler) SetBillingRepository(billingRepo *storage.BillingRepository) {
 	h.billingRepo = billingRepo
+}
+
+// SetStateUsageAggregator injects the state usage aggregator for storage metering.
+func (h *Handler) SetStateUsageAggregator(aggregator *services.StateUsageAggregator) {
+	h.stateUsageAggregator = aggregator
 }
 
 // NewHandler creates a new billing handler.
@@ -243,9 +251,7 @@ func (h *Handler) HandleCreatePortalSession(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(CreatePortalSessionResponse{URL: url})
+	encodeJSON(w, http.StatusOK, CreatePortalSessionResponse{URL: url})
 }
 
 // HandleCreateCheckoutSession creates a Stripe Checkout session for subscription checkout.
@@ -324,9 +330,7 @@ func (h *Handler) HandleCreateCheckoutSession(w http.ResponseWriter, r *http.Req
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	encodeJSON(w, http.StatusOK, resp)
 }
 
 // writeJSONError writes a standardized JSON error response
@@ -411,8 +415,8 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Compute trial status
-	var isTrialing bool = false
-	var daysRemaining int = 0
+	isTrialing := false
+	daysRemaining := 0
 	if subscription.TrialEnd != nil {
 		now := time.Now()
 		isTrialing = now.Before(*subscription.TrialEnd)
@@ -445,9 +449,7 @@ func (h *Handler) HandleGetSubscription(w http.ResponseWriter, r *http.Request) 
 		PaymentMethod:        paymentMethod,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // HandleGetTenantPlan returns the current tenant's plan.
@@ -475,9 +477,7 @@ func (h *Handler) HandleGetTenantPlan(w http.ResponseWriter, r *http.Request) {
 		plan = "free"
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"plan": plan,
 	})
 }
@@ -573,9 +573,7 @@ func (h *Handler) HandleListInvoices(w http.ResponseWriter, r *http.Request) {
 		Total:    total,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // HandleGetUsage returns the current user's usage details.
@@ -609,9 +607,7 @@ func (h *Handler) HandleGetUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"usage": usage,
 		"start": start.Format("2006-01-02"),
 		"end":   end.Format("2006-01-02"),
@@ -673,9 +669,7 @@ func (h *Handler) HandleCancelSubscription(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	encodeJSON(w, http.StatusOK, map[string]string{
 		"message": "Subscription cancelled successfully",
 	})
 }
@@ -757,6 +751,7 @@ func (h *Handler) HandleSubscriptionWebhook(w http.ResponseWriter, r *http.Reque
 				"plan":         req.NewPlan,
 				"previousPlan": req.OldPlan,
 				"upgradedAt":   upgradedAt.Format(time.RFC3339),
+				"upgradedBy":   adminUserID.String(),
 			},
 			IsPublic: true,
 		}
@@ -786,9 +781,7 @@ func (h *Handler) HandleSubscriptionWebhook(w http.ResponseWriter, r *http.Reque
 		"user_count": len(users),
 	}).Info("billing webhook: processed subscription plan upgrade")
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	encodeJSON(w, http.StatusOK, map[string]string{
 		"status":     "success",
 		"user_count": fmt.Sprintf("%d", len(users)),
 	})
@@ -834,9 +827,7 @@ func (h *Handler) HandleListPaymentMethods(w http.ResponseWriter, r *http.Reques
 	}
 
 	if tenant.StripeCustomerID == nil || *tenant.StripeCustomerID == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		encodeJSON(w, http.StatusOK, map[string]interface{}{
 			"payment_methods": []interface{}{},
 		})
 		return
@@ -849,9 +840,7 @@ func (h *Handler) HandleListPaymentMethods(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"payment_methods": methods,
 	})
 }
@@ -911,9 +900,7 @@ func (h *Handler) HandleCreateSetupIntent(w http.ResponseWriter, r *http.Request
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(result)
+	encodeJSON(w, http.StatusOK, result)
 }
 
 // HandleSetDefaultPaymentMethod sets a payment method as the default for the customer.
@@ -975,9 +962,7 @@ func (h *Handler) HandleSetDefaultPaymentMethod(w http.ResponseWriter, r *http.R
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Default payment method updated"})
+	encodeJSON(w, http.StatusOK, map[string]string{"message": "Default payment method updated"})
 }
 
 // HandleDetachPaymentMethod detaches a payment method from the customer.
@@ -1029,9 +1014,7 @@ func (h *Handler) HandleDetachPaymentMethod(w http.ResponseWriter, r *http.Reque
 		})
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Payment method removed"})
+	encodeJSON(w, http.StatusOK, map[string]string{"message": "Payment method removed"})
 }
 
 // getUpgradeDescription returns a description based on the plan tier.
@@ -1069,8 +1052,7 @@ func (h *Handler) HandleGetMyAffiliateCodes(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"affiliate_codes": codes,
 	})
 }
@@ -1091,8 +1073,7 @@ func (h *Handler) HandleGetMyAffiliateCommissions(w http.ResponseWriter, r *http
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"commissions": commissions,
 	})
 }
@@ -1123,8 +1104,7 @@ func (h *Handler) HandleGetMyAffiliateReferrals(w http.ResponseWriter, r *http.R
 		allReferrals = append(allReferrals, referrals...)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"referrals": allReferrals,
 	})
 }
@@ -1159,8 +1139,7 @@ func (h *Handler) HandleGetAffiliateEarningsSummary(w http.ResponseWriter, r *ht
 		pendingCommissions += code.PendingCommissions
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"pending_earnings_cents": totalPendingEarningsCents,
 		"total_earnings_cents":   totalEarningsCents,
 		"paid_out_cents":         totalPaidOutCents,
@@ -1214,8 +1193,7 @@ func (h *Handler) HandleApplyAffiliateCode(w http.ResponseWriter, r *http.Reques
 	// For now, we just return success if the code is valid
 	_ = claims // Mark as used to avoid compile warning
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"success":          true,
 		"code":             code.Code,
 		"name":             code.Name,

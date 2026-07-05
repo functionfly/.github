@@ -278,26 +278,178 @@ func (h *Handler) provisionSaaSStarter(tenantID uuid.UUID) {
 	}{
 		{
 			name: "stripe-webhook-handler",
-			code: `export default async (req, res) => {
-  const event = req.body;
+			code: `// Stripe Webhook Handler — Production Ready
+// Requires STRIPE_WEBHOOK_SECRET env var (whsec_... from Stripe dashboard)
+
+const WEBHOOK_TOLERANCE_SECONDS = 300;
+
+async function verifySignature(payload, sigHeader, secret) {
+  if (!sigHeader) throw new Error('Missing Stripe-Signature header');
+  const parts = sigHeader.split(',').reduce((acc, part) => {
+    const [k, v] = part.split('=');
+    (acc[k] = acc[k] || []).push(v);
+    return acc;
+  }, {});
+  const timestamp = parts.t?.[0];
+  const signatures = parts.v1 || [];
+  if (!timestamp || signatures.length === 0) throw new Error('Malformed Stripe-Signature');
+  const age = Math.abs(Math.floor(Date.now() / 1000) - parseInt(timestamp, 10));
+  if (age > WEBHOOK_TOLERANCE_SECONDS) throw new Error('Webhook timestamp expired');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('sha256'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signed = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(timestamp + '.' + payload));
+  const expected = Array.from(new Uint8Array(signed)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const valid = signatures.some(sig => {
+    if (sig.length !== expected.length) return false;
+    let result = 0;
+    for (let i = 0; i < sig.length; i++) result |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+    return result === 0;
+  });
+  if (!valid) throw new Error('Webhook signature mismatch');
+}
+
+function log(level, msg, data) {
+  const entry = { ts: new Date().toISOString(), level, msg, ...data };
+  if (level === 'error') console.error(JSON.stringify(entry));
+  else if (level === 'warn') console.warn(JSON.stringify(entry));
+  else console.log(JSON.stringify(entry));
+}
+
+export default async (req, res) => {
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  let event;
+  try { event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {
+    return res.status(200).json({ status: 'error', message: 'Invalid JSON' });
+  }
+
+  const secret = (typeof env !== 'undefined' && env.get) ? env.get('STRIPE_WEBHOOK_SECRET') : (typeof process !== 'undefined' ? process.env?.STRIPE_WEBHOOK_SECRET : null);
+  if (secret) {
+    try {
+      const sigHeader = req.headers?.['stripe-signature'] || req.headers?.['Stripe-Signature'] || '';
+      await verifySignature(rawBody, sigHeader, secret);
+    } catch (err) {
+      log('error', 'Signature verification failed', { event_id: event.id, error: err.message });
+      return res.status(200).json({ status: 'error', message: 'Signature verification failed' });
+    }
+  } else {
+    log('warn', 'STRIPE_WEBHOOK_SECRET not set', { event_id: event.id });
+  }
+
+  const processedKey = 'webhook_processed/' + event.id;
+  try { if (await state.get(processedKey)) return res.json({ status: 'skipped', reason: 'duplicate' }); } catch {}
+
+  log('info', 'Processing event', { event_id: event.id, event_type: event.type });
+  const obj = event.data?.object || {};
+  const objId = obj.id || 'unknown';
+
   try {
     switch (event.type) {
-      case 'customer.subscription.created':
-        await state.set('subscriptions/' + event.data.object.customer, {
-          status: 'active',
-          plan: event.data.object.items.data[0].plan.id
-        });
+      case 'checkout.session.completed': {
+        await state.set('checkout/' + objId, { customer: obj.customer, subscription: obj.subscription, mode: obj.mode, status: 'completed', amount_total: obj.amount_total, currency: obj.currency, completed_at: new Date().toISOString() });
+        if (obj.subscription && obj.customer) await state.set('subscriptions/' + obj.customer, { subscription_id: obj.subscription, status: 'active', updated_at: new Date().toISOString() });
         break;
-      case 'invoice.payment_succeeded':
-        await state.set('payments/' + event.data.object.id, {
-          status: 'paid',
-          amount: event.data.object.amount_paid
-        });
+      }
+      case 'customer.subscription.created': {
+        const plan = obj.items?.data?.[0]?.plan;
+        await state.set('subscriptions/' + obj.customer, { subscription_id: objId, status: obj.status, plan_id: plan?.id, plan_amount: plan?.amount, plan_interval: plan?.interval, current_period_end: obj.current_period_end, cancel_at_period_end: obj.cancel_at_period_end, created_at: new Date().toISOString() });
+        break;
+      }
+      case 'customer.subscription.updated': {
+        const plan = obj.items?.data?.[0]?.plan;
+        const existing = await state.get('subscriptions/' + obj.customer).catch(() => ({}));
+        await state.set('subscriptions/' + obj.customer, { ...existing, subscription_id: objId, status: obj.status, plan_id: plan?.id, plan_amount: plan?.amount, current_period_end: obj.current_period_end, cancel_at_period_end: obj.cancel_at_period_end, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        await state.set('subscriptions/' + obj.customer, { subscription_id: objId, status: 'canceled', canceled_at: obj.canceled_at, ended_at: obj.ended_at, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'invoice.created': {
+        await state.set('invoices/' + objId, { customer: obj.customer, subscription: obj.subscription, amount_due: obj.amount_due, currency: obj.currency, status: obj.status, created_at: new Date().toISOString() });
+        break;
+      }
+      case 'invoice.payment_succeeded': {
+        await state.set('invoices/' + objId, { customer: obj.customer, amount_paid: obj.amount_paid, currency: obj.currency, status: 'paid', paid_at: new Date().toISOString() });
+        await state.set('payments/' + objId, { customer: obj.customer, amount: obj.amount_paid, currency: obj.currency, status: 'succeeded', paid_at: new Date().toISOString() });
+        break;
+      }
+      case 'invoice.payment_failed': {
+        await state.set('invoices/' + objId, { customer: obj.customer, amount_due: obj.amount_due, status: 'payment_failed', attempt_count: obj.attempt_count, failed_at: new Date().toISOString() });
+        await state.set('failed_payments/' + obj.customer, { invoice: objId, attempt_count: obj.attempt_count, timestamp: Date.now() });
+        log('warn', 'Invoice payment failed', { event_id: event.id, customer: obj.customer, attempt: obj.attempt_count });
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        await state.set('payment_intents/' + objId, { customer: obj.customer, amount: obj.amount, status: 'failed', last_error: obj.last_error?.message, failed_at: new Date().toISOString() });
+        log('warn', 'Payment intent failed', { event_id: event.id, error: obj.last_error?.message });
+        break;
+      }
+      case 'charge.dispute.created': {
+        await state.set('disputes/' + objId, { charge: obj.charge, amount: obj.amount, reason: obj.reason, status: obj.status, created_at: new Date().toISOString() });
+        log('warn', 'Dispute created', { event_id: event.id, dispute: objId, amount: obj.amount, reason: obj.reason });
+        break;
+      }
+      case 'charge.dispute.updated': {
+        const existing = await state.get('disputes/' + objId).catch(() => ({}));
+        await state.set('disputes/' + objId, { ...existing, status: obj.status, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'charge.dispute.closed': {
+        const existing = await state.get('disputes/' + objId).catch(() => ({}));
+        await state.set('disputes/' + objId, { ...existing, status: obj.status, closed_at: new Date().toISOString() });
+        break;
+      }
+      case 'charge.dispute.funds_withdrawn': {
+        const existing = await state.get('disputes/' + objId).catch(() => ({}));
+        await state.set('disputes/' + objId, { ...existing, funds_withdrawn: true, withdrawn_at: new Date().toISOString() });
+        log('warn', 'Dispute funds withdrawn', { event_id: event.id, dispute: objId });
+        break;
+      }
+      case 'charge.refunded': {
+        await state.set('charges/' + objId, { customer: obj.customer, amount: obj.amount, amount_refunded: obj.amount_refunded, refunded: obj.refunded, refunded_at: new Date().toISOString() });
+        for (const refund of (obj.refunds?.data || [])) {
+          await state.set('refunds/' + refund.id, { charge: objId, amount: refund.amount, reason: refund.reason, status: refund.status, created_at: new Date().toISOString() });
+        }
+        break;
+      }
+      case 'customer.updated': {
+        await state.set('customers/' + objId, { email: obj.email, name: obj.name, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'payment_method.updated': {
+        await state.set('payment_methods/' + objId, { customer: obj.customer, type: obj.type, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'payment_method.detached': {
+        await state.set('payment_methods/' + objId, { customer: null, detached: true, detached_at: new Date().toISOString() });
+        break;
+      }
+      case 'payout.paid': {
+        await state.set('payouts/' + objId, { amount: obj.amount, currency: obj.currency, status: 'paid', paid_at: new Date().toISOString() });
+        break;
+      }
+      case 'payout.failed': {
+        await state.set('payouts/' + objId, { amount: obj.amount, status: 'failed', failure_code: obj.failure_code, failed_at: new Date().toISOString() });
+        log('warn', 'Payout failed', { event_id: event.id, failure_code: obj.failure_code });
+        break;
+      }
+      case 'transfer.reversed': {
+        await state.set('transfers/' + objId, { amount: obj.amount, reversed: true, reversed_at: new Date().toISOString() });
+        log('warn', 'Transfer reversed', { event_id: event.id, transfer: objId });
+        break;
+      }
+      case 'account.updated': {
+        await state.set('connect_accounts/' + objId, { charges_enabled: obj.charges_enabled, payouts_enabled: obj.payouts_enabled, details_submitted: obj.details_submitted, updated_at: new Date().toISOString() });
+        break;
+      }
+      default:
+        log('info', 'Event acknowledged (unhandled)', { event_id: event.id, event_type: event.type });
         break;
     }
-    res.json({ received: true });
+    try { await state.set(processedKey, { processed_at: new Date().toISOString(), event_type: event.type }); } catch {}
+    res.json({ status: 'received', event_type: event.type });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    log('error', 'Processing failed', { event_id: event.id, event_type: event.type, error: err.message });
+    res.json({ status: 'error', event_type: event.type, message: err.message });
   }
 };`,
 			region: "us-east-1",
@@ -305,15 +457,43 @@ func (h *Handler) provisionSaaSStarter(tenantID uuid.UUID) {
 		},
 		{
 			name: "welcome-email",
-			code: `export default async (req, res) => {
-  const { email, name } = req.body;
-  await email.send({
-    to: email,
-    subject: 'Welcome!',
-    template: 'welcome',
-    data: { name }
-  });
-  res.json({ sent: true });
+			code: `function log(level, msg, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...data }));
+}
+
+function isValidEmail(e) {
+  return typeof e === 'string' && e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
+
+function sanitizeName(name) {
+  if (typeof name !== 'string') return '';
+  return name.replace(/[<>&"'\/\\]/g, '').trim().slice(0, 100);
+}
+
+export default async (req, res) => {
+  const { email: recipientEmail, name } = req.body || {};
+
+  if (!isValidEmail(recipientEmail)) {
+    log('warn', 'Invalid email', { email: typeof recipientEmail });
+    return res.status(200).json({ sent: false, error: 'Invalid or missing email address' });
+  }
+
+  const safeName = sanitizeName(name) || 'there';
+  const emailId = crypto.randomUUID();
+
+  try {
+    await email.send({
+      to: recipientEmail,
+      subject: 'Welcome to FunctionFly!',
+      template: 'welcome',
+      data: { name: safeName, email: recipientEmail, id: emailId }
+    });
+    log('info', 'Welcome email sent', { email_id: emailId, to: recipientEmail });
+    res.json({ sent: true, email_id: emailId });
+  } catch (err) {
+    log('error', 'Email send failed', { email_id: emailId, to: recipientEmail, error: err.message });
+    res.json({ sent: false, error: 'Email delivery failed' });
+  }
 };`,
 			region: "us-east-1",
 			capabs: []string{"email"},
@@ -385,37 +565,133 @@ func (h *Handler) provisionMarketplace(tenantID uuid.UUID) {
 	}{
 		{
 			name: "create-listing",
-			code: `export default async (req, res) => {
-  const { title, description, price } = req.body;
-  const seller_id = req.user.id;
+			code: `function log(level, msg, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...data }));
+}
+
+function sanitize(str, maxLen) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])).trim().slice(0, maxLen);
+}
+
+export default async (req, res) => {
+  const { title, description, price, category, image_url } = req.body || {};
+  const seller_id = req.user?.id;
+
+  if (!seller_id) {
+    log('warn', 'Unauthenticated listing creation attempt');
+    return res.status(200).json({ success: false, error: 'Authentication required' });
+  }
+  if (!title || typeof title !== 'string' || title.trim().length < 3) {
+    return res.status(200).json({ success: false, error: 'Title must be at least 3 characters' });
+  }
+  if (title.length > 200) {
+    return res.status(200).json({ success: false, error: 'Title must be 200 characters or less' });
+  }
+  if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
+    return res.status(200).json({ success: false, error: 'Price must be a non-negative number' });
+  }
+  if (price > 999999.99) {
+    return res.status(200).json({ success: false, error: 'Price exceeds maximum allowed' });
+  }
+  if (description && typeof description === 'string' && description.length > 5000) {
+    return res.status(200).json({ success: false, error: 'Description must be 5000 characters or less' });
+  }
+
+  const listingId = crypto.randomUUID();
   const listing = {
-    id: crypto.randomUUID(),
+    id: listingId,
     seller_id,
-    title,
-    description,
+    title: sanitize(title, 200),
+    description: sanitize(description || '', 5000),
     price_cents: Math.round(price * 100),
-    status: 'active'
+    category: sanitize(category || 'general', 64),
+    image_url: typeof image_url === 'string' && image_url.startsWith('https://') ? image_url.slice(0, 2048) : null,
+    status: 'active',
+    created_at: new Date().toISOString()
   };
-  await state.set('listings/' + listing.id, listing);
-  res.json({ success: true, listing_id: listing.id });
+
+  try {
+    await state.set('listings/' + listingId, listing);
+    await state.push('seller_listings/' + seller_id, listingId);
+    log('info', 'Listing created', { listing_id: listingId, seller_id, price_cents: listing.price_cents });
+    res.json({ success: true, listing_id: listingId });
+  } catch (err) {
+    log('error', 'Failed to create listing', { seller_id, error: err.message });
+    res.json({ success: false, error: 'Failed to save listing' });
+  }
 };`,
 			region: "us-east-1",
 			capabs: []string{"storage"},
 		},
 		{
 			name: "send-message",
-			code: `export default async (req, res) => {
-  const { recipient_id, content } = req.body;
-  const sender_id = req.user.id;
+			code: `function log(level, msg, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...data }));
+}
+
+function sanitize(str, maxLen) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])).trim().slice(0, maxLen);
+}
+
+const MAX_MESSAGE_LENGTH = 4000;
+const RATE_LIMIT_WINDOW_MS = 60000;
+const RATE_LIMIT_MAX = 30;
+
+export default async (req, res) => {
+  const { recipient_id, content } = req.body || {};
+  const sender_id = req.user?.id;
+
+  if (!sender_id) {
+    log('warn', 'Unauthenticated message attempt');
+    return res.status(200).json({ success: false, error: 'Authentication required' });
+  }
+  if (!recipient_id || typeof recipient_id !== 'string' || recipient_id.length > 128) {
+    return res.status(200).json({ success: false, error: 'Invalid recipient' });
+  }
+  if (sender_id === recipient_id) {
+    return res.status(200).json({ success: false, error: 'Cannot send message to yourself' });
+  }
+  if (!content || typeof content !== 'string' || content.trim().length === 0) {
+    return res.status(200).json({ success: false, error: 'Message content is required' });
+  }
+  if (content.length > MAX_MESSAGE_LENGTH) {
+    return res.status(200).json({ success: false, error: 'Message exceeds ' + MAX_MESSAGE_LENGTH + ' character limit' });
+  }
+
+  try {
+    const rateKey = 'msg_rate/' + sender_id;
+    const recent = (await state.get(rateKey)) || { count: 0, window_start: Date.now() };
+    const now = Date.now();
+    if (now - recent.window_start > RATE_LIMIT_WINDOW_MS) {
+      await state.set(rateKey, { count: 1, window_start: now });
+    } else if (recent.count >= RATE_LIMIT_MAX) {
+      log('warn', 'Rate limit exceeded', { sender_id });
+      return res.status(200).json({ success: false, error: 'Rate limit exceeded. Try again later.' });
+    } else {
+      await state.set(rateKey, { count: recent.count + 1, window_start: recent.window_start });
+    }
+  } catch {}
+
+  const messageId = crypto.randomUUID();
   const message = {
-    id: crypto.randomUUID(),
+    id: messageId,
     sender_id,
     recipient_id,
-    content,
+    content: sanitize(content, MAX_MESSAGE_LENGTH),
     created_at: new Date().toISOString()
   };
-  await state.push('messages/' + recipient_id, message);
-  res.json({ success: true, message_id: message.id });
+
+  try {
+    await state.push('messages/' + recipient_id, message);
+    await state.push('sent_messages/' + sender_id, messageId);
+    log('info', 'Message sent', { message_id: messageId, from: sender_id, to: recipient_id });
+    res.json({ success: true, message_id: messageId });
+  } catch (err) {
+    log('error', 'Failed to send message', { sender_id, recipient_id, error: err.message });
+    res.json({ success: false, error: 'Failed to deliver message' });
+  }
 };`,
 			region: "us-east-1",
 			capabs: []string{"storage"},
@@ -486,30 +762,134 @@ func (h *Handler) provisionAIApp(tenantID uuid.UUID) {
 	}{
 		{
 			name: "chat-completion",
-			code: `export default async (req, res) => {
-  const { message, model = 'gpt-4' } = req.body;
-  const completion = await ai.chat.completions.create({
-    model,
-    messages: [{ role: 'user', content: message }]
-  });
-  res.json({ message: completion.choices[0].message.content });
+			code: `function log(level, msg, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...data }));
+}
+
+const ALLOWED_MODELS = [
+  'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-4', 'gpt-3.5-turbo',
+  'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229',
+  'google/gemini-2.0-flash-exp', 'google/gemini-pro-1.5',
+  'meta-llama/llama-3.1-70b-instruct', 'meta-llama/llama-3.1-8b-instruct',
+  'mistralai/mixtral-8x7b-instruct'
+];
+const DEFAULT_MODEL = 'gpt-4o-mini';
+const MAX_MESSAGES = 100;
+const MAX_TOKENS = 4096;
+
+export default async (req, res) => {
+  const { messages, model, max_tokens, temperature } = req.body || {};
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return res.status(200).json({ error: 'messages must be a non-empty array' });
+  }
+  if (messages.length > MAX_MESSAGES) {
+    return res.status(200).json({ error: 'Maximum ' + MAX_MESSAGES + ' messages exceeded' });
+  }
+  for (const msg of messages) {
+    if (!msg.role || !msg.content) {
+      return res.status(200).json({ error: 'Each message must have role and content' });
+    }
+    if (!['system', 'user', 'assistant', 'tool'].includes(msg.role)) {
+      return res.status(200).json({ error: 'Invalid role: ' + msg.role });
+    }
+    if (typeof msg.content === 'string' && msg.content.length > 32000) {
+      return res.status(200).json({ error: 'Message content exceeds 32000 character limit' });
+    }
+  }
+
+  const selectedModel = ALLOWED_MODELS.includes(model) ? model : DEFAULT_MODEL;
+  const tokens = typeof max_tokens === 'number' && max_tokens > 0 ? Math.min(max_tokens, MAX_TOKENS) : MAX_TOKENS;
+  const temp = typeof temperature === 'number' && temperature >= 0 && temperature <= 2 ? temperature : 0.7;
+  const requestId = crypto.randomUUID();
+
+  log('info', 'Chat completion request', { request_id: requestId, model: selectedModel, message_count: messages.length });
+
+  try {
+    const response = await ai.chat.completions.create({
+      model: selectedModel,
+      messages,
+      max_tokens: tokens,
+      temperature: temp,
+      stream: false
+    });
+
+    const usage = response.usage || {};
+    log('info', 'Chat completion succeeded', {
+      request_id: requestId, model: selectedModel,
+      prompt_tokens: usage.prompt_tokens, completion_tokens: usage.completion_tokens
+    });
+
+    res.json({
+      id: requestId, model: selectedModel,
+      message: response.choices?.[0]?.message?.content || '',
+      finish_reason: response.choices?.[0]?.finish_reason,
+      usage: { prompt_tokens: usage.prompt_tokens || 0, completion_tokens: usage.completion_tokens || 0, total_tokens: usage.total_tokens || 0 }
+    });
+  } catch (err) {
+    log('error', 'Chat completion failed', { request_id: requestId, model: selectedModel, error: err.message });
+    res.json({ error: 'Chat completion failed', request_id: requestId });
+  }
 };`,
 			region: "us-east-1",
 			capabs: []string{"ai"},
 		},
 		{
 			name: "embed-and-store",
-			code: `export default async (req, res) => {
-  const { content } = req.body;
-  const embedding = await ai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: content
-  });
-  await state.set('embeddings/' + crypto.randomUUID(), {
-    vector: embedding.data[0].embedding,
-    content: content.substring(0, 1000)
-  });
-  res.json({ embedded: true });
+			code: `function log(level, msg, data) {
+  console.log(JSON.stringify({ ts: new Date().toISOString(), level, msg, ...data }));
+}
+
+const MAX_TEXT_LENGTH = 32000;
+const MAX_COLLECTION_LEN = 128;
+const VALID_COLLECTION = /^[a-zA-Z0-9_-]+$/;
+
+export default async (req, res) => {
+  const { text, collection } = req.body || {};
+
+  if (!text || typeof text !== 'string') {
+    return res.status(200).json({ success: false, error: 'text is required and must be a string' });
+  }
+  if (text.length > MAX_TEXT_LENGTH) {
+    return res.status(200).json({ success: false, error: 'text exceeds ' + MAX_TEXT_LENGTH + ' character limit' });
+  }
+  if (!collection || typeof collection !== 'string') {
+    return res.status(200).json({ success: false, error: 'collection is required' });
+  }
+  if (collection.length > MAX_COLLECTION_LEN || !VALID_COLLECTION.test(collection)) {
+    return res.status(200).json({ success: false, error: 'collection name must be alphanumeric (max 128 chars)' });
+  }
+
+  const docId = crypto.randomUUID();
+  log('info', 'Embedding request', { doc_id: docId, collection, text_length: text.length });
+
+  try {
+    const embedding = await ai.embeddings.create({
+      model: 'text-embedding-3-small',
+      input: text
+    });
+
+    const vector = embedding.data?.[0]?.embedding;
+    if (!Array.isArray(vector) || vector.length === 0) {
+      throw new Error('Empty embedding returned');
+    }
+
+    await state.set(collection + '/' + docId, {
+      id: docId,
+      text: text.substring(0, 1000),
+      embedding: vector,
+      dimensions: vector.length,
+      text_length: text.length,
+      collection,
+      created_at: new Date().toISOString()
+    });
+
+    log('info', 'Embedding stored', { doc_id: docId, collection, dimensions: vector.length });
+    res.json({ success: true, id: docId, dimensions: vector.length, collection });
+  } catch (err) {
+    log('error', 'Embedding failed', { doc_id: docId, collection, error: err.message });
+    res.json({ success: false, error: 'Embedding generation failed' });
+  }
 };`,
 			region: "us-east-1",
 			capabs: []string{"ai", "storage"},
@@ -710,37 +1090,184 @@ type bundleFunctionTemplate struct {
 func getBundleFunctionTemplates(bundleSlug string) []bundleFunctionTemplate {
 	templates := map[string][]bundleFunctionTemplate{
 		"saas-starter": {
-			{
+		{
 				name: "stripe-webhook",
-				code: `export default async (req, res) => {
-  const event = req.body;
+				code: `// Stripe Webhook Handler — Production Ready
+// Requires STRIPE_WEBHOOK_SECRET env var (whsec_... from Stripe dashboard)
+
+const WEBHOOK_TOLERANCE_SECONDS = 300;
+
+async function verifySignature(payload, sigHeader, secret) {
+  if (!sigHeader) throw new Error('Missing Stripe-Signature header');
+  const parts = sigHeader.split(',').reduce((acc, part) => {
+    const [k, v] = part.split('=');
+    (acc[k] = acc[k] || []).push(v);
+    return acc;
+  }, {});
+  const timestamp = parts.t?.[0];
+  const signatures = parts.v1 || [];
+  if (!timestamp || signatures.length === 0) throw new Error('Malformed Stripe-Signature');
+  const age = Math.abs(Math.floor(Date.now() / 1000) - parseInt(timestamp, 10));
+  if (age > WEBHOOK_TOLERANCE_SECONDS) throw new Error('Webhook timestamp expired');
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('sha256'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signed = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(timestamp + '.' + payload));
+  const expected = Array.from(new Uint8Array(signed)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const valid = signatures.some(sig => {
+    if (sig.length !== expected.length) return false;
+    let result = 0;
+    for (let i = 0; i < sig.length; i++) result |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+    return result === 0;
+  });
+  if (!valid) throw new Error('Webhook signature mismatch');
+}
+
+function log(level, msg, data) {
+  const entry = { ts: new Date().toISOString(), level, msg, ...data };
+  if (level === 'error') console.error(JSON.stringify(entry));
+  else if (level === 'warn') console.warn(JSON.stringify(entry));
+  else console.log(JSON.stringify(entry));
+}
+
+export default async (req, res) => {
+  const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  let event;
+  try { event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {
+    return res.status(200).json({ status: 'error', message: 'Invalid JSON' });
+  }
+
+  const secret = (typeof env !== 'undefined' && env.get) ? env.get('STRIPE_WEBHOOK_SECRET') : (typeof process !== 'undefined' ? process.env?.STRIPE_WEBHOOK_SECRET : null);
+  if (secret) {
+    try {
+      const sigHeader = req.headers?.['stripe-signature'] || req.headers?.['Stripe-Signature'] || '';
+      await verifySignature(rawBody, sigHeader, secret);
+    } catch (err) {
+      log('error', 'Signature verification failed', { event_id: event.id, error: err.message });
+      return res.status(200).json({ status: 'error', message: 'Signature verification failed' });
+    }
+  } else {
+    log('warn', 'STRIPE_WEBHOOK_SECRET not set', { event_id: event.id });
+  }
+
+  const processedKey = 'webhook_processed/' + event.id;
+  try { if (await state.get(processedKey)) return res.json({ status: 'skipped', reason: 'duplicate' }); } catch {}
+
+  log('info', 'Processing event', { event_id: event.id, event_type: event.type });
+  const obj = event.data?.object || {};
+  const objId = obj.id || 'unknown';
+
   try {
     switch (event.type) {
-      case 'customer.subscription.created':
-        await state.set('subscriptions/' + event.data.object.customer, {
-          status: 'active',
-          plan: event.data.object.items.data[0].plan.id
-        });
+      case 'checkout.session.completed': {
+        await state.set('checkout/' + objId, { customer: obj.customer, subscription: obj.subscription, mode: obj.mode, status: 'completed', amount_total: obj.amount_total, currency: obj.currency, completed_at: new Date().toISOString() });
+        if (obj.subscription && obj.customer) await state.set('subscriptions/' + obj.customer, { subscription_id: obj.subscription, status: 'active', updated_at: new Date().toISOString() });
         break;
-      case 'invoice.payment_succeeded':
-        await state.set('payments/' + event.data.object.id, {
-          status: 'paid',
-          amount: event.data.object.amount_paid
-        });
+      }
+      case 'customer.subscription.created': {
+        const plan = obj.items?.data?.[0]?.plan;
+        await state.set('subscriptions/' + obj.customer, { subscription_id: objId, status: obj.status, plan_id: plan?.id, plan_amount: plan?.amount, plan_interval: plan?.interval, current_period_end: obj.current_period_end, cancel_at_period_end: obj.cancel_at_period_end, created_at: new Date().toISOString() });
         break;
-      case 'invoice.payment_failed':
-        await state.set('failed_payments/' + event.data.object.customer, {
-          timestamp: Date.now()
-        });
+      }
+      case 'customer.subscription.updated': {
+        const plan = obj.items?.data?.[0]?.plan;
+        const existing = await state.get('subscriptions/' + obj.customer).catch(() => ({}));
+        await state.set('subscriptions/' + obj.customer, { ...existing, subscription_id: objId, status: obj.status, plan_id: plan?.id, plan_amount: plan?.amount, current_period_end: obj.current_period_end, cancel_at_period_end: obj.cancel_at_period_end, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'customer.subscription.deleted': {
+        await state.set('subscriptions/' + obj.customer, { subscription_id: objId, status: 'canceled', canceled_at: obj.canceled_at, ended_at: obj.ended_at, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'invoice.created': {
+        await state.set('invoices/' + objId, { customer: obj.customer, subscription: obj.subscription, amount_due: obj.amount_due, currency: obj.currency, status: obj.status, created_at: new Date().toISOString() });
+        break;
+      }
+      case 'invoice.payment_succeeded': {
+        await state.set('invoices/' + objId, { customer: obj.customer, amount_paid: obj.amount_paid, currency: obj.currency, status: 'paid', paid_at: new Date().toISOString() });
+        await state.set('payments/' + objId, { customer: obj.customer, amount: obj.amount_paid, currency: obj.currency, status: 'succeeded', paid_at: new Date().toISOString() });
+        break;
+      }
+      case 'invoice.payment_failed': {
+        await state.set('invoices/' + objId, { customer: obj.customer, amount_due: obj.amount_due, status: 'payment_failed', attempt_count: obj.attempt_count, failed_at: new Date().toISOString() });
+        await state.set('failed_payments/' + obj.customer, { invoice: objId, attempt_count: obj.attempt_count, timestamp: Date.now() });
+        log('warn', 'Invoice payment failed', { event_id: event.id, customer: obj.customer, attempt: obj.attempt_count });
+        break;
+      }
+      case 'payment_intent.payment_failed': {
+        await state.set('payment_intents/' + objId, { customer: obj.customer, amount: obj.amount, status: 'failed', last_error: obj.last_error?.message, failed_at: new Date().toISOString() });
+        log('warn', 'Payment intent failed', { event_id: event.id, error: obj.last_error?.message });
+        break;
+      }
+      case 'charge.dispute.created': {
+        await state.set('disputes/' + objId, { charge: obj.charge, amount: obj.amount, reason: obj.reason, status: obj.status, created_at: new Date().toISOString() });
+        log('warn', 'Dispute created', { event_id: event.id, dispute: objId, amount: obj.amount, reason: obj.reason });
+        break;
+      }
+      case 'charge.dispute.updated': {
+        const existing = await state.get('disputes/' + objId).catch(() => ({}));
+        await state.set('disputes/' + objId, { ...existing, status: obj.status, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'charge.dispute.closed': {
+        const existing = await state.get('disputes/' + objId).catch(() => ({}));
+        await state.set('disputes/' + objId, { ...existing, status: obj.status, closed_at: new Date().toISOString() });
+        break;
+      }
+      case 'charge.dispute.funds_withdrawn': {
+        const existing = await state.get('disputes/' + objId).catch(() => ({}));
+        await state.set('disputes/' + objId, { ...existing, funds_withdrawn: true, withdrawn_at: new Date().toISOString() });
+        log('warn', 'Dispute funds withdrawn', { event_id: event.id, dispute: objId });
+        break;
+      }
+      case 'charge.refunded': {
+        await state.set('charges/' + objId, { customer: obj.customer, amount: obj.amount, amount_refunded: obj.amount_refunded, refunded: obj.refunded, refunded_at: new Date().toISOString() });
+        for (const refund of (obj.refunds?.data || [])) {
+          await state.set('refunds/' + refund.id, { charge: objId, amount: refund.amount, reason: refund.reason, status: refund.status, created_at: new Date().toISOString() });
+        }
+        break;
+      }
+      case 'customer.updated': {
+        await state.set('customers/' + objId, { email: obj.email, name: obj.name, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'payment_method.updated': {
+        await state.set('payment_methods/' + objId, { customer: obj.customer, type: obj.type, updated_at: new Date().toISOString() });
+        break;
+      }
+      case 'payment_method.detached': {
+        await state.set('payment_methods/' + objId, { customer: null, detached: true, detached_at: new Date().toISOString() });
+        break;
+      }
+      case 'payout.paid': {
+        await state.set('payouts/' + objId, { amount: obj.amount, currency: obj.currency, status: 'paid', paid_at: new Date().toISOString() });
+        break;
+      }
+      case 'payout.failed': {
+        await state.set('payouts/' + objId, { amount: obj.amount, status: 'failed', failure_code: obj.failure_code, failed_at: new Date().toISOString() });
+        log('warn', 'Payout failed', { event_id: event.id, failure_code: obj.failure_code });
+        break;
+      }
+      case 'transfer.reversed': {
+        await state.set('transfers/' + objId, { amount: obj.amount, reversed: true, reversed_at: new Date().toISOString() });
+        log('warn', 'Transfer reversed', { event_id: event.id, transfer: objId });
+        break;
+      }
+      case 'account.updated': {
+        await state.set('connect_accounts/' + objId, { charges_enabled: obj.charges_enabled, payouts_enabled: obj.payouts_enabled, details_submitted: obj.details_submitted, updated_at: new Date().toISOString() });
+        break;
+      }
+      default:
+        log('info', 'Event acknowledged (unhandled)', { event_id: event.id, event_type: event.type });
         break;
     }
-    res.json({ received: true });
+    try { await state.set(processedKey, { processed_at: new Date().toISOString(), event_type: event.type }); } catch {}
+    res.json({ status: 'received', event_type: event.type });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    log('error', 'Processing failed', { event_id: event.id, event_type: event.type, error: err.message });
+    res.json({ status: 'error', event_type: event.type, message: err.message });
   }
 };`,
 				region: "us-east-1",
-				capabs: []string{"webhook", "storage"},
+				capabs:    []string{"webhook", "storage"},
 			},
 			{
 				name: "welcome-email",

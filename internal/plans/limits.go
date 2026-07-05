@@ -373,12 +373,12 @@ const (
 // Runtime type constants
 const (
 	RuntimeWasm          = "wasm"
-	RuntimePython        = "python"         // RustPython
-	RuntimePythonMicroVM = "python-microvm" // CPython in Firecracker
-	RuntimePrism         = "prism"          // Prism runtime for JavaScript/TypeScript
-	RuntimeBun           = "bun"            // Bun runtime
-	RuntimeDeno          = "deno"           // Deno runtime
-	// FlyPy runtime has been disabled - using MicroPython only
+	RuntimePython        = "python"
+	RuntimeFlyMachines   = "fly-machines"    // CPython in Firecracker via Fly Machines API
+	RuntimePythonMicroVM = "python-microvm" // Legacy name - kept for backward compat with existing DB entries
+	RuntimePrism         = "prism"
+	RuntimeBun           = "bun"
+	RuntimeDeno          = "deno"
 )
 
 // IsEnterpriseTier returns true if the plan is enterprise or agent_enterprise
@@ -689,12 +689,17 @@ func GetAnnualPriceCents(plan string) int {
 // IsValidRuntimeForPlan checks if the runtime is allowed for the given plan
 func IsValidRuntimeForPlan(plan string, runtime string) bool {
 	switch runtime {
-	case RuntimePythonMicroVM:
-		// python-microvm is only available for enterprise tier
-		return plan == PlanEnterprise
+	case RuntimeFlyMachines, RuntimePythonMicroVM:
+		// fly-machines and legacy python-microvm are only available for enterprise tier
+		return plan == PlanEnterprise || plan == PlanMicroVMEnterprise
 	default:
 		return true // All other runtimes are available for all plans
 	}
+}
+
+// IsFlyMachinesRuntime returns true if the runtime is fly-machines or legacy python-microvm
+func IsFlyMachinesRuntime(runtime string) bool {
+	return runtime == RuntimeFlyMachines || runtime == RuntimePythonMicroVM
 }
 
 // MaxProviders returns the maximum number of providers allowed for the given plan

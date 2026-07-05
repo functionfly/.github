@@ -58,7 +58,9 @@ func (h *Handler) DeployBundle(ctx context.Context, sub *storage.BundleSubscript
 				sub.DeployStatus = "deployed"
 				now := time.Now()
 				sub.DeployedAt = &now
-				h.repo.UpdateBundleSubscription(ctx, sub)
+				if err := h.repo.UpdateBundleSubscription(ctx, sub); err != nil {
+					log.WithError(err).Error("failed to update bundle subscription")
+				}
 				return
 			}
 		}
@@ -109,12 +111,16 @@ func (h *Handler) deployToCloudflare(ctx context.Context, sub *storage.BundleSub
 	result, err := client.DeployWithKVNamespace(ctx, script, sub.ScriptName, kvNamespaceID, "STATE")
 	if err != nil {
 		// Cleanup KV namespace on failure
-		client.DeleteKVNamespace(ctx, kvNamespaceID)
+		if delErr := client.DeleteKVNamespace(ctx, kvNamespaceID); delErr != nil {
+			log.WithError(delErr).Warn("failed to delete KV namespace")
+		}
 		h.failDeploy(sub, "deploy failed: %v", err)
 		return
 	}
 	if result.Status == "failed" {
-		client.DeleteKVNamespace(ctx, kvNamespaceID)
+		if delErr := client.DeleteKVNamespace(ctx, kvNamespaceID); delErr != nil {
+			log.WithError(delErr).Warn("failed to delete KV namespace")
+		}
 		h.failDeploy(sub, "deploy failed: %s", result.Message)
 		return
 	}
@@ -123,8 +129,12 @@ func (h *Handler) deployToCloudflare(ctx context.Context, sub *storage.BundleSub
 	// Enable workers.dev
 	if err := client.EnableWorkersDev(ctx, sub.ScriptName); err != nil {
 		// Cleanup on failure
-		client.DeleteDeployment(ctx, sub.ScriptName)
-		client.DeleteKVNamespace(ctx, kvNamespaceID)
+		if delErr := client.DeleteDeployment(ctx, sub.ScriptName); delErr != nil {
+			log.WithError(delErr).Warn("failed to delete deployment")
+		}
+		if delErr := client.DeleteKVNamespace(ctx, kvNamespaceID); delErr != nil {
+			log.WithError(delErr).Warn("failed to delete KV namespace")
+		}
 		h.failDeploy(sub, "enable workers.dev failed: %v", err)
 		return
 	}
@@ -167,7 +177,7 @@ func (h *Handler) failDeploy(sub *storage.BundleSubscription, format string, arg
 		"script_name":    sub.ScriptName,
 		"deploy_attempts": sub.DeployAttempts,
 	})
-	log.WithError(fmt.Errorf(errMsg)).Warn("Bundle deployment failed")
+	log.WithError(fmt.Errorf("%s", errMsg)).Warn("Bundle deployment failed")
 
 	sub.DeployStatus = "failed"
 	sub.DeployAttempts++

@@ -535,7 +535,9 @@ func (h *WalletExportHandler) exportAsCSV(w http.ResponseWriter, wallets []Walle
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=wallets_%s.csv", time.Now().Format("20060102_150405")))
 	w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
 	w.WriteHeader(http.StatusOK)
-	w.Write(buf.Bytes())
+	if _, err := w.Write(buf.Bytes()); err != nil {
+		logrus.WithError(err).Warn("wallet export: failed to write CSV")
+	}
 }
 
 func (h *WalletExportHandler) exportAsJSON(w http.ResponseWriter, wallets []WalletExportData, req *ExportWalletsRequest) {
@@ -568,16 +570,11 @@ func (h *WalletExportHandler) extractUserID(r *http.Request) (uuid.UUID, error) 
 }
 
 func (h *WalletExportHandler) writeError(w http.ResponseWriter, status int, title, detail string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-
-	response := map[string]interface{}{
+	encodeJSON(w, status, map[string]interface{}{
 		"error": map[string]interface{}{
 			"status": status,
 			"title":  title,
 			"detail": detail,
 		},
-	}
-
-	json.NewEncoder(w).Encode(response)
+	})
 }

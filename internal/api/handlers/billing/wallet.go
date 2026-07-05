@@ -281,10 +281,8 @@ func (h *Handler) HandleWalletTopUp(w http.ResponseWriter, r *http.Request) {
 			logrus.WithError(err).WithField("user_id", claims.UserID).Warn("wallet top-up rate limit check failed")
 			// Continue anyway - don't block on Redis errors
 		} else if !allowed {
-			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(retryAfter.Seconds())))
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]string{
+			encodeJSON(w, http.StatusTooManyRequests, map[string]string{
 				"error":   "rate_limit_exceeded",
 				"code":    "WALLET_TOPUP_RATE_LIMIT",
 				"message": "Too many wallet top-up attempts. Maximum 5 attempts per hour allowed. Please try again later.",
@@ -301,10 +299,8 @@ func (h *Handler) HandleWalletTopUp(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			logrus.WithError(err).WithField("user_id", claims.UserID).Warn("wallet top-up backoff check failed")
 		} else if !backoffAllowed {
-			w.Header().Set("Content-Type", "application/json")
 			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(backoffWait.Seconds())))
-			w.WriteHeader(http.StatusTooManyRequests)
-			json.NewEncoder(w).Encode(map[string]string{
+			encodeJSON(w, http.StatusTooManyRequests, map[string]string{
 				"error":   "backoff_required",
 				"code":    "WALLET_TOPUP_BACKOFF",
 				"message": "Too many failed top-up attempts. Please wait before trying again.",
@@ -457,18 +453,4 @@ func (h *Handler) checkExponentialBackoff(ctx context.Context, key string) (bool
 	}
 
 	return true, 0, nil
-}
-
-// recordFailedAttempt records a failed top-up attempt for exponential backoff
-func (h *Handler) recordFailedAttempt(ctx context.Context, key string) error {
-	failureKey := key + ":failures"
-	lastFailureKey := key + ":last_failure"
-
-	pipe := h.redisClient.Pipeline()
-	pipe.Incr(ctx, failureKey)
-	pipe.Set(ctx, lastFailureKey, fmt.Sprintf("%d", time.Now().Unix()), 24*time.Hour)
-	pipe.Expire(ctx, failureKey, 24*time.Hour)
-
-	_, err := pipe.Exec(ctx)
-	return err
 }

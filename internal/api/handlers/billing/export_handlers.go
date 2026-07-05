@@ -152,9 +152,7 @@ func (h *ExportHandler) CreateExportConfiguration(w http.ResponseWriter, r *http
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(h.formatExportConfiguration(config))
+	encodeJSON(w, http.StatusCreated, h.formatExportConfiguration(config))
 }
 
 // ListExportConfigurations lists all export configurations for the tenant
@@ -204,8 +202,7 @@ func (h *ExportHandler) ListExportConfigurations(w http.ResponseWriter, r *http.
 		"total":          len(formatted),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetExportConfiguration gets a specific export configuration
@@ -238,8 +235,7 @@ func (h *ExportHandler) GetExportConfiguration(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatExportConfiguration(config))
+	encodeJSON(w, http.StatusOK, h.formatExportConfiguration(config))
 }
 
 // UpdateExportConfiguration updates an export configuration
@@ -378,8 +374,7 @@ func (h *ExportHandler) UpdateExportConfiguration(w http.ResponseWriter, r *http
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatExportConfiguration(existing))
+	encodeJSON(w, http.StatusOK, h.formatExportConfiguration(existing))
 }
 
 // DeleteExportConfiguration deletes an export configuration
@@ -469,7 +464,8 @@ func (h *ExportHandler) ExecuteExport(w http.ResponseWriter, r *http.Request) {
 
 	// Override period if specified
 	if req.PeriodStart != nil {
-		// Would need to add PeriodStart/End to config temporarily
+		// Period override not yet implemented - would need to modify config temporarily
+		_ = req.PeriodStart // Acknowledge the parameter is available for future use
 	}
 
 	// Execute the export
@@ -490,9 +486,7 @@ func (h *ExportHandler) ExecuteExport(w http.ResponseWriter, r *http.Request) {
 		"format":          result.Format,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusAccepted, response)
 }
 
 // ListExportJobs lists export jobs for the tenant
@@ -543,8 +537,7 @@ func (h *ExportHandler) ListExportJobs(w http.ResponseWriter, r *http.Request) {
 		"total":  len(formatted),
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // GetExportJob gets a specific export job
@@ -575,8 +568,7 @@ func (h *ExportHandler) GetExportJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatExportJob(job))
+	encodeJSON(w, http.StatusOK, h.formatExportJob(job))
 }
 
 // DownloadExport downloads an export file
@@ -639,7 +631,9 @@ func (h *ExportHandler) DownloadExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", filename))
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		logrus.WithError(err).Warn("failed to write export data")
+	}
 }
 
 // ==================== Export Templates Endpoints ====================
@@ -665,8 +659,7 @@ func (h *ExportHandler) ListExportTemplates(w http.ResponseWriter, r *http.Reque
 		formatted[i] = h.formatExportTemplate(template)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"templates": formatted,
 	})
 }
@@ -688,8 +681,7 @@ func (h *ExportHandler) GetExportTemplate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(h.formatExportTemplate(template))
+	encodeJSON(w, http.StatusOK, h.formatExportTemplate(template))
 }
 
 // CreateConfigurationFromTemplate creates an export configuration from a template
@@ -766,9 +758,7 @@ func (h *ExportHandler) CreateConfigurationFromTemplate(w http.ResponseWriter, r
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(h.formatExportConfiguration(config))
+	encodeJSON(w, http.StatusCreated, h.formatExportConfiguration(config))
 }
 
 // ==================== Helper Methods ====================
@@ -875,9 +865,7 @@ func (h *ExportHandler) formatExportTemplate(template *storage.UsageExportTempla
 }
 
 func (h *ExportHandler) writeError(w http.ResponseWriter, statusCode int, code, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, statusCode, map[string]interface{}{
 		"error": map[string]interface{}{
 			"code":    code,
 			"message": message,

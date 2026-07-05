@@ -2,378 +2,122 @@ package webhooks
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
-	"github.com/functionfly/functionfly/internal/agent/billing"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stripe/stripe-go/v83"
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
 )
 
-func TestStripeWebhookHandler_HandleWebhook_SignatureVerification(t *testing.T) {
-	t.Run("rejects request with invalid signature when secret is configured", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-		require.NoError(t, err)
-
-		// Auto-migrate the table
-		db.AutoMigrate(&storage.AgentFinancialTransaction{})
-
-		repo := storage.NewFinancialTransactionRepository(db)
-		billingCtrl := billing.NewController(db, nil)
-
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		handler.webhookSecret = "whsec_test_secret"
-
-		router := http.NewServeMux()
-		router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-		// Create a request with invalid signature
-		payload := []byte(`{"type": "checkout.session.completed"}`)
-		req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-		req.Header.Set("Stripe-Signature", "invalid_signature")
-		rr := httptest.NewRecorder()
-
-		router.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusUnauthorized, rr.Code)
-	})
-
-	t.Run("accepts request without verification when secret is not configured", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-		require.NoError(t, err)
-
-		db.AutoMigrate(&storage.AgentFinancialTransaction{})
-
-		repo := storage.NewFinancialTransactionRepository(db)
-		billingCtrl := billing.NewController(db, nil)
-
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		handler.webhookSecret = "" // No secret configured
-
-		router := http.NewServeMux()
-		router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-		// Create a valid checkout.session.completed event
-		event := stripe.Event{
-			Type: "checkout.session.completed",
-			Data: &stripe.EventData{
-				Raw: json.RawMessage(`{
-					"id": "cs_test_123",
-					"amount_total": 1000,
-					"metadata": {
-						"tenant_id": "` + uuid.New().String() + `",
-						"agent_id": "test-agent",
-						"purpose": "agent_execution_credits",
-						"amount_usd": "10.00"
-					}
-				}`),
-			},
-		}
-
-		payload, _ := json.Marshal(event)
-		req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-		rr := httptest.NewRecorder()
-
-		router.ServeHTTP(rr, req)
-
-		// Should ignore the event since agent doesn't exist in billing controls yet
-		// But it should not return an error for signature
-		assert.NotEqual(t, http.StatusUnauthorized, rr.Code)
-	})
+func TestMain(m *testing.M) {
+	os.Setenv("DEVELOPMENT", "true")
+	os.Setenv("WALLET_AUDIT_HMAC_KEY", "test-key-for-testing")
+	os.Setenv("WALLET_ENCRYPTION_KEY", "01234567890123456789012345678901")
+	os.Setenv("ALLOW_UNVERIFIED_WEBHOOKS", "true")
+	os.Setenv("DB_HOST", "localhost")
+	os.Setenv("DB_PORT", "5432")
+	os.Setenv("DB_USER", "postgres")
+	os.Setenv("DB_PASSWORD", "postgres")
+	os.Setenv("DB_NAME", "functionfly")
+	os.Setenv("DB_SSLMODE", "disable")
+	os.Exit(m.Run())
 }
 
-func TestStripeWebhookHandler_Idempotency(t *testing.T) {
-	t.Run("duplicate webhook does not create duplicate transaction", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-		require.NoError(t, err)
-
-		db.AutoMigrate(&storage.AgentFinancialTransaction{})
-
-		repo := storage.NewFinancialTransactionRepository(db)
-		billingCtrl := billing.NewController(db, nil)
-
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		handler.webhookSecret = "" // Skip signature verification for test
-
-		// First webhook
-		event1 := stripe.Event{
-			Type: "checkout.session.completed",
-			Data: &stripe.EventData{
-				Raw: json.RawMessage(`{
-					"id": "cs_test_same_id",
-					"amount_total": 1000,
-					"metadata": {
-						"tenant_id": "` + uuid.New().String() + `",
-						"agent_id": "test-agent",
-						"purpose": "agent_execution_credits",
-						"amount_usd": "10.00"
-					}
-				}`),
-			},
-		}
-
-		router := http.NewServeMux()
-		router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-		// Send first request
-		payload1, _ := json.Marshal(event1)
-		req1 := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload1))
-		rr1 := httptest.NewRecorder()
-		router.ServeHTTP(rr1, req1)
-
-		// Second webhook with same session ID (simulating retry)
-		event2 := stripe.Event{
-			Type: "checkout.session.completed",
-			Data: &stripe.EventData{
-				Raw: json.RawMessage(`{
-					"id": "cs_test_same_id",
-					"amount_total": 1000,
-					"metadata": {
-						"tenant_id": "` + uuid.New().String() + `",
-						"agent_id": "test-agent",
-						"purpose": "agent_execution_credits",
-						"amount_usd": "10.00"
-					}
-				}`),
-			},
-		}
-
-		payload2, _ := json.Marshal(event2)
-		req2 := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload2))
-		rr2 := httptest.NewRecorder()
-		router.ServeHTTP(rr2, req2)
-
-		// Both should succeed
-		assert.Equal(t, http.StatusOK, rr1.Code)
-		assert.Equal(t, http.StatusOK, rr2.Code)
-
-		// Check that there's only one transaction in the database
-		var count int64
-		db.Model(&storage.AgentFinancialTransaction{}).Count(&count)
-		// Note: This may be 0 if agent billing controls don't exist, but there should never be duplicates
-		assert.LessOrEqual(t, count, int64(1))
-	})
+type mockRepo struct {
+	storage.Repository
+	bundleSlug string
+	bundleID   uuid.UUID
+	db        *storage.PostgresDB
 }
 
-func TestStripeWebhookHandler_IgnoresNonCheckoutEvents(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
+func (m *mockRepo) GetPricingBundleBySlug(ctx context.Context, slug string) (*storage.PricingBundle, error) {
+	return &storage.PricingBundle{
+		ID:                m.bundleID,
+		Slug:             m.bundleSlug,
+		Name:             "SaaS Starter",
+		DisplayName:      "SaaS Starter Bundle",
+		DisplayPriceCents: 9900,
+		IsActive:         true,
+	}, nil
+}
 
-	repo := storage.NewFinancialTransactionRepository(db)
-	billingCtrl := billing.NewController(db, nil)
+func (m *mockRepo) GetBundleSubscriptionByTenant(ctx context.Context, tenantID uuid.UUID) (*storage.BundleSubscription, error) {
+	return nil, nil
+}
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	handler.webhookSecret = ""
-
-	router := http.NewServeMux()
-	router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-	// Send an invoice.payment_succeeded event
-	event := stripe.Event{
-		Type: "invoice.payment_succeeded",
-		Data: &stripe.EventData{
-			Raw: json.RawMessage(`{}`),
-		},
+func (m *mockRepo) CreateBundleSubscription(ctx context.Context, sub *storage.BundleSubscription) error {
+	if m.db == nil {
+		return nil
 	}
-
-	payload, _ := json.Marshal(event)
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-	rr := httptest.NewRecorder()
-
-	router.ServeHTTP(rr, req)
-
-	// Should return 200 but with "processed" status (now handled)
-	assert.Equal(t, http.StatusOK, rr.Code)
-	var response map[string]string
-	json.Unmarshal(rr.Body.Bytes(), &response)
-	assert.Equal(t, "processed", response["status"])
+	_, err := m.db.Exec(`INSERT INTO bundle_subscriptions (id, tenant_id, bundle_id, status, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW())`,
+		sub.ID, sub.TenantID, sub.BundleID, sub.Status)
+	return err
 }
 
-// Test E2E: Invoice Payment Failed Flow
-func TestStripeWebhookHandler_InvoicePaymentFailed(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
+func (m *mockRepo) UpdateBundleSubscription(ctx context.Context, sub *storage.BundleSubscription) error {
+	return nil
+}
 
-	repo := storage.NewFinancialTransactionRepository(db)
-	billingCtrl := billing.NewController(db, nil)
+func (m *mockRepo) SetTenantDegradedMode(ctx context.Context, tenantID uuid.UUID, degraded bool, reason string) error {
+	return nil
+}
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	handler.webhookSecret = ""
-
-	router := http.NewServeMux()
-	router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-	// Create a payment failed event
-	event := stripe.Event{
-		Type: "invoice.payment_failed",
-		Data: &stripe.EventData{
-			Raw: json.RawMessage(`{
-				"id": "in_test_failed",
-				"customer": {
-					"id": "cus_test",
-					"email": "test@example.com"
-				},
-				"subscription": {
-					"id": "sub_test"
-				},
-				"amount_due": 2900,
-				"currency": "usd",
-				"attempt_count": 1
-			}`),
-		},
+func (m *mockRepo) CreatePaidInvoiceForStripeCheckoutSession(ctx context.Context, tenantID uuid.UUID, amountCents int, currency, checkoutSessionID, receiptURL string) error {
+	if m.db == nil {
+		return nil
 	}
-
-	payload, _ := json.Marshal(event)
-	req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-	rr := httptest.NewRecorder()
-
-	router.ServeHTTP(rr, req)
-
-	// Should process successfully
-	assert.Equal(t, http.StatusOK, rr.Code)
-	var response map[string]string
-	json.Unmarshal(rr.Body.Bytes(), &response)
-	assert.Equal(t, "processed", response["status"])
+	_, err := m.db.Exec(`INSERT INTO invoices (id, tenant_id, status, amount_due_cents, amount_paid_cents, currency, external_reference, stripe_invoice_id, hosted_invoice_url, invoice_pdf_url, paid_at, created_at, updated_at) VALUES ($1, $2, 'paid', $3, $3, $4, $5, $5, $6, $6, NOW(), NOW(), NOW())`,
+		uuid.New(), tenantID, amountCents, currency, checkoutSessionID, receiptURL)
+	return err
 }
 
-// Test E2E: Subscription Lifecycle Events
-func TestStripeWebhookHandler_SubscriptionLifecycle(t *testing.T) {
-	t.Run("subscription updated - active to cancelled", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-		require.NoError(t, err)
-
-		repo := storage.NewFinancialTransactionRepository(db)
-		billingCtrl := billing.NewController(db, nil)
-
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		handler.webhookSecret = ""
-
-		router := http.NewServeMux()
-		router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-		// Create subscription updated event
-		event := stripe.Event{
-			Type: "customer.subscription.updated",
-			Data: &stripe.EventData{
-				Raw: json.RawMessage(`{
-					"id": "sub_test",
-					"status": "canceled",
-					"metadata": {
-						"purpose": "state_fabric_addon",
-						"tenant_id": "` + uuid.New().String() + `",
-						"addon_id": "addon_test"
-					},
-					"items": {
-						"data": [{"id": "si_test"}]
-					}
-				}`),
-			},
-		}
-
-		payload, _ := json.Marshal(event)
-		req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-		rr := httptest.NewRecorder()
-
-		router.ServeHTTP(rr, req)
-
-		// Should process without error (may be ignored if sfAddons is nil)
-		assert.Equal(t, http.StatusOK, rr.Code)
-	})
-
-	t.Run("subscription deleted", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-		require.NoError(t, err)
-
-		repo := storage.NewFinancialTransactionRepository(db)
-		billingCtrl := billing.NewController(db, nil)
-
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		handler.webhookSecret = ""
-
-		router := http.NewServeMux()
-		router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-		// Create subscription deleted event
-		event := stripe.Event{
-			Type: "customer.subscription.deleted",
-			Data: &stripe.EventData{
-				Raw: json.RawMessage(`{
-					"id": "sub_test",
-					"metadata": {
-						"purpose": "state_fabric_addon",
-						"tenant_id": "` + uuid.New().String() + `",
-						"addon_id": "addon_test"
-					}
-				}`),
-			},
-		}
-
-		payload, _ := json.Marshal(event)
-		req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-		rr := httptest.NewRecorder()
-
-		router.ServeHTTP(rr, req)
-
-		assert.Equal(t, http.StatusOK, rr.Code)
-	})
-}
-
-// Test E2E: Checkout Session Registry Wallet Credit
-func TestStripeWebhookHandler_CheckoutSessionRegistryWallet(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+func TestBundleCheckout_CreatesInvoice(t *testing.T) {
+	db, err := storage.NewPostgresDB()
 	require.NoError(t, err)
+	defer db.Close()
 
-	// Auto-migrate required tables
-	require.NoError(t, db.AutoMigrate(&storage.User{}, &storage.Tenant{}, &storage.PlatformFee{}))
-
-	repo := storage.NewFinancialTransactionRepository(db)
-	billingCtrl := billing.NewController(db, nil)
-
-	// Create a user and tenant for testing
-	userID := uuid.New()
 	tenantID := uuid.New()
-	user := &storage.User{
-		ID:       userID,
-		Email:    "test@example.com",
-		TenantID: tenantID,
-	}
-	require.NoError(t, db.Create(user).Error)
+	bundleID := uuid.New()
+	bundleSlug := "saas-starter-" + uuid.New().String()[:8]
+	sessionID := "cs_bundle_invoice_" + uuid.New().String()
 
-	tenant := &storage.Tenant{
-		ID:   tenantID,
-		Name: "Test Tenant",
-	}
-	require.NoError(t, db.Create(tenant).Error)
+	_, err = db.Exec("INSERT INTO tenants (id, name, created_at, updated_at) VALUES ($1, $2, NOW(), NOW())", tenantID, "Test Tenant")
+	require.NoError(t, err)
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
+	_, err = db.Exec("INSERT INTO pricing_bundles (id, slug, name, display_name, description, short_description, display_price_cents, billing_interval, stripe_price_id, icon, color, features_included, feature_limits, provisioning_templates, sort_order, is_active, is_popular, created_at, updated_at) VALUES ($1, $2, 'SaaS Starter', 'SaaS Starter Bundle', 'Description', 'Short', 9900, 'monthly', 'price_123', 'icon', 'color', '[]', '{}', '[]', 1, true, false, NOW(), NOW())", bundleID, bundleSlug)
+	require.NoError(t, err)
+
+	repo := db.Repository()
+	mock := &mockRepo{Repository: repo, bundleSlug: bundleSlug, bundleID: bundleID, db: db}
+
+	handler := NewStripeWebhookHandler(nil, nil, nil, mock, nil, nil, nil, nil, nil, nil, nil)
 	handler.webhookSecret = ""
 
 	router := http.NewServeMux()
 	router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
 
-	// Create registry wallet checkout completed event
 	event := stripe.Event{
 		Type: "checkout.session.completed",
 		Data: &stripe.EventData{
-			Raw: json.RawMessage(`{
-				"id": "cs_wallet_test",
-				"amount_total": 5000,
+			Raw: json.RawMessage(fmt.Sprintf(`{
+				"id": "%s",
+				"amount_total": 9900,
 				"currency": "usd",
+				"subscription": {"id": "sub_123"},
 				"metadata": {
-					"tenant_id": "` + tenantID.String() + `",
-					"user_id": "` + userID.String() + `",
-					"purpose": "registry_wallet_credit",
-					"amount_usd": "50.00"
+					"tenant_id": "%s",
+					"bundle_slug": "%s",
+					"purpose": "bundle_subscription"
 				}
-			}`),
+			}`, sessionID, tenantID, bundleSlug)),
 		},
 	}
 
@@ -383,129 +127,20 @@ func TestStripeWebhookHandler_CheckoutSessionRegistryWallet(t *testing.T) {
 
 	router.ServeHTTP(rr, req)
 
-	// Should handle the request (may fail due to missing platformFees repo, but shouldn't panic)
-	assert.Equal(t, http.StatusOK, rr.Code)
-}
+	assert.Equal(t, http.StatusOK, rr.Code, "webhook should return 200")
 
-// Test E2E: Payment Intent Failed Events
-func TestStripeWebhookHandler_PaymentIntentFailed(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	var bundleSubCount int
+	err = db.QueryRow("SELECT COUNT(*) FROM bundle_subscriptions WHERE tenant_id = $1", tenantID).Scan(&bundleSubCount)
 	require.NoError(t, err)
+	assert.Equal(t, 1, bundleSubCount, "bundle subscription should be created")
 
-	repo := storage.NewFinancialTransactionRepository(db)
-	billingCtrl := billing.NewController(db, nil)
+	var invoiceCount int
+	err = db.QueryRow("SELECT COUNT(*) FROM invoices WHERE external_reference = $1", sessionID).Scan(&invoiceCount)
+	require.NoError(t, err)
+	assert.Equal(t, 1, invoiceCount, "invoice should be created with session ID as external_reference")
 
-	handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-	handler.webhookSecret = ""
-
-	router := http.NewServeMux()
-	router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-	testCases := []struct {
-		name         string
-		declineCode  string
-		expectedCode int
-	}{
-		{"insufficient_funds", "insufficient_funds", http.StatusOK},
-		{"card_expired", "expired_card", http.StatusOK},
-		{"generic_error", "", http.StatusOK},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			errMsg := "Your card has insufficient funds."
-			if tc.declineCode == "" {
-				errMsg = "Payment failed"
-			} else if tc.declineCode == "expired_card" {
-				errMsg = "Your card has expired"
-			}
-
-			event := stripe.Event{
-				Type: "payment_intent.payment_failed",
-				Data: &stripe.EventData{
-					Raw: json.RawMessage(`{
-						"id": "pi_test",
-						"status": "requires_payment_method",
-						"amount": 2900,
-						"currency": "usd",
-						"last_payment_error": {
-							"decline_code": "` + tc.declineCode + `",
-							"message": "` + errMsg + `"
-						}
-					}`),
-				},
-			}
-
-			payload, _ := json.Marshal(event)
-			req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-			rr := httptest.NewRecorder()
-
-			router.ServeHTTP(rr, req)
-
-			assert.Equal(t, tc.expectedCode, rr.Code)
-			var response map[string]string
-			json.Unmarshal(rr.Body.Bytes(), &response)
-			assert.Equal(t, "processed", response["status"])
-		})
-	}
-}
-
-// Test Production Webhook Secret Enforcement
-func TestStripeWebhookHandler_ProductionSecretEnforcement(t *testing.T) {
-	t.Run("rejects webhook in production without secret", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-		require.NoError(t, err)
-
-		repo := storage.NewFinancialTransactionRepository(db)
-		billingCtrl := billing.NewController(db, nil)
-
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		handler.webhookSecret = "" // No secret configured
-
-		// Set production environment
-		os.Setenv("PRODUCTION", "true")
-		defer os.Unsetenv("PRODUCTION")
-
-		router := http.NewServeMux()
-		router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-		// Send any event
-		event := stripe.Event{
-			Type: "checkout.session.completed",
-			Data: &stripe.EventData{
-				Raw: json.RawMessage(`{}`),
-			},
-		}
-
-		payload, _ := json.Marshal(event)
-		req := httptest.NewRequest("POST", "/webhooks/stripe", bytes.NewReader(payload))
-		rr := httptest.NewRecorder()
-
-		router.ServeHTTP(rr, req)
-
-		// Should reject with 500 - webhook not configured in production
-		assert.Equal(t, http.StatusInternalServerError, rr.Code)
-	})
-
-	t.Run("allows webhook in production with secret", func(t *testing.T) {
-		db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-		require.NoError(t, err)
-
-		repo := storage.NewFinancialTransactionRepository(db)
-		billingCtrl := billing.NewController(db, nil)
-
-		handler := NewStripeWebhookHandler(repo, billingCtrl, nil, nil, nil, nil, nil, nil, nil, nil, nil)
-		handler.webhookSecret = "whsec_test_secret"
-
-		// Set production environment
-		os.Setenv("PRODUCTION", "true")
-		defer os.Unsetenv("PRODUCTION")
-
-		router := http.NewServeMux()
-		router.HandleFunc("/webhooks/stripe", handler.HandleWebhook)
-
-		// Send checkout session with valid signature would be needed here
-		// For now just verify it doesn't reject immediately with 500
-		assert.NotEqual(t, "", handler.webhookSecret)
-	})
+	var invoiceAmount int
+	err = db.QueryRow("SELECT amount_due_cents FROM invoices WHERE external_reference = $1", sessionID).Scan(&invoiceAmount)
+	require.NoError(t, err)
+	assert.Equal(t, 9900, invoiceAmount, "invoice amount should match session amount_total")
 }

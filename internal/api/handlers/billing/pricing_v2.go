@@ -1,6 +1,7 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -90,9 +91,7 @@ func (h *Handler) HandleGetUsagePricing(w http.ResponseWriter, r *http.Request) 
 		Description: "Pay only for what you use above generous free allowances. All tiers include 100K executions, 1K AI calls, 1GB storage, and 1K workflow runs per month.",
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // getDefaultUsageBasedPricing returns the pay-as-you-go pricing structure
@@ -338,9 +337,7 @@ func (h *Handler) HandleGetCurrentUsage(w http.ResponseWriter, r *http.Request) 
 		ApproachingLimit: execPercent > 80 || aiPercent > 80 || workflowPercent > 80,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	encodeJSON(w, http.StatusOK, response)
 }
 
 // formatCents converts cents to a USD string
@@ -391,6 +388,13 @@ func (h *Handler) HandleRecordUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.EventType == "ai_call" {
+		if err := h.checkBundleAICallsLimit(r.Context(), claims.TenantID, req.Quantity); err != nil {
+			writeJSONError(w, http.StatusForbidden, err.Error())
+			return
+		}
+	}
+
 	// Create usage event
 	event := &storage.UsageEvent{
 		ID:        uuid.New(),
@@ -407,11 +411,46 @@ func (h *Handler) HandleRecordUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	encodeJSON(w, http.StatusOK, map[string]interface{}{
 		"event_id":  event.ID,
 		"recorded":  true,
 		"timestamp": event.Timestamp,
 	})
+}
+
+func (h *Handler) checkBundleAICallsLimit(ctx context.Context, tenantID uuid.UUID, callsToAdd int) error {
+	sub, err := h.repo.GetBundleSubscriptionByTenant(ctx, tenantID)
+	if err != nil || sub == nil {
+		return nil
+	}
+
+	bundle, err := h.repo.GetPricingBundleByID(ctx, sub.BundleID)
+	if err != nil || bundle == nil {
+		return nil
+	}
+
+	limit, exists := bundle.FeatureLimits["ai_calls"]
+	if !exists || limit <= 0 {
+		return nil
+	}
+
+	periodStart := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.UTC)
+	periodEnd := periodStart.AddDate(0, 1, 0).Add(-time.Second)
+
+	rollups, err := h.repo.GetUsageByTenant(ctx, tenantID, "ai_call", periodStart, periodEnd)
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to get AI calls usage for bundle quota check")
+		return nil
+	}
+
+	current := 0
+	for _, rollup := range rollups {
+		current += rollup.TotalQuantity
+	}
+
+	if (current + callsToAdd) > limit {
+		return fmt.Errorf("AI calls limit reached for your bundle (%d/%d). Upgrade your bundle for more AI calls", current, limit)
+	}
+
+	return nil
 }

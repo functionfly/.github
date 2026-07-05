@@ -195,7 +195,7 @@ func (d *DeferredBillingChecker) checkSingleRegistration(ctx context.Context, re
 			if d.notificationSvc != nil {
 				users, err := d.repo.ListActiveUsersByTenant(ctx, reg.TenantID)
 				if err == nil && len(users) > 0 {
-					thresholdType := d.getClosestThreshold(thresholds, current)
+					thresholdType, _ := d.getClosestThreshold(thresholds, current)
 					thresholdValue := d.getThresholdValue(thresholds, thresholdType)
 					if err := d.notificationSvc.SendFounderModeThresholdWarning(ctx, users[0].ID, bundleName, current.ProgressPercent, thresholdType, thresholdValue); err != nil {
 						log.WithError(err).Warn("Failed to send threshold warning notification")
@@ -355,8 +355,8 @@ func (d *DeferredBillingChecker) getExceededThreshold(thresholds TriggerThreshol
 	return "unknown"
 }
 
-// getClosestThreshold returns which threshold is closest to being exceeded
-func (d *DeferredBillingChecker) getClosestThreshold(thresholds TriggerThresholds, current CurrentProgress) string {
+// getClosestThreshold returns which threshold is closest to being exceeded and the percentage
+func (d *DeferredBillingChecker) getClosestThreshold(thresholds TriggerThresholds, current CurrentProgress) (string, float64) {
 	maxPercent := 0.0
 	closest := ""
 
@@ -389,7 +389,7 @@ func (d *DeferredBillingChecker) getClosestThreshold(thresholds TriggerThreshold
 		}
 	}
 
-	return closest
+	return closest, maxPercent
 }
 
 // getThresholdValue returns the value of the specified threshold

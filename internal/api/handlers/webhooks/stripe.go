@@ -285,11 +285,13 @@ func (h *StripeWebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Requ
 
 	// IDEMPOTENCY CHECK: Check if this event has already been processed
 	// This check happens BEFORE any business logic to prevent duplicate processing
-	existingEvent, _ := h.userRepo.GetStripeSyncEventByEventID(r.Context(), event.ID)
-	if existingEvent != nil && (existingEvent.Status == storage.StripeSyncStatusProcessed || existingEvent.Status == storage.StripeSyncStatusIgnored) {
-		logrus.WithField("event_id", event.ID).Info("stripe webhook: duplicate event already processed, acknowledging")
-		w.WriteHeader(http.StatusOK)
-		return
+	if h.userRepo != nil {
+		existingEvent, _ := h.userRepo.GetStripeSyncEventByEventID(r.Context(), event.ID)
+		if existingEvent != nil && (existingEvent.Status == storage.StripeSyncStatusProcessed || existingEvent.Status == storage.StripeSyncStatusIgnored) {
+			logrus.WithField("event_id", event.ID).Info("stripe webhook: duplicate event already processed, acknowledging")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 	}
 
 	h.handleEvent(w, r, &event)
@@ -681,6 +683,9 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 		"session_id":      session.ID,
 	}).Info("Bundle subscription created/updated successfully")
 
+	// Persist invoice for bundle purchase
+	h.persistCheckoutInvoice(r.Context(), tenantID, session, float64(session.AmountTotal)/100)
+
 	// Trigger provisioning of bundle resources (app, backend, functions)
 	// This is called for both new purchases and conversions from founder mode.
 	// When isolated provisioning is available, skip shared-DB backend/function creation
@@ -765,29 +770,43 @@ func (h *StripeWebhookHandler) handleBundleSubscriptionCheckout(w http.ResponseW
 		}
 	}
 
-	// Send bundle welcome email
-	if h.emailSvc != nil {
+	// Send bundle welcome email and in-app notification
+	if h.emailSvc != nil || h.notificationSvc != nil {
 		dashboardURL := os.Getenv("DASHBOARD_URL")
 		if dashboardURL == "" {
 			dashboardURL = "https://app.functionfly.com"
 		}
 		var userEmail string
+		var userID uuid.UUID
 		if session.CustomerEmail != "" {
 			userEmail = session.CustomerEmail
-		} else {
-			users, uErr := h.userRepo.ListActiveUsersByTenant(r.Context(), tenantID)
-			if uErr == nil && len(users) > 0 {
+		}
+		users, uErr := h.userRepo.ListActiveUsersByTenant(r.Context(), tenantID)
+		if uErr == nil && len(users) > 0 {
+			if userEmail == "" {
 				userEmail = users[0].Email
 			}
+			userID = users[0].ID
 		}
 		if userEmail != "" {
 			go func() {
-				if err := h.emailSvc.SendBundleWelcomeEmail(userEmail, bundle.Name, dashboardURL); err != nil {
-					logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to send bundle welcome email")
-				} else {
-					logrus.WithField("tenant_id", tenantID).Info("Bundle welcome email sent successfully")
+				if h.emailSvc != nil {
+					if err := h.emailSvc.SendBundleWelcomeEmail(userEmail, bundle.Name, dashboardURL); err != nil {
+						logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to send bundle welcome email")
+					} else {
+						logrus.WithField("tenant_id", tenantID).Info("Bundle welcome email sent successfully")
+					}
 				}
 			}()
+		}
+		// Send in-app notification for bundle subscription
+		if h.notificationSvc != nil && userID != uuid.Nil {
+			priceUSD := float64(bundle.DisplayPriceCents) / 100.0
+			if err := h.notificationSvc.SendBundleSubscriptionCreated(r.Context(), userID, bundle.Name, bundleSlug, priceUSD); err != nil {
+				logrus.WithError(err).WithField("tenant_id", tenantID).Warn("Failed to send bundle subscription notification")
+			} else {
+				logrus.WithField("tenant_id", tenantID).Info("Bundle subscription notification sent successfully")
+			}
 		}
 	}
 
