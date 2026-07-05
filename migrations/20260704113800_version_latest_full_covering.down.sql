@@ -1,0 +1,1 @@
+DROP INDEX CONCURRENTLY IF EXISTS idx_registry_function_versions_latest_version_covering;
