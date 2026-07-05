@@ -9,8 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-var errNoRows = errors.New("no rows")
-
 // ListCompanies returns active companies ordered by name.
 func (r *Repository) ListCompanies(ctx context.Context) ([]Company, error) {
 	rows, err := r.pool.Query(ctx, `

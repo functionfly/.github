@@ -170,7 +170,9 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body interf
 		c.rateLimiter.UpdateFromHeaders(resp.Header)
 
 		respBody, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		if err := resp.Body.Close(); err != nil {
+			c.logger.WithError(err).Warn("failed to close response body")
+		}
 		if err != nil {
 			lastErr = err
 			continue

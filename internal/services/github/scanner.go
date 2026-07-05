@@ -2461,7 +2461,7 @@ func (d *AIDetector) callAIService(ctx context.Context, prompt string) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("AI service returned %d", resp.StatusCode)

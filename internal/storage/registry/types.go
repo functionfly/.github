@@ -60,7 +60,10 @@ type RegistryFunction struct {
 	// ── Tenant Function Fields (unified from functions table) ──────────────────
 	Providers         StringArray        `json:"providers" gorm:"type:text[]"`         // Deployment providers
 	Region            string                `json:"region" gorm:"type:varchar(100)"`      // Deployment region
-	Code              string                `json:"code" gorm:"type:text"`               // Function source code
+	Code              string                `json:"code" gorm:"type:text"`               // Function source code (legacy: still in DB during cutover)
+	CodeStorageBackend string              `json:"code_storage_backend" gorm:"type:varchar(20);not null;default:'db'"`
+	CodeStorageKey    sql.NullString       `json:"code_storage_key,omitempty" gorm:"type:text"`
+	CodeContentHash   sql.NullString       `json:"code_content_hash,omitempty" gorm:"type:varchar(64)"`
 	EnvVars           JSONRawMessage        `json:"env_vars" gorm:"type:jsonb"`           // Environment variables
 	Schedule          JSONRawMessage        `json:"schedule,omitempty" gorm:"type:jsonb"` // Cron schedule config
 	PlaygroundEnabled bool                  `json:"playground_enabled" gorm:"default:false"`
@@ -203,6 +206,16 @@ type RegistryFunctionVersion struct {
 	PublishedAt  time.Time      `json:"published_at" gorm:"autoCreateTime"`
 	UpdatedAt    time.Time      `json:"updated_at" gorm:"autoUpdateTime"`
 	IsActive     bool           `json:"is_active" gorm:"default:true;index"`
+
+	// Object-storage metadata. When StorageBackend != "db" the WASM /
+	// source / readme bytes live in R2 under the corresponding storage keys.
+	// The legacy WasmBinary / SourceCode / Readme columns are kept populated
+	// during the dual-read cutover and nullified by the migration worker.
+	StorageBackend   string          `json:"storage_backend" gorm:"type:varchar(20);not null;default:'db'"`
+	StorageKey       sql.NullString  `json:"storage_key,omitempty" gorm:"type:text"`        // compiled WASM
+	SourceStorageKey sql.NullString  `json:"source_storage_key,omitempty" gorm:"type:text"` // original source
+	ReadmeStorageKey sql.NullString  `json:"readme_storage_key,omitempty" gorm:"type:text"` // generated readme
+	ArtifactHash     sql.NullString  `json:"artifact_hash,omitempty" gorm:"type:varchar(64)"` // sha256 of WASM, content-addressed
 
 	// Relationships
 	Function           *RegistryFunction                   `json:"function,omitempty" gorm:"foreignKey:FunctionID;references:ID"`
@@ -1180,6 +1193,15 @@ func (VerificationSchedule) TableName() string {
 // StringArray is a custom type for PostgreSQL text[] columns that properly handles array scanning
 //pq.StringArray has a broken Scan implementation that doesn't handle the pgx driver behavior
 type StringArray []string
+
+// Value implements driver.Valuer so GORM can write StringArray to PostgreSQL text[] columns.
+func (a StringArray) Value() (interface{}, error) {
+	if a == nil {
+		return nil, nil
+	}
+	// Return a PostgreSQL array literal like {foo,bar}
+	return fmt.Sprintf("{%s}", strings.Join(a, ",")), nil
+}
 
 // Scan implements sql.Scanner for StringArray
 func (a *StringArray) Scan(value interface{}) error {

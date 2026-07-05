@@ -18,6 +18,10 @@ func (db *PostgresDB) ListBackendsByAppID(ctx context.Context, appID uuid.UUID) 
 	return db.backendRepository.ListBackendsByAppID(ctx, appID)
 }
 
+func (db *PostgresDB) CountBackendsByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	return db.backendRepository.CountBackendsByTenant(ctx, tenantID)
+}
+
 func (db *PostgresDB) GetBackendByID(ctx context.Context, id uuid.UUID) (*Backend, error) {
 	return db.backendRepository.GetBackendByID(ctx, id)
 }

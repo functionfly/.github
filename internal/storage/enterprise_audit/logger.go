@@ -59,9 +59,7 @@ func (l *Logger) Log(ctx context.Context, input LogInput) error {
 
 func (l *Logger) LogAsync(ctx context.Context, input LogInput) {
 	go func() {
-		if err := l.Log(ctx, input); err != nil {
-			// Silent fail - audit logging should not break operations
-		}
+		_ = l.Log(ctx, input)
 	}()
 }
 
@@ -126,9 +124,7 @@ func (r *AuditRecorder) Record(ctx context.Context, action string, resourceType 
 		Success:      success,
 		ErrorMessage: errMsg,
 	}
-	if err := r.logger.Log(ctx, input); err != nil {
-		// Silent fail - audit logging should not break operations
-	}
+	_ = r.logger.Log(ctx, input)
 }
 
 func (r *AuditRecorder) RecordAsync(ctx context.Context, action string, resourceType ResourceType, resourceID *uuid.UUID, success bool, errMsg string, metadata map[string]interface{}) {
@@ -154,9 +150,7 @@ func CreateAuditLogFromRequest(ctx context.Context, logger *Logger, tenantID uui
 		Success:      success,
 		ErrorMessage: errMsg,
 	}
-	if err := logger.Log(ctx, input); err != nil {
-		// Silent fail
-	}
+	_ = logger.Log(ctx, input)
 }
 
 type Action string

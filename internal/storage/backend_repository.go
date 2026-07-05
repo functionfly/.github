@@ -73,6 +73,19 @@ func (r *BackendRepository) ListBackendsByAppID(ctx context.Context, appID uuid.
 	return backends, nil
 }
 
+// CountBackendsByTenant counts all backends for a tenant across all apps
+func (r *BackendRepository) CountBackendsByTenant(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	var count int
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM backends b
+		JOIN apps a ON b.app_id = a.id
+		WHERE a.tenant_id = $1`, tenantID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count backends: %w", err)
+	}
+	return count, nil
+}
+
 // GetBackendByID retrieves a backend by ID
 func (r *BackendRepository) GetBackendByID(ctx context.Context, id uuid.UUID) (*Backend, error) {
 	backend := &Backend{}

@@ -93,7 +93,7 @@ func (d *TeamDecision) SetAlternativesSlice(alternatives []string) error {
 
 // GetTagsSlice returns tags as a slice of strings
 func (d *TeamDecision) GetTagsSlice() []string {
-	if d.Tags == nil || len(d.Tags) == 0 {
+	if len(d.Tags) == 0 {
 		return []string{}
 	}
 	return d.Tags

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -14,13 +15,19 @@ import (
 
 // MonitoringRepository handles monitoring-related database operations
 type MonitoringRepository struct {
-	db       *PostgresDB
-	listener *pq.Listener
+	db               *PostgresDB
+	listener         *pq.Listener
+	mu               sync.Mutex
+	listenedChannels map[string]bool
+	listenedMu       sync.Mutex
 }
 
 // NewMonitoringRepository creates a new monitoring repository
 func NewMonitoringRepository(db *PostgresDB) *MonitoringRepository {
-	return &MonitoringRepository{db: db}
+	return &MonitoringRepository{
+		db:               db,
+		listenedChannels: make(map[string]bool),
+	}
 }
 
 // InsertPerformanceMetric inserts a performance metric into the database
@@ -410,6 +417,9 @@ func (r *MonitoringRepository) listenerConnString() string {
 
 // ensureListener lazily initialises a pq.Listener backed by a dedicated connection.
 func (r *MonitoringRepository) ensureListener() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	if r.listener != nil {
 		return nil
 	}
@@ -427,6 +437,19 @@ func (r *MonitoringRepository) PgListen(ctx context.Context, channel string) err
 	if err := r.ensureListener(); err != nil {
 		return err
 	}
+
+	// Check if already listening on this channel
+	r.listenedMu.Lock()
+	if r.listenedChannels == nil {
+		r.listenedChannels = make(map[string]bool)
+	}
+	if r.listenedChannels[channel] {
+		r.listenedMu.Unlock()
+		return nil
+	}
+	r.listenedChannels[channel] = true
+	r.listenedMu.Unlock()
+
 	return r.listener.Listen(channel)
 }
 

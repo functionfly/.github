@@ -158,6 +158,25 @@ func (s *Service) SendWelcome(ctx context.Context, userID uuid.UUID) error {
 	return err
 }
 
+// SendBundleSubscriptionCreated notifies a user when their bundle subscription is successfully created.
+func (s *Service) SendBundleSubscriptionCreated(ctx context.Context, userID uuid.UUID, bundleName string, bundleSlug string, priceUSD float64) error {
+	_, err := s.Send(ctx, SendRequest{
+		UserID:   userID,
+		Type:     TypeBillingSubscriptionCreated,
+		Category: CategoryBilling,
+		Title:    fmt.Sprintf("Bundle Subscription Active: %s", bundleName),
+		Body:     fmt.Sprintf("Your %s bundle subscription has been activated. You now have access to all bundle features!", bundleName),
+		Data: JSONMap{
+			"bundle_name": bundleName,
+			"bundle_slug": bundleSlug,
+			"price_usd":   priceUSD,
+		},
+		Channels: []string{ChannelInApp, ChannelEmail},
+		Priority: PriorityNormal,
+	})
+	return err
+}
+
 // SendWalletTopUp notifies a user after credits are added to an agent wallet.
 func (s *Service) SendWalletTopUp(ctx context.Context, userID uuid.UUID, agentID string, amountUSD, newBalanceUSD float64) error {
 	_, err := s.Send(ctx, SendRequest{

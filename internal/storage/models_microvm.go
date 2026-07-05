@@ -14,6 +14,7 @@ type MicroVMExecution struct {
 	FunctionID       uuid.UUID      `json:"function_id" db:"function_id"`
 	FunctionVersion  string         `json:"function_version" db:"function_version"`
 	ExecutionID      uuid.UUID      `json:"execution_id" db:"execution_id"`
+	FlyMachineID     string         `json:"fly_machine_id" db:"fly_machine_id"`
 	StartedAt        time.Time      `json:"started_at" db:"started_at"`
 	CompletedAt      sql.NullTime   `json:"completed_at" db:"completed_at"`
 	DurationMs       int            `json:"duration_ms" db:"duration_ms"`

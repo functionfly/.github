@@ -110,7 +110,7 @@ func (s *FXCERTService) generateCertificateID() string {
 
 // calculateCertificateHash calculates the certificate hash
 func (s *FXCERTService) calculateCertificateHash(cert *FXCERT) string {
-	data := fmt.Sprintf("%s|%s|%s|%s|%d|%d|%d|%s",
+	data := fmt.Sprintf("%s|%s|%s|%s|%g|%d|%d|%s",
 		cert.ID.String(),
 		cert.FunctionID.String(),
 		cert.FunctionVersion,

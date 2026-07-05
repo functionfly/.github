@@ -452,7 +452,7 @@ func (r *Repository) ListMutations(ctx context.Context, functionID, tenantID, st
 	if err != nil {
 		return nil, 0, fmt.Errorf("list mutations: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var mutations []*Mutation
 	for rows.Next() {
@@ -717,19 +717,16 @@ func (r *Repository) UpdateMutationStatus(ctx context.Context, mutationID, statu
 		if v, ok := extra["accepted_by"]; ok {
 			query += fmt.Sprintf(", accepted_by = $%d, accepted_at = NOW()", argIdx)
 			args = append(args, v)
-			argIdx++
 		}
 	case "accepted":
 		if v, ok := extra["accepted_by"]; ok {
 			query += fmt.Sprintf(", accepted_by = $%d, accepted_at = NOW()", argIdx)
 			args = append(args, v)
-			argIdx++
 		}
 	case "payment_failed":
 		if v, ok := extra["rejected_reason"]; ok {
 			query += fmt.Sprintf(", rejected_reason = $%d", argIdx)
 			args = append(args, v)
-			argIdx++
 		}
 	case "deploying", "deployed":
 		query += ", deployed_at = NOW()"
@@ -738,17 +735,15 @@ func (r *Repository) UpdateMutationStatus(ctx context.Context, mutationID, statu
 		if v, ok := extra["rollback_reason"]; ok {
 			query += fmt.Sprintf(", rejected_reason = $%d", argIdx)
 			args = append(args, v)
-			argIdx++
 		}
 	case "rejected":
 		if v, ok := extra["reason"]; ok {
 			query += fmt.Sprintf(", rejected_reason = $%d", argIdx)
 			args = append(args, v)
-			argIdx++
 		}
 	}
 
-	query += fmt.Sprintf(" WHERE id = $1")
+	query += " WHERE id = $1"
 	_, err := r.db.ExecContext(ctx, query, args...)
 	return err
 }
@@ -869,7 +864,7 @@ func (r *Repository) GetTenantInsights(ctx context.Context, tenantID string, sin
 	if err != nil {
 		return nil, fmt.Errorf("leaderboard: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 	var leaderboard []map[string]interface{}
 	for rows.Next() {
 		var fid string
@@ -900,7 +895,7 @@ func (r *Repository) GetTenantInsights(ctx context.Context, tenantID string, sin
 		) sub
 	`, tenantID)
 	if err == nil {
-		defer rows2.Close()
+		defer func() { _ = rows2.Close() }()
 		var bottlenecks []map[string]interface{}
 		for rows2.Next() {
 			var cat string
@@ -966,7 +961,7 @@ func (r *Repository) DropOldPartitions(ctx context.Context, retentionMonths int)
 	if err != nil {
 		return 0, fmt.Errorf("list old partitions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var partitions []string
 	for rows.Next() {
@@ -1003,7 +998,7 @@ func (r *Repository) ListPartitions(ctx context.Context) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list partitions: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var partitions []string
 	for rows.Next() {
@@ -1047,7 +1042,7 @@ func (r *Repository) GetDistinctTenantIDs(ctx context.Context) ([]string, error)
 	if err != nil {
 		return nil, fmt.Errorf("get distinct tenants: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var tenants []string
 	for rows.Next() {
@@ -1110,7 +1105,7 @@ func (r *Repository) GetPendingPayments(ctx context.Context, maxAge time.Duratio
 	if err != nil {
 		return nil, fmt.Errorf("get pending payments: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var payments []PendingPayment
 	for rows.Next() {
@@ -1163,7 +1158,7 @@ func (r *Repository) GetFailedPaymentsForManualReview(ctx context.Context) ([]Pe
 	if err != nil {
 		return nil, fmt.Errorf("get failed payments: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var payments []PendingPayment
 	for rows.Next() {

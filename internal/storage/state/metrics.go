@@ -99,7 +99,7 @@ func (m *MetricsCollector) collectStorageMetrics(ctx context.Context) {
 	}
 	var sizes []stateSize
 	if err := m.db.WithContext(ctx).Raw(`
-		SELECT state_id, COALESCE(SUM(jsonb_approx_size(value::jsonb)), 0) AS total_size
+		SELECT state_id, COALESCE(SUM(octet_length(value::text)), 0) AS total_size
 		FROM state_values
 		GROUP BY state_id
 	`).Scan(&sizes).Error; err != nil {
@@ -215,7 +215,7 @@ func (m *MetricsCollector) collectTenantMetrics(ctx context.Context) {
 	var aggs []tenantAgg
 	if err := m.db.WithContext(ctx).Raw(`
 		SELECT s.tenant_id,
-		       COALESCE(SUM(jsonb_approx_size(sv.value::jsonb)), 0) AS total_storage
+		       COALESCE(SUM(octet_length(sv.value::jsonb::text)), 0) AS total_storage
 		FROM states s
 		LEFT JOIN state_values sv ON sv.state_id = s.id
 		GROUP BY s.tenant_id
@@ -273,7 +273,7 @@ func (m *MetricsCollector) GetTenantSummary(ctx context.Context, tenantID uuid.U
 	var totalStorage int64
 	m.db.WithContext(ctx).
 		Raw(`
-			SELECT COALESCE(SUM(jsonb_approx_size(value::jsonb)), 0)
+			SELECT COALESCE(SUM(octet_length(value::text)), 0)
 			FROM state_values sv
 			JOIN states s ON sv.state_id = s.id
 			WHERE s.tenant_id = ?

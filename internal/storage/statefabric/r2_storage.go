@@ -630,6 +630,37 @@ func (r *R2StorageBackend) GetPresignedURL(ctx context.Context, bucket, key stri
 	return req.URL, nil
 }
 
+// PresignPutObject generates a presigned URL for direct upload (browser → R2).
+// contentType and maxBytes are embedded as request headers so the browser must
+// match them when PUTting; R2 will reject uploads that exceed maxBytes when the
+// caller sends a Content-Length header.
+func (r *R2StorageBackend) PresignPutObject(ctx context.Context, bucket, key, contentType string, maxBytes int64, expiry time.Duration) (string, error) {
+	if bucket == "" {
+		bucket = r.buckets.General
+	}
+	if expiry <= 0 {
+		expiry = 5 * time.Minute
+	}
+
+	presignClient := s3.NewPresignClient(r.client)
+
+	input := &s3.PutObjectInput{
+		Bucket:      &bucket,
+		Key:         &key,
+		ContentType: &contentType,
+	}
+	if maxBytes > 0 {
+		input.ContentLength = aws.Int64(maxBytes)
+	}
+
+	req, err := presignClient.PresignPutObject(ctx, input, s3.WithPresignExpires(expiry))
+	if err != nil {
+		return "", fmt.Errorf("failed to generate presigned PUT URL: %w", err)
+	}
+
+	return req.URL, nil
+}
+
 // HealthCheck verifies the R2 connection and bucket accessibility
 func (r *R2StorageBackend) HealthCheck(ctx context.Context) error {
 	if r.client == nil {

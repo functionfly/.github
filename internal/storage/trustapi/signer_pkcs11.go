@@ -1,11 +1,11 @@
+//go:build cgo
+
 package trustapi
 
 import (
-	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/sha256"
-	"encoding/asn1"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -239,7 +239,7 @@ func (s *PKCS11Signer) Sign(data []byte) (string, error) {
 	}
 
 	mech := []*pkcs11.Mechanism{pkcs11.NewMechanism(mechType, nil)}
-	if err := s.ctx.SignInit(s.session, mech, privKey); err != nil {
+	if err := s.ctx.SignInit(s.session, mech, pkcs11.ObjectHandle(privKey)); err != nil {
 		return "", fmt.Errorf("sign init: %w", err)
 	}
 
@@ -335,7 +335,7 @@ func (s *PKCS11Signer) findPrivateKey() (pkcs11.ObjectHandle, error) {
 	if len(objs) == 0 {
 		return 0, fmt.Errorf("no private key with label %q", s.keyLabel)
 	}
-	return objs[0], nil
+	return pkcs11.ObjectHandle(objs[0]), nil
 }
 
 // bigEndianUint reads a uint from a big-endian byte slice.
@@ -358,28 +358,6 @@ func parseECPoint(der []byte) (*big.Int, *big.Int, error) {
 		return new(big.Int).SetBytes(raw[1:33]), new(big.Int).SetBytes(raw[33:65]), nil
 	}
 	return nil, nil, fmt.Errorf("unsupported EC point format (%d bytes)", len(raw))
-}
-
-// rawECDSAToDER converts PKCS#11 raw (r||s) to ASN.1 DER.
-func rawECDSAToDER(raw []byte) ([]byte, error) {
-	if len(raw)%2 != 0 {
-		return nil, fmt.Errorf("invalid raw ECDSA signature length")
-	}
-	half := len(raw) / 2
-	r := new(big.Int).SetBytes(raw[:half])
-	s := new(big.Int).SetBytes(raw[half:])
-	return asn1.Marshal(struct{ R, S *big.Int }{R: r, S: s})
-}
-
-// verifyECDSADER verifies a DER-encoded ECDSA signature using Go's crypto/ecdsa.
-func verifyECDSADER(data, derSig []byte, x, y *big.Int) (bool, error) {
-	var sig struct{ R, S *big.Int }
-	if _, err := asn1.Unmarshal(derSig, &sig); err != nil {
-		return false, fmt.Errorf("unmarshal DER signature: %w", err)
-	}
-	hash := sha256.Sum256(data)
-	pub := &ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}
-	return ecdsa.Verify(pub, hash[:], sig.R, sig.S), nil
 }
 
 // Compile-time interface check.

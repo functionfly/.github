@@ -20,13 +20,13 @@ func NewMicroVMRepository(db *sql.DB) *MicroVMRepository {
 func (r *MicroVMRepository) CreateExecution(ctx context.Context, exec *MicroVMExecution) error {
 	query := `
 		INSERT INTO microvm_executions (
-			id, tenant_id, function_id, function_version, execution_id,
+			id, tenant_id, function_id, function_version, execution_id, fly_machine_id,
 			started_at, completed_at, duration_ms, memory_mb, vcpus,
 			status, outcome, error_message, network_allowed, packages_cached, created_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 	`
 	_, err := r.db.ExecContext(ctx, query,
-		exec.ID, exec.TenantID, exec.FunctionID, exec.FunctionVersion, exec.ExecutionID,
+		exec.ID, exec.TenantID, exec.FunctionID, exec.FunctionVersion, exec.ExecutionID, exec.FlyMachineID,
 		exec.StartedAt, exec.CompletedAt, exec.DurationMs, exec.MemoryMB, exec.VCPUs,
 		exec.Status, exec.Outcome, exec.ErrorMessage, exec.NetworkAllowed, exec.PackagesCached, exec.CreatedAt,
 	)
@@ -52,14 +52,14 @@ func (r *MicroVMRepository) UpdateExecutionStatus(ctx context.Context, id uuid.U
 
 func (r *MicroVMRepository) GetExecutionByID(ctx context.Context, id uuid.UUID) (*MicroVMExecution, error) {
 	query := `
-		SELECT id, tenant_id, function_id, function_version, execution_id,
+		SELECT id, tenant_id, function_id, function_version, execution_id, fly_machine_id,
 			started_at, completed_at, duration_ms, memory_mb, vcpus,
 			status, outcome, error_message, network_allowed, packages_cached, created_at
 		FROM microvm_executions WHERE id = $1
 	`
 	exec := &MicroVMExecution{}
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&exec.ID, &exec.TenantID, &exec.FunctionID, &exec.FunctionVersion, &exec.ExecutionID,
+		&exec.ID, &exec.TenantID, &exec.FunctionID, &exec.FunctionVersion, &exec.ExecutionID, &exec.FlyMachineID,
 		&exec.StartedAt, &exec.CompletedAt, &exec.DurationMs, &exec.MemoryMB, &exec.VCPUs,
 		&exec.Status, &exec.Outcome, &exec.ErrorMessage, &exec.NetworkAllowed, &exec.PackagesCached, &exec.CreatedAt,
 	)
@@ -69,9 +69,38 @@ func (r *MicroVMRepository) GetExecutionByID(ctx context.Context, id uuid.UUID) 
 	return exec, err
 }
 
+func (r *MicroVMRepository) GetExecutionByFlyMachineID(ctx context.Context, flyMachineID string) (*MicroVMExecution, error) {
+	query := `
+		SELECT id, tenant_id, function_id, function_version, execution_id, fly_machine_id,
+			started_at, completed_at, duration_ms, memory_mb, vcpus,
+			status, outcome, error_message, network_allowed, packages_cached, created_at
+		FROM microvm_executions WHERE fly_machine_id = $1
+	`
+	exec := &MicroVMExecution{}
+	err := r.db.QueryRowContext(ctx, query, flyMachineID).Scan(
+		&exec.ID, &exec.TenantID, &exec.FunctionID, &exec.FunctionVersion, &exec.ExecutionID, &exec.FlyMachineID,
+		&exec.StartedAt, &exec.CompletedAt, &exec.DurationMs, &exec.MemoryMB, &exec.VCPUs,
+		&exec.Status, &exec.Outcome, &exec.ErrorMessage, &exec.NetworkAllowed, &exec.PackagesCached, &exec.CreatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return exec, err
+}
+
+func (r *MicroVMRepository) UpdateExecutionFlyMachineID(ctx context.Context, id uuid.UUID, flyMachineID string) error {
+	query := `
+		UPDATE microvm_executions
+		SET fly_machine_id = $2
+		WHERE id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query, id, flyMachineID)
+	return err
+}
+
 func (r *MicroVMRepository) GetExecutionsByTenant(ctx context.Context, tenantID uuid.UUID, limit, offset int) ([]*MicroVMExecution, error) {
 	query := `
-		SELECT id, tenant_id, function_id, function_version, execution_id,
+		SELECT id, tenant_id, function_id, function_version, execution_id, fly_machine_id,
 			started_at, completed_at, duration_ms, memory_mb, vcpus,
 			status, outcome, error_message, network_allowed, packages_cached, created_at
 		FROM microvm_executions
@@ -89,7 +118,7 @@ func (r *MicroVMRepository) GetExecutionsByTenant(ctx context.Context, tenantID 
 	for rows.Next() {
 		exec := &MicroVMExecution{}
 		err := rows.Scan(
-			&exec.ID, &exec.TenantID, &exec.FunctionID, &exec.FunctionVersion, &exec.ExecutionID,
+			&exec.ID, &exec.TenantID, &exec.FunctionID, &exec.FunctionVersion, &exec.ExecutionID, &exec.FlyMachineID,
 			&exec.StartedAt, &exec.CompletedAt, &exec.DurationMs, &exec.MemoryMB, &exec.VCPUs,
 			&exec.Status, &exec.Outcome, &exec.ErrorMessage, &exec.NetworkAllowed, &exec.PackagesCached, &exec.CreatedAt,
 		)
@@ -103,7 +132,7 @@ func (r *MicroVMRepository) GetExecutionsByTenant(ctx context.Context, tenantID 
 
 func (r *MicroVMRepository) GetRunningExecutionsByTenant(ctx context.Context, tenantID uuid.UUID) ([]*MicroVMExecution, error) {
 	query := `
-		SELECT id, tenant_id, function_id, function_version, execution_id,
+		SELECT id, tenant_id, function_id, function_version, execution_id, fly_machine_id,
 			started_at, completed_at, duration_ms, memory_mb, vcpus,
 			status, outcome, error_message, network_allowed, packages_cached, created_at
 		FROM microvm_executions
@@ -120,7 +149,7 @@ func (r *MicroVMRepository) GetRunningExecutionsByTenant(ctx context.Context, te
 	for rows.Next() {
 		exec := &MicroVMExecution{}
 		err := rows.Scan(
-			&exec.ID, &exec.TenantID, &exec.FunctionID, &exec.FunctionVersion, &exec.ExecutionID,
+			&exec.ID, &exec.TenantID, &exec.FunctionID, &exec.FunctionVersion, &exec.ExecutionID, &exec.FlyMachineID,
 			&exec.StartedAt, &exec.CompletedAt, &exec.DurationMs, &exec.MemoryMB, &exec.VCPUs,
 			&exec.Status, &exec.Outcome, &exec.ErrorMessage, &exec.NetworkAllowed, &exec.PackagesCached, &exec.CreatedAt,
 		)

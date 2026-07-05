@@ -568,6 +568,7 @@ type Repository interface {
 	// Backend operations
 	CreateBackend(ctx context.Context, appID uuid.UUID, provider, region, url, sharedSecret string, priority *int) (*Backend, error)
 	ListBackendsByAppID(ctx context.Context, appID uuid.UUID) ([]*Backend, error)
+	CountBackendsByTenant(ctx context.Context, tenantID uuid.UUID) (int, error)
 	GetBackendByID(ctx context.Context, id uuid.UUID) (*Backend, error)
 	GetAllEnabledBackends(ctx context.Context, ) ([]*Backend, error)
 	ListAllBackends(ctx context.Context) ([]*Backend, error)

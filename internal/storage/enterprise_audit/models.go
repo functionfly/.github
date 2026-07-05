@@ -79,7 +79,7 @@ type AuditLog struct {
 }
 
 func (a *AuditLog) GetMetadata() map[string]interface{} {
-	if a.Metadata == nil || len(a.Metadata) == 0 {
+	if len(a.Metadata) == 0 {
 		return make(map[string]interface{})
 	}
 	var m map[string]interface{}

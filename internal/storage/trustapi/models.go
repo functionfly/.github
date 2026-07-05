@@ -245,7 +245,7 @@ type TrustAPIKey struct {
 	Description string `json:"description" gorm:"type:text"`
 
 	// Scope and permissions
-	Scopes json.RawMessage `json:"scopes" gorm:"type:jsonb;default:'["trust:read"]'::jsonb"`
+	Scopes json.RawMessage `json:"scopes" gorm:"type:jsonb;default:'[\"trust:read\"]'::jsonb"`
 
 	// IP allowlist
 	AllowedIPs json.RawMessage `json:"allowed_ips" gorm:"type:jsonb;default:'[]'::jsonb"`

@@ -78,16 +78,17 @@ const (
 	TypeDeploymentStarted = "deployment.started"
 
 	// Billing notifications
-	TypeBillingInvoiceGenerated     = "billing.invoice_generated"
-	TypeBillingPaymentFailed        = "billing.payment_failed"
-	TypeBillingPaymentSuccess       = "billing.payment_success"
-	TypeBillingSubscriptionExpiring = "billing.subscription_expiring"
-	TypeBillingWalletToppedUp       = "billing.wallet_topped_up"
-	TypeBillingWalletLowBalance     = "billing.wallet_low_balance"
-	TypeBillingAlert                = "billing.alert"
-	TypeBillingSpendCapWarning      = "billing.spend_cap_warning"
-	TypeBillingForecastExceeded     = "billing.forecast_exceeded"
-	TypeBillingUsageSpike           = "billing.usage_spike"
+	TypeBillingInvoiceGenerated      = "billing.invoice_generated"
+	TypeBillingPaymentFailed         = "billing.payment_failed"
+	TypeBillingPaymentSuccess        = "billing.payment_success"
+	TypeBillingSubscriptionExpiring  = "billing.subscription_expiring"
+	TypeBillingSubscriptionCreated   = "billing.subscription_created"
+	TypeBillingWalletToppedUp        = "billing.wallet_topped_up"
+	TypeBillingWalletLowBalance      = "billing.wallet_low_balance"
+	TypeBillingAlert                 = "billing.alert"
+	TypeBillingSpendCapWarning       = "billing.spend_cap_warning"
+	TypeBillingForecastExceeded      = "billing.forecast_exceeded"
+	TypeBillingUsageSpike            = "billing.usage_spike"
 
 	// Payout notifications
 	TypePayoutCompleted      = "payout.completed"

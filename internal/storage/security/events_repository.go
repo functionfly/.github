@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 // EventRepository handles persistent security event storage.
@@ -70,7 +71,7 @@ func (r *EventRepository) GetEventsByTenant(ctx context.Context, tenantID string
 	if err != nil {
 		return nil, fmt.Errorf("query security events: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []*SecurityEvent
 	for rows.Next() {
@@ -91,7 +92,9 @@ func (r *EventRepository) GetEventsByTenant(ctx context.Context, tenantID string
 			e.UserAgent = &userAgent.String
 		}
 		if detailsJSON.Valid {
-			json.Unmarshal([]byte(detailsJSON.String), &e.Details)
+			if err := json.Unmarshal([]byte(detailsJSON.String), &e.Details); err != nil {
+				logrus.WithError(err).Warn("failed to unmarshal event details")
+			}
 		}
 		events = append(events, e)
 	}
@@ -113,7 +116,7 @@ func (r *EventRepository) GetEventsByFunction(ctx context.Context, functionID st
 	if err != nil {
 		return nil, fmt.Errorf("query security events: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []*SecurityEvent
 	for rows.Next() {
@@ -134,7 +137,9 @@ func (r *EventRepository) GetEventsByFunction(ctx context.Context, functionID st
 			e.UserAgent = &userAgent.String
 		}
 		if detailsJSON.Valid {
-			json.Unmarshal([]byte(detailsJSON.String), &e.Details)
+			if err := json.Unmarshal([]byte(detailsJSON.String), &e.Details); err != nil {
+				logrus.WithError(err).Warn("failed to unmarshal event details")
+			}
 		}
 		events = append(events, e)
 	}

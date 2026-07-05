@@ -385,11 +385,18 @@ func (rtm *RealtimeMonitor) listenAndBroadcastDatabaseChanges(channelName string
 
 	ctx := context.Background()
 
+	// Register the channel listener once at startup
+	if _, err := rtm.service.ListenForNotification(ctx, channelName); err != nil {
+		logrus.WithError(err).WithField("channel", channelName).Error("Failed to listen for database notification")
+		time.Sleep(5 * time.Second)
+		// Retry on next iteration after delay
+	}
+
 	for {
-		// Listen for notifications from the database
-		notification, err := rtm.service.ListenForNotification(ctx, channelName)
+		// Wait for notifications from the database
+		notification, err := rtm.service.WaitForNotification(ctx)
 		if err != nil {
-			logrus.WithError(err).WithField("channel", channelName).Error("Failed to listen for database notification")
+			logrus.WithError(err).WithField("channel", channelName).Error("Failed to wait for database notification")
 			time.Sleep(5 * time.Second) // Retry after delay
 			continue
 		}
@@ -423,6 +430,20 @@ func (s *Service) ListenForNotification(ctx context.Context, channel string) (st
 	notification, err := s.db.PgWaitForNotification(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to wait for notification on channel %s: %w", channel, err)
+	}
+
+	if notification != nil {
+		return notification.Payload, nil
+	}
+
+	return "", nil // No notification received
+}
+
+// WaitForNotification waits for a notification on an already-listened channel
+func (s *Service) WaitForNotification(ctx context.Context) (string, error) {
+	notification, err := s.db.PgWaitForNotification(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to wait for notification: %w", err)
 	}
 
 	if notification != nil {
