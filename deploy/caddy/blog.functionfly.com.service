@@ -1,0 +1,16 @@
+[Unit]
+Description=FunctionFly Blog
+After=network.target
+
+[Service]
+Type=simple
+User=function
+WorkingDirectory=/home/function/blog
+ExecStart=/home/function/blog/start.sh
+Restart=always
+RestartSec=5
+Environment=HOST=0.0.0.0
+Environment=PORT=4321
+
+[Install]
+WantedBy=multi-user.target

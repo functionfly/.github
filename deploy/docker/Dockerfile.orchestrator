@@ -1,9 +1,9 @@
 # =============================================================================
 # Stage 1: Build Go orchestrator
 # =============================================================================
-# Note: golang:1.25 (Debian-based) is required because wasmtime-go v19 bundles
+# Note: golang:1.26 (Debian-based) is required because wasmtime-go v19 bundles
 # pre-compiled libwasmtime.a which is glibc-linked. Alpine/musl linking fails.
-FROM golang:1.25 AS builder-go
+FROM golang:1.26 AS builder-go
 
 WORKDIR /app
 

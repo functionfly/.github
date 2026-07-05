@@ -237,6 +237,20 @@ Compliance-based data retention is implemented for cost allocation entries:
 
 **Legal Holds:** Use the `legal_holds` table to block deletion for litigation/audit. Check `is_under_legal_hold()` function before any bulk deletion.
 
+### Database Backup & Restore
+
+**Backup** (custom format, compressed):
+```bash
+PGPASSWORD=postgres pg_dump -h localhost -p 5432 -U postgres -d functionfly -Fc -f /tmp/functionfly_dev_backup_$(date +%Y%m%d_%H%M%S).dump
+```
+
+**Restore:**
+```bash
+pg_restore -h localhost -p 5432 -U postgres -d functionfly -Fc <backup_file>
+```
+
+Backups are stored in `/tmp/` by default (not committed to repo).
+
 ---
 
 ## ML Intelligence Layer

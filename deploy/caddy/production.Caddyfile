@@ -100,6 +100,13 @@ status.functionfly.com {
 }
 
 # ============================================
+# Analytics Subdomain - analytics.functionfly.com
+# ============================================
+analytics.functionfly.com {
+    reverse_proxy localhost:3003
+}
+
+# ============================================
 # Edge Subdomain - edge.functionfly.com
 # ============================================
 edge.functionfly.com {

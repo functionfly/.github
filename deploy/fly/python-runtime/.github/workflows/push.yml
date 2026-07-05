@@ -1,0 +1,72 @@
+name: Build and Push Python Runtime Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'deploy/fly/python-runtime/**'
+      - '.github/workflows/python-runtime.yml'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to push (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  IMAGE_NAME: registry.fly.io/functionfly-enterprise
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Fly.io
+        uses: docker/login-action@v3
+        with:
+          registry: registry.fly.io
+          username: ap
+          password: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=,suffix=,format=short
+            type=ref,event=branch
+            type=sha,event=push
+            type=raw,value=${{ github.event.inputs.image_tag || 'latest' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./deploy/fly/python-runtime
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+
+      - name: Summary
+        run: |
+          echo "## Image Built Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:** ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To deploy this image, update the \`FLY_ENTERPRISE_IMAGE\` environment variable:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "fly secrets set FLY_ENTERPRISE_IMAGE=${{ env.IMAGE_NAME }}:<tag> --app functionfly-enterprise" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
