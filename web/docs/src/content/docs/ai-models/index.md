@@ -1,39 +1,70 @@
 ---
 title: AI Models
-description: 100+ models across 12 providers, with bring-your-own-key support
+description: Bring your own AI keys (BYOK) — 100+ models across 12 providers
 ---
 
 
-FunctionFly gives you access to **100+ AI models** across **12 providers**
-through a single platform. Use FunctionFly's managed keys (metered billing)
-or connect your own provider keys (BYOK) to pay the provider directly.
+FunctionFly gives you access to **100+ AI models** across **12 providers**.
+The recommended approach is to **bring your own AI keys (BYOK)** — connect your
+provider keys once and pay the provider directly with no platform markup.
+
+Free OpenRouter models are available as a fallback when no BYOK key is configured.
+
+## Quick Start: Bring Your Own Key (BYOK)
+
+### Connect Your Key
+
+```bash
+curl -X POST https://api.functionfly.com/v1/ai-keys/connect \
+  -H "Authorization: Bearer $FUNCTIONFLY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "openai",
+    "api_key": "sk-..."
+  }'
+```
+
+Your key is validated, encrypted with AES-256-GCM, and stored securely. All AI
+calls then use your key at **$0 platform cost**.
+
+### Start Using AI
+
+```bash
+curl -X POST https://api.functionfly.com/v1/ai/composer/generate \
+  -H "Authorization: Bearer $FUNCTIONFLY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Create a function that summarizes PDFs",
+    "model": "gpt-4o"
+  }'
+```
 
 ## Providers
 
-| Provider | Type | Key Models |
-|----------|------|------------|
-| **OpenRouter** | Meta-gateway | Claude Opus 4.7, Sonnet 4.6, GPT-5.5, Gemini 3.1 Pro, DeepSeek V4, Grok 4, Llama 3.3, o3 |
-| **OpenAI** | Frontier + fast | GPT-5.5, GPT-5 Mini, GPT-5 Codex, GPT-4.1, GPT-4o, o3, o1 |
-| **Anthropic** | Frontier | Claude Opus 4, Sonnet 4.6, 3.5 Sonnet, 3.5 Haiku |
-| **Groq** | Ultra-low latency | Llama 4 Scout/Maverick, QwQ 32B, DeepSeek R1 Distill, Mixtral 8x7B |
-| **Fireworks** | Structured output | Llama 3.1 405B/70B, DeepSeek V3/R1, Qwen 2.5 Coder |
-| **DeepInfra** | Cost-optimized | Llama 3.3 70B, DeepSeek V3/R1, Qwen 2.5 72B, BGE embeddings |
-| **Together AI** | Wide catalog | Llama 3.3 70B, Llama 3.1 405B, DeepSeek V3/R1, Mistral Small |
-| **MiMo (Xiaomi)** | Long-context reasoning | MiMo V2.5 Pro (1M context), UltraSpeed, MiMo Ultra |
-| **MiniMax** | Agentic/long context | M2.5 (256K), M2.7 (512K), M3 (1M context) |
-| **StepFun** | Reasoning + vision | Step 3.5 Flash, Step 3, Step 1o Turbo Vision |
-| **Ollama** | Local dev | Llama 3.3, Qwen 2.5 Coder, DeepSeek R1, Code Llama |
+| Provider | Type | Key Models | BYOK |
+|----------|------|------------|------|
+| **OpenAI** | Frontier + fast | GPT-4o, o1, GPT-5 | ✅ |
+| **Anthropic** | Frontier | Claude 3.5 Sonnet, Opus 4 | ✅ |
+| **OpenRouter** | Meta-gateway | 100+ models | ✅ |
+| **Groq** | Ultra-low latency | Llama 4, QwQ 32B | ✅ |
+| **Fireworks** | Structured output | Llama 3.1 405B | ✅ |
+| **DeepInfra** | Cost-optimized | Llama 3.3 70B | ✅ |
+| **Together AI** | Wide catalog | Llama 3.3 70B | ✅ |
+| **MiMo (Xiaomi)** | Long-context | MiMo V2.5 Pro (1M ctx) | ✅ |
+| **MiniMax** | Agentic | M2.7 (512K ctx) | ✅ |
+| **StepFun** | Reasoning + vision | Step 3.5 Flash | ✅ |
+| **Ollama** | Local dev | Llama 3.3, Qwen | ✅ |
 
 ## Model Tiers
 
 | Tier | Use Case | Examples |
 |------|----------|----------|
-| **Frontier** | Highest quality | Claude Opus 4, GPT-5.5, MiMo Ultra |
-| **Fast** | Low latency, lower cost | GPT-5 Mini, Claude Haiku, Llama 4 Scout |
-| **Reasoning** | Chain-of-thought | o3, DeepSeek R1, MiMo V2.5 Pro |
+| **Frontier** | Highest quality | Claude Opus 4, GPT-4o, MiMo Ultra |
+| **Fast** | Low latency, lower cost | GPT-4o Mini, Claude Haiku, Llama 4 Scout |
+| **Reasoning** | Chain-of-thought | o3, DeepSeek R1, QwQ 32B |
 | **Code** | Code generation | GPT-5 Codex, Qwen3 Coder |
 | **Embedding** | Vector embeddings | text-embedding-3-small/large, BGE |
-| **Local** | Free, self-hosted | Ollama models |
+| **Free** | No cost | OpenRouter free models (poolside/laguna-xs.2:free) |
 
 ## Model Profiles
 
@@ -41,10 +72,10 @@ FunctionFly ships three pre-configured profiles that select models
 automatically based on your use case:
 
 | Profile | Strategy | Example Models |
-|---------|----------|---------------|
+|---------|----------|----------------|
 | **Fast** | Low latency, low cost | Groq Llama 4 Scout, Gemini 2.5 Flash |
 | **Balanced** | Default | Claude Sonnet 4.6 via OpenRouter |
-| **Premium** | Highest quality | Claude Sonnet 4.6, Gemini 3.1 Pro |
+| **Premium** | Highest quality | Claude Sonnet 4.6, GPT-4o |
 
 Profiles can be set per-tenant or per-feature (composer, agent chat, FRG, etc.).
 
@@ -61,51 +92,27 @@ Profiles can be set per-tenant or per-feature (composer, agent chat, FRG, etc.).
 
 ## Plan Limits
 
-| Plan | AI Calls/month | Price |
-|------|---------------|-------|
-| Free | 10,000 | $0 |
-| Starter | 100,000 | $24/mo |
-| Professional | 1,000,000 | $79/mo |
-| Enterprise | 5,000,000 (included) | $299/mo |
-| Agent Enterprise | Unlimited | $499/mo |
+| Plan | AI Calls/month | BYOK |
+|------|---------------|------|
+| Free | 10,000 (rate limits apply) | ✅ Bring your own key |
+| Starter | 100,000 | ✅ |
+| Professional | 1,000,000 | ✅ |
+| Enterprise | 5,000,000 | ✅ |
+| Agent Enterprise | Unlimited | ✅ |
 
-Platform-managed calls carry a **25% markup** on provider costs. BYOK calls
-are **$0 platform cost** — you pay the provider directly.
+BYOK calls are **$0 platform cost** — you pay the provider directly.
+Rate limits apply based on your plan tier.
 
-## Quick Start
+## Platform Fallback (Free Models)
 
-### Use Platform Keys (Default)
+When no BYOK key is configured, FunctionFly uses OpenRouter free models as a
+fallback. These are **completely free** but have lower rate limits.
 
-No setup needed. Call any model through the platform:
-
-```bash
-curl -X POST https://api.functionfly.com/v1/ai/composer/generate \
-  -H "Authorization: Bearer $FUNCTIONFLY_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "prompt": "Create a function that summarizes PDFs",
-    "model": "claude-sonnet-4-6"
-  }'
-```
-
-### Connect Your Own Key (BYOK)
-
-```bash
-curl -X POST https://api.functionfly.com/v1/ai-keys/connect \
-  -H "Authorization: Bearer $FUNCTIONFLY_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "provider": "openai",
-    "api_key": "sk-..."
-  }'
-```
-
-Your key is validated, encrypted with AES-256-GCM, and stored. All subsequent
-calls to OpenAI models use your key at **$0 platform cost**.
+To ensure uninterrupted access, **we recommend connecting your own AI key**.
 
 ## Next Steps
 
-- [Bring Your Own Key](/ai-models/byok/) — Connect your provider keys
+- [Bring Your Own Key (BYOK)](/ai-models/byok/) — Connect your provider keys
 - [Model Catalog](/ai-models/catalog/) — Full model list with capabilities
 - [Configuration](/ai-models/configuration/) — Profiles, preferences, routing
 - [API Reference](/ai-models/api/) — Full endpoint documentation

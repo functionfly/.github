@@ -275,6 +275,27 @@ const rememberMe = Astro.url.searchParams.get("remember_me") === "true";
     display: none;
   }
 
+  /* Error/Alert styles */
+  .alert {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .alert-error {
+    background: rgba(255, 45, 85, 0.1);
+    border: 1px solid rgba(255, 45, 85, 0.3);
+    color: #FF6B7A;
+  }
+  .alert-success {
+    background: rgba(72, 199, 116, 0.1);
+    border: 1px solid rgba(72, 199, 116, 0.3);
+    color: #48C774;
+  }
+
   /* Auth footer - Sign up prompt */
   .auth-footer {
     display: flex;
@@ -464,56 +485,66 @@ const rememberMe = Astro.url.searchParams.get("remember_me") === "true";
       trackAuth("magic_link_requested");
     });
 
-    // Check network status - less aggressive: only show warning after failed submission
-    const offlineIndicator = document.createElement("div");
-    offlineIndicator.className = "offline-indicator";
-    offlineIndicator.textContent = "⚠️ You appear to be offline. Please check your connection.";
+    // Check network status - only show warning after failed submission
+    let offlineIndicators = [];
 
-    let hasSubmitted = false;
+    function createOfflineIndicator() {
+      const indicator = document.createElement("div");
+      indicator.className = "offline-indicator";
+      indicator.textContent = "⚠️ You appear to be offline. Please check your connection.";
+      return indicator;
+    }
 
-    async function updateNetworkStatus(showImmediately = false) {
-      // Only show offline warning after user has tried to submit or explicitly requested
-      if (!hasSubmitted && !showImmediately) return;
-
+    function showOfflineIndicators(show) {
       const forms = document.querySelectorAll(".auth-form");
       forms.forEach((form) => {
-        if (!form.querySelector(".offline-indicator")) {
-          form.prepend(offlineIndicator.cloneNode(true));
+        let indicator = form.querySelector(".offline-indicator");
+        if (show && !indicator) {
+          indicator = createOfflineIndicator();
+          form.prepend(indicator);
         }
-      });
-
-      // More reliable network check - try a quick fetch to verify connectivity
-      async function checkNetworkConnectivity(timeoutMs = 3000) {
-        if (!navigator.onLine) return false;
-        try {
-          const response = await fetch(`${apiOrigin}/health`, {
-            method: 'GET',
-            cache: 'no-cache',
-            signal: AbortSignal.timeout(timeoutMs),
-          });
-          return response.ok;
-        } catch (error) {
-          return false;
+        if (indicator) {
+          indicator.classList.toggle("visible", show);
         }
-      }
-      const isOnline = await checkNetworkConnectivity();
-
-      const indicators = document.querySelectorAll(".offline-indicator");
-      indicators.forEach((ind) => {
-        ind.classList.toggle("visible", !isOnline);
       });
 
       const submitBtns = document.querySelectorAll('button[type="submit"]');
       submitBtns.forEach((btn) => {
-        btn.disabled = !isOnline;
-        btn.title = isOnline ? '' : 'You appear to be offline';
+        btn.disabled = show;
+        btn.title = show ? 'You appear to be offline' : '';
       });
+    }
 
+    async function checkNetworkConnectivity(timeoutMs = 3000) {
+      if (!navigator.onLine) return false;
+      try {
+        const response = await fetch(`${apiOrigin}/health`, {
+          method: 'GET',
+          cache: 'no-cache',
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        return response.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    async function updateNetworkStatus(showImmediately = false) {
+      if (!hasSubmitted && !showImmediately) return;
+
+      const isOnline = await checkNetworkConnectivity();
+      showOfflineIndicators(!isOnline);
       return isOnline;
     }
 
-    window.addEventListener("online", () => updateNetworkStatus(hasSubmitted));
-    window.addEventListener("offline", () => updateNetworkStatus(hasSubmitted));
+    window.addEventListener("online", () => {
+      hasSubmitted = true;
+      showOfflineIndicators(false);
+    });
+    window.addEventListener("offline", () => {
+      hasSubmitted = true;
+      showOfflineIndicators(true);
+    });
 
     // Password form submission
     const form = document.getElementById("login-form");

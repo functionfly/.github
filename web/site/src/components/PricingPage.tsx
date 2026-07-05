@@ -43,26 +43,26 @@ const platformTiers: Tier[] = [
   {
     name: 'Free', monthly: '$0', annual: '$0',
     desc: 'For side projects and experimentation.',
-    features: ['25K requests / month', '3 AI agents, 10K calls/mo', '3 published functions', 'L1 verification', 'Community support', '7-day execution logs', '1 State Fabric object'],
+    features: ['25K requests / month', '3 AI agents, rate limits apply (BYOK)', '3 published functions', 'L1 verification', 'Community support', '7-day execution logs', '1 State Fabric object'],
     cta: 'Get started', href: `${AUTH_ORIGIN}/signup`,
   },
   {
     name: 'Starter', monthly: '$24', annual: '$19',
     desc: 'For side projects and MVPs.',
-    features: ['500K requests / month', '10 AI agents, 100K calls/mo', '10 published functions', 'L1–L2 verification', 'Email support', '30-day execution logs', 'Zero-knowledge Vault (50 secrets)', '3 State Fabric objects', 'Function DNA'],
+    features: ['500K requests / month', '10 AI agents, rate limits apply (BYOK)', '10 published functions', 'L1–L2 verification', 'Email support', '30-day execution logs', 'Zero-knowledge Vault (50 secrets)', '3 State Fabric objects', 'Function DNA'],
     cta: 'Start free trial', href: `${AUTH_ORIGIN}/signup?plan=starter`,
   },
   {
     name: 'Professional', monthly: '$79', annual: '$63',
     desc: 'For growing teams and production SaaS.',
-    features: ['2.5M requests / month', '100 AI agents, 1M calls/mo', '25 published functions', 'L1–L3 verification', 'Email support', '90-day execution logs', 'Zero-knowledge Vault (500 secrets)', '30-day Time Machine', '10 State Fabric objects + Hot Cache', 'Function DNA', 'Consciousness (basic)'],
+    features: ['2.5M requests / month', '100 AI agents, rate limits apply (BYOK)', '25 published functions', 'L1–L3 verification', 'Email support', '90-day execution logs', 'Zero-knowledge Vault (500 secrets)', '30-day Time Machine', '10 State Fabric objects + Hot Cache', 'Function DNA', 'Consciousness (basic)'],
     cta: 'Start free trial', href: `${AUTH_ORIGIN}/signup?plan=professional`,
     featured: true, badge: 'Most Popular',
   },
   {
     name: 'Enterprise', monthly: '$299', annual: '$239',
     desc: 'For large-scale apps, compliance, and custom trust policies.',
-    features: ['25M requests / month', '500 AI agents, 5M calls/mo', 'Unlimited functions', 'L1–L4 verification', 'Priority + SLA', '1-year execution logs', 'Zero-knowledge Vault (5K secrets)', '90-day Time Machine + reconciliation', 'RBAC + Secret sharing', 'Unlimited State Fabric + all add-ons', 'Function DNA', 'Advanced Consciousness'],
+    features: ['25M requests / month', '500 AI agents, rate limits apply (BYOK)', 'Unlimited functions', 'L1–L4 verification', 'Priority + SLA', '1-year execution logs', 'Zero-knowledge Vault (5K secrets)', '90-day Time Machine + reconciliation', 'RBAC + Secret sharing', 'Unlimited State Fabric + all add-ons', 'Function DNA', 'Advanced Consciousness'],
     cta: 'Start free trial', href: `${AUTH_ORIGIN}/signup?plan=enterprise`,
   },
 ]
@@ -161,7 +161,7 @@ const PricingPage: React.FC = () => {
               Pricing built for <span style={{ color: 'var(--accent)' }}>trust</span>
             </h1>
             <p style={{ fontSize: 17, lineHeight: 1.6, color: 'var(--text-dim)', maxWidth: 720, marginBottom: 'var(--space-6)' }}>
-              Start free. Paid tiers include AI agents with generous call volumes and concurrency. Upgrade as your agent workloads grow.
+              Start free. All plans include BYOK AI — bring your own keys, pay providers directly. Upgrade as your agent workloads grow.
             </p>
             <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', marginBottom: 'var(--space-6)' }}>
               <SealedButton onClick={() => { window.location.href = `${AUTH_ORIGIN}/signup` }}>Get started</SealedButton>
@@ -206,7 +206,7 @@ const PricingPage: React.FC = () => {
               {[
                 ['Requests / month', ['25K', '500K', '2.5M', '25M']],
                 ['AI agents included', ['3', '10', '100', '500']],
-                ['AI calls / month', ['10K', '100K', '1M', '5M']],
+                ['AI calls (BYOK)', ['Rate limits', 'Rate limits', 'Rate limits', 'Rate limits']],
                 ['Published functions', ['3', '10', '25', 'Unlimited']],
                 ['Verification levels', ['L1', 'L1–L2', 'L1–L3', 'L1–L4']],
                 ['Execution logs', ['7 days', '30 days', '90 days', '1 year']],

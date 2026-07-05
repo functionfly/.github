@@ -21,6 +21,8 @@
     "@react-three/postprocessing": "^3.0.4",
     "@sanity/client": "^7.23.0",
     "@sentry/astro": "^8.51.0",
+    "@splinetool/react-spline": "^4.1.0",
+    "@splinetool/runtime": "^1.12.98",
     "astro": "^6.1.5",
     "astro-font": "^1.1.0",
     "astro-gtm": "^6.0.0",

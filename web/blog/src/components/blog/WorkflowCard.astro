@@ -1,0 +1,85 @@
+---
+interface WorkflowStep {
+  code: string;
+  description?: string;
+}
+
+interface Props {
+  steps: WorkflowStep[];
+}
+
+const { steps } = Astro.props;
+---
+
+<div class="workflow-card">
+  <ol>
+    {steps.map((step) => (
+      <li>
+        <code>{step.code}</code>
+        {step.description && <span class="step-desc">{step.description}</span>}
+      </li>
+    ))}
+  </ol>
+</div>
+
+<style>
+  .workflow-card {
+    background: var(--panel);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .workflow-card :global(ol) {
+    margin: 0.75rem 0 0 1.5rem;
+    padding: 0;
+    list-style: none;
+    counter-reset: workflow-counter;
+  }
+
+  .workflow-card :global(li) {
+    counter-increment: workflow-counter;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    background: var(--panel-raised);
+    border-radius: 8px;
+    position: relative;
+    flex-wrap: wrap;
+  }
+
+  .workflow-card :global(li)::before {
+    content: counter(workflow-counter);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    background: color-mix(in srgb, var(--accent-indigo, #6366f1) 25%, transparent);
+    color: var(--accent-indigo, #6366f1);
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .workflow-card :global(code) {
+    background: var(--panel);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+
+  .step-desc {
+    width: 100%;
+    margin-left: 2.5rem;
+    margin-top: -0.25rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+</style>

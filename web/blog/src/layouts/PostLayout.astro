@@ -997,4 +997,417 @@ const t = createT(translations);
       border-radius: 0;
     }
   }
+
+  /* ============================
+     ENHANCED BLOG POST COMPONENTS
+     ============================ */
+
+  /* Comparison Cards */
+  .comparison-highlight {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+  }
+
+  .comparison-card {
+    background: var(--panel);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    backdrop-filter: blur(8px);
+  }
+
+  .comparison-card.create {
+    border-color: color-mix(in srgb, var(--accent-indigo) 50%, var(--color-border));
+  }
+
+  .comparison-card.publish {
+    border-color: color-mix(in srgb, var(--accent-emerald) 50%, var(--color-border));
+  }
+
+  .comparison-card h3 {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  .comparison-card p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-dim);
+  }
+
+  /* Callout Boxes */
+  .callout {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+
+  .callout-tip {
+    background: color-mix(in srgb, var(--accent-emerald) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-emerald) 25%, transparent);
+  }
+
+  .callout-tip .callout-icon {
+    color: var(--accent-emerald);
+  }
+
+  .callout-warning {
+    background: color-mix(in srgb, var(--accent-amber) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-amber) 25%, transparent);
+  }
+
+  .callout-warning .callout-icon {
+    color: var(--accent-amber);
+  }
+
+  .callout-info {
+    background: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-blue) 25%, transparent);
+  }
+
+  .callout-info .callout-icon {
+    color: var(--accent-blue);
+  }
+
+  .callout-important {
+    background: color-mix(in srgb, var(--accent-red) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-red) 25%, transparent);
+  }
+
+  .callout-important .callout-icon {
+    color: var(--accent-red);
+  }
+
+  .callout-icon {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .callout-content {
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .callout-content strong {
+    color: var(--text);
+  }
+
+  /* Lifecycle Badges */
+  .lifecycle-flow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1rem 0 1.5rem;
+    padding: 1rem 1.5rem;
+    background: var(--panel);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+  }
+
+  .lifecycle-badge {
+    display: inline-block;
+    padding: 0.4rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .lifecycle-badge.draft {
+    background: color-mix(in srgb, var(--accent-amber) 15%, transparent);
+    color: var(--accent-amber);
+    border: 1px solid color-mix(in srgb, var(--accent-amber) 30%, transparent);
+  }
+
+  .lifecycle-badge.published {
+    background: color-mix(in srgb, var(--accent-emerald) 15%, transparent);
+    color: var(--accent-emerald);
+    border: 1px solid color-mix(in srgb, var(--accent-emerald) 30%, transparent);
+  }
+
+  .lifecycle-badge.deprecated {
+    background: color-mix(in srgb, var(--accent-red) 15%, transparent);
+    color: var(--accent-red);
+    border: 1px solid color-mix(in srgb, var(--accent-red) 30%, transparent);
+  }
+
+  .lifecycle-badge.archived {
+    background: var(--panel-raised);
+    color: var(--text-dim);
+    border: 1px solid var(--color-border);
+  }
+
+  .lifecycle-badge.active {
+    background: color-mix(in srgb, var(--accent-indigo) 15%, transparent);
+    color: var(--accent-indigo);
+    border: 1px solid color-mix(in srgb, var(--accent-indigo) 30%, transparent);
+  }
+
+  .lifecycle-arrow {
+    color: var(--text-faint);
+  }
+
+  /* Decision Grid */
+  .decision-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .decision-card {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+  }
+
+  .decision-card.platform {
+    border-color: color-mix(in srgb, var(--accent-indigo) 40%, var(--color-border));
+  }
+
+  .decision-card.registry {
+    border-color: color-mix(in srgb, var(--accent-emerald) 40%, var(--color-border));
+  }
+
+  .decision-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  .decision-card.platform h3 {
+    color: var(--accent-indigo);
+  }
+
+  .decision-card.registry h3 {
+    color: var(--accent-emerald);
+  }
+
+  .decision-card ul {
+    margin: 0;
+    padding-left: 1.25rem;
+  }
+
+  .decision-card li {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+  }
+
+  /* API Comparison Card */
+  .api-comparison-card {
+    background: var(--panel);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin: 2rem 0;
+  }
+
+  .api-comparison-header {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr;
+    gap: 1px;
+    background: color-mix(in srgb, var(--accent-indigo) 8%, var(--panel-raised));
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .api-header-label { }
+
+  .api-header-col {
+    display: flex;
+    align-items: center;
+  }
+
+  .platform-badge,
+  .registry-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  .platform-badge {
+    background: color-mix(in srgb, var(--accent-indigo) 15%, transparent);
+    color: var(--accent-indigo);
+    border: 1px solid color-mix(in srgb, var(--accent-indigo) 30%, transparent);
+  }
+
+  .registry-badge {
+    background: color-mix(in srgb, var(--accent-emerald) 15%, transparent);
+    color: var(--accent-emerald);
+    border: 1px solid color-mix(in srgb, var(--accent-emerald) 30%, transparent);
+  }
+
+  .api-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 1fr;
+    gap: 1px;
+    background: var(--panel-edge);
+    border-bottom: 1px solid var(--panel-edge);
+  }
+
+  .api-row:last-child {
+    border-bottom: none;
+  }
+
+  .api-label {
+    padding: 1rem 1.25rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    background: var(--panel);
+  }
+
+  .api-cell {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    background: var(--panel);
+  }
+
+  .platform-cell {
+    background: color-mix(in srgb, var(--accent-indigo) 5%, var(--panel));
+  }
+
+  .registry-cell {
+    background: color-mix(in srgb, var(--accent-emerald) 5%, var(--panel));
+  }
+
+  .api-cell :global(code) {
+    background: var(--panel-raised);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--text);
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .status-badge.draft {
+    background: color-mix(in srgb, var(--accent-amber) 15%, transparent);
+    color: var(--accent-amber);
+    border: 1px solid color-mix(in srgb, var(--accent-amber) 30%, transparent);
+  }
+
+  .status-badge.published {
+    background: color-mix(in srgb, var(--accent-emerald) 15%, transparent);
+    color: var(--accent-emerald);
+    border: 1px solid color-mix(in srgb, var(--accent-emerald) 30%, transparent);
+  }
+
+  /* Workflow Card */
+  .workflow-card {
+    background: var(--panel);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .workflow-card :global(ol) {
+    margin: 0.75rem 0 0 1.5rem;
+    padding: 0;
+    list-style: none;
+    counter-reset: workflow-counter;
+  }
+
+  .workflow-card :global(li) {
+    counter-increment: workflow-counter;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    background: var(--panel-raised);
+    border-radius: 8px;
+    position: relative;
+  }
+
+  .workflow-card :global(li)::before {
+    content: counter(workflow-counter);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    background: color-mix(in srgb, var(--accent-indigo) 25%, transparent);
+    color: var(--accent-indigo);
+    border-radius: 50%;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .workflow-card :global(code) {
+    background: var(--panel);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+  }
+
+  .workflow-card :global(.step-desc) {
+    width: 100%;
+    margin-left: 2.5rem;
+    margin-top: -0.25rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .api-comparison-header,
+    .api-row {
+      grid-template-columns: 1fr;
+    }
+
+    .api-header-label {
+      display: none;
+    }
+
+    .api-label {
+      padding: 0.5rem 1rem 0.25rem;
+      background: transparent;
+    }
+
+    .api-cell {
+      padding: 0.25rem 1rem 1rem;
+    }
+
+    .diagram {
+      flex-direction: column;
+    }
+
+    .diagram-arrow {
+      transform: rotate(90deg);
+    }
+
+    .lifecycle-flow {
+      justify-content: center;
+    }
+  }
 </style>

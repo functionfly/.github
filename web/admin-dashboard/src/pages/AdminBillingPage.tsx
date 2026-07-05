@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApiClient } from '@/lib/api/adminClient';
-import { Download, Search, DollarSign, TrendingUp, AlertCircle, Pencil, X, Check, Plus, Gift, Users, Eye } from 'lucide-react';
+import { Download, Search, DollarSign, TrendingUp, AlertCircle, Pencil, X, Check, Plus, Gift, Users, Eye, Sparkles, Clock, BarChart3, UsersRound } from 'lucide-react';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
 import { toast } from 'sonner';
 import { RevenueRecognitionSection } from '@/components/revenue/RevenueRecognitionSection';
@@ -90,6 +90,41 @@ interface AffiliateCommission {
   created_at: string;
 }
 
+interface FounderModeBundleAnalytics {
+  bundle_slug: string;
+  total_signups: number;
+  active: number;
+  converted: number;
+  revenue_cents: number;
+  conversion_rate: number;
+}
+
+interface FounderModeTypeAnalytics {
+  mode_type: 'time_based' | 'revenue_based' | 'hybrid';
+  count: number;
+  converted: number;
+  conversion_rate: number;
+}
+
+interface FounderModeAnalytics {
+  total_signups: number;
+  active_founders: number;
+  converted_to_paid: number;
+  expired_or_canceled: number;
+  conversion_rate: number;
+  total_revenue_cents: number;
+  avg_days_to_convert: number;
+  by_bundle: FounderModeBundleAnalytics[];
+  by_mode_type: FounderModeTypeAnalytics[];
+  recent_signups_30d: number;
+}
+
+const MODE_TYPE_LABELS: Record<string, { label: string; description: string; icon: typeof Clock }> = {
+  time_based: { label: 'Free 3 Months', description: 'Free for 3 months (Founder Mode)', icon: Clock },
+  revenue_based: { label: 'Free until $1K MRR', description: 'Free until $1,000 monthly revenue', icon: DollarSign },
+  hybrid: { label: 'Free until 100 Users', description: 'Free until 100 users', icon: UsersRound },
+};
+
 export function AdminBillingPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -137,6 +172,19 @@ export function AdminBillingPage() {
       try {
         const response = await adminApiClient.get<{ tiers: PricingTier[] }>('/billing/tiers');
         return response;
+      } catch {
+        return { data: null, success: false };
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Fetch founder mode analytics
+  const { data: founderModeResponse, isLoading: founderModeLoading } = useQuery({
+    queryKey: ['admin-founder-mode-analytics'],
+    queryFn: async () => {
+      try {
+        return await adminApiClient.get<FounderModeAnalytics>('/billing/founder-mode-analytics');
       } catch {
         return { data: null, success: false };
       }
@@ -401,6 +449,174 @@ export function AdminBillingPage() {
           </div>
         </div>
       </div>
+
+      {/* Founder Mode Bundle Analytics */}
+      {founderModeLoading ? (
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8 text-center">
+          <div className="text-gray-500 dark:text-gray-400">Loading founder mode analytics...</div>
+        </div>
+      ) : founderModeResponse?.data ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-6 h-6 text-amber-500" />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Founder Mode Bundle Analytics</h2>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Tracking free tier conversions: 3-month, $1K MRR, and 100-user limits</p>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {founderModeResponse.data.recent_signups_30d} signups in last 30 days
+            </div>
+          </div>
+
+          {/* Founder Mode Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-lg shadow-sm border border-amber-200 dark:border-amber-700 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-amber-700 dark:text-amber-400 text-sm font-medium">Total Signups</p>
+                  <p className="text-2xl font-bold text-amber-900 dark:text-amber-100">
+                    {founderModeResponse.data.total_signups.toLocaleString()}
+                  </p>
+                </div>
+                <Users className="w-8 h-8 text-amber-500" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg shadow-sm border border-green-200 dark:border-green-700 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-700 dark:text-green-400 text-sm font-medium">Active Founders</p>
+                  <p className="text-2xl font-bold text-green-900 dark:text-green-100">
+                    {founderModeResponse.data.active_founders.toLocaleString()}
+                  </p>
+                </div>
+                <Sparkles className="w-8 h-8 text-green-500" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg shadow-sm border border-blue-200 dark:border-blue-700 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-700 dark:text-blue-400 text-sm font-medium">Converted</p>
+                  <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                    {founderModeResponse.data.converted_to_paid.toLocaleString()}
+                  </p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-blue-500" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg shadow-sm border border-purple-200 dark:border-purple-700 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-700 dark:text-purple-400 text-sm font-medium">Conversion Rate</p>
+                  <p className="text-2xl font-bold text-purple-900 dark:text-purple-100">
+                    {founderModeResponse.data.conversion_rate.toFixed(1)}%
+                  </p>
+                </div>
+                <BarChart3 className="w-8 h-8 text-purple-500" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-900/20 dark:to-slate-900/20 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-700 dark:text-gray-400 text-sm font-medium">Revenue from Founders</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    ${(founderModeResponse.data.total_revenue_cents / 100).toLocaleString()}
+                  </p>
+                </div>
+                <DollarSign className="w-8 h-8 text-gray-500" />
+              </div>
+            </div>
+          </div>
+
+          {/* By Mode Type Breakdown */}
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="font-medium text-gray-900 dark:text-gray-100">Breakdown by Free Tier Type</h3>
+            </div>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              {founderModeResponse.data.by_mode_type.map((modeType) => {
+                const labelInfo = MODE_TYPE_LABELS[modeType.mode_type] || { label: modeType.mode_type, description: '', icon: Clock };
+                const IconComponent = labelInfo.icon;
+                return (
+                  <div key={modeType.mode_type} className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                        <IconComponent className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{labelInfo.label}</div>
+                        <div className="text-sm text-gray-500 dark:text-gray-400">{labelInfo.description}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-8">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{modeType.count}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">enrolled</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-green-600 dark:text-green-400">{modeType.converted}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">converted</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-purple-600 dark:text-purple-400">{modeType.conversion_rate.toFixed(1)}%</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">rate</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* By Bundle Breakdown */}
+          {founderModeResponse.data.by_bundle.length > 0 && (
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="font-medium text-gray-900 dark:text-gray-100">Breakdown by Bundle</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Bundle</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Active</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Converted</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Revenue</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {founderModeResponse.data.by_bundle.map((bundle) => (
+                      <tr key={bundle.bundle_slug} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-4 py-2 font-medium text-gray-900 dark:text-gray-100">{bundle.bundle_slug}</td>
+                        <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">{bundle.total_signups}</td>
+                        <td className="px-4 py-2 text-right text-green-600 dark:text-green-400">{bundle.active}</td>
+                        <td className="px-4 py-2 text-right text-blue-600 dark:text-blue-400">{bundle.converted}</td>
+                        <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">${(bundle.revenue_cents / 100).toLocaleString()}</td>
+                        <td className="px-4 py-2 text-right">
+                          <span className={`px-2 py-0.5 text-xs rounded ${
+                            bundle.conversion_rate >= 20 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                            bundle.conversion_rate >= 10 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          }`}>
+                            {bundle.conversion_rate.toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* Filters */}
       <div className="flex gap-4">

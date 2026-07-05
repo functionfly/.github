@@ -15,9 +15,15 @@
   --accent: #ff7a3d;
   --accent-hover: #ff8f5c;
   --accent-dim: rgba(255, 122, 61, 0.35);
+  /* Semantic accent colors for blog components */
+  --accent-indigo: #818cf8;
+  --accent-emerald: #10b981;
+  --accent-amber: #f59e0b;
+  --accent-blue: #3b82f6;
+  --accent-red: #ef4444;
   --status-ok: #8fffd0;
   --status-pending: #e8c468;
-  --status-revoked: #ff6b6b;
+  --status-revoked: #ef4444;
   --foil-a: #9fd8ff;
   --foil-b: #d9c4ff;
   --foil-c: #8fffd0;

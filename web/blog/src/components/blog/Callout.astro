@@ -1,0 +1,86 @@
+---
+interface Props {
+  type?: 'tip' | 'warning' | 'info' | 'important';
+  title?: string;
+}
+
+const { type = 'tip', title } = Astro.props;
+
+const icons = {
+  tip: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+  warning: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  info: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+  important: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`,
+};
+
+const icon = icons[type];
+---
+
+<div class={`callout callout-${type}`}>
+  <div class="callout-icon" set:html={icon} />
+  <div class="callout-content">
+    {title && <strong>{title}: </strong>}
+    <slot />
+  </div>
+</div>
+
+<style>
+  .callout {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 12px;
+    margin: 1.5rem 0;
+  }
+
+  .callout-tip {
+    background: color-mix(in srgb, var(--accent-emerald, #10b981) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-emerald, #10b981) 25%, transparent);
+  }
+
+  .callout-tip .callout-icon {
+    color: var(--accent-emerald, #10b981);
+  }
+
+  .callout-warning {
+    background: color-mix(in srgb, var(--accent-amber, #f59e0b) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-amber, #f59e0b) 25%, transparent);
+  }
+
+  .callout-warning .callout-icon {
+    color: var(--accent-amber, #f59e0b);
+  }
+
+  .callout-info {
+    background: color-mix(in srgb, var(--accent-blue, #3b82f6) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-blue, #3b82f6) 25%, transparent);
+  }
+
+  .callout-info .callout-icon {
+    color: var(--accent-blue, #3b82f6);
+  }
+
+  .callout-important {
+    background: color-mix(in srgb, var(--accent-red, #ef4444) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-red, #ef4444) 25%, transparent);
+  }
+
+  .callout-important .callout-icon {
+    color: var(--accent-red, #ef4444);
+  }
+
+  .callout-icon {
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+  }
+
+  .callout-content {
+    font-size: 0.95rem;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  .callout-content :global(strong) {
+    color: var(--text);
+  }
+</style>

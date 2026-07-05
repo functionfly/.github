@@ -247,6 +247,8 @@ export function slateBodyToHtml(body: unknown): string {
     }
   }
 
+  let html = '';
+
   if (typeof processedBody === 'string') {
     const str = processedBody;
     try {
@@ -254,23 +256,25 @@ export function slateBodyToHtml(body: unknown): string {
       const parsed = JSON.parse(decoded);
       processedBody = parsed;
     } catch {
-      return fixCliCommands(marked.parse(str, { async: false }) as string);
+      html = fixCliCommands(marked.parse(str, { async: false }) as string);
+      return enhanceHtml(html);
     }
   }
 
   if (Array.isArray(processedBody)) {
-    return tipTapArrayToHtml(processedBody);
-  }
-
-  if (!Array.isArray(processedBody) && typeof processedBody === 'object' && processedBody !== null) {
+    html = tipTapArrayToHtml(processedBody);
+  } else if (!Array.isArray(processedBody) && typeof processedBody === 'object' && processedBody !== null) {
     const obj = processedBody as Record<string, unknown>;
     if (obj.type === 'doc' && obj.content) {
-      return tipTapToHtml(processedBody as TipTapDoc);
+      html = tipTapToHtml(processedBody as TipTapDoc);
+    } else {
+      html = tipTapToHtml(processedBody as TipTapDoc);
     }
-    return tipTapToHtml(processedBody as TipTapDoc);
+  } else {
+    html = '';
   }
 
-  return '';
+  return enhanceHtml(html);
 }
 
 function tipTapArrayToHtml(nodes: unknown[]): string {
@@ -667,4 +671,151 @@ function extractTipTapText(doc: TipTapDoc): string {
   };
 
   return doc.content.map(extractNode).join(' ');
+}
+
+/**
+ * Enhance HTML with shortcode syntax for enhanced components
+ * Supports:
+ * - :::callout[type] content ::: - Callout boxes (tip, warning, info, important)
+ * - :::comparison ... ::: - Side-by-side comparison cards
+ * - :::api-table ... [/api-table] - API comparison table
+ * - :::workflow ... ::: - Numbered workflow steps
+ * - :::lifecycle stage1 > stage2 > stage3 ::: - Lifecycle flow badges
+ * - :::decision ... ::: - Decision grid cards
+ */
+function enhanceHtml(html: string): string {
+  // Callout boxes: :::callout[type] content :::
+  html = html.replace(
+    /:::callout\[(\w+)\]([\s\S]*?):::/g,
+    (match, type, content) => {
+      const icons: Record<string, string> = {
+        tip: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        warning: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        important: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
+      };
+      const icon = icons[type] || icons.tip;
+      return `<div class="callout callout-${type}"><div class="callout-icon">${icon}</div><div class="callout-content">${content.trim()}</div></div>`;
+    }
+  );
+
+  // Lifecycle flow: :::lifecycle draft > published > deprecated > archived :::
+  html = html.replace(
+    /:::lifecycle([\s\S]*?):::/g,
+    (match, stages) => {
+      const stagesList = stages.split('>').map((s: string) => s.trim());
+      const badges = stagesList.map((stage: string, i: number) => {
+        const arrows = stagesList.slice(0, i).join('');
+        return `<span class="lifecycle-badge ${stage}">${stage}</span>`;
+      }).join('<svg class="lifecycle-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>');
+      return `<div class="lifecycle-flow">${badges}</div>`;
+    }
+  );
+
+  // API Table: :::api-table\n| label | platform | registry | ...\n[/api-table]
+  html = html.replace(
+    /:::api-table\n([\s\S]*?)\[\/api-table\]/g,
+    (match, tableContent) => {
+      const lines = tableContent.trim().split('\n').filter((l: string) => l.startsWith('|'));
+      if (lines.length < 2) return match;
+
+      const headerMatch = lines[0].match(/\|(.*?)\|/g);
+      if (!headerMatch) return match;
+
+      let headerHtml = '<div class="api-comparison-header"><div class="api-header-label"></div>';
+      const hasPlatform = lines[0].includes('Platform');
+      const hasRegistry = lines[0].includes('Registry');
+
+      if (hasPlatform) {
+        headerHtml += '<div class="api-header-col"><span class="platform-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>Platform (Create)</span></div>';
+      }
+      if (hasRegistry) {
+        headerHtml += '<div class="api-header-col"><span class="registry-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>Registry (Publish)</span></div>';
+      }
+      headerHtml += '</div>';
+
+      let rowsHtml = '';
+      for (let i = 1; i < lines.length; i++) {
+        const cells = lines[i].split('|').filter((c: string, idx: number) => idx > 0 && idx < lines[i].split('|').length - 1);
+        if (cells.length < 2) continue;
+
+        const label = cells[0].trim();
+        const platform = cells[1]?.trim() || '';
+        const registry = cells[2]?.trim() || '';
+
+        rowsHtml += `<div class="api-row"><div class="api-label"><strong>${label}</strong></div><div class="api-cell platform-cell">${platform}</div><div class="api-cell registry-cell">${registry}</div></div>`;
+      }
+
+      return `<div class="api-comparison-card">${headerHtml}${rowsHtml}</div>`;
+    }
+  );
+
+  // Workflow: :::workflow\n1. step code — description\n2. ...
+  html = html.replace(
+    /:::workflow\n([\s\S]*?)\[\/workflow\]/g,
+    (match, stepsContent) => {
+      const steps = stepsContent.trim().split('\n').filter((l: string) => l.trim());
+      let stepsHtml = '<div class="workflow-card"><ol>';
+
+      steps.forEach((step: string, i: number) => {
+        const match = step.match(/^\d+\.\s*(.+?)(?:\s*[-–—]\s*(.+))?$/);
+        if (match) {
+          const code = match[1].trim();
+          const desc = match[2] ? `<span class="step-desc">${match[2].trim()}</span>` : '';
+          stepsHtml += `<li><code>${code}</code>${desc}</li>`;
+        }
+      });
+
+      stepsHtml += '</ol></div>';
+      return stepsHtml;
+    }
+  );
+
+  // Decision Grid: :::decision\n[platform]\nTitle\n- item1\n- item2\n[/platform]
+  html = html.replace(
+    /:::decision\n([\s\S]*?)\[\/decision\]/g,
+    (match, content) => {
+      const platformMatch = content.match(/\[platform\]\s*\n*(.+?)\n([\s\S]*?)\[\/platform\]/);
+      const registryMatch = content.match(/\[registry\]\s*\n*(.+?)\n([\s\S]*?)\[\/registry\]/);
+
+      let cards = '';
+
+      if (platformMatch) {
+        const title = platformMatch[1].trim();
+        const items = platformMatch[2].split('\n').filter((l: string) => l.startsWith('-')).map((l: string) => `<li>${l.replace(/^-\s*/, '')}</li>`).join('');
+        cards += `<div class="decision-card platform"><h3>${title}</h3><ul>${items}</ul></div>`;
+      }
+
+      if (registryMatch) {
+        const title = registryMatch[1].trim();
+        const items = registryMatch[2].split('\n').filter((l: string) => l.startsWith('-')).map((l: string) => `<li>${l.replace(/^-\s*/, '')}</li>`).join('');
+        cards += `<div class="decision-card registry"><h3>${title}</h3><ul>${items}</ul></div>`;
+      }
+
+      return `<div class="decision-grid">${cards}</div>`;
+    }
+  );
+
+  // Comparison: :::comparison\n[create]\nTitle\nDescription\n[/create]
+  html = html.replace(
+    /:::comparison\n([\s\S]*?)\[\/comparison\]/g,
+    (match, content) => {
+      const createMatch = content.match(/\[create\]\s*\n*(.+?)\n\n([\s\S]*?)\[\/create\]/);
+      const publishMatch = content.match(/\[publish\]\s*\n*(.+?)\n\n([\s\S]*?)\[\/publish\]/);
+
+      let cards = '';
+
+      if (createMatch) {
+        cards += `<div class="comparison-card create"><h3>${createMatch[1].trim()}</h3><p>${createMatch[2].trim()}</p></div>`;
+      }
+
+      if (publishMatch) {
+        cards += `<div class="comparison-card publish"><h3>${publishMatch[1].trim()}</h3><p>${publishMatch[2].trim()}</p></div>`;
+      }
+
+      return `<div class="comparison-highlight">${cards}</div>`;
+    }
+  );
+
+  return html;
 }

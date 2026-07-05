@@ -1,0 +1,78 @@
+---
+interface DecisionOption {
+  title: string;
+  items: string[];
+  variant?: 'platform' | 'registry';
+}
+
+interface Props {
+  options: DecisionOption[];
+}
+
+const { options } = Astro.props;
+---
+
+<div class="decision-grid">
+  {options.map((option) => (
+    <div class={`decision-card ${option.variant || 'default'}`}>
+      <h3 set:html={option.title}></h3>
+      <ul>
+        {option.items.map((item) => (
+          <li set:html={item}></li>
+        ))}
+      </ul>
+    </div>
+  ))}
+</div>
+
+<style>
+  .decision-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 1.5rem 0;
+  }
+
+  .decision-card {
+    background: var(--panel);
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid var(--color-border);
+  }
+
+  .decision-card.platform {
+    border-color: color-mix(in srgb, var(--accent-indigo, #6366f1) 40%, var(--color-border));
+  }
+
+  .decision-card.registry {
+    border-color: color-mix(in srgb, var(--accent-emerald, #10b981) 40%, var(--color-border));
+  }
+
+  .decision-card :global(h3) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  .decision-card.platform :global(h3) {
+    color: var(--accent-indigo, #6366f1);
+  }
+
+  .decision-card.registry :global(h3) {
+    color: var(--accent-emerald, #10b981);
+  }
+
+  .decision-card :global(ul) {
+    margin: 0;
+    padding-left: 1.25rem;
+  }
+
+  .decision-card :global(li) {
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+  }
+</style>

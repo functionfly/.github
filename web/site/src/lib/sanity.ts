@@ -30,6 +30,18 @@ export interface ReportSummary {
   tldrAmbassadors: number;
 }
 
+export interface BlogPost {
+  _id: string;
+  title: string;
+  slug: string;
+  author: { name: string } | null;
+  category: { title: string } | null;
+  publishedAt: string;
+  description: string;
+  body: string;
+  tags: string[];
+}
+
 export interface Report extends ReportSummary {
   tldrDeployments: number;
   tldrExecutions: number;

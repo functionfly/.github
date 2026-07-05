@@ -1,0 +1,64 @@
+---
+interface ComparisonItem {
+  title: string;
+  description: string;
+  variant?: 'create' | 'publish' | 'default';
+}
+
+interface Props {
+  items: ComparisonItem[];
+}
+
+const { items } = Astro.props;
+---
+
+<div class="comparison-highlight">
+  {items.map((item) => (
+    <div class={`comparison-card ${item.variant || 'default'}`}>
+      <h3 set:html={item.title}></h3>
+      <p set:html={item.description}></p>
+    </div>
+  ))}
+</div>
+
+<style>
+  .comparison-highlight {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+  }
+
+  .comparison-card {
+    background: var(--panel);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    backdrop-filter: blur(8px);
+  }
+
+  .comparison-card.create {
+    border-color: color-mix(in srgb, var(--accent-indigo, #6366f1) 50%, var(--color-border));
+  }
+
+  .comparison-card.publish {
+    border-color: color-mix(in srgb, var(--accent-emerald, #10b981) 50%, var(--color-border));
+  }
+
+  .comparison-card.default {
+    border-color: var(--accent);
+  }
+
+  .comparison-card :global(h3) {
+    margin: 0 0 0.75rem;
+    font-size: 1.25rem;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 600;
+  }
+
+  .comparison-card :global(p) {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--text-dim);
+  }
+</style>
