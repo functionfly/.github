@@ -163,6 +163,12 @@ export const navigationSections: NavSection[] = [
         onboardingHint: 'Create your first function here',
       },
       {
+        path: '/functions/publish',
+        label: 'Publish to Registry',
+        icon: Rocket,
+        description: 'Publish a function to the public registry',
+      },
+      {
         path: '/ai/composer',
         label: 'AI Composer',
         icon: Sparkles,

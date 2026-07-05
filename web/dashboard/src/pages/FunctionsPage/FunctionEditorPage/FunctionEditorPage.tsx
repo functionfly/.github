@@ -16,6 +16,7 @@ import { SectionCollapsible } from './components/SectionCollapsible';
 import { AdvancedSection } from './sections/AdvancedSection';
 import { BasicInfoSection } from './sections/BasicInfoSection';
 import { CodeEditorSection } from './sections/CodeEditorSection';
+import { CodeEditorSectionMobile } from './sections/CodeEditorSectionMobile';
 import { DeployTargetSection } from './sections/DeployTargetSection';
 import { EnvVarsSection } from './sections/EnvVarsSection';
 import { ResourceLimitsSection } from './sections/ResourceLimitsSection';
@@ -81,15 +82,6 @@ export function FunctionEditorPage() {
       </div>
 
       <FunctionEditorVaultDialogs editor={editor} />
-    </div>
-  );
-}
-
-// Mobile-only code editor shown in left column
-function CodeEditorSectionMobile({ editor }: { editor: ReturnType<typeof useFunctionEditor> }) {
-  return (
-    <div className="lg:hidden">
-      <CodeEditorSection editor={editor} />
     </div>
   );
 }

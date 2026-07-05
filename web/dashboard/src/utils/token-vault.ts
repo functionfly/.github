@@ -11,6 +11,7 @@
  * - Per-session random key generated via crypto.getRandomValues()
  * - Stored in sessionStorage (not localStorage) for session-bound protection
  * - No user passphrase required (seamless auto-login on refresh)
+ * - Cross-tab key sharing via BroadcastChannel (supports tab duplication)
  */
 
 import { VaultCrypto } from './vault-crypto';
@@ -18,6 +19,8 @@ import { VaultCrypto } from './vault-crypto';
 // Storage keys
 const ENCRYPTED_TOKEN_KEY = 'ff-encrypted-tokens';
 const SESSION_KEY_ID = 'ff-token-key-id';
+const KEY_CHANNEL_NAME = 'ff-token-key-sync';
+const KEY_REQUEST_TIMEOUT_MS = 1500;
 
 /**
  * Structure for encrypted token storage
@@ -45,6 +48,8 @@ export class TokenVault {
   private encryptionKey: CryptoKey | null = null;
   private keyId: string | null = null;
   private initPromise: Promise<void> | null = null;
+  private keyChannel: BroadcastChannel | null = null;
+  private keyListenerSetup = false;
 
   /**
    * Initialize or retrieve the session-bound encryption key
@@ -64,7 +69,59 @@ export class TokenVault {
     this.initPromise = null;
   }
 
+  private setupKeyListener(): void {
+    if (this.keyListenerSetup || typeof BroadcastChannel === 'undefined') return;
+    this.keyListenerSetup = true;
+
+    this.keyChannel = new BroadcastChannel(KEY_CHANNEL_NAME);
+    this.keyChannel.onmessage = (e: MessageEvent) => {
+      if (e.data?.type === 'key-request' && this.encryptionKey && this.keyId) {
+        const keyDataRaw = sessionStorage.getItem(`ff-key-${this.keyId}`);
+        if (keyDataRaw) {
+          this.keyChannel?.postMessage({
+            type: 'key-response',
+            requestId: e.data.requestId,
+            keyId: this.keyId,
+            keyData: keyDataRaw,
+          });
+        }
+      }
+    };
+  }
+
+  private async requestKeyFromOtherTabs(): Promise<{ keyId: string; keyData: string } | null> {
+    if (typeof BroadcastChannel === 'undefined') return null;
+
+    const channel = new BroadcastChannel(KEY_CHANNEL_NAME);
+    const requestId = crypto.getRandomValues(new Uint8Array(8))
+      .reduce((acc, b) => acc + b.toString(16).padStart(2, '0'), '');
+
+    return new Promise((resolve) => {
+      let resolved = false;
+
+      channel.onmessage = (e: MessageEvent) => {
+        if (e.data?.type === 'key-response' && e.data?.requestId === requestId && !resolved) {
+          resolved = true;
+          channel.close();
+          resolve({ keyId: e.data.keyId, keyData: e.data.keyData });
+        }
+      };
+
+      channel.postMessage({ type: 'key-request', requestId });
+
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          channel.close();
+          resolve(null);
+        }
+      }, KEY_REQUEST_TIMEOUT_MS);
+    });
+  }
+
   private async _doInitialize(): Promise<void> {
+    this.setupKeyListener();
+
     // Try to retrieve existing key from sessionStorage
     const storedKeyId = sessionStorage.getItem(SESSION_KEY_ID);
     
@@ -83,8 +140,29 @@ export class TokenVault {
           this.keyId = storedKeyId;
           return;
         } catch (e) {
-          console.warn('Failed to import existing session key, generating new one');
+          console.warn('Failed to import existing session key, requesting from other tabs');
         }
+      }
+    }
+
+    // No local key found (e.g. duplicated tab) — ask other tabs for theirs
+    const sharedKey = await this.requestKeyFromOtherTabs();
+    if (sharedKey) {
+      try {
+        const keyData = this.base64ToUint8Array(sharedKey.keyData);
+        this.encryptionKey = await crypto.subtle.importKey(
+          'raw',
+          keyData.buffer as ArrayBuffer,
+          { name: 'AES-GCM' },
+          true,
+          ['encrypt', 'decrypt']
+        );
+        this.keyId = sharedKey.keyId;
+        sessionStorage.setItem(SESSION_KEY_ID, this.keyId);
+        sessionStorage.setItem(`ff-key-${this.keyId}`, sharedKey.keyData);
+        return;
+      } catch (e) {
+        console.warn('Failed to import key from other tab, generating new one');
       }
     }
 
@@ -223,6 +301,11 @@ export class TokenVault {
     sessionStorage.removeItem(SESSION_KEY_ID);
     this.encryptionKey = null;
     this.keyId = null;
+    if (this.keyChannel) {
+      this.keyChannel.close();
+      this.keyChannel = null;
+      this.keyListenerSetup = false;
+    }
   }
 
   /**

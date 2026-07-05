@@ -493,7 +493,9 @@ export function ProfilePage({
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           profile={profile}
-          onSave={updateProfileMutation.mutateAsync}
+          onSave={async (data) => {
+            await updateProfileMutation.mutateAsync(data);
+          }}
           isLoading={updateProfileMutation.isPending}
         />
       )}

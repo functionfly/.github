@@ -9,11 +9,12 @@ import {
   Play,
   Rocket,
   Save,
+  Share2,
   X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { KeyboardShortcutsDialog } from './components/KeyboardShortcutsDialog';
 import type { FunctionEditorModel } from './useFunctionEditor';
 
@@ -30,8 +31,8 @@ function formatRelativeTime(date: Date, t: (key: string, opts?: Record<string, u
 
 export function ActionBar({ editor }: Props) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const {
-    navigate,
     isEditing,
     functionName,
     isLoading,
@@ -39,6 +40,7 @@ export function ActionBar({ editor }: Props) {
     lastSaved,
     draftTimestamp,
     handleTest,
+    cancelTest,
     handleSaveDraft,
     handleDeploy,
     isSaving,
@@ -47,6 +49,15 @@ export function ActionBar({ editor }: Props) {
     showDraftRestorePrompt,
     handleRestoreDraft,
     handleDiscardDraft,
+    code,
+    runtime,
+    description,
+    tags,
+    deploymentStatus,
+    isPublishedToRegistry,
+    setIsPublishedToRegistry,
+    id,
+    postCreateFunctionId,
   } = editor;
 
   const [relativeTime, setRelativeTime] = useState('');
@@ -59,6 +70,15 @@ export function ActionBar({ editor }: Props) {
     }, 10000);
     return () => clearInterval(interval);
   }, [lastSaved]);
+
+  const showPublishButton = (isEditing || !!postCreateFunctionId) && deploymentStatus === 'success' && !isPublishedToRegistry && (id || postCreateFunctionId) && !!functionName;
+
+  const handlePublishToRegistry = useCallback(() => {
+    const functionId = id || postCreateFunctionId;
+    if (!functionId || !functionName) return;
+    setIsPublishedToRegistry(true);
+    navigate(`/functions/publish?functionId=${functionId}`);
+  }, [id, postCreateFunctionId, functionName, navigate, setIsPublishedToRegistry]);
 
   return (
     <>
@@ -192,6 +212,17 @@ export function ActionBar({ editor }: Props) {
               )}
               {t('funcEditor.test')}
             </Button>
+            {isTesting && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={cancelTest}
+                className="gap-1.5 hidden md:flex"
+              >
+                <X className="w-3.5 h-3.5" />
+                {t('funcEditor.cancelAction')}
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -219,6 +250,17 @@ export function ActionBar({ editor }: Props) {
               )}
               {isDeploying ? t('funcEditor.deploying') : t('funcEditor.deployAction')}
             </Button>
+            {showPublishButton && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handlePublishToRegistry}
+                className="gap-1.5"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                Publish to Registry
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -45,6 +45,7 @@ const TYPE_ICONS: Record<AttestationType, string> = {
   execution: '\u25b6',
   compliance: '\u2611',
   signature: '\u2709',
+  delegation: '\u2192',
 };
 
 function truncateHash(hash: string, len = 12): string {

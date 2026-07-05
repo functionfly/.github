@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { usePageTitle } from '@/hooks';
-import { teamsApi, type Team, type TeamMember, type TeamAuditLog, type TeamQuota } from '@/api/teams';
+import { teamsApi, type Team, type TeamMember, type TeamAuditLog, type TeamQuota, type UpdateTeamRequest } from '@/api/teams';
 import { Chamber, CornerBrace, PageGrid, SealedButton, FrameButton, StatusPill, Modal, Input as ScInput } from '@/components/containment';
 import './styles.css';
 import { useAuthStore } from '@/stores/authStore';
@@ -105,7 +105,7 @@ export function TeamsPage() {
   });
 
   const updateTeamMutation = useMutation({
-    mutationFn: ({ teamId, data }: { teamId: string; data: { name?: string; description?: string; visibility?: string; default_invite_role?: string } }) => teamsApi.update(teamId, data),
+    mutationFn: ({ teamId, data }: { teamId: string; data: UpdateTeamRequest }) => teamsApi.update(teamId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       toast.success('Team updated');

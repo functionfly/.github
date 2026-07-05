@@ -38,8 +38,7 @@ function FireParticle({ delay, x }: ParticleProps) {
   return (
     <motion.div
       className="absolute w-1 h-1 rounded-full"
-      style={{ background: 'var(--status-pending)' }}
-      style={{ left: `${x}%`, bottom: "80%" }}
+      style={{ background: 'var(--status-pending)', left: `${x}%`, bottom: "80%" }}
       initial={{ opacity: 0, y: 0, scale: 1 }}
       animate={{
         opacity: [0, 1, 0],

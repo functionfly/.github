@@ -87,12 +87,21 @@ export interface App {
   name: string;
   slug: string;
   tenantId: string;
+  /** The URL the user should open to reach the deployed app. Prefers the
+   *  first enabled backend's actual URL; falls back to the slug-derived
+   *  intent URL when no backends are configured. */
   deployUrl: string;
+  /** Slug-derived canonical URL (e.g. http://saas-starter.localhost:8082
+   *  in dev or https://saas-starter.functionfly.com in prod). Useful for
+   *  showing "intended" location vs the real backend URL. */
+  deployUrlIntent?: string;
   createdAt: string;
   /** Snake_case alias from Go API (created_at) */
   created_at?: string;
   /** Snake_case alias from Go API (deploy_url) */
   deploy_url?: string;
+  /** Snake_case alias from Go API (deploy_url_intent) */
+  deploy_url_intent?: string;
   /** Snake_case alias from Go API (tenant_id) */
   tenant_id?: string;
 }

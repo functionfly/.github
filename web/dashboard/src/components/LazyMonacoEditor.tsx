@@ -1,7 +1,8 @@
 import { lazy, Suspense } from 'react';
-import type { OnMount, OnChange, BeforeMount } from '@monaco-editor/react';
+import type { OnMount, OnChange, BeforeMount, DiffOnMount } from '@monaco-editor/react';
 
 const MonacoEditor = lazy(() => import('@monaco-editor/react').then(m => ({ default: m.Editor })));
+const MonacoDiffEditor = lazy(() => import('@monaco-editor/react').then(m => ({ default: m.DiffEditor })));
 
 interface LazyMonacoEditorProps {
   height?: string | number;
@@ -15,7 +16,18 @@ interface LazyMonacoEditorProps {
   loading?: React.ReactNode;
 }
 
-function LoadingFallback({ height = '400px' }: { height?: string | number }) {
+interface LazyMonacoDiffEditorProps {
+  height?: string | number;
+  language?: string;
+  original?: string;
+  modified?: string;
+  onMount?: DiffOnMount;
+  theme?: string;
+  options?: Record<string, unknown>;
+  loading?: React.ReactNode;
+}
+
+function LoadingFallback({ height = '100%' }: { height?: string | number }) {
   return (
     <div
       style={{
@@ -34,7 +46,7 @@ function LoadingFallback({ height = '400px' }: { height?: string | number }) {
 }
 
 export function LazyMonacoEditor({
-  height = '400px',
+  height = '100%',
   language,
   value,
   onChange,
@@ -53,6 +65,32 @@ export function LazyMonacoEditor({
         onChange={onChange}
         onMount={onMount}
         beforeMount={beforeMount}
+        theme={theme}
+        options={options}
+        loading={loading || <LoadingFallback height={height} />}
+      />
+    </Suspense>
+  );
+}
+
+export function LazyMonacoDiffEditor({
+  height = '100%',
+  language,
+  original,
+  modified,
+  onMount,
+  theme = 'vs-dark',
+  options,
+  loading,
+}: LazyMonacoDiffEditorProps) {
+  return (
+    <Suspense fallback={loading || <LoadingFallback height={height} />}>
+      <MonacoDiffEditor
+        height={height}
+        language={language}
+        original={original}
+        modified={modified}
+        onMount={onMount}
         theme={theme}
         options={options}
         loading={loading || <LoadingFallback height={height} />}

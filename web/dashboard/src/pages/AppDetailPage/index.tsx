@@ -96,6 +96,7 @@ function normaliseApp(raw: Record<string, unknown>) {
     slug: String(raw.slug ?? ''),
     tenantId: String(raw.tenantId ?? raw.tenant_id ?? ''),
     deployUrl: String(raw.deployUrl ?? raw.deploy_url ?? ''),
+    deployUrlIntent: String(raw.deployUrlIntent ?? raw.deploy_url_intent ?? ''),
     createdAt: String(raw.createdAt ?? raw.created_at ?? ''),
   };
 }
@@ -293,7 +294,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function EmptyTabState({ icon: Icon, title, description, action }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string; action?: React.ReactNode }) {
+function EmptyTabState({ icon: Icon, title, description, action }: { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; title: string; description: string; action?: React.ReactNode }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center rounded-[var(--radius-lg)]" style={{ border: '1px dashed var(--panel-edge)' }}>
       <div className="w-14 h-14 rounded-[var(--radius-lg)] flex items-center justify-center mb-4" style={{ background: 'var(--panel)' }}>
@@ -314,12 +315,26 @@ function OverviewTab({ data }: { data: AppStatus }) {
   const healthyCount = backends.filter((b) => b.latestHealthCheck?.ok).length;
   const openCircuits = backends.filter((b) => b.circuitState?.state === 'open').length;
   const deployUrl = app.deployUrl || (app as unknown as Record<string, string>).deploy_url || '';
+  const healthyColor: 'success' | 'warning' | 'danger' =
+    backends.length === 0 || healthyCount === backends.length
+      ? 'success'
+      : healthyCount === 0
+        ? 'danger'
+        : 'warning';
+  const healthySub =
+    backends.length === 0
+      ? 'no backends configured'
+      : healthyCount === backends.length
+        ? `all ${backends.length} operational`
+        : healthyCount === 0
+          ? `none of ${backends.length} responding`
+          : `${backends.length - healthyCount} of ${backends.length} failing`;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Backends" value={backends.length} sub="connected providers" icon={Server} color="default" />
-        <StatCard label="Healthy" value={healthyCount} sub={`of ${backends.length} operational`} icon={CheckCircle2} color="success" />
+        <StatCard label="Healthy" value={healthyCount} sub={healthySub} icon={CheckCircle2} color={healthyColor} />
         <StatCard label="Open Circuits" value={openCircuits} sub={openCircuits > 0 ? 'requires attention' : 'all circuits closed'} icon={Shield} color={openCircuits > 0 ? 'danger' : 'success'} />
       </div>
 
@@ -872,7 +887,7 @@ function ApiKeysTab({ appId }: { appId: string }) {
                 </div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => rotateKey.mutate({ id: k.id, data: {} })} aria-label={`Rotate ${k.name}`}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => rotateKey.mutate({ id: k.id })} aria-label={`Rotate ${k.name}`}>
                   <RotateCw className="w-3.5 h-3.5" />
                 </Button>
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => deleteKey.mutate(k.id)} aria-label={`Delete ${k.name}`}>
@@ -996,6 +1011,14 @@ function SettingsTab({ data, appId }: { data: AppStatus; appId: string }) {
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
+            {app.deployUrlIntent && app.deployUrlIntent !== (app.deployUrl || (app as unknown as Record<string, string>).deploy_url) && (
+              <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+                Canonical (slug-derived): <code className="font-mono">{app.deployUrlIntent}</code>
+              </p>
+            )}
+            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
+              Shows the URL of the first enabled backend. Configure a backend to deploy to a custom domain.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -1111,7 +1134,41 @@ export function AppDetailPage() {
 
   const { app, backends } = data as AppStatus;
   const healthyCount = backends.filter((b) => b.latestHealthCheck?.ok).length;
-  const overallHealthy = backends.length === 0 || healthyCount === backends.length;
+  const totalCount = backends.length;
+  // 3-state status: healthy (all up), degraded (some up), unhealthy (none up),
+  // unknown (no backends configured yet).
+  const overallStatus: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' =
+    totalCount === 0
+      ? 'unknown'
+      : healthyCount === totalCount
+        ? 'healthy'
+        : healthyCount === 0
+          ? 'unhealthy'
+          : 'degraded';
+  const statusLabel =
+    overallStatus === 'healthy'
+      ? 'Healthy'
+      : overallStatus === 'degraded'
+        ? 'Degraded'
+        : overallStatus === 'unhealthy'
+          ? 'Unhealthy'
+          : 'No backends';
+  const statusVariant =
+    overallStatus === 'healthy'
+      ? 'default'
+      : overallStatus === 'degraded'
+        ? 'warning'
+        : overallStatus === 'unhealthy'
+          ? 'destructive'
+          : 'outline';
+  const statusDotColor =
+    overallStatus === 'healthy'
+      ? 'var(--status-ok)'
+      : overallStatus === 'degraded'
+        ? 'var(--status-pending)'
+        : overallStatus === 'unhealthy'
+          ? 'var(--status-revoked)'
+          : 'var(--text-faint)';
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Activity },
@@ -1148,14 +1205,14 @@ export function AppDetailPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-2xl font-bold" style={{ color: 'var(--text)', fontFamily: 'var(--font-display)' }}>{app.name}</h1>
-              <Badge variant={overallHealthy ? 'default' : 'destructive'} className="text-xs" style={overallHealthy ? { background: 'rgba(143,255,208,0.06)', color: 'var(--status-ok)', borderColor: 'rgba(143,255,208,0.3)' } : undefined}>
-                <span className="w-1.5 h-1.5 rounded-full mr-1.5" style={{ background: overallHealthy ? 'var(--status-ok)' : 'var(--status-revoked)' }} />
-                {overallHealthy ? 'Healthy' : 'Degraded'}
+              <Badge variant={statusVariant as 'default' | 'destructive' | 'warning' | 'outline'} className="text-xs">
+                <span className="w-1.5 h-1.5 rounded-full mr-1.5" style={{ background: statusDotColor }} />
+                {statusLabel}
               </Badge>
             </div>
             <p className="text-sm font-mono mt-1" style={{ color: 'var(--text-faint)' }}>{app.slug}</p>
             {(app.deployUrl || (app as unknown as Record<string, string>).deploy_url) && (
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <ExternalLink className="w-3.5 h-3.5" style={{ color: 'var(--text-faint)' }} />
                 <a href={app.deployUrl || (app as unknown as Record<string, string>).deploy_url} target="_blank" rel="noopener noreferrer" className="text-sm font-mono truncate transition-colors" style={{ color: 'var(--accent)' }}>{app.deployUrl || (app as unknown as Record<string, string>).deploy_url}</a>
                 <button onClick={() => { navigator.clipboard.writeText(app.deployUrl || (app as unknown as Record<string, string>).deploy_url); toast.success('Deploy URL copied'); }} className="transition-colors" style={{ color: 'var(--text-faint)' }} aria-label="Copy deploy URL">
@@ -1165,6 +1222,11 @@ export function AppDetailPage() {
                   <ExternalLink className="w-3.5 h-3.5" />
                   Open
                 </Button>
+                {app.deployUrlIntent && app.deployUrlIntent !== (app.deployUrl || (app as unknown as Record<string, string>).deploy_url) && (
+                  <span className="text-xs font-mono" style={{ color: 'var(--text-faint)' }} title="Slug-derived canonical URL">
+                    (canonical: {app.deployUrlIntent})
+                  </span>
+                )}
               </div>
             )}
           </div>

@@ -15,6 +15,7 @@ interface TooltipContentProps {
   sideOffset?: number;
   children?: React.ReactNode;
   side?: 'top' | 'right' | 'bottom' | 'left';
+  style?: React.CSSProperties;
 }
 
 const TooltipContent = React.forwardRef<

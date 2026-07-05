@@ -1,0 +1,254 @@
+/**
+ * InvoicesTab Styles
+ * Sealed Containment Design System
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  animation: fadeIn var(--duration-base) var(--ease-out) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Header
+   ═══════════════════════════════════════════════ */
+
+.header {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--panel-edge);
+  margin: calc(-1 * var(--space-5));
+  margin-bottom: var(--space-5);
+  background: linear-gradient(180deg, rgba(110, 190, 170, 0.03) 0%, transparent 100%);
+}
+
+.headerTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.headerIcon {
+  width: 14px;
+  height: 14px;
+  color: var(--status-ok);
+}
+
+.headerDesc {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: var(--space-1);
+}
+
+/* ═══════════════════════════════════════════════
+   Skeleton Loading
+   ═══════════════════════════════════════════════ */
+
+.skeletonList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.skeletonRow {
+  height: 64px;
+  background: var(--panel);
+  border-radius: var(--radius);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Warning/Error Box
+   ═══════════════════════════════════════════════ */
+
+.warningBox {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: rgba(255, 122, 61, 0.05);
+  border: 1px solid rgba(255, 122, 61, 0.15);
+  border-radius: var(--radius);
+}
+
+.warningIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--accent);
+  margin-top: 2px;
+}
+
+.warningContent {
+  flex: 1;
+}
+
+.warningText {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   Empty State
+   ═══════════════════════════════════════════════ */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  gap: var(--space-3);
+  padding: var(--space-6);
+}
+
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-faint);
+}
+
+.emptyTitle {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin: 0;
+}
+
+.emptyDesc {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════
+   Invoice List
+   ═══════════════════════════════════════════════ */
+
+.invoiceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.invoiceRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.invoiceRow:hover {
+  border-color: var(--steel-light);
+}
+
+.invoiceInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.invoiceIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius);
+  background: rgba(143, 255, 208, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invoiceIconInner {
+  width: 18px;
+  height: 18px;
+  color: var(--status-ok);
+}
+
+.invoiceDetails {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.invoiceAmount {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  fontVariantNumeric: tabular-nums;
+  color: var(--text);
+  margin: 0;
+}
+
+.invoiceDate {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.invoiceActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.processingText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ═══════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .invoiceRow {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .invoiceActions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

@@ -21,6 +21,7 @@ import { galleryApi, RUNTIME_MONACO_LANG } from '@/api/composer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 import { FunctionTile } from './components/FunctionTile';
 import { RemixDialog } from './components/RemixDialog';
 import { TrustGauge } from './components/TrustGauge';
@@ -312,7 +313,7 @@ export default function GalleryFunctionPage() {
         ) : (
           <div className="flyway-detail-code-panel">
             <Suspense fallback={<div className="flex justify-center p-16"><Loader2 className="w-8 h-8 animate-spin" /></div>}>
-              <MonacoEditor
+              <LazyMonacoEditor
                 height="520px"
                 language={monacoLang}
                 value={code}

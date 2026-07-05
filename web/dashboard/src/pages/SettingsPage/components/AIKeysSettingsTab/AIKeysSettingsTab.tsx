@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { ProviderIcon } from '@/components/common/ProviderIcon';
-import { Eye, EyeOff, Key, Loader2, Plus, RefreshCw, Shield, TestTube, Trash2 } from 'lucide-react';
+import { Brain, Eye, EyeOff, Key, Loader2, Plus, RefreshCw, Shield, TestTube, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const TOKEN_PLAN_REGIONS = [
@@ -375,12 +375,54 @@ export function AIKeysSettingsTab() {
       {keysLoading ? (
         <div className="text-center py-8" style={{ color: 'var(--text-faint)' }}>{t('aiKeysSettings.loadingKeys')}</div>
       ) : keys.length === 0 ? (
-        <div className="text-center py-12">
-          <Key className="h-12 w-12 mx-auto mb-4" style={{ color: 'var(--text-faint)', opacity: 0.4 }} />
-          <p style={{ color: 'var(--text-dim)' }}>{t('aiKeysSettings.noKeysTitle')}</p>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-faint)' }}>
-            {t('aiKeysSettings.noKeysDesc')}
+        <div className="text-center py-12 px-6" style={{ background: 'var(--panel-raised)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--panel-edge)' }}>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 'var(--radius-lg)',
+              background: 'rgba(139, 92, 246, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}
+          >
+            <Brain className="h-8 w-8" style={{ color: 'rgba(139, 92, 246, 0.8)' }} />
+          </div>
+          <h3 className="text-lg font-semibold mb-2" style={{ fontFamily: 'var(--font-display)', color: 'var(--text)' }}>
+            Bring Your Own AI Keys
+          </h3>
+          <p className="text-sm max-w-md mx-auto mb-6" style={{ color: 'var(--text-dim)' }}>
+            Connect your first AI provider to enable AI-powered agents and workflows.
+            Your keys are encrypted and never stored in plaintext.
           </p>
+          <div className="flex flex-wrap justify-center gap-3 mb-6">
+            {[
+              { name: 'OpenAI', desc: 'GPT-4o, o1', badge: 'Most Popular' },
+              { name: 'Anthropic', desc: 'Claude 3.5', badge: 'Best Value' },
+              { name: 'OpenRouter', desc: '100+ models', badge: 'Most Models' },
+            ].map((p) => (
+              <div
+                key={p.name}
+                className="px-4 py-2 rounded-lg text-left"
+                style={{
+                  background: 'var(--panel)',
+                  border: '1px solid var(--panel-edge)',
+                  minWidth: 140,
+                }}
+              >
+                <p className="text-sm font-medium capitalize" style={{ color: 'var(--text)' }}>{p.name}</p>
+                <p className="text-xs" style={{ color: 'var(--text-faint)' }}>{p.desc}</p>
+              </div>
+            ))}
+          </div>
+          <ConnectKeyDialog
+            providers={providers}
+            connectedProviders={connectedProviders}
+            onConnect={(provider, apiKey, region) => connectMutation.mutate({ provider, apiKey, region })}
+            isConnecting={connectMutation.isPending}
+          />
         </div>
       ) : (
         <div className="grid gap-4">

@@ -53,6 +53,20 @@ const featureCategories: ComparisonRow[] = [
   },
 ];
 
+const resourceLimits: ComparisonRow[] = [
+  {
+    category: 'Resources',
+    features: [
+      { key: 'functions', label: 'Functions' },
+      { key: 'providers', label: 'Providers' },
+      { key: 'ai_calls', label: 'AI Calls' },
+      { key: 'requests', label: 'Requests/mo' },
+      { key: 'storage_gb', label: 'Storage (GB)' },
+      { key: 'workflows', label: 'Workflows' },
+    ],
+  },
+];
+
 const UNLIMITED = -1;
 
 export function BundleComparisonTable({ bundles, iconMap, colorMap }: BundleComparisonTableProps) {
@@ -153,6 +167,43 @@ export function BundleComparisonTable({ bundles, iconMap, colorMap }: BundleComp
                                   <Check className="w-4 h-4 text-success" />
                                 </div>
                               )
+                            ) : (
+                              <Minus className="w-5 h-5 text-text-muted mx-auto" />
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+              {resourceLimits.map((category, catIndex) => (
+                <Fragment key={`resource-${catIndex}`}>
+                  <tr
+                    className="bg-bg-tertiary/50 border-b border-border"
+                  >
+                    <td colSpan={bundles.length + 1} className="px-5 py-3">
+                      <span className="text-sm font-bold text-text-primary uppercase tracking-wide">
+                        {category.category}
+                      </span>
+                    </td>
+                  </tr>
+                  {category.features.map((feature) => (
+                    <tr
+                      key={feature.key}
+                      className={`border-b border-border/50 ${catIndex % 2 === 0 ? 'bg-white/2 dark:bg-white/[0.02]' : ''}`}
+                    >
+                      <td className="p-4 pl-8 text-text-secondary">
+                        {feature.label}
+                      </td>
+                      {bundles.map((bundle) => {
+                        const featureValue = getFeatureValue(bundle, feature.key);
+                        return (
+                          <td key={bundle.id} className="p-4 text-center">
+                            {featureValue ? (
+                              <span className={`text-sm font-medium ${featureValue.isUnlimited ? 'text-success' : 'text-brand-500'}`}>
+                                {featureValue.value}
+                              </span>
                             ) : (
                               <Minus className="w-5 h-5 text-text-muted mx-auto" />
                             )}

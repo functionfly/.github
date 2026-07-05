@@ -7,6 +7,7 @@ import type { Invoice } from '@/api/billing';
 import { getInvoicesErrorMessage } from '@/api/billing';
 import { formatCurrency, formatDate } from '@/pages/SettingsPage/settings-utils';
 import { CreditCard, Download, FileText, AlertCircle } from 'lucide-react';
+import styles from './InvoicesTab.module.css';
 
 interface InvoicesTabProps {
   invoices: Invoice[];
@@ -16,66 +17,57 @@ interface InvoicesTabProps {
 
 export function InvoicesTab({ invoices, isLoading, error }: InvoicesTabProps) {
   return (
-    <div className="sc-billing-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+    <div className={styles.container}>
       <Chamber nested>
-        <div className="sc-billing-card-header" style={{ margin: 'calc(-1 * var(--space-5))', marginBottom: 'var(--space-5)', padding: 'var(--space-4) var(--space-5)' }}>
-          <div className="sc-billing-card-title">
-            <FileText style={{ width: 14, height: 14 }} />
+        <div className={styles.header}>
+          <div className={styles.headerTitle}>
+            <FileText className={styles.headerIcon} />
             Invoices
           </div>
-          <div className="sc-billing-card-description">View and download your past invoices</div>
+          <div className={styles.headerDesc}>View and download your past invoices</div>
         </div>
 
         {isLoading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div className={styles.skeletonList}>
             {[1, 2, 3].map((i) => (
-              <div key={i} style={{ height: 64, background: 'var(--panel)', borderRadius: 'var(--radius)' }} />
+              <div key={i} className={styles.skeletonRow} />
             ))}
           </div>
         ) : error ? (
-          <div className="sc-billing-info sc-billing-info-warning">
-            <AlertCircle style={{ width: 18, height: 18 }} />
-            <div className="sc-billing-info-content">
-              <div className="sc-billing-info-text">{getInvoicesErrorMessage(error)}</div>
+          <div className={styles.warningBox}>
+            <AlertCircle className={styles.warningIcon} />
+            <div className={styles.warningContent}>
+              <p className={styles.warningText}>{getInvoicesErrorMessage(error)}</p>
             </div>
           </div>
         ) : invoices.length === 0 ? (
-          <div className="empty-state" style={{ minHeight: 160, flexDirection: 'column', gap: 'var(--space-3)' }}>
-            <FileText style={{ width: 48, height: 48, color: 'var(--text-faint)' }} />
-            <p style={{ color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em' }}>No invoices yet</p>
-            <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>Your invoices will appear here after your first payment</p>
+          <div className={styles.emptyState}>
+            <FileText className={styles.emptyIcon} />
+            <p className={styles.emptyTitle}>No invoices yet</p>
+            <p className={styles.emptyDesc}>Your invoices will appear here after your first payment</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          <div className={styles.invoiceList}>
             {invoices.map((invoice) => (
-              <div
-                key={invoice.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: 'var(--space-4)',
-                  borderRadius: 'var(--radius)',
-                  background: 'var(--panel)',
-                  border: '1px solid var(--panel-edge)',
-                  transition: 'border-color var(--duration-fast) var(--ease-out)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 'var(--radius)', background: 'rgba(143, 255, 208, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CreditCard style={{ width: 18, height: 18, color: 'var(--status-ok)' }} />
+              <div key={invoice.id} className={styles.invoiceRow}>
+                <div className={styles.invoiceInfo}>
+                  <div className={styles.invoiceIcon}>
+                    <CreditCard className={styles.invoiceIconInner} />
                   </div>
-                  <div>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: 'var(--text)' }}>
+                  <div className={styles.invoiceDetails}>
+                    <p className={styles.invoiceAmount}>
                       {formatCurrency(invoice.amount, invoice.currency)}
                     </p>
-                    <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+                    <p className={styles.invoiceDate}>
                       {invoice.invoice_date ? formatDate(invoice.invoice_date) : '—'}
                     </p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                  <StatusPill status={invoice.status === 'paid' ? 'live' : invoice.status === 'open' ? 'pending' : 'revoked'} label={invoice.status} />
+                <div className={styles.invoiceActions}>
+                  <StatusPill
+                    status={invoice.status === 'paid' ? 'live' : invoice.status === 'open' ? 'pending' : 'revoked'}
+                    label={invoice.status}
+                  />
                   {invoice.invoice_pdf || invoice.hosted_invoice_url ? (
                     <FrameButton
                       size="sm"
@@ -85,7 +77,7 @@ export function InvoicesTab({ invoices, isLoading, error }: InvoicesTabProps) {
                       Download
                     </FrameButton>
                   ) : invoice.status === 'paid' ? (
-                    <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>Processing...</span>
+                    <span className={styles.processingText}>Processing...</span>
                   ) : null}
                 </div>
               </div>

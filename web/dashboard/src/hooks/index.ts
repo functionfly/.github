@@ -156,6 +156,7 @@ export {
   useExecuteRegistryFunction,
   useFunctionSettings,
   usePublishRegistryFunction,
+  usePublishRegistryFunctionViaPresigned,
   useRegistryFunction,
   useRegistryFunctions,
   useRegistryFunctionStats,
@@ -168,6 +169,9 @@ export {
   useTestRegistryFunction,
   useUpdateFunctionSettings,
 } from './useRegistry';
+
+export { useRegistryPublish, DEFAULT_FORM_STATE } from '@/pages/PublishRegistryFunctionPage/useRegistryPublish';
+export type { PublishFormState, PublishProgress, PublishStage } from '@/pages/PublishRegistryFunctionPage/useRegistryPublish';
 
 export {
   catalogKeys,

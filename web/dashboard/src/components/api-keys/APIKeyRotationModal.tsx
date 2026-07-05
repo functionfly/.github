@@ -1,28 +1,13 @@
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Copy, Check, AlertTriangle, RefreshCw } from "lucide-react";
+import { Modal, SealedButton, FrameButton } from "@/components/containment";
 import {
   APIKey,
   RotationReason,
   ROTATION_REASON_LABELS,
 } from "@/types/api-key";
 import { apiKeysService } from "@/services/api-keys";
+import styles from "./APIKeyRotationModal.module.css";
 
 interface APIKeyRotationModalProps {
   open: boolean;
@@ -41,6 +26,7 @@ export function APIKeyRotationModal({
   const [showKey, setShowKey] = useState<string | null>(null);
   const [reason, setReason] = useState<RotationReason>("manual");
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleRotate = async () => {
     if (!apiKey) return;
@@ -63,110 +49,115 @@ export function APIKeyRotationModal({
     setShowKey(null);
     setReason("manual");
     setError(null);
+    setCopied(false);
     onOpenChange(false);
   };
 
   const copyToClipboard = async () => {
     if (showKey) {
       await navigator.clipboard.writeText(showKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
   if (showKey) {
     return (
-      <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle>API Key Rotated</DialogTitle>
-            <DialogDescription>
-              Your API key has been rotated. Copy the new key now as it will not
-              be shown again.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-muted p-4 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-muted-foreground">New API Key</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyToClipboard}
-                  className="text-xs"
-                >
-                  Copy
-                </Button>
-              </div>
-              <code className="text-sm break-all font-mono">{showKey}</code>
+      <Modal open={open} onClose={handleClose} title="API Key Rotated">
+        <div className={styles.content}>
+          <div className={styles.keyDisplay}>
+            <div className={styles.keyHeader}>
+              <span className={styles.keyLabel}>New API Key</span>
+              <button
+                type="button"
+                className={styles.copyButton}
+                onClick={copyToClipboard}
+                aria-label="Copy API key"
+              >
+                {copied ? (
+                  <Check size={14} className={styles.copySuccess} />
+                ) : (
+                  <Copy size={14} />
+                )}
+                <span>{copied ? "Copied" : "Copy"}</span>
+              </button>
             </div>
-            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>Important:</strong> The old key is now invalid. Update any
-                applications using the old key with the new one.
-              </p>
-            </div>
+            <code className={styles.keyValue}>{showKey}</code>
           </div>
-          <DialogFooter>
-            <Button onClick={handleClose}>Done</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+          <div className={styles.warningBox}>
+            <AlertTriangle size={16} className={styles.warningIcon} />
+            <p className={styles.warningText}>
+              <strong>Important:</strong> The old key is now invalid. Update any
+              applications using the old key with the new one.
+            </p>
+          </div>
+
+          <div className={styles.footer}>
+            <SealedButton onClick={handleClose}>Done</SealedButton>
+          </div>
+        </div>
+      </Modal>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
-        <DialogHeader>
-          <DialogTitle>Rotate API Key</DialogTitle>
-          <DialogDescription>
-            Rotate the API key "{apiKey?.name}". This will invalidate the current
-            key and create a new one.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
-          {error && (
-            <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-600 dark:text-red-400">
-              {error}
+    <Modal open={open} onClose={handleClose} title="Rotate API Key">
+      <div className={styles.content}>
+        <p className={styles.description}>
+          Rotate the API key <strong>"{apiKey?.name}"</strong>. This will
+          invalidate the current key and create a new one.
+        </p>
+
+        {error && (
+          <div className={styles.errorBox} role="alert">
+            <p>{error}</p>
+          </div>
+        )}
+
+        <div className={styles.field}>
+          <label htmlFor="reason" className={styles.label}>
+            Reason for rotation
+          </label>
+          <div className={styles.selectWrapper}>
+            <select
+              id="reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value as RotationReason)}
+              className={styles.select}
+            >
+              <option value="manual">Manual</option>
+              <option value="automatic">Automatic</option>
+              <option value="compromised">Compromised</option>
+            </select>
+            <div className={styles.selectChevron}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
             </div>
-          )}
-
-          <div className="space-y-2">
-            <Label htmlFor="reason">Reason for rotation</Label>
-            <Select value={reason} onValueChange={(v) => setReason(v as RotationReason)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select reason" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="manual">Manual</SelectItem>
-                <SelectItem value="automatic">Automatic</SelectItem>
-                <SelectItem value="compromised">Compromised</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              {ROTATION_REASON_LABELS[reason]}
-            </p>
           </div>
-
-          <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              <strong>Warning:</strong> Any applications using the current key will
-              stop working until updated with the new key.
-            </p>
-          </div>
+          <p className={styles.hint}>{ROTATION_REASON_LABELS[reason]}</p>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
+
+        <div className={styles.warningBox}>
+          <AlertTriangle size={16} className={styles.warningIcon} />
+          <p className={styles.warningText}>
+            <strong>Warning:</strong> Any applications using the current key will
+            stop working until updated with the new key.
+          </p>
+        </div>
+
+        <div className={styles.footer}>
+          <FrameButton onClick={() => onOpenChange(false)}>Cancel</FrameButton>
+          <SealedButton
             onClick={handleRotate}
-            disabled={isLoading}
+            loading={isLoading}
+            iconLeft={<RefreshCw size={14} />}
           >
             {isLoading ? "Rotating..." : "Rotate Key"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </SealedButton>
+        </div>
+      </div>
+    </Modal>
   );
 }

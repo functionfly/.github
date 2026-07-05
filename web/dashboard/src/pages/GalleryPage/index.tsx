@@ -67,9 +67,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
-// Lazy load Monaco editor to reduce initial bundle size
-const MonacoEditor = lazy(() => import('@monaco-editor/react').then((m) => ({ default: m.Editor as React.ComponentType<unknown> })));
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 
 // =============================================================================
 // Types & Interfaces
@@ -825,7 +823,7 @@ async function processData(data) {
                     <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                   </div>
                 }>
-                  <MonacoEditor
+                  <LazyMonacoEditor
                     height="100%"
                     language={monacoLang}
                     value={code}

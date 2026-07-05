@@ -94,7 +94,7 @@ export function ConnectionsTab() {
   }, [connections, activeFilter]);
 
   const primaryClients = useMemo(
-    () => filteredConnections.filter((c) => PRIMARY_CLIENT_TYPES.includes(c.client_type)),
+    () => filteredConnections.filter((c) => (PRIMARY_CLIENT_TYPES as string[]).includes(c.client_type)),
     [filteredConnections]
   );
 

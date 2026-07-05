@@ -453,6 +453,7 @@ export const PLANS = {
       '3 functions',
       '2 providers',
       '25K requests/month',
+      'BYOK AI (bring your own key)',
       'Community support',
       '24h Time Machine replay',
       '1 State Fabric object',
@@ -490,7 +491,7 @@ export const PLANS = {
     features: [
       '5 functions',
       '3 providers',
-      '100K AI calls/month',
+      '100K AI calls/month (BYOK)',
       '$0.15 per 1K overage calls',
       '1 custom domain',
       'Email support',
@@ -537,7 +538,7 @@ export const PLANS = {
     features: [
       '25 functions',
       '5 providers',
-      '1M AI calls/month',
+      '1M AI calls/month (BYOK)',
       '$0.08 per 1K overage calls',
       '5 custom domains',
       '99.9% SLA',
@@ -588,7 +589,7 @@ export const PLANS = {
     features: [
       'Unlimited functions',
       'All providers',
-      '5M AI calls/month',
+      '5M AI calls/month (BYOK)',
       '$0.05 per 1K overage calls',
       'Unlimited custom domains',
       '99.99% SLA',
@@ -660,7 +661,7 @@ export const PLANS = {
       'Quarterly SLA review meetings',
       'Unlimited functions',
       'All providers',
-      'Unlimited AI calls/month',
+      'Unlimited AI calls/month (BYOK)',
       'Unlimited agents & concurrency',
       'Unlimited state writes',
       '1-year log retention',
@@ -748,6 +749,7 @@ export const PLANS = {
     ],
     overageRate: 3, // $0.03 per 1000 calls (discounted)
     annualDiscount: 0.17, // 17% off
+    comingSoon: false,
     limits: {
       functions: Infinity,
       providers: Infinity,

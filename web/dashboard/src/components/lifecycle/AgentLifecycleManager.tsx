@@ -171,11 +171,11 @@ export function AgentLifecycleManager({
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Memory</p>
-                <p className="font-medium">{usage.usage.memoryUsageMB}MB</p>
+                <p className="font-medium">{usage.usage.callsToday} calls today</p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Spend Today</p>
-                <p className="font-medium">${usage.usage.spendToday.toFixed(4)}</p>
+                <p className="font-medium">${usage.usage.spendTodayUSD.toFixed(4)}</p>
               </div>
             </>
           )}

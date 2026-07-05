@@ -241,13 +241,205 @@ class RegistryApi {
     name: string;
     version: string;
     manifest: any;
-    source: { code: string; language?: string };
+    source: { code: string; language?: string; wasmBinary?: string };
     readme?: string;
+    conflictStrategy?: 'error' | 'overwrite' | 'create_new';
+    changelog?: {
+      category: string;
+      title: string;
+      description: string;
+      changes: unknown[];
+    };
   }) {
+    const params = new URLSearchParams();
+    if (publishRequest.conflictStrategy) {
+      params.set('conflict_strategy', publishRequest.conflictStrategy);
+    }
+    const url = `/v1/registry/publish${params.toString() ? `?${params.toString()}` : ''}`;
     return apiClient.post<{ ok: boolean; function_id: string; version_id: string }>(
-      '/v1/registry/publish',
+      url,
       publishRequest
     );
+  }
+
+  // Request a presigned URL for direct browser → object-storage upload of a
+  // single artifact. The dashboard calls this first when handling large
+  // files, then PUTs to presignedUploadResponse.url, then includes the
+  // returned key + content_hash in the publish payload.
+  async presignArtifactUpload(req: {
+    kind: 'wasm' | 'source' | 'readme' | 'code';
+    content_hash: string;
+    content_type?: string;
+    ext?: string;
+  }): Promise<{
+    key: string;
+    url: string;
+    method: 'PUT';
+    content_type: string;
+    max_bytes: number;
+    expires_at: string;
+  }> {
+    return apiClient.post('/v1/registry/publish/presign', req);
+  }
+
+  // Upload a Blob to a presigned URL with progress callbacks. Throws if the
+  // upload fails or the response status is outside 2xx.
+  async uploadToPresignedUrl(
+    url: string,
+    body: Blob,
+    contentType: string,
+    onProgress?: (loaded: number, total: number) => void
+  ): Promise<void> {
+    // XHR gives us upload progress events; fetch() does not.
+    if (typeof XMLHttpRequest !== 'undefined' && onProgress) {
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', url, true);
+        xhr.setRequestHeader('Content-Type', contentType);
+        xhr.upload.onprogress = (evt) => {
+          if (evt.lengthComputable) onProgress(evt.loaded, evt.total);
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`upload failed: ${xhr.status} ${xhr.statusText}`));
+        };
+        xhr.onerror = () => reject(new Error('upload network error'));
+        xhr.send(body);
+      });
+      return;
+    }
+    const res = await fetch(url, { method: 'PUT', body, headers: { 'Content-Type': contentType } });
+    if (!res.ok) {
+      throw new Error(`upload failed: ${res.status} ${res.statusText}`);
+    }
+  }
+
+  // Request a short-lived signed download URL for a stored artifact.
+  async presignArtifactDownload(key: string, ttlSeconds = 300): Promise<{ url: string; expires_at: string }> {
+    return apiClient.post('/v1/artifacts/download', { key, ttl_seconds: ttlSeconds });
+  }
+
+  // Higher-level publish flow: for each non-trivial file, presign → upload to
+  // R2 → publish with the resulting keys. Falls back to JSON publish when the
+  // artifact store is unavailable (server returns 503) or for tiny payloads
+  // below the PRESIGN_THRESHOLD.
+  async publishFunctionViaPresigned(opts: {
+    author: string;
+    name: string;
+    version: string;
+    manifest: any;
+    source?: { code: string; language?: string; codeBlob?: Blob };
+    readme?: string;
+    wasm?: { binaryBase64?: string; blob?: Blob };
+    conflictStrategy?: 'error' | 'overwrite' | 'create_new';
+    changelog?: {
+      category: string;
+      title: string;
+      description: string;
+      changes: unknown[];
+    };
+    onProgress?: (stage: 'wasm' | 'source' | 'readme' | 'publish', loaded: number, total: number) => void;
+  }): Promise<{ ok: boolean; function_id: string; version_id: string }> {
+    const PRESIGN_THRESHOLD = 256 * 1024;
+
+    const sourceBlob = opts.source?.codeBlob;
+    const readmeBlob = opts.readme ? new Blob([opts.readme], { type: 'text/markdown' }) : undefined;
+    const wasmBlob = opts.wasm?.blob;
+
+    const largeSource = sourceBlob && sourceBlob.size > PRESIGN_THRESHOLD;
+    const largeWasm = wasmBlob && wasmBlob.size > PRESIGN_THRESHOLD;
+    const largeReadme = readmeBlob && readmeBlob.size > PRESIGN_THRESHOLD;
+
+    let sourceKey: string | undefined;
+    let sourceHash: string | undefined;
+    let wasmKey: string | undefined;
+    let wasmHash: string | undefined;
+    let readmeKey: string | undefined;
+
+    // Helper: SHA-256 hex via Web Crypto, returns null on unsupported env.
+    async function sha256Hex(blob: Blob): Promise<string> {
+      if (typeof crypto === 'undefined' || !crypto.subtle) return '';
+      const buf = await blob.arrayBuffer();
+      const digest = await crypto.subtle.digest('SHA-256', buf);
+      const bytes = new Uint8Array(digest);
+      let hex = '';
+      for (let i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, '0');
+      }
+      return hex;
+    }
+
+    if (largeSource && sourceBlob) {
+      sourceHash = await sha256Hex(sourceBlob);
+      const presign = await this.presignArtifactUpload({
+        kind: 'source',
+        content_hash: sourceHash,
+        content_type: sourceBlob.type || 'text/plain; charset=utf-8',
+      });
+      await this.uploadToPresignedUrl(presign.url, sourceBlob, presign.content_type, (l, t) =>
+        opts.onProgress?.('source', l, t)
+      );
+      sourceKey = presign.key;
+    }
+
+    if (largeWasm && wasmBlob) {
+      wasmHash = await sha256Hex(wasmBlob);
+      const presign = await this.presignArtifactUpload({
+        kind: 'wasm',
+        content_hash: wasmHash,
+        content_type: 'application/wasm',
+      });
+      await this.uploadToPresignedUrl(presign.url, wasmBlob, presign.content_type, (l, t) =>
+        opts.onProgress?.('wasm', l, t)
+      );
+      wasmKey = presign.key;
+    }
+
+    if (largeReadme && readmeBlob) {
+      const readmeHash = await sha256Hex(readmeBlob);
+      const presign = await this.presignArtifactUpload({
+        kind: 'readme',
+        content_hash: readmeHash,
+        content_type: 'text/markdown; charset=utf-8',
+      });
+      await this.uploadToPresignedUrl(presign.url, readmeBlob, presign.content_type, (l, t) =>
+        opts.onProgress?.('readme', l, t)
+      );
+      readmeKey = presign.key;
+    }
+
+    const publishBody: any = {
+      author: opts.author,
+      name: opts.name,
+      version: opts.version,
+      manifest: opts.manifest,
+      source: sourceBlob
+        ? {
+            code: largeSource ? '' : (opts.source?.code ?? ''),
+            language: opts.source?.language,
+            storage_backend: largeSource ? 'r2' : undefined,
+            storage_key: sourceKey,
+            content_hash: sourceHash,
+            presigned_upload_complete: !!sourceKey,
+            wasmBinary: opts.wasm?.binaryBase64,
+          }
+        : undefined,
+      readme: opts.readme,
+      wasm:
+        largeWasm
+          ? {
+              storage_key: wasmKey,
+              content_hash: wasmHash,
+              presigned_upload_complete: true,
+            }
+          : undefined,
+      readme_storage: largeReadme
+        ? { storage_key: readmeKey, presigned_upload_complete: true }
+        : undefined,
+      changelog: opts.changelog,
+    };
+
+    return this.publishFunction(publishBody);
   }
 
   // Get replay (public executions)

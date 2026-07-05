@@ -109,10 +109,37 @@ export function useFunctionEditor() {
   const [draftTimestamp, setDraftTimestamp] = useState<Date | null>(null);
   const [currentDeploymentId, setCurrentDeploymentId] = useState<string | null>(null);
   const [deploymentStatus, setDeploymentStatus] = useState<string | null>(null);
+  const [postCreateFunctionId, setPostCreateFunctionId] = useState<string | null>(null);
+  const [isPublishedToRegistry, setIsPublishedToRegistry] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const saved = sessionStorage.getItem('functionfly:editor-layout');
+      if (saved) {
+        const layout = JSON.parse(saved);
+        if (layout.activeTab) setActiveTab(layout.activeTab);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(
+        'functionfly:editor-layout',
+        JSON.stringify({ activeTab })
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [activeTab]);
   const [logs, setLogs] = useState<DeploymentLog[]>([
     {
       id: '1',
-      timestamp: new Date().toLocaleString(),
+      timestamp: new Date().toISOString(),
       level: 'info',
       message: 'Editor initialized',
     },
@@ -141,25 +168,42 @@ export function useFunctionEditor() {
     error?: string;
     executionTimeMs?: number;
     coldStartMs?: number;
-    logs?: { level: string; message: string }[];
+    logs?: { level: DeploymentLog['level']; message: string }[];
   } | null>(null);
   const [testTab, setTestTab] = useState<'input' | 'output'>('input');
 
   const slugManuallyEdited = useRef(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const tagInputRef = useRef<HTMLInputElement>(null);
+  const isMountedRef = useRef(true);
+  const deployRef = useRef(false);
+  const testAbortRef = useRef<AbortController | null>(null);
+  const testTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const addLog = useCallback((level: DeploymentLog['level'], message: string) => {
     setLogs((prev) => [
-      ...prev,
       {
         id: Date.now().toString(),
-        timestamp: new Date().toLocaleString(),
+        timestamp: new Date().toISOString(),
         level,
         message,
       },
+      ...prev,
     ]);
   }, []);
+
+  const cancelTest = useCallback(() => {
+    if (testAbortRef.current) {
+      testAbortRef.current.abort();
+      testAbortRef.current = null;
+    }
+    if (testTimeoutRef.current) {
+      clearTimeout(testTimeoutRef.current);
+      testTimeoutRef.current = undefined;
+    }
+    setIsTesting(false);
+    addLog('warn', 'Test cancelled');
+  }, [addLog]);
 
   const markDirty = useCallback(() => setIsDirty(true), []);
 
@@ -199,7 +243,7 @@ export function useFunctionEditor() {
       const d = JSON.parse(saved);
       if (d.functionName) setFunctionName(d.functionName);
       if (d.slug) {
-        setSlug(d.slug);
+        setSlug(slugify(d.slug));
         slugManuallyEdited.current = true;
       }
       if (d.description) setDescription(d.description);
@@ -230,33 +274,47 @@ export function useFunctionEditor() {
   }, []);
 
   useEffect(() => {
-    if (isEditing || !isDirty) return;
+    if (isEditing || !isDirty || isDeploying || isTesting) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
+      let payload: string;
       try {
-        localStorage.setItem(
-          DRAFT_KEY,
-          JSON.stringify({
-            functionName,
-            slug,
-            description,
-            runtime,
-            runtimeVersion,
-            code,
-            visibility,
-            tags,
-            envVars,
-            resources,
-            httpTrigger,
-            scheduleTrigger,
-            retryPolicy,
-            warmInstances,
-            savedAt: new Date().toISOString(),
-          })
-        );
-        setLastSaved(new Date());
+        payload = JSON.stringify({
+          functionName,
+          slug,
+          description,
+          runtime,
+          runtimeVersion,
+          code,
+          visibility,
+          tags,
+          envVars,
+          resources,
+          httpTrigger,
+          scheduleTrigger,
+          retryPolicy,
+          warmInstances,
+          savedAt: new Date().toISOString(),
+        });
       } catch {
-        /* ignore */
+        toast.error('Draft autosave failed: unable to serialize state.');
+        return;
+      }
+      if (payload.length > 4 * 1024 * 1024) {
+        toast.error('Draft is too large to autosave (~4MB localStorage limit). Consider saving or trimming code.');
+        return;
+      }
+      try {
+        localStorage.setItem(DRAFT_KEY, payload);
+        setLastSaved(new Date());
+      } catch (err) {
+        if (err instanceof DOMException && (err.code === 22 || err.name === 'QuotaExceededError')) {
+          toast.error('Draft autosave failed: localStorage quota exceeded. Consider saving or trimming code.');
+        } else if (err instanceof Error) {
+          toast.error('Draft autosave failed: ' + err.message);
+        } else {
+          toast.error('Draft autosave failed: ' + String(err));
+        }
       }
     }, 1500);
     return () => {
@@ -301,8 +359,11 @@ export function useFunctionEditor() {
 
   useEffect(() => {
     if (!isEditing || !id) return;
+    setCurrentDeploymentId(null);
+    setDeploymentStatus(null);
     const load = async () => {
       try {
+        setPostCreateFunctionId(null);
         addLog('info', `Loading function ${id}…`);
         const fn = await functionsApi.get(id);
         setFunctionName(fn.name);
@@ -328,12 +389,17 @@ export function useFunctionEditor() {
   }, [isEditing, id, addLog]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     if (!currentDeploymentId) return;
+    const controller = new AbortController();
     const poll = async () => {
       try {
+        if (!isMountedRef.current) return;
         const data = await apiClient.get<{ deployment: { status: string } }>(
-          `/v1/functions/deployments/${currentDeploymentId}`
+          `/v1/functions/deployments/${currentDeploymentId}`,
+          { signal: controller.signal }
         );
+        if (!isMountedRef.current) return;
         const status = data.deployment?.status;
         if (status !== deploymentStatus) {
           setDeploymentStatus(status);
@@ -346,13 +412,19 @@ export function useFunctionEditor() {
             setCurrentDeploymentId(null);
           }
         }
-      } catch {
-        /* ignore */
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          /* ignore poll errors */
+        }
       }
     };
     poll();
     const interval = setInterval(poll, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      isMountedRef.current = false;
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [currentDeploymentId, deploymentStatus, addLog]);
 
   const handleNameChange = useCallback(
@@ -402,10 +474,14 @@ export function useFunctionEditor() {
 
   const handleRuntimeChange = useCallback(
     (r: Runtime) => {
+      if (isDirty && r !== runtime) {
+        if (!window.confirm('You have unsaved changes. Switching runtime will discard them. Continue?')) {
+          return;
+        }
+      }
       setRuntime(r);
       setRuntimeVersion(RUNTIME_VERSIONS[r][0]);
       setCode(CODE_TEMPLATES[r]);
-      // Apply smart defaults for new functions only
       if (!isEditing) {
         const defaults = getRuntimeDefaults(r);
         setResources((prev) => ({
@@ -415,7 +491,7 @@ export function useFunctionEditor() {
       }
       markDirty();
     },
-    [markDirty, isEditing, getRuntimeDefaults]
+    [markDirty, isEditing, getRuntimeDefaults, isDirty, runtime]
   );
 
   const handleProviderToggle = useCallback(
@@ -602,7 +678,10 @@ export function useFunctionEditor() {
   ]);
 
   const handleDeploy = useCallback(async () => {
+    if (deployRef.current) return;
+    deployRef.current = true;
     if (!validate()) {
+      deployRef.current = false;
       toast.error('Please fix the errors before deploying');
       return;
     }
@@ -619,10 +698,12 @@ export function useFunctionEditor() {
           envVars: envVars.map(({ key, value, isSecret }) => ({ key, value, isSecret })),
         });
         functionId = created.id;
+        setPostCreateFunctionId(created.id);
         localStorage.removeItem(DRAFT_KEY);
         addLog('success', `Function created: ${created.name}`);
         toast.success('Function created');
         navigate(`/functions/${functionId}/edit`, { replace: true, state: { justCreated: true } });
+        deployRef.current = false;
         setIsDeploying(false);
         return;
       }
@@ -640,6 +721,7 @@ export function useFunctionEditor() {
       addLog('error', `Deployment failed: ${msg}`);
       toast.error(`Deployment failed: ${msg}`);
     } finally {
+      deployRef.current = false;
       setIsDeploying(false);
     }
   }, [
@@ -657,7 +739,11 @@ export function useFunctionEditor() {
   ]);
 
   const handleTest = useCallback(async () => {
+    if (isTesting || testAbortRef.current) return;
     setIsTesting(true);
+    const controller = new AbortController();
+    testAbortRef.current = controller;
+    testTimeoutRef.current = setTimeout(() => controller.abort(), 120_000);
     addLog('info', 'Running test…');
     try {
       let parsedInput: Record<string, unknown> = {};
@@ -674,7 +760,13 @@ export function useFunctionEditor() {
         testInput: parsedInput,
       };
       const result = await functionsApi.test(testData);
-      setTestResult(result);
+      setTestResult({
+        success: result.success,
+        output: result.output,
+        error: result.error,
+        executionTimeMs: result.executionTimeMs,
+        logs: result.logs.map((l) => ({ level: l.level as DeploymentLog['level'], message: l.message })),
+      });
       setTestTab('output');
       if (result.success) {
         addLog('success', `Test passed in ${result.executionTimeMs}ms`);
@@ -684,59 +776,70 @@ export function useFunctionEditor() {
       }
       result.logs.forEach((l) => addLog(l.level as DeploymentLog['level'], l.message));
     } catch (err) {
-      addLog('error', `Test error: ${err}`);
-      setTestResult({ success: false, error: String(err) });
+      if (testAbortRef.current === controller) {
+        addLog('error', `Test error: ${err}`);
+        setTestResult({ success: false, error: String(err) });
+      }
     } finally {
-      setIsTesting(false);
+      if (testAbortRef.current === controller) {
+        setIsTesting(false);
+        testAbortRef.current = null;
+      }
+      if (testTimeoutRef.current) {
+        clearTimeout(testTimeoutRef.current);
+        testTimeoutRef.current = undefined;
+      }
     }
   }, [isEditing, id, code, envVars, testInput, addLog]);
 
   // Keyboard shortcuts
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
 
+  const isLoading = isSaving || isDeploying || isTesting;
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      // Save shortcut
+      const tag = (e.target as HTMLElement)?.tagName;
+      const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(tag);
+
+      // Save shortcut: Ctrl/Cmd + S
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        if (inInput) return;
         e.preventDefault();
         void handleSaveDraft();
+        return;
       }
+
+      if (inInput) return;
 
       // Test shortcut: Ctrl/Cmd + Enter
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        void handleTest();
+        if (!isLoading) void handleTest();
+        return;
       }
 
       // Deploy shortcut: Ctrl/Cmd + Shift + Enter
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
-        void handleDeploy();
+        if (!isLoading) void handleDeploy();
+        return;
       }
 
-      // Help shortcut: ? (when not in an input)
-      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+      // Help shortcut: ?
+      if (e.key === '?' && !inInput) {
         e.preventDefault();
         setKeyboardShortcutsOpen(true);
+        return;
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleSaveDraft, handleTest, handleDeploy]);
+  }, [handleSaveDraft, handleTest, handleDeploy, isLoading]);
 
   // Code validation effect
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const result = validateCode(code, runtime);
-      setValidationIssues(result.issues);
-    }, 1000); // Debounce validation
 
-    return () => clearTimeout(timer);
-  }, [code, runtime]);
-
-  const isLoading = isSaving || isDeploying || isTesting;
-
-  return {
+  const editor = useMemo(() => ({
     navigate,
     id,
     isEditing,
@@ -745,9 +848,11 @@ export function useFunctionEditor() {
     functionName,
     setFunctionName,
     slug,
+    setSlug,
     description,
     setDescription,
     runtime,
+    setRuntime,
     runtimeVersion,
     setRuntimeVersion,
     code,
@@ -755,12 +860,18 @@ export function useFunctionEditor() {
     visibility,
     setVisibility,
     tags,
+    setTags,
     newTag,
     setNewTag,
     selectedProviders,
     setSelectedProviders,
     selectedRegion,
     setSelectedRegion,
+    linkedAppId,
+    setLinkedAppId,
+    selectedDeployBackendId,
+    setSelectedDeployBackendId,
+    filteredDeployBackends,
     envVars,
     setEnvVars,
     newEnvKey,
@@ -781,19 +892,27 @@ export function useFunctionEditor() {
     setRetryPolicy,
     warmInstances,
     setWarmInstances,
+    showDraftRestorePrompt,
     activeTab,
     setActiveTab,
     isDeploying,
     isSaving,
     isTesting,
-    isLoading,
     isDirty,
     lastSaved,
     draftTimestamp,
+    currentDeploymentId,
+    setCurrentDeploymentId,
+    deploymentStatus,
+    postCreateFunctionId,
+    setPostCreateFunctionId,
+    isPublishedToRegistry,
+    setIsPublishedToRegistry,
     logs,
     vaultPickerOpen,
     setVaultPickerOpen,
     pickingSecretId,
+    setPickingSecretId,
     pendingSecretForDecrypt,
     setPendingSecretForDecrypt,
     vaultDecryptPassphrase,
@@ -804,12 +923,12 @@ export function useFunctionEditor() {
     setRevealGateOpen,
     errors,
     validationIssues,
+    setValidationIssues,
     showValidationPanel,
     setShowValidationPanel,
     keyboardShortcutsOpen,
     setKeyboardShortcutsOpen,
     tagInputRef,
-    showDraftRestorePrompt,
     handleRestoreDraft,
     handleDiscardDraft,
     handleNameChange,
@@ -827,17 +946,101 @@ export function useFunctionEditor() {
     handleSaveDraft,
     handleDeploy,
     handleTest,
+    cancelTest,
     testInput,
     setTestInput,
     testResult,
     testTab,
     setTestTab,
-    linkedAppId,
     deployBackendsLoading,
+    setDeployBackendId,
+    isLoading,
+  }), [
+    isEditing,
+    providers,
+    vaultSecrets,
+    functionName,
+    slug,
+    description,
+    runtime,
+    runtimeVersion,
+    code,
+    visibility,
+    tags,
+    newTag,
+    selectedProviders,
+    selectedRegion,
+    linkedAppId,
+    selectedDeployBackendId,
+    filteredDeployBackends,
+    envVars,
+    newEnvKey,
+    newEnvValue,
+    isNewEnvSecret,
+    showEnvValues,
+    resources,
+    httpTrigger,
+    scheduleTrigger,
+    retryPolicy,
+    warmInstances,
+    showDraftRestorePrompt,
+    activeTab,
+    isDeploying,
+    isSaving,
+    isTesting,
+    isDirty,
+    lastSaved,
+    draftTimestamp,
+    currentDeploymentId,
+    deploymentStatus,
+    postCreateFunctionId,
+    isPublishedToRegistry,
+    logs,
+    vaultPickerOpen,
+    pickingSecretId,
+    pendingSecretForDecrypt,
+    vaultDecryptPassphrase,
+    revealEnvVarId,
+    revealGateOpen,
+    errors,
+    validationIssues,
+    showValidationPanel,
+    keyboardShortcutsOpen,
+    testInput,
+    testResult,
+    testTab,
+    deployBackendsLoading,
+    linkedAppId,
     filteredDeployBackends,
     selectedDeployBackendId,
+    deploymentStatus,
+    isPublishedToRegistry,
+    postCreateFunctionId,
+    isLoading,
+    handleRestoreDraft,
+    handleDiscardDraft,
+    handleNameChange,
+    handleSlugChange,
+    handleRuntimeChange,
+    handleProviderToggle,
+    addEnvironmentVariable,
+    removeEnvironmentVariable,
+    addTag,
+    removeTag,
+    handleSelectVaultSecret,
+    handleConfirmVaultPassphrase,
+    handleRevealVerified,
+    markDirty,
+    handleSaveDraft,
+    handleDeploy,
+    handleTest,
+    cancelTest,
     setDeployBackendId,
-  };
+    setIsPublishedToRegistry,
+    setPostCreateFunctionId,
+  ]);
+
+  return editor;
 }
 
 export type FunctionEditorModel = ReturnType<typeof useFunctionEditor>;

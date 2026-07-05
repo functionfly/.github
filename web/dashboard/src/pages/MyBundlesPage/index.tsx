@@ -22,10 +22,12 @@ import {
   Settings,
   AlertTriangle,
   Loader2,
+  RefreshCw,
+  type LucideIcon,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { usePageTitle, useProvisioningStatus } from '@/hooks';
-import { getFounderModeStatus, getDeferredBillingStatus, type FounderModeRegistration } from '@/api/billing';
+import { getFounderModeStatus, getDeferredBillingStatus, getBundleCatalog, type FounderModeRegistration, type BundleCatalogItem } from '@/api/billing';
 import { appsApi } from '@/api/apps';
 import {
   Chamber,
@@ -39,56 +41,32 @@ import {
 } from '@/components/containment';
 import '@/styles/sc-my-bundles.css';
 
-// ─── Bundle metadata ─────────────────────────────────────────────────────────
+const APPS_PAGE_SIZE = 5;
 
-const BUNDLES: Record<string, {
-  name: string;
-  slug: string;
-  price: string;
-  icon: typeof Rocket;
-  gradient: string;
-  features: { icon: typeof Shield; label: string }[];
-}> = {
-  'saas-starter': {
-    name: 'SaaS Starter',
-    slug: 'saas-starter',
-    price: '$29/mo',
-    icon: Rocket,
-    gradient: 'from-blue-500 to-cyan-500',
-    features: [
-      { icon: Shield, label: 'Authentication' },
-      { icon: CreditCard, label: 'Payments' },
-      { icon: Mail, label: 'Email Workflows' },
-      { icon: BarChart3, label: 'Analytics' },
-    ],
-  },
-  marketplace: {
-    name: 'Marketplace',
-    slug: 'marketplace',
-    price: '$49/mo',
-    icon: Store,
-    gradient: 'from-emerald-500 to-teal-500',
-    features: [
-      { icon: Store, label: 'Listings' },
-      { icon: CreditCard, label: 'Stripe Connect' },
-      { icon: MessageSquare, label: 'Messaging' },
-      { icon: Bell, label: 'Notifications' },
-    ],
-  },
-  'ai-app': {
-    name: 'AI App',
-    slug: 'ai-app',
-    price: '$39/mo',
-    icon: Brain,
-    gradient: 'from-violet-500 to-purple-500',
-    features: [
-      { icon: Cpu, label: 'Vector DB' },
-      { icon: Database, label: 'Embeddings' },
-      { icon: MessageCircle, label: 'Chat Workflows' },
-      { icon: Sparkles, label: 'Memory System' },
-    ],
-  },
+const ICON_MAP: Record<string, LucideIcon> = {
+  Rocket,
+  Shield,
+  CreditCard,
+  Mail,
+  BarChart3,
+  Store,
+  MessageSquare,
+  Bell,
+  Brain,
+  Cpu,
+  Database,
+  Sparkles,
+  MessageCircle,
+  CheckCircle,
+  Clock,
+  ExternalLink,
+  Settings,
+  AlertTriangle,
 };
+
+function getIcon(name: string): LucideIcon {
+  return ICON_MAP[name] || Shield;
+}
 
 // ─── Page Component ──────────────────────────────────────────────────────────
 
@@ -96,37 +74,63 @@ export default function MyBundlesPage() {
   usePageTitle('My Bundles');
   const navigate = useNavigate();
 
+  const { data: catalogData, isError: catalogError, refetch: refetchCatalog } = useQuery({
+    queryKey: ['bundle-catalog'],
+    queryFn: getBundleCatalog,
+    staleTime: Infinity,
+    placeholderData: keepPreviousData,
+  });
+
   const { data: provisioningData, isLoading: provisioningLoading } = useProvisioningStatus();
-
-  const { data: founderData } = useQuery({
-    queryKey: ['founder-mode-status'],
-    queryFn: getFounderModeStatus,
-    retry: false,
-  });
-
-  const { data: deferredData } = useQuery({
-    queryKey: ['deferred-billing-status'],
-    queryFn: getDeferredBillingStatus,
-    retry: false,
-  });
-
-  const { data: appsData } = useQuery({
-    queryKey: ['apps'],
-    queryFn: async () => { const res = await appsApi.list(); return res.apps; },
-  });
-
-  const apps = appsData ?? [];
-  const founderModes = founderData?.founder_modes || [];
-  const activeFounder = founderModes.find((f: FounderModeRegistration) => f.status === 'active');
 
   const isProvisioned = provisioningData && 'components' in provisioningData && provisioningData.status === 'active';
   const bundleSlug = isProvisioned ? provisioningData.bundle_slug : null;
-  const bundle = bundleSlug ? (BUNDLES[bundleSlug] || BUNDLES['saas-starter']) : null;
+
+  const { data: founderData, isError: founderError, refetch: refetchFounder } = useQuery({
+    queryKey: ['founder-mode-status'],
+    queryFn: getFounderModeStatus,
+    retry: false,
+    enabled: isProvisioned && !!bundleSlug,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: deferredData, isError: deferredError, refetch: refetchDeferred } = useQuery({
+    queryKey: ['deferred-billing-status'],
+    queryFn: getDeferredBillingStatus,
+    retry: false,
+    enabled: isProvisioned && !!bundleSlug,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: appsData, isError: appsError, isLoading: appsLoading, refetch: refetchApps } = useQuery({
+    queryKey: ['apps'],
+    queryFn: async () => { const res = await appsApi.list(); return res.apps; },
+    placeholderData: keepPreviousData,
+  });
+
+  const apps = appsData ?? [];
+  const totalApps = apps.length;
+  const displayedApps = apps.slice(0, APPS_PAGE_SIZE);
+  const founderModes = founderData?.founder_modes || [];
+  const activeFounder = founderModes.find((f: FounderModeRegistration) => f.status === 'active');
+
+  const bundle: BundleCatalogItem | undefined = bundleSlug ? (catalogData?.bundles.find((b) => b.slug === bundleSlug)) : undefined;
   const founderMode = bundleSlug ? founderModes.find((f: FounderModeRegistration) => f.bundle_slug === bundleSlug) : null;
   const isPaid = founderMode?.status === 'converted';
   const isFounder = founderMode?.status === 'active';
   const isGrace = founderMode?.status === 'grace_period';
   const daysLeft = founderMode?.days_remaining || 0;
+
+  const hasAnyError = catalogError || appsError || (isProvisioned && (founderError || deferredError));
+
+  const handleRetry = () => {
+    refetchCatalog();
+    refetchApps();
+    if (isProvisioned) {
+      refetchFounder();
+      refetchDeferred();
+    }
+  };
 
   return (
     <div className="sc-my-bundles">
@@ -154,6 +158,19 @@ export default function MyBundlesPage() {
           <Loader2 className="sc-my-bundles__spinner" />
           Loading your bundles...
         </div>
+      ) : hasAnyError ? (
+        <Chamber className="sc-my-bundles__card sc-my-bundles__card--error">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <div className="sc-my-bundles__error-content">
+            <AlertTriangle className="sc-my-bundles__error-icon" />
+            <h3 className="sc-my-bundles__error-title">Failed to load bundle data</h3>
+            <p className="sc-my-bundles__error-desc">Some information couldn't be loaded. Please try again.</p>
+            <SealedButton size="sm" iconLeft={<RefreshCw className="h-4 w-4" />} onClick={handleRetry}>
+              Retry
+            </SealedButton>
+          </div>
+        </Chamber>
       ) : isProvisioned && bundle ? (
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -167,11 +184,14 @@ export default function MyBundlesPage() {
             {/* Card Header */}
             <div className="sc-my-bundles__card-header">
               <div className={`sc-my-bundles__card-icon bg-gradient-to-r ${bundle.gradient}`}>
-                <bundle.icon className="h-5 w-5 text-white" />
+                {(() => {
+                  const BundleIcon = getIcon(bundle.icon);
+                  return <BundleIcon className="h-5 w-5 text-white" />;
+                })()}
               </div>
               <div className="sc-my-bundles__card-info">
                 <h3 className="sc-my-bundles__card-name">{bundle.name}</h3>
-                <span className="sc-my-bundles__card-price">{bundle.price}</span>
+                <span className="sc-my-bundles__card-price">{bundle.price_usd}</span>
               </div>
               <StatusPill
                 status={isPaid ? 'live' : isGrace ? 'pending' : 'live'}
@@ -204,16 +224,19 @@ export default function MyBundlesPage() {
             {/* Features */}
             <div className="sc-my-bundles__card-features">
               {bundle.features.map((f) => (
-                <div key={f.label} className="sc-my-bundles__feature">
-                  <f.icon className="h-3.5 w-3.5" />
-                  <span>{f.label}</span>
+                <div key={f.title} className="sc-my-bundles__feature">
+                  {(() => {
+                    const FeatureIcon = getIcon(f.icon);
+                    return <FeatureIcon className="h-3.5 w-3.5" />;
+                  })()}
+                  <span>{f.title}</span>
                 </div>
               ))}
             </div>
 
             {/* Actions */}
             <div className="sc-my-bundles__card-actions">
-              <FrameButton size="sm" iconLeft={<Settings />} onClick={() => navigate(apps.length > 0 ? `/apps/${apps[0].slug}/bundle` : '/apps')}>
+              <FrameButton size="sm" iconLeft={<Settings />} onClick={() => navigate(`/bundles/overview?bundle=${bundleSlug}`)}>
                 Manage
               </FrameButton>
               {!isPaid && founderMode && (
@@ -244,17 +267,39 @@ export default function MyBundlesPage() {
       )}
 
       {/* Deployed Apps */}
-      {apps.length > 0 && (
+      {appsLoading ? (
         <Chamber nested className="sc-my-bundles__apps">
           <div className="sc-my-bundles__section-header">
             <h3 className="sc-my-bundles__section-title">Deployed Apps</h3>
+          </div>
+          <div className="sc-my-bundles__apps-list">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="sc-my-bundles__app-row sc-my-bundles__app-row--skeleton">
+                <div className="sc-my-bundles__app-icon sc-my-bundles__skeleton-icon" />
+                <div className="sc-my-bundles__app-body">
+                  <span className="sc-my-bundles__skeleton-text sc-my-bundles__skeleton-text--name" />
+                  <span className="sc-my-bundles__skeleton-text sc-my-bundles__skeleton-text--id" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Chamber>
+      ) : apps.length > 0 && (
+        <Chamber nested className="sc-my-bundles__apps">
+          <div className="sc-my-bundles__section-header">
+            <h3 className="sc-my-bundles__section-title">
+              Deployed Apps
+              {totalApps > APPS_PAGE_SIZE && (
+                <span className="sc-my-bundles__section-count"> ({displayedApps.length}/{totalApps})</span>
+              )}
+            </h3>
             <FrameButton size="sm" iconRight={<ArrowRight className="h-3.5 w-3.5" />} onClick={() => navigate('/apps')}>
               View All
             </FrameButton>
           </div>
           <div className="sc-my-bundles__apps-list">
-            {apps.slice(0, 5).map((app: { id: string; name: string }) => (
-              <Link key={app.id} to={`/apps/${app.id}`} className="sc-my-bundles__app-row">
+            {displayedApps.map((app: { id: string; name: string; slug: string }) => (
+              <Link key={app.id} to={`/apps/${app.slug}`} className="sc-my-bundles__app-row">
                 <div className="sc-my-bundles__app-icon">
                   <ExternalLink className="h-4 w-4" />
                 </div>

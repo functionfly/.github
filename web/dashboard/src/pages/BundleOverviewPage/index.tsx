@@ -26,79 +26,58 @@ import {
   Loader2,
   AlertCircle,
   Cloud,
+  Webhook,
+  type LucideIcon,
 } from 'lucide-react';
 import { appsApi } from '@/api/apps';
-import { getBundleSubscription } from '@/api/billing';
+import { getBundleSubscription, getBundleCatalog, type BundleCatalogItem } from '@/api/billing';
 import { usePageTitle } from '@/hooks';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  TrustSeal,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+  Card,
+} from '@/components/containment';
+import './styles.css';
 
-// ─── Bundle metadata ─────────────────────────────────────────────────────────
-
-const BUNDLES: Record<string, {
-  name: string;
-  tagline: string;
-  price: string;
-  gradient: string;
-  icon: typeof Rocket;
-  features: { icon: typeof Shield; title: string; desc: string }[];
-  quickActions: { label: string; href: string; icon: typeof Settings }[];
-}> = {
-  'saas-starter': {
-    name: 'SaaS Starter',
-    tagline: 'Full SaaS backend ready to customize',
-    price: '$29/mo',
-    gradient: 'from-indigo-500 to-blue-500',
-    icon: Rocket,
-    features: [
-      { icon: Shield, title: 'Authentication', desc: 'JWT, OAuth (Google, GitHub), sessions, MFA' },
-      { icon: CreditCard, title: 'Payments', desc: 'Stripe integration, products, invoices, webhooks' },
-      { icon: Mail, title: 'Email Workflows', desc: '20+ templates, welcome sequence, dunning' },
-      { icon: BarChart3, title: 'Analytics', desc: 'Event tracking, funnels, cohorts, dashboards' },
-    ],
-    quickActions: [
-      { label: 'View Functions', href: '/functions', icon: Code },
-      { label: 'App Settings', href: '/settings', icon: Settings },
-      { label: 'Billing', href: '/billing', icon: CreditCard },
-    ],
-  },
-  marketplace: {
-    name: 'Marketplace',
-    tagline: 'Multi-vendor marketplace backend',
-    price: '$49/mo',
-    gradient: 'from-emerald-500 to-teal-500',
-    icon: Store,
-    features: [
-      { icon: Store, title: 'Listings', desc: 'Categories, variants, reviews, full-text search' },
-      { icon: CreditCard, title: 'Stripe Connect', desc: 'Split payments, seller payouts, refunds' },
-      { icon: MessageSquare, title: 'Messaging', desc: 'Buyer-seller conversations, offers, files' },
-      { icon: Bell, title: 'Notifications', desc: '22 templates, in-app + email alerts' },
-    ],
-    quickActions: [
-      { label: 'View Functions', href: '/functions', icon: Code },
-      { label: 'App Settings', href: '/settings', icon: Settings },
-      { label: 'Billing', href: '/billing', icon: CreditCard },
-    ],
-  },
-  'ai-app': {
-    name: 'AI App',
-    tagline: 'AI-powered backend with vector search',
-    price: '$39/mo',
-    gradient: 'from-violet-500 to-purple-500',
-    icon: Brain,
-    features: [
-      { icon: Cpu, title: 'Vector DB', desc: 'pgvector with HNSW indexing, collections' },
-      { icon: Database, title: 'Embeddings', desc: 'OpenAI embeddings, document chunking, RAG' },
-      { icon: MessageSquare, title: 'Chat Workflows', desc: 'AI assistants, tool calling, guardrails' },
-      { icon: Sparkles, title: 'Memory System', desc: 'Long-term semantic memory, user profiles' },
-    ],
-    quickActions: [
-      { label: 'View Functions', href: '/functions', icon: Code },
-      { label: 'App Settings', href: '/settings', icon: Settings },
-      { label: 'Billing', href: '/billing', icon: CreditCard },
-    ],
-  },
+const ICON_MAP: Record<string, LucideIcon> = {
+  Rocket,
+  Shield,
+  CreditCard,
+  Mail,
+  BarChart3,
+  Store,
+  MessageSquare,
+  Bell,
+  Brain,
+  Cpu,
+  Database,
+  Sparkles,
+  Settings,
+  Webhook: Webhook,
+  CheckCircle,
+  ExternalLink,
+  ArrowRight,
+  Zap,
+  Clock,
+  TrendingUp,
+  Server,
+  Code,
+  Loader2,
+  AlertCircle,
+  Cloud,
 };
 
-// ─── Page Component ──────────────────────────────────────────────────────────
+function getIcon(name: string): LucideIcon {
+  return ICON_MAP[name] || Shield;
+}
 
 export default function BundleOverviewPage() {
   usePageTitle('Bundle Overview');
@@ -108,8 +87,13 @@ export default function BundleOverviewPage() {
   const justDeployed = searchParams.get('deployed') === 'true';
   const [showConfetti, setShowConfetti] = useState(justDeployed);
 
-  const bundle = BUNDLES[bundleSlug] || BUNDLES['saas-starter'];
-  const Icon = bundle.icon;
+  const { data: catalogData } = useQuery({
+    queryKey: ['bundle-catalog'],
+    queryFn: getBundleCatalog,
+  });
+
+  const bundle: BundleCatalogItem | undefined = catalogData?.bundles.find((b) => b.slug === bundleSlug);
+  const Icon = bundle ? getIcon(bundle.icon) : Rocket;
 
   const { data: appsData, isLoading: appsLoading } = useQuery({
     queryKey: ['apps'],
@@ -136,6 +120,8 @@ export default function BundleOverviewPage() {
   });
 
   const apps = appsData ?? [];
+  const bundleAppId = subscription?.default_app_id;
+  const bundleApps = bundleAppId ? apps.filter((a) => a.id === bundleAppId) : apps;
   const latestApp = apps[0];
 
   useEffect(() => {
@@ -145,209 +131,199 @@ export default function BundleOverviewPage() {
     }
   }, [justDeployed]);
 
+  const deployStatus = subscription?.deploy_status;
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="bp-page">
+      <PageGrid />
+
       {/* Success Banner */}
       {justDeployed && (
-        <div className={`mb-8 overflow-hidden rounded-2xl bg-gradient-to-r ${bundle.gradient} p-[1px]`}>
-          <div className="rounded-2xl bg-white p-6 dark:bg-zinc-900">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-500/20">
-                <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-                  {bundle.name} deployed successfully!
-                </h2>
-                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  Your backend is live and ready. All functions, auth, and integrations have been configured.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  {latestApp && (
-                    <Link
-                      to={`/apps/${latestApp.id}`}
-                      className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Open App
-                    </Link>
-                  )}
-                  <Link
-                    to="/functions"
-                    className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        <Chamber className="sc-bundle-overview__success">
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <div className="sc-bundle-overview__success-inner">
+            <div className="sc-bundle-overview__success-icon">
+              <CheckCircle size={24} />
+            </div>
+            <div className="sc-bundle-overview__success-content">
+              <h2 className="sc-bundle-overview__success-title">
+                {bundle.name} deployed successfully!
+              </h2>
+              <p className="sc-bundle-overview__success-desc">
+                Your backend is live and ready. All functions, auth, and integrations have been configured.
+              </p>
+              <div className="sc-bundle-overview__success-actions">
+                {latestApp && (
+                  <SealedButton
+                    size="sm"
+                    iconLeft={<ExternalLink size={14} />}
+                    onClick={() => navigate(`/apps/${latestApp.id}`)}
                   >
-                    <Code className="h-4 w-4" />
-                    View Functions
-                  </Link>
-                </div>
+                    Open App
+                  </SealedButton>
+                )}
+                <FrameButton
+                  size="sm"
+                  iconLeft={<Code size={14} />}
+                  onClick={() => navigate('/functions')}
+                >
+                  View Functions
+                </FrameButton>
               </div>
             </div>
           </div>
-        </div>
+        </Chamber>
       )}
 
       {/* Deploy Status Banner */}
-      {bundle && subscription?.deploy_status && subscription.deploy_status !== 'deployed' && (
-        <div className="mb-6 overflow-hidden rounded-2xl border p-[1px]" style={{
-          borderColor: subscription.deploy_status === 'deploying' ? 'var(--color-primary)' :
-                       subscription.deploy_status === 'awaiting_provider' ? '#f59e0b' :
-                       subscription.deploy_status === 'failed' ? '#ef4444' : '#d4d4d8'
-        }}>
-          <div className="rounded-2xl bg-white p-4 dark:bg-zinc-900">
-            <div className="flex items-center gap-3">
-              {subscription.deploy_status === 'deploying' && (
-                <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-              )}
-              {subscription.deploy_status === 'awaiting_provider' && (
-                <Cloud className="h-5 w-5 text-amber-500" />
-              )}
-              {subscription.deploy_status === 'failed' && (
-                <AlertCircle className="h-5 w-5 text-red-500" />
-              )}
-              <div className="flex-1">
-                <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                  {subscription.deploy_status === 'deploying' && 'Deploying to your provider...'}
-                  {subscription.deploy_status === 'awaiting_provider' && 'Connect a provider to deploy'}
-                  {subscription.deploy_status === 'failed' && `Deployment failed: ${subscription.deploy_error || 'Unknown error'}`}
-                  {subscription.deploy_status === 'pending' && 'Deployment pending...'}
+      {deployStatus && deployStatus !== 'deployed' && (
+        <Chamber nested className={`sc-bundle-overview__status sc-bundle-overview__status--${deployStatus}`}>
+          <div className="sc-bundle-overview__status-inner">
+            {deployStatus === 'deploying' && <Loader2 size={18} className="sc-community-spinner" />}
+            {deployStatus === 'awaiting_provider' && <Cloud size={18} />}
+            {deployStatus === 'failed' && <AlertCircle size={18} />}
+            {deployStatus === 'pending' && <Clock size={18} />}
+            <div className="sc-bundle-overview__status-content">
+              <p className="sc-bundle-overview__status-text">
+                {deployStatus === 'deploying' && 'Deploying to your provider...'}
+                {deployStatus === 'awaiting_provider' && 'Connect a provider to deploy'}
+                {deployStatus === 'failed' && `Deployment failed: ${subscription?.deploy_error || 'Unknown error'}`}
+                {deployStatus === 'pending' && 'Deployment pending...'}
+              </p>
+              {deployStatus === 'awaiting_provider' && (
+                <p className="sc-bundle-overview__status-hint">
+                  Your bundle is ready. Connect Cloudflare Workers, Vercel, or another provider to go live.
                 </p>
-                {subscription.deploy_status === 'awaiting_provider' && (
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Your bundle is ready. Connect Cloudflare Workers, Vercel, or another provider to go live.
-                  </p>
-                )}
-              </div>
-              {subscription.deploy_status === 'awaiting_provider' && (
-                <a
-                  href="/providers"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600"
-                >
-                  <Cloud className="h-3.5 w-3.5" />
-                  Connect Provider
-                </a>
-              )}
-              {subscription.deploy_status === 'failed' && (
-                <button
-                  onClick={() => {/* TODO: trigger retry */}}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
-                >
-                  Retry
-                </button>
               )}
             </div>
+            {deployStatus === 'awaiting_provider' && (
+              <SealedButton size="sm" iconLeft={<Cloud size={14} />} onClick={() => navigate('/providers')}>
+                Connect Provider
+              </SealedButton>
+            )}
+            {deployStatus === 'failed' && (
+              <FrameButton size="sm">Retry</FrameButton>
+            )}
           </div>
-        </div>
+        </Chamber>
       )}
 
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-4">
-          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-r ${bundle.gradient} text-white shadow-lg`}>
-            <Icon className="h-7 w-7" />
+      <Chamber>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="BUNDLE · ACTIVE" secondary={bundle.price_usd} />
+        <div className="sc-bundle-overview__header">
+          <div className="sc-bundle-overview__header-icon">
+            <Icon size={28} />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{bundle.name}</h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{bundle.tagline}</p>
+          <div className="sc-bundle-overview__header-content">
+            <h1 className="sc-bundle-overview__title">{bundle.name}</h1>
+            <p className="sc-bundle-overview__tagline">{bundle.tagline}</p>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-medium text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
-              <Zap className="h-3.5 w-3.5" />
-              Active
-            </span>
-            <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{bundle.price}</span>
+          <div className="sc-bundle-overview__header-status">
+            <StatusPill status="live" label="Active" />
+            <span className="sc-bundle-overview__price">{bundle.price_usd}</span>
           </div>
         </div>
-      </div>
+        <GaugeStrip>
+          <Gauge data={{ value: bundle.features.length, label: 'Features' }} isFirst />
+          <Gauge data={{ value: bundleApps.length, label: 'Apps' }} />
+          <Gauge data={{ value: 'Live', label: 'Status' }} />
+        </GaugeStrip>
+      </Chamber>
 
       {/* Quick Actions */}
-      <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {bundle.quickActions.map((action) => (
-          <Link
-            key={action.label}
-            to={action.href}
-            className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-              <action.icon className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-zinc-900 dark:text-white">{action.label}</div>
-            </div>
-            <ArrowRight className="h-4 w-4 text-zinc-400" />
+      <div className="sc-bundle-overview__actions-grid">
+        {[
+          { label: 'View Functions', href: `/bundles/functions?bundle=${bundleSlug}`, icon: Code },
+          { label: 'App Settings', href: `/bundles/integrations?bundle=${bundleSlug}`, icon: Settings },
+          { label: 'Billing', href: '/billing', icon: CreditCard },
+        ].map((action) => (
+          <Link key={action.label} to={action.href} className="sc-bundle-overview__action-card">
+            <Card>
+              <div className="sc-bundle-overview__action-inner">
+                <div className="sc-bundle-overview__action-icon">
+                  <action.icon size={18} />
+                </div>
+                <span className="sc-bundle-overview__action-label">{action.label}</span>
+                <ArrowRight size={14} className="sc-bundle-overview__action-arrow" />
+              </div>
+            </Card>
           </Link>
         ))}
       </div>
 
       {/* Features Grid */}
-      <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">What's Included</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <Chamber>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <h2 className="sc-bundle-overview__section-title">What's Included</h2>
+        <div className="sc-bundle-overview__features-grid">
           {bundle.features.map((f) => (
-            <div key={f.title} className="flex items-start gap-3 rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm dark:bg-zinc-800">
-                <f.icon className="h-4.5 w-4.5 text-zinc-600 dark:text-zinc-400" />
+            <div key={f.title} className="sc-bundle-overview__feature">
+              <div className="sc-bundle-overview__feature-icon">
+                {(() => {
+                  const FeatureIcon = getIcon(f.icon);
+                  return <FeatureIcon size={16} />;
+                })()}
               </div>
               <div>
-                <div className="text-sm font-medium text-zinc-900 dark:text-white">{f.title}</div>
-                <div className="text-xs text-zinc-500 dark:text-zinc-400">{f.desc}</div>
+                <div className="sc-bundle-overview__feature-title">{f.title}</div>
+                <div className="sc-bundle-overview__feature-desc">{f.description}</div>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      </Chamber>
 
-      {/* Apps created by this bundle */}
+      {/* Apps */}
       {appsLoading ? (
-        <div className="flex items-center justify-center gap-2 py-8 text-sm text-zinc-500">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading your apps...
-        </div>
-      ) : apps.length > 0 ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Your Apps</h2>
-          <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-            {apps.map((app) => (
-              <Link
-                key={app.id}
-                to={`/apps/${app.id}`}
-                className="flex items-center gap-4 py-3 transition-colors hover:bg-zinc-50 -mx-2 px-2 rounded-lg dark:hover:bg-zinc-800/50"
-              >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                  <Server className="h-5 w-5 text-zinc-500" />
+        <Chamber nested className="sc-bundle-overview__loading">
+          <Loader2 size={20} className="sc-community-spinner" />
+          <span className="sc-bundle-overview__loading-text">Loading your apps...</span>
+        </Chamber>
+      ) : bundleApps.length > 0 ? (
+        <Chamber>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <h2 className="sc-bundle-overview__section-title">Your Apps</h2>
+          <div className="sc-bundle-overview__apps-list">
+            {bundleApps.map((app) => (
+              <Link key={app.id} to={`/apps/${app.id}`} className="sc-bundle-overview__app-row">
+                <div className="sc-bundle-overview__app-icon">
+                  <Server size={18} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-zinc-900 dark:text-white truncate">{app.name}</div>
-                  <div className="text-xs text-zinc-500 dark:text-zinc-400">{app.id}</div>
+                <div className="sc-bundle-overview__app-info">
+                  <span className="sc-bundle-overview__app-name">{app.name}</span>
+                  <span className="sc-bundle-overview__app-id">{app.id}</span>
                 </div>
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                  app.status === 'active'
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                    : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
-                }`}>
-                  {app.status}
-                </span>
-                <ArrowRight className="h-4 w-4 text-zinc-400" />
+                <StatusPill status="live" label="Active" />
+                <ArrowRight size={14} className="sc-bundle-overview__action-arrow" />
               </Link>
             ))}
           </div>
-        </div>
+        </Chamber>
       ) : null}
 
-      {/* Getting Started */}
-      <div className="mt-8 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Next Steps</h2>
-        <div className="space-y-3">
+      {/* Next Steps */}
+      <Chamber>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <h2 className="sc-bundle-overview__section-title">Next Steps</h2>
+        <div className="sc-bundle-overview__steps">
           <NextStep
             num={1}
             title="Explore your functions"
             desc="Your bundle came with pre-configured function templates. Customize them for your use case."
-            href="/functions"
+            href={`/bundles/functions?bundle=${bundleSlug}`}
           />
           <NextStep
             num={2}
             title="Configure integrations"
             desc="Set up your Stripe keys, OAuth providers, and email templates."
-            href="/settings"
+            href={`/bundles/integrations?bundle=${bundleSlug}`}
           />
           <NextStep
             num={3}
@@ -356,27 +332,20 @@ export default function BundleOverviewPage() {
             href="/functions"
           />
         </div>
-      </div>
+      </Chamber>
     </div>
   );
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
-
 function NextStep({ num, title, desc, href }: { num: number; title: string; desc: string; href: string }) {
   return (
-    <Link
-      to={href}
-      className="flex items-start gap-4 rounded-lg p-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-100 text-sm font-bold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-        {num}
+    <Link to={href} className="sc-bundle-overview__step">
+      <div className="sc-bundle-overview__step-num">{num}</div>
+      <div className="sc-bundle-overview__step-content">
+        <div className="sc-bundle-overview__step-title">{title}</div>
+        <div className="sc-bundle-overview__step-desc">{desc}</div>
       </div>
-      <div className="flex-1">
-        <div className="text-sm font-medium text-zinc-900 dark:text-white">{title}</div>
-        <div className="text-xs text-zinc-500 dark:text-zinc-400">{desc}</div>
-      </div>
-      <ArrowRight className="mt-1 h-4 w-4 text-zinc-400" />
+      <ArrowRight size={14} className="sc-bundle-overview__action-arrow" />
     </Link>
   );
 }

@@ -43,6 +43,7 @@ export interface BreadcrumbEntry {
   label: string;
   path?: string;
   icon?: LucideIcon;
+  isActive?: boolean;
 }
 
 /**
@@ -79,6 +80,7 @@ export const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
   '/sdk-integrations': { label: 'SDK', path: ROUTES.SDK_INTEGRATIONS, icon: LayoutGrid },
   '/vault': { label: 'Vault', path: ROUTES.VAULT, icon: Shield },
   '/api-keys': { label: 'API Keys', path: ROUTES.API_KEYS, icon: Shield },
+  '/bundles/integrations': { label: 'Integrations', path: '/bundles', icon: Plug },
   '/bundles': { label: 'Bundles', path: '/bundles', icon: LayoutGrid },
 
   // ─── Operate section ────────────────────────────────────────────────────────
@@ -95,7 +97,6 @@ export const BREADCRUMB_MAP: Record<string, BreadcrumbEntry> = {
 
   // ─── Advanced section ───────────────────────────────────────────────────────
   '/evolution': { label: 'Evolution', path: ROUTES.EVOLUTION, icon: Sparkles },
-  '/marketplace': { label: 'Marketplace', path: ROUTES.MARKETPLACE, icon: Shield },
   '/agent-memories': { label: 'Memory', path: ROUTES.AGENT_MEMORIES, icon: Database },
   '/teams': { label: 'Teams', path: ROUTES.TEAMS, icon: Users },
   '/decisions': { label: 'Decisions', path: ROUTES.DECISIONS, icon: CheckCircle },
@@ -151,7 +152,7 @@ export function generateBreadcrumbs(pathname: string): BreadcrumbEntry[] {
 
     const isLast = path === pathname;
     if (isLast) {
-      crumbs.push({ label: entry.label, icon: entry.icon });
+      crumbs.push({ label: entry.label, icon: entry.icon, isActive: true });
     } else {
       crumbs.push({ label: entry.label, path: entry.path ?? path, icon: entry.icon });
     }

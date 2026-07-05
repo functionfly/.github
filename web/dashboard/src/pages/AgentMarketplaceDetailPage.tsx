@@ -85,7 +85,7 @@ export function AgentMarketplaceDetailPage() {
 
     try {
       const res = await agentApi.getAgent(id);
-      const a = res.agent as Record<string, unknown>;
+      const a = res.agent as unknown as Record<string, unknown>;
       setAgent({
         id: (a.id as string) ?? id,
         agentId: (a.agentId as string) ?? id,

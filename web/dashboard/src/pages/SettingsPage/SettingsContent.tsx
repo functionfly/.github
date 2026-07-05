@@ -92,6 +92,13 @@ const TAB_GROUPS: { label: string; icon: typeof Settings; tabs: TabDef[] }[] = [
     ],
   },
   {
+    label: 'AI',
+    icon: Brain,
+    tabs: [
+      { id: 'ai-keys', label: 'AI Keys', icon: Brain },
+    ],
+  },
+  {
     label: 'Security & Access',
     icon: ShieldCheck,
     tabs: [
@@ -104,7 +111,6 @@ const TAB_GROUPS: { label: string; icon: typeof Settings; tabs: TabDef[] }[] = [
     icon: Terminal,
     tabs: [
       { id: 'developer', label: 'API & Webhooks', icon: Code },
-      { id: 'ai-keys', label: 'AI Keys', icon: Brain },
       { id: 'trust-api', label: 'Trust API', icon: Shield },
     ],
   },

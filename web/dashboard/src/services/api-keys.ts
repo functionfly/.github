@@ -26,9 +26,15 @@ export const apiKeysService = {
    * Create a new API key
    */
   createKey: async (data: CreateAPIKeyRequest): Promise<APIKeyCreateResponse> => {
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
     const res = await apiClient.post<{ data: APIKeyCreateResponse } | APIKeyCreateResponse>(
       BASE_URL,
-      data
+      data,
+      { headers }
     );
     return 'data' in res && res.data != null ? res.data : (res as APIKeyCreateResponse);
   },
@@ -90,7 +96,12 @@ export const apiKeysService = {
    * Update an existing API key
    */
   updateKey: async (id: string, data: UpdateAPIKeyRequest): Promise<APIKey> => {
-    const res = await apiClient.patch<{ data: APIKey } | APIKey>(`${BASE_URL}/${id}`, data);
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+    const res = await apiClient.patch<{ data: APIKey } | APIKey>(`${BASE_URL}/${id}`, data, { headers });
     return res && typeof res === 'object' && 'data' in res && res.data != null
       ? res.data
       : (res as APIKey);
@@ -100,7 +111,12 @@ export const apiKeysService = {
    * Delete (deactivate) an API key
    */
   deleteKey: async (id: string): Promise<void> => {
-    await apiClient.delete(`${BASE_URL}/${id}`);
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+    await apiClient.delete(`${BASE_URL}/${id}`, { headers });
   },
 
   /**
@@ -108,11 +124,17 @@ export const apiKeysService = {
    * Returns the new key with plaintext
    */
   rotateKey: async (id: string, data?: RotateAPIKeyRequest): Promise<APIKeyCreateResponse> => {
-    const response = await apiClient.post<APIKeyCreateResponse>(
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+    const res = await apiClient.post<{ data: APIKeyCreateResponse } | APIKeyCreateResponse>(
       `${BASE_URL}/${id}/rotate`,
-      data || {}
+      data || {},
+      { headers }
     );
-    return response;
+    return 'data' in res && res.data != null ? res.data : (res as APIKeyCreateResponse);
   },
 
   // Permissions
@@ -129,9 +151,15 @@ export const apiKeysService = {
    * Add a permission to an API key
    */
   addPermission: async (keyId: string, data: AddPermissionRequest): Promise<APIKeyPermission> => {
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
     const response = await apiClient.post<APIKeyPermission>(
       `${BASE_URL}/${keyId}/permissions`,
-      data
+      data,
+      { headers }
     );
     return response;
   },
@@ -140,7 +168,12 @@ export const apiKeysService = {
    * Remove a permission from an API key
    */
   removePermission: async (keyId: string, permissionId: string): Promise<void> => {
-    await apiClient.delete(`${BASE_URL}/${keyId}/permissions/${permissionId}`);
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+    await apiClient.delete(`${BASE_URL}/${keyId}/permissions/${permissionId}`, { headers });
   },
 
   // Environments
@@ -172,9 +205,15 @@ export const apiKeysService = {
     keyId: string,
     data: AddEnvironmentRequest
   ): Promise<APIKeyEnvironment> => {
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
     const response = await apiClient.post<APIKeyEnvironment>(
       `${BASE_URL}/${keyId}/environments`,
-      data
+      data,
+      { headers }
     );
     return response;
   },
@@ -183,7 +222,12 @@ export const apiKeysService = {
    * Unlink an environment from an API key
    */
   unlinkEnvironment: async (keyId: string, environmentId: string): Promise<void> => {
-    await apiClient.delete(`${BASE_URL}/${keyId}/environments/${environmentId}`);
+    const csrfToken = await apiClient.fetchCSRFToken();
+    const headers: Record<string, string> = {};
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+    await apiClient.delete(`${BASE_URL}/${keyId}/environments/${environmentId}`, { headers });
   },
 
   // Rotation History

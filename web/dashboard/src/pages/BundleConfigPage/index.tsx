@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Shield, CreditCard, Mail, BarChart3, CheckCircle, XCircle,
@@ -83,8 +83,31 @@ function useToggleWorkflow(appId: string) {
 export default function BundleConfigPage() {
   usePageTitle('Bundle Configuration');
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const section = searchParams.get('section');
   const appId = slug || '';
   const { data, isLoading, error } = useBundleConfig(appId);
+
+  const paymentsRef = useRef<HTMLDivElement>(null);
+  const authRef = useRef<HTMLDivElement>(null);
+  const emailRef = useRef<HTMLDivElement>(null);
+  const analyticsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!section || !data) return;
+    const refMap: Record<string, React.RefObject<HTMLDivElement>> = {
+      payments: paymentsRef,
+      auth: authRef,
+      email: emailRef,
+      analytics: analyticsRef,
+    };
+    const ref = refMap[section];
+    if (ref?.current) {
+      setTimeout(() => {
+        ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [section, data]);
 
   if (isLoading) {
     return (
@@ -120,19 +143,19 @@ export default function BundleConfigPage() {
             Manage your {data.bundle_slug} infrastructure components
           </p>
         </div>
-        <Link to={`/apps/${appId}`}>
+        <Link to={data.bundle_slug ? `/bundles/integrations?bundle=${data.bundle_slug}` : `/apps/${appId}`}>
           <FrameButton size="sm" iconRight={<ChevronRight className="w-3.5 h-3.5" />}>
-            Back to App
+            Back to Integrations
           </FrameButton>
         </Link>
       </div>
 
       {/* Component Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22rem, 1fr))', gap: 'var(--space-4)' }}>
-        <AuthCard config={data.auth} appId={appId || ''} />
-        <PaymentsCard config={data.payments} />
-        <EmailCard config={data.email} appId={appId || ''} />
-        <AnalyticsCard config={data.analytics} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(22rem, 1fr))', gap: 'var(--space-4)', margin: 'var(--space-6) 0' }}>
+        <div ref={authRef} id="section-auth"><AuthCard config={data.auth} appId={appId || ''} /></div>
+        <div ref={paymentsRef} id="section-payments"><PaymentsCard config={data.payments} /></div>
+        <div ref={emailRef} id="section-email"><EmailCard config={data.email} appId={appId || ''} /></div>
+        <div ref={analyticsRef} id="section-analytics"><AnalyticsCard config={data.analytics} /></div>
       </div>
     </div>
   );

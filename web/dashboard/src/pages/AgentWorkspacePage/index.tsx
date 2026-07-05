@@ -80,7 +80,7 @@ function NavItem({ icon, label, view, activeView, onClick, badge }: NavItemProps
 export function AgentWorkspacePage() {
   const { t } = useTranslation();
   const { id: agentId } = useParams<{ id: string }>();
-  const { activeView, setView, rightContext, clearRightContext } = useAgentWorkspace();
+  const { activeView, setView, rightContext, setRightContext, clearRightContext } = useAgentWorkspace();
 
   const { data: agentData, isLoading: agentLoading, error: agentError } = useAgent(agentId!);
   const { data: usageData } = useAgentUsage(agentId!);
@@ -220,7 +220,7 @@ export function AgentWorkspacePage() {
                   <WorkspaceViewComp agentId={agentId!} />
                 )}
                 {activeView === 'traces' && (
-                  <TracesView agentId={agentId!} setRightContext={setRightContext} />
+                  <TracesView agentId={agentId!} setRightContext={setRightContext as any} />
                 )}
                 {activeView === 'health' && (
                   <HealthView agentId={agentId!} />

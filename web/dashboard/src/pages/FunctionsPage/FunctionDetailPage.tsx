@@ -7,17 +7,6 @@ import { ProviderIcon } from '@/components/common/ProviderIcon';
 import { StatCard } from '@/components/common/StatCard';
 import { DNAHelix, DNATrustBadge } from '@/components/dna';
 import { FunctionCodeViewer, FunctionHeader } from '@/components/functions';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -45,6 +34,21 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  Chamber,
+  CornerBrace,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+  Card,
+  Modal,
+  PageGrid,
+  Input,
+} from '@/components/containment';
+import './FunctionDetailPage.css';
 
 interface FunctionData {
   id: string;
@@ -122,7 +126,6 @@ function mapApiStatusToUi(status: string): FunctionData['status'] {
   return 'offline';
 }
 
-/** GET /v1/functions/:id returns storage.FunctionConfig (snake_case); map to UI model with safe defaults. */
 function mapApiFunctionToFunctionData(raw: unknown): FunctionData | null {
   const api = asRecord(raw);
   if (!api) return null;
@@ -194,11 +197,7 @@ function mapApiLogsToLogEntries(raw: unknown): LogEntry[] {
 function formatLogLineTime(ts: string): string {
   const d = new Date(ts);
   if (!Number.isNaN(d.getTime())) {
-    return d.toLocaleTimeString(undefined, {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
+    return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
   const space = ts.indexOf(' ');
   if (space > 0) return ts.slice(space + 1).trim() || ts;
@@ -226,24 +225,12 @@ const errorData = [
   { name: 'Timeout', value: 10, color: '#8b5cf6' },
 ];
 
-/**
- * Map function data to FunctionHeaderData format
- * Uses mock data for fields not available from the API
- */
 function mapToFunctionHeaderData(
   data: FunctionData,
   trustTier: TrustTier = 'high',
   economicScore: number = 87
 ): FunctionHeaderData {
-  // Generate a mock execution root hash based on function id
-  const executionRootHash = `0x${data.id
-    .split('')
-    .map((c) => c.charCodeAt(0).toString(16))
-    .join('')
-    .padEnd(64, '0')
-    .slice(0, 64)}`;
-
-  // Generate a mock resource signature
+  const executionRootHash = `0x${data.id.split('').map((c) => c.charCodeAt(0).toString(16)).join('').padEnd(64, '0').slice(0, 64)}`;
   const resourceSignature = `res_sig_${data.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16)}`;
 
   return {
@@ -254,11 +241,7 @@ function mapToFunctionHeaderData(
     economicScore,
     runtime: data.runtime,
     resourceSignature,
-    fxcert: {
-      verified: true,
-      issuedAt: data.createdAt,
-      issuer: 'FunctionFly Registry',
-    },
+    fxcert: { verified: true, issuedAt: data.createdAt, issuer: 'FunctionFly Registry' },
     status: data.status,
     version: data.version,
     description: `Function deployed across ${data.providers.join(', ')} in ${data.region.toUpperCase()} region`,
@@ -276,28 +259,22 @@ export function FunctionDetailPage() {
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [reportDescription, setReportDescription] = useState('');
 
-  // State for API data
   const [functionData, setFunctionData] = useState<FunctionData | null>(null);
   const [deployments, setDeployments] = useState<Deployment[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // DNA hooks
   const { data: dnaProfile, isLoading: dnaLoading } = useDNAProfile(id || '');
   const toggleEvolution = useToggleDNAEvolution(id || '');
   const triggerAnalysis = useTriggerDNAAnalysis(id || '');
 
-  // Fetch function data
   useEffect(() => {
     const fetchFunctionData = async () => {
       if (!id) return;
-
       try {
         setLoading(true);
         setError(null);
-
-        // Fetch function details (API returns FunctionConfig JSON, not the legacy mock shape)
         const functionResponse = await apiClient.get<unknown>(`/v1/functions/${id}`);
         const mapped = mapApiFunctionToFunctionData(functionResponse);
         if (!mapped) {
@@ -307,14 +284,8 @@ export function FunctionDetailPage() {
           return;
         }
         setFunctionData(mapped);
-
-        // Fetch deployments
-        const deploymentsResponse = await apiClient.get<{ deployments?: unknown }>(
-          `/v1/functions/${id}/deployments`
-        );
+        const deploymentsResponse = await apiClient.get<{ deployments?: unknown }>(`/v1/functions/${id}/deployments`);
         setDeployments(mapApiDeploymentsToDeployments(deploymentsResponse.deployments));
-
-        // Fetch logs
         const logsResponse = await apiClient.get<{ logs?: unknown }>(`/v1/functions/${id}/logs`);
         setLogs(mapApiLogsToLogEntries(logsResponse.logs));
       } catch (err) {
@@ -325,7 +296,6 @@ export function FunctionDetailPage() {
         setLoading(false);
       }
     };
-
     fetchFunctionData();
   }, [id, t]);
 
@@ -335,27 +305,21 @@ export function FunctionDetailPage() {
     try {
       await apiClient.post(`/v1/functions/${id}/redeploy`);
       toast.success(t('functionDetail.redeployedSuccessfully'));
-    } catch (error) {
+    } catch {
       toast.error(t('functionDetail.failedToRedeploy'));
     } finally {
       setIsRedeploying(false);
     }
   };
 
-  const handleDelete = () => {
-    setShowDeleteDialog(true);
-  };
-
   const confirmDelete = async () => {
     if (!id || !functionData) return;
-
     try {
       setIsDeleting(true);
       await apiClient.delete(`/v1/functions/${id}`);
       toast.success(t('functionDetail.deletedSuccessfully', { name: functionData.name }));
       navigate('/functions');
-    } catch (error) {
-      console.error('Failed to delete function:', error);
+    } catch {
       toast.error(t('functionDetail.failedToDelete'));
     } finally {
       setIsDeleting(false);
@@ -363,15 +327,9 @@ export function FunctionDetailPage() {
     }
   };
 
-  const handleReportIssue = () => {
-    setShowReportDialog(true);
-  };
-
   const submitReport = async () => {
     if (!id || !functionData) return;
-
     try {
-      // Submit issue report to the API
       await apiClient.post(`/v1/functions/${id}/report-issue`, {
         description: reportDescription,
         functionName: functionData.name,
@@ -380,31 +338,19 @@ export function FunctionDetailPage() {
       toast.success(t('functionDetail.issueReported'));
       setShowReportDialog(false);
       setReportDescription('');
-    } catch (error) {
-      console.error('Failed to report issue:', error);
+    } catch {
       toast.error(t('functionDetail.failedToReportIssue'));
     }
   };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-8 bg-muted rounded animate-pulse" />
-          <div className="space-y-2">
-            <div className="w-48 h-6 bg-muted rounded animate-pulse" />
-            <div className="w-32 h-4 bg-muted rounded animate-pulse" />
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="p-6 border rounded-lg">
-              <div className="w-16 h-16 bg-muted rounded animate-pulse mb-4" />
-              <div className="w-20 h-4 bg-muted rounded animate-pulse mb-2" />
-              <div className="w-16 h-6 bg-muted rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
+      <div className="sc-fn-detail__page">
+        <PageGrid />
+        <Chamber nested className="sc-fn-detail__loading">
+          <LoadingSpinner />
+          <span className="sc-fn-detail__loading-text">Loading function...</span>
+        </Chamber>
       </div>
     );
   }
@@ -413,39 +359,19 @@ export function FunctionDetailPage() {
     return <FunctionDetailNotFound id={id} errorMessage={error ?? undefined} />;
   }
 
+  const statusPill = functionData.status === 'online' ? 'live' : functionData.status === 'offline' ? 'revoked' : 'pending';
+
   const stats = [
-    {
-      title: t('functionDetail.totalRequests'),
-      value: (functionData.requests ?? 0).toLocaleString(),
-      change: { value: 12, label: t('functionDetail.fromLastWeek') },
-      icon: <Globe className="w-5 h-5" />,
-      trend: 'up' as const,
-    },
-    {
-      title: t('functionDetail.avgLatency'),
-      value: `${functionData.avgLatency ?? 0}ms`,
-      change: { value: -8, label: t('functionDetail.fromLastWeek') },
-      icon: <Clock className="w-5 h-5" />,
-      trend: 'up' as const,
-    },
-    {
-      title: t('functionDetail.errorRate'),
-      value: `${functionData.errorRate ?? 0}%`,
-      change: { value: -0.2, label: t('functionDetail.fromLastWeek') },
-      icon: <AlertTriangle className="w-5 h-5" />,
-      trend: 'up' as const,
-    },
-    {
-      title: t('functionDetail.uptime'),
-      value: `${functionData.uptime ?? 0}%`,
-      change: { value: 0.1, label: t('functionDetail.fromLastWeek') },
-      icon: <Activity className="w-5 h-5" />,
-      trend: 'up' as const,
-    },
+    { title: t('functionDetail.totalRequests'), value: (functionData.requests ?? 0).toLocaleString(), change: { value: 12, label: t('functionDetail.fromLastWeek') }, icon: <Globe size={18} />, trend: 'up' as const },
+    { title: t('functionDetail.avgLatency'), value: `${functionData.avgLatency ?? 0}ms`, change: { value: -8, label: t('functionDetail.fromLastWeek') }, icon: <Clock size={18} />, trend: 'up' as const },
+    { title: t('functionDetail.errorRate'), value: `${functionData.errorRate ?? 0}%`, change: { value: -0.2, label: t('functionDetail.fromLastWeek') }, icon: <AlertTriangle size={18} />, trend: 'up' as const },
+    { title: t('functionDetail.uptime'), value: `${functionData.uptime ?? 0}%`, change: { value: 0.1, label: t('functionDetail.fromLastWeek') }, icon: <Activity size={18} />, trend: 'up' as const },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="sc-fn-detail__page">
+      <PageGrid />
+
       {/* Function Header */}
       <FunctionHeader
         data={mapToFunctionHeaderData(functionData)}
@@ -454,389 +380,217 @@ export function FunctionDetailPage() {
         onDeploy={handleRedeploy}
         onTest={() => toast.info(t('functionDetail.testComingSoon'))}
         onShare={() => toast.info(t('functionDetail.shareComingSoon'))}
-        onReportIssue={handleReportIssue}
+        onReportIssue={() => setShowReportDialog(true)}
       />
 
-      {/* Function Info Card */}
-      <Card className="card">
-        <CardContent className="card-content p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">
-                {t('functionDetail.providers')}
-              </h3>
-              <div className="flex items-center gap-2">
-                {functionData.providers.map((provider) => (
-                  <div key={provider} className="flex items-center gap-2">
-                    <ProviderIcon provider={provider} size="sm" />
-                    <span className="text-sm text-text-primary capitalize">{provider}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">
-                {t('functionDetail.region')}
-              </h3>
-              <p className="text-text-primary">{functionData.region.toUpperCase()}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">
-                {t('functionDetail.runtime')}
-              </h3>
-              <p className="text-text-primary">{functionData.runtime}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">
-                {t('functionDetail.version')}
-              </h3>
-              <Badge variant="secondary">{functionData.version}</Badge>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">
-                {t('functionDetail.lastDeployed')}
-              </h3>
-              <p className="text-text-primary">{functionData.lastDeployed}</p>
-            </div>
-            <div>
-              <h3 className="text-sm font-medium text-text-secondary mb-2">
-                {t('functionDetail.created')}
-              </h3>
-              <p className="text-text-primary">{functionData.createdAt}</p>
+      {/* Function Info */}
+      <Chamber>
+        <CornerBrace position="tl" />
+        <CornerBrace position="br" />
+        <AnnotationTag primary="FUNCTION · CONFIG" secondary={functionData.version} />
+        <div className="sc-fn-detail__info-grid">
+          <div className="sc-fn-detail__info-item">
+            <span className="sc-fn-detail__info-label">{t('functionDetail.providers')}</span>
+            <div className="sc-fn-detail__info-providers">
+              {functionData.providers.map((p) => (
+                <div key={p} className="sc-fn-detail__provider">
+                  <ProviderIcon provider={p} size="sm" />
+                  <span>{p}</span>
+                </div>
+              ))}
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="sc-fn-detail__info-item">
+            <span className="sc-fn-detail__info-label">{t('functionDetail.region')}</span>
+            <span className="sc-fn-detail__info-value">{functionData.region.toUpperCase()}</span>
+          </div>
+          <div className="sc-fn-detail__info-item">
+            <span className="sc-fn-detail__info-label">{t('functionDetail.runtime')}</span>
+            <span className="sc-fn-detail__info-value">{functionData.runtime}</span>
+          </div>
+          <div className="sc-fn-detail__info-item">
+            <span className="sc-fn-detail__info-label">{t('functionDetail.version')}</span>
+            <span className="sc-fn-detail__info-tag">{functionData.version}</span>
+          </div>
+          <div className="sc-fn-detail__info-item">
+            <span className="sc-fn-detail__info-label">{t('functionDetail.lastDeployed')}</span>
+            <span className="sc-fn-detail__info-value">{functionData.lastDeployed}</span>
+          </div>
+          <div className="sc-fn-detail__info-item">
+            <span className="sc-fn-detail__info-label">{t('functionDetail.created')}</span>
+            <span className="sc-fn-detail__info-value">{functionData.createdAt}</span>
+          </div>
+        </div>
+        <GaugeStrip>
+          <Gauge data={{ value: (functionData.requests ?? 0).toLocaleString(), label: 'Requests' }} isFirst />
+          <Gauge data={{ value: `${functionData.avgLatency ?? 0}ms`, label: 'Latency' }} />
+          <Gauge data={{ value: `${functionData.uptime ?? 0}%`, label: 'Uptime' }} />
+          <Gauge data={{ value: `${functionData.errorRate ?? 0}%`, label: 'Errors' }} />
+        </GaugeStrip>
+      </Chamber>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="sc-fn-detail__stats-grid">
         {stats.map((stat) => (
           <StatCard key={stat.title} {...stat} />
         ))}
       </div>
 
-      {/* Main Content Tabs */}
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="sc-fn-detail__tabs-list">
           <TabsTrigger value="overview">{t('functionDetail.overview')}</TabsTrigger>
-          <TabsTrigger value="code" className="gap-1.5">
-            <Code2 className="h-3.5 w-3.5" />
-            {t('functionDetail.code')}
-          </TabsTrigger>
+          <TabsTrigger value="code"><Code2 size={14} /> {t('functionDetail.code')}</TabsTrigger>
           <TabsTrigger value="deployments">{t('functionDetail.deployments')}</TabsTrigger>
           <TabsTrigger value="logs">{t('functionDetail.logs')}</TabsTrigger>
           <TabsTrigger value="analytics">{t('functionDetail.analytics')}</TabsTrigger>
-          <TabsTrigger value="dna" className="gap-1.5">
-            <Dna className="h-3.5 w-3.5" />
-            DNA
-          </TabsTrigger>
-          <TabsTrigger value="traces" className="gap-1.5">
-            <Layers className="h-3.5 w-3.5" />
-            Traces
-          </TabsTrigger>
+          <TabsTrigger value="dna"><Dna size={14} /> DNA</TabsTrigger>
+          <TabsTrigger value="traces"><Layers size={14} /> Traces</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LineChart
-              title={t('functionDetail.requestsOverTime')}
-              data={requestData}
-              series={[
-                { key: 'requests', name: t('functionDetail.requests'), color: '#6366f1' },
-                { key: 'errors', name: t('functionDetail.errors'), color: '#ef4444' },
-              ]}
-              height={300}
-            />
-
-            <BarChart
-              title={t('functionDetail.latencyByProvider')}
-              data={latencyData}
-              series={[{ key: 'latency', name: t('functionDetail.latencyMs'), color: '#10b981' }]}
-              height={300}
-            />
+        {/* Overview */}
+        <TabsContent value="overview">
+          <div className="sc-fn-detail__charts-grid">
+            <LineChart title={t('functionDetail.requestsOverTime')} data={requestData} series={[{ key: 'requests', name: t('functionDetail.requests'), color: '#6366f1' }, { key: 'errors', name: t('functionDetail.errors'), color: '#ef4444' }]} height={300} />
+            <BarChart title={t('functionDetail.latencyByProvider')} data={latencyData} series={[{ key: 'latency', name: t('functionDetail.latencyMs'), color: '#10b981' }]} height={300} />
           </div>
         </TabsContent>
 
-        <TabsContent value="code" className="space-y-4">
-          <FunctionCodeViewer
-            code={functionData.code || '// No source code available for this function.'}
-            runtime={functionData.runtime}
-            functionName={functionData.name}
-            version={functionData.version}
-            lastModified={functionData.lastDeployed}
-            onEdit={() => navigate(`/functions/${id}/edit`)}
-          />
+        {/* Code */}
+        <TabsContent value="code">
+          <FunctionCodeViewer code={functionData.code || '// No source code available for this function.'} runtime={functionData.runtime} functionName={functionData.name} version={functionData.version} lastModified={functionData.lastDeployed} onEdit={() => navigate(`/functions/${id}/edit`)} />
         </TabsContent>
 
-        <TabsContent value="deployments" className="space-y-4">
-          <Card className="card">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">{t('functionDetail.deploymentHistory')}</CardTitle>
-            </CardHeader>
-            <CardContent className="card-content">
-              <div className="space-y-4">
-                {deployments.map((deployment) => (
-                  <div
-                    key={deployment.id}
-                    className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary"
-                  >
-                    <div className="flex items-center gap-4">
-                      {deployment.status === 'success' && (
-                        <CheckCircle2 className="w-5 h-5 text-green-400" />
-                      )}
-                      {deployment.status === 'failed' && (
-                        <XCircle className="w-5 h-5 text-red-400" />
-                      )}
-                      {deployment.status === 'pending' && (
-                        <RotateCcw className="w-5 h-5 text-yellow-400 animate-spin" />
-                      )}
+        {/* Deployments */}
+        <TabsContent value="deployments">
+          <Chamber>
+            <h2 className="sc-fn-detail__section-title">{t('functionDetail.deploymentHistory')}</h2>
+            <div className="sc-fn-detail__deploy-list">
+              {deployments.map((dep) => (
+                <div key={dep.id} className="sc-fn-detail__deploy-row">
+                  {dep.status === 'success' && <CheckCircle2 size={18} style={{ color: 'var(--status-ok)' }} />}
+                  {dep.status === 'failed' && <XCircle size={18} style={{ color: 'var(--status-revoked)' }} />}
+                  {dep.status === 'pending' && <RotateCcw size={18} className="sc-community-spinner" style={{ color: 'var(--status-pending)' }} />}
+                  <div className="sc-fn-detail__deploy-info">
+                    <div className="sc-fn-detail__deploy-header">
+                      <span className="sc-fn-detail__deploy-version">v{dep.version}</span>
+                      <StatusPill status={dep.status === 'success' ? 'live' : dep.status === 'failed' ? 'revoked' : 'pending'} label={dep.status} />
+                    </div>
+                    <p className="sc-fn-detail__deploy-meta">{dep.timestamp} · {dep.duration}s · by {dep.triggeredBy}</p>
+                    {dep.commit && <p className="sc-fn-detail__deploy-commit">{dep.commit}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Chamber>
+        </TabsContent>
 
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-text-primary">
-                            v{deployment.version}
-                          </span>
-                          <Badge
-                            variant={deployment.status === 'success' ? 'default' : 'destructive'}
-                            className="text-xs"
-                          >
-                            {deployment.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-text-secondary">
-                          {deployment.timestamp} • {deployment.duration}s • by{' '}
-                          {deployment.triggeredBy}
-                        </p>
-                        {deployment.commit && (
-                          <p className="text-xs text-text-muted font-mono">{deployment.commit}</p>
-                        )}
-                      </div>
+        {/* Logs */}
+        <TabsContent value="logs">
+          <Chamber className="sc-fn-detail__logs-chamber">
+            <h2 className="sc-fn-detail__section-title">{t('functionDetail.recentLogs')}</h2>
+            <ScrollArea className="sc-fn-detail__logs-scroll">
+              <div className="sc-fn-detail__logs-list">
+                {logs.map((log) => (
+                  <div key={log.id} className="sc-fn-detail__log-row">
+                    <span className="sc-fn-detail__log-time">{formatLogLineTime(log.timestamp)}</span>
+                    <div className="sc-fn-detail__log-content">
+                      {log.level === 'error' && <XCircle size={14} style={{ color: 'var(--status-revoked)' }} />}
+                      {log.level === 'warn' && <AlertTriangle size={14} style={{ color: 'var(--status-pending)' }} />}
+                      {log.level === 'info' && <Activity size={14} style={{ color: 'var(--foil-a)' }} />}
+                      <span className="sc-fn-detail__log-msg">{log.message}</span>
+                      <span className="sc-fn-detail__log-src">({log.source})</span>
                     </div>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </ScrollArea>
+          </Chamber>
         </TabsContent>
 
-        <TabsContent value="logs" className="space-y-4">
-          <Card className="card h-[600px]">
-            <CardHeader className="card-header">
-              <CardTitle className="card-title">{t('functionDetail.recentLogs')}</CardTitle>
-            </CardHeader>
-            <CardContent className="card-content p-0">
-              <ScrollArea className="h-[520px] p-6">
-                <div className="space-y-3">
-                  {logs.map((log) => (
-                    <div
-                      key={log.id}
-                      className="flex items-start gap-3 p-3 rounded-lg bg-bg-tertiary"
-                    >
-                      <div className="text-text-muted font-mono text-xs w-28 shrink-0">
-                        {formatLogLineTime(log.timestamp)}
-                      </div>
-                      <div className="flex items-center gap-2 flex-1">
-                        {log.level === 'error' && <XCircle className="w-4 h-4 text-red-400" />}
-                        {log.level === 'warn' && (
-                          <AlertTriangle className="w-4 h-4 text-yellow-400" />
-                        )}
-                        {log.level === 'info' && <Activity className="w-4 h-4 text-blue-400" />}
-                        <div className="flex-1">
-                          <span className="text-sm text-text-primary">{log.message}</span>
-                          <span className="text-xs text-text-muted ml-2">({log.source})</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <LineChart
-              title={t('functionDetail.errorRateOverTime')}
-              data={requestData}
-              series={[{ key: 'errors', name: t('functionDetail.errors'), color: '#ef4444' }]}
-              height={300}
-            />
-
-            <Card className="card">
-              <CardHeader className="card-header">
-                <CardTitle className="card-title">
-                  {t('functionDetail.errorDistribution')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="card-content">
-                <div className="h-[300px]">
-                  <PieChart data={errorData} height={300} />
-                </div>
-                <div className="flex justify-center gap-6 mt-4">
-                  {errorData.map((item) => (
-                    <div key={item.name} className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-sm text-text-secondary">
-                        {item.name} ({item.value}%)
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+        {/* Analytics */}
+        <TabsContent value="analytics">
+          <div className="sc-fn-detail__charts-grid">
+            <LineChart title={t('functionDetail.errorRateOverTime')} data={requestData} series={[{ key: 'errors', name: t('functionDetail.errors'), color: '#ef4444' }]} height={300} />
+            <Chamber>
+              <h2 className="sc-fn-detail__section-title">{t('functionDetail.errorDistribution')}</h2>
+              <div style={{ height: 300 }}><PieChart data={errorData} height={300} /></div>
+              <div className="sc-fn-detail__pie-legend">
+                {errorData.map((item) => (
+                  <div key={item.name} className="sc-fn-detail__pie-legend-item">
+                    <div className="sc-fn-detail__pie-dot" style={{ background: item.color }} />
+                    <span>{item.name} ({item.value}%)</span>
+                  </div>
+                ))}
+              </div>
+            </Chamber>
           </div>
         </TabsContent>
 
-        <TabsContent value="dna" className="space-y-6">
+        {/* DNA */}
+        <TabsContent value="dna">
           {dnaLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <LoadingSpinner />
-            </div>
+            <Chamber nested className="sc-fn-detail__loading"><LoadingSpinner /></Chamber>
           ) : dnaProfile ? (
             <>
               {dnaProfile.generation > 1 && (
-                <DNATrustBadge
-                  generation={dnaProfile.generation}
-                  fitnessScore={dnaProfile.fitness_score}
-                  totalMutations={dnaProfile.total_mutations}
-                  totalExecutions={dnaProfile.total_executions}
-                  variant="full"
-                />
+                <DNATrustBadge generation={dnaProfile.generation} fitnessScore={dnaProfile.fitness_score} totalMutations={dnaProfile.total_mutations} totalExecutions={dnaProfile.total_executions} variant="full" />
               )}
-              <DNAHelix
-                profile={dnaProfile}
-                onToggleEvolution={(enabled) => toggleEvolution.mutate(enabled)}
-                onTriggerAnalysis={() => triggerAnalysis.mutate()}
-                isToggling={toggleEvolution.isPending}
-                isAnalyzing={triggerAnalysis.isPending}
-              />
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/functions/${id}/dna`)}
-                  className="gap-1.5"
-                >
-                  <Dna className="h-3.5 w-3.5" />
-                  Full DNA View
-                </Button>
+              <DNAHelix profile={dnaProfile} onToggleEvolution={(enabled) => toggleEvolution.mutate(enabled)} onTriggerAnalysis={() => triggerAnalysis.mutate()} isToggling={toggleEvolution.isPending} isAnalyzing={triggerAnalysis.isPending} />
+              <div className="sc-fn-detail__dna-link">
+                <FrameButton size="sm" iconLeft={<Dna size={14} />} onClick={() => navigate(`/functions/${id}/dna`)}>Full DNA View</FrameButton>
               </div>
             </>
           ) : (
-            <Card className="card">
-              <CardContent className="card-content flex flex-col items-center justify-center py-12">
-                <Dna className="h-10 w-10 text-text-muted mb-4" />
-                <h3 className="text-lg font-semibold text-text-primary mb-2">DNA Not Enabled</h3>
-                <p className="text-sm text-text-secondary mb-4 text-center max-w-md">
-                  Enable Function DNA to track execution patterns and receive AI-powered evolution
-                  suggestions.
-                </p>
-                <Button onClick={() => navigate(`/functions/${id}/dna`)} className="gap-1.5">
-                  <Dna className="h-4 w-4" />
-                  Enable DNA
-                </Button>
-              </CardContent>
-            </Card>
+            <Chamber className="sc-fn-detail__dna-empty">
+              <Dna size={36} className="sc-fn-detail__dna-empty-icon" />
+              <h3 className="sc-fn-detail__dna-empty-title">DNA Not Enabled</h3>
+              <p className="sc-fn-detail__dna-empty-desc">Enable Function DNA to track execution patterns and receive AI-powered evolution suggestions.</p>
+              <SealedButton iconLeft={<Dna size={14} />} onClick={() => navigate(`/functions/${id}/dna`)}>Enable DNA</SealedButton>
+            </Chamber>
           )}
         </TabsContent>
 
-        <TabsContent value="traces" className="space-y-4">
+        {/* Traces */}
+        <TabsContent value="traces">
           {functionData?.author ? (
             <TraceList functionFilter={{ author: functionData.author, name: functionData.name }} />
           ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Layers className="h-10 w-10 text-muted-foreground mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">Atlas Traces</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-md">
-                  Execution traces are recorded by the Atlas Memory Engine when ATLAS_URL is configured.
-                </p>
-              </CardContent>
-            </Card>
+            <Chamber className="sc-fn-detail__dna-empty">
+              <Layers size={36} className="sc-fn-detail__dna-empty-icon" />
+              <h3 className="sc-fn-detail__dna-empty-title">Atlas Traces</h3>
+              <p className="sc-fn-detail__dna-empty-desc">Execution traces are recorded by the Atlas Memory Engine when ATLAS_URL is configured.</p>
+            </Chamber>
           )}
         </TabsContent>
       </Tabs>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('functionDetail.deleteFunction')}</DialogTitle>
-            <DialogDescription>
-              {t('functionDetail.deleteFunctionConfirm', { name: functionData?.name })}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
-              disabled={isDeleting}
-            >
-              {t('functionDetail.cancel')}
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? t('functionDetail.deleting') : t('functionDetail.deleteFunction')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Delete Dialog */}
+      <Modal open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)} title={t('functionDetail.deleteFunction')}>
+        <p className="sc-fn-detail__dialog-desc">{t('functionDetail.deleteFunctionConfirm', { name: functionData?.name })}</p>
+        <div className="sc-fn-detail__dialog-actions">
+          <FrameButton onClick={() => setShowDeleteDialog(false)} disabled={isDeleting}>{t('functionDetail.cancel')}</FrameButton>
+          <SealedButton loading={isDeleting} onClick={confirmDelete} className="sc-fn-detail__delete-confirm">{t('functionDetail.deleteFunction')}</SealedButton>
+        </div>
+      </Modal>
 
-      {/* Report Issue Dialog */}
-      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
-              {t('functionDetail.reportIssue')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('functionDetail.reportIssueDescription', { name: functionData?.name })}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label
-                htmlFor="report-description"
-                className="block text-sm font-medium text-text-primary mb-2"
-              >
-                {t('functionDetail.whatIsTheIssue')}
-              </label>
-              <textarea
-                id="report-description"
-                value={reportDescription}
-                onChange={(e) => setReportDescription(e.target.value)}
-                placeholder={t('functionDetail.issuePlaceholder')}
-                className="w-full min-h-[120px] px-3 py-2 rounded-lg border border-border-subtle bg-bg-primary text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none"
-              />
-            </div>
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-              <p className="text-xs text-amber-400">
-                {t('functionDetail.reportDisclaimer', {
-                  functionName: functionData?.name,
-                  author: functionData?.author,
-                })}
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowReportDialog(false)}>
-              {t('functionDetail.cancel')}
-            </Button>
-            <Button
-              variant="default"
-              onClick={submitReport}
-              disabled={!reportDescription.trim()}
-              className="bg-amber-500 hover:bg-amber-600 text-white border-0"
-            >
-              {t('functionDetail.submitReport')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Report Dialog */}
+      <Modal open={showReportDialog} onClose={() => setShowReportDialog(false)} title={t('functionDetail.reportIssue')}>
+        <p className="sc-fn-detail__dialog-desc">{t('functionDetail.reportIssueDescription', { name: functionData?.name })}</p>
+        <div className="sc-fn-detail__report-field">
+          <label htmlFor="report-description" className="sc-fn-detail__report-label">{t('functionDetail.whatIsTheIssue')}</label>
+          <textarea id="report-description" className="sc-community-textarea" value={reportDescription} onChange={(e) => setReportDescription(e.target.value)} placeholder={t('functionDetail.issuePlaceholder')} rows={4} />
+        </div>
+        <div className="sc-fn-detail__report-disclaimer">
+          <p>{t('functionDetail.reportDisclaimer', { functionName: functionData?.name, author: functionData?.author })}</p>
+        </div>
+        <div className="sc-fn-detail__dialog-actions">
+          <FrameButton onClick={() => setShowReportDialog(false)}>{t('functionDetail.cancel')}</FrameButton>
+          <SealedButton onClick={submitReport} disabled={!reportDescription.trim()}>{t('functionDetail.submitReport')}</SealedButton>
+        </div>
+      </Modal>
     </div>
   );
 }
+
+export default FunctionDetailPage;

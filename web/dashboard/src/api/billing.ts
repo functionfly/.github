@@ -628,6 +628,54 @@ export async function getBundleStats(): Promise<BundleStats> {
   return apiClient.get<BundleStats>('/v1/billing/bundles/stats');
 }
 
+export interface BundleCatalogFeature {
+  icon: string;
+  title: string;
+  description: string;
+}
+
+export interface BundleCatalogFunction {
+  description: string;
+  icon: string;
+  capabilities: string[];
+}
+
+export interface BundleCatalogIntegration {
+  title: string;
+  description: string;
+  icon: string;
+}
+
+export interface BundleCatalogStep {
+  label: string;
+  description: string;
+}
+
+export interface BundleCatalogItem {
+  slug: string;
+  name: string;
+  tagline: string;
+  price_usd: string;
+  icon: string;
+  gradient: string;
+  features: BundleCatalogFeature[];
+  provisioning_steps: BundleCatalogStep[];
+  functions: Record<string, BundleCatalogFunction>;
+  integrations: BundleCatalogIntegration[];
+}
+
+export interface BundleCatalogResponse {
+  bundles: BundleCatalogItem[];
+}
+
+/**
+ * Get rich bundle catalog with features, functions, and integrations metadata.
+ * GET /v1/billing/bundles/catalog
+ */
+export async function getBundleCatalog(): Promise<BundleCatalogResponse> {
+  return apiClient.get<BundleCatalogResponse>('/v1/billing/bundles/catalog');
+}
+
 export interface FounderModeBundleAnalytics {
   bundle_slug: string;
   total_signups: number;
@@ -702,6 +750,7 @@ export interface BundleSubscription {
   tenant_id: string;
   bundle_id: string;
   status: string;
+  default_app_id?: string;
   deploy_status: string;
   deploy_attempts: number;
   deploy_error?: string;
@@ -718,6 +767,34 @@ export interface BundleSubscription {
 export async function getBundleSubscription(): Promise<BundleSubscription | null> {
   try {
     return await apiClient.get<BundleSubscription>('/v1/billing/bundles/subscription');
+  } catch {
+    return null;
+  }
+}
+
+export interface BundleUsageMetric {
+  used: number;
+  limit: number;
+  percent: number;
+}
+
+export interface BundleUsageResponse {
+  bundle_slug: string;
+  subscription_status: string;
+  period_start: string;
+  period_end: string;
+  usage: Record<string, BundleUsageMetric>;
+  is_at_limit: boolean;
+  upgrade_required: boolean;
+}
+
+/**
+ * Get current usage against bundle limits.
+ * GET /v1/billing/bundle/usage
+ */
+export async function getBundleUsage(): Promise<BundleUsageResponse | null> {
+  try {
+    return await apiClient.get<BundleUsageResponse>('/v1/billing/bundle/usage');
   } catch {
     return null;
   }

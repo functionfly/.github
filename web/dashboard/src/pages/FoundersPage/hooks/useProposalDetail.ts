@@ -1,8 +1,18 @@
 import { apiClient } from '@/api/client';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import type { Vote, VoteOption } from './useFounderConsole';
+import type { VoteOption } from './useFounderConsole';
 
-export interface ProposalDetail extends Vote {
+export interface ProposalDetail {
+  id: string;
+  title: string;
+  description: string;
+  vote_type: string;
+  status: string;
+  options: VoteOption[];
+  has_voted: boolean;
+  my_vote?: string;
+  results?: Record<string, number>;
+  total_votes?: number;
   change_diff?: ChangeDiff;
   quorum: number;
   created_at: string;

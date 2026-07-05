@@ -190,7 +190,7 @@ export function AddBackendDialog({ appId, open, onOpenChange, onSuccess }: AddBa
       setDiscovering(true);
       try {
         const resources = await providersApi.discoverResources(provider, apiKey.trim());
-        if (!ctrl.aborted) {
+        if (!ctrl.signal.aborted) {
           setDiscoveredWorkers(resources);
           if (resources.length > 0 && !url) {
             setUrl(resources[0].url);
@@ -199,7 +199,7 @@ export function AddBackendDialog({ appId, open, onOpenChange, onSuccess }: AddBa
       } catch {
         // Silently fail — user can still enter URL manually
       } finally {
-        if (!ctrl.aborted) setDiscovering(false);
+        if (!ctrl.signal.aborted) setDiscovering(false);
       }
     }, 800);
 

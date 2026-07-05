@@ -49,3 +49,5 @@ export type { LiveIndicatorProps, LiveStatus } from './LiveIndicator';
 
 export { DraggableDashboardGrid } from './DraggableDashboardGrid';
 export type { DraggableDashboardGridProps, DraggableSection } from './DraggableDashboardGrid';
+
+export { BYOKPromptBanner } from './BYOKPromptBanner';

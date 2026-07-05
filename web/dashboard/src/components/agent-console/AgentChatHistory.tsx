@@ -14,6 +14,7 @@ interface ThinkingData {
 }
 
 interface ChatMessage {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   model?: string;
@@ -91,6 +92,7 @@ export function AgentChatHistory({ agentId, agentName, model, sessionId, onSessi
     agentApi.getChatHistory(agentId, PAGE_SIZE, 0, sessionId ?? undefined).then((res) => {
       if (cancelled) return;
       const msgs = (res.messages ?? []).map((m) => ({
+        id: m.id || `msg-${m.created_at}-${Math.random().toString(36).slice(2, 9)}`,
         role: m.role as 'user' | 'assistant',
         content: m.content,
         model: m.model,
@@ -113,6 +115,7 @@ export function AgentChatHistory({ agentId, agentName, model, sessionId, onSessi
     try {
       const res = await agentApi.getChatHistory(agentId, PAGE_SIZE, messages.length, sessionId ?? undefined);
       const older = (res.messages ?? []).map((m) => ({
+        id: m.id || `msg-${m.created_at}-${Math.random().toString(36).slice(2, 9)}`,
         role: m.role as 'user' | 'assistant',
         content: m.content,
         model: m.model,
@@ -133,7 +136,8 @@ export function AgentChatHistory({ agentId, agentName, model, sessionId, onSessi
     if (!text || sending) return;
     setInput('');
     const now = new Date().toISOString();
-    setMessages((prev) => [...prev, { role: 'user', content: text, created_at: now }]);
+    const userId = `user-${now}-${Math.random().toString(36).slice(2, 9)}`;
+    setMessages((prev) => [...prev, { id: userId, role: 'user', content: text, created_at: now }]);
     setSending(true);
     try {
       const res = await agentApi.agentChat(agentId, text, sessionId ?? undefined);
@@ -144,6 +148,7 @@ export function AgentChatHistory({ agentId, agentName, model, sessionId, onSessi
       setMessages((prev) => [
         ...prev,
         {
+          id: `assistant-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 9)}`,
           role: 'assistant',
           content: res.message || '(no response)',
           model: res.model,
@@ -154,7 +159,7 @@ export function AgentChatHistory({ agentId, agentName, model, sessionId, onSessi
     } catch (err) {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: `Error: ${err instanceof Error ? err.message : 'Failed to reach agent'}`, created_at: new Date().toISOString() },
+        { id: `error-${new Date().toISOString()}-${Math.random().toString(36).slice(2, 9)}`, role: 'assistant', content: `Error: ${err instanceof Error ? err.message : 'Failed to reach agent'}`, created_at: new Date().toISOString() },
       ]);
     } finally {
       setSending(false);

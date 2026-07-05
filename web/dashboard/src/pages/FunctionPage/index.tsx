@@ -12,9 +12,17 @@ import {
   FunctionEmbedSection,
   FunctionHeader,
 } from '@/components/functions';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CodeBlock } from '@/components/common/CodeBlock';
+import {
+  Chamber,
+  CornerBrace,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  Card,
+  Modal,
+  PageGrid,
+} from '@/components/containment';
 import { Footer } from '@/pages/LandingPage/components';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubmitRegistryRating } from '@/hooks/useRegistry';
@@ -61,15 +69,8 @@ import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
 import { TraceList } from '@/components/atlas';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { RelatedFunctionsSection } from './RelatedFunctionsSection';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { formatNumber } from '@/lib/utils';
+import './FunctionPage.css';
 
 export default function FunctionPage() {
   const { author, name } = useParams<{ author: string; name: string }>();
@@ -172,7 +173,7 @@ export default function FunctionPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: trustHistoryData } = useQuery({
+  const { data: trustHistoryData } = useQuery<{ history?: Array<{ calculated_at: string; trust_score: number; reliability_score?: number; user_rating_score?: number }> }>({
     queryKey: ['function-trust-history', functionInfo?.id],
     queryFn: async () => {
       if (!functionInfo?.id) return null;
@@ -186,7 +187,7 @@ export default function FunctionPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: executionsData } = useQuery({
+  const { data: executionsData } = useQuery<{ executions?: Array<{ execution_id: string; created_at: string; version: string; replay_verified: boolean; roots_match?: boolean }> }>({
     queryKey: ['function-executions', author, name],
     queryFn: async () => {
       if (!author || !name) return null;
@@ -200,7 +201,7 @@ export default function FunctionPage() {
     staleTime: 30 * 1000,
   });
 
-  const { data: versionsData } = useQuery({
+  const { data: versionsData } = useQuery<{ versions?: Array<{ version: string; published_at: string; changelog?: string }> }>({
     queryKey: ['function-versions', author, name],
     queryFn: async () => {
       if (!author || !name) return null;
@@ -214,7 +215,7 @@ export default function FunctionPage() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: statsData } = useQuery({
+  const { data: statsData } = useQuery<{ total_calls?: number; success_rate?: number; avg_latency_ms?: number }>({
     queryKey: ['function-stats', author, name],
     queryFn: async () => {
       if (!author || !name) return null;
@@ -325,9 +326,9 @@ export default function FunctionPage() {
                 <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
                   {error instanceof Error ? error.message : 'An unexpected error occurred'}
                 </p>
-                <Button variant="outline" onClick={() => window.location.reload()}>
+                <FrameButton onClick={() => window.location.reload()}>
                   Retry
-                </Button>
+                </FrameButton>
               </div>
             </div>
           )}
@@ -599,48 +600,34 @@ export default function FunctionPage() {
                   <BarChart3 className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
                   <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>Function Statistics</h2>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
-                    <CardContent className="p-4 text-center">
-                      <Activity className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--status-ok)' }} />
-                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
-                        {statsData?.total_calls
-                          ? formatNumber(statsData.total_calls)
-                          : formatNumber(functionInfo.executions || 0)}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Total Executions</p>
-                    </CardContent>
+                <div className="sc-fp__stats-grid">
+                  <Card className="sc-fp__stat-card">
+                    <Activity size={28} style={{ color: 'var(--status-ok)' }} />
+                    <p className="sc-fp__stat-value">
+                      {statsData?.total_calls ? formatNumber(statsData.total_calls) : formatNumber(functionInfo.executions || 0)}
+                    </p>
+                    <p className="sc-fp__stat-label">Total Executions</p>
                   </Card>
-                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
-                    <CardContent className="p-4 text-center">
-                      <TrendingUp className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--status-ok)' }} />
-                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
-                        {statsData?.success_rate != null
-                          ? `${statsData.success_rate.toFixed(1)}%`
-                          : '—'}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Success Rate</p>
-                    </CardContent>
+                  <Card className="sc-fp__stat-card">
+                    <TrendingUp size={28} style={{ color: 'var(--status-ok)' }} />
+                    <p className="sc-fp__stat-value">
+                      {statsData?.success_rate != null ? `${statsData.success_rate.toFixed(1)}%` : '—'}
+                    </p>
+                    <p className="sc-fp__stat-label">Success Rate</p>
                   </Card>
-                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
-                    <CardContent className="p-4 text-center">
-                      <Zap className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--status-pending)' }} />
-                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
-                        {statsData?.avg_latency_ms != null
-                          ? `${Math.round(statsData.avg_latency_ms)}ms`
-                          : '—'}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Avg Latency</p>
-                    </CardContent>
+                  <Card className="sc-fp__stat-card">
+                    <Zap size={28} style={{ color: 'var(--status-pending)' }} />
+                    <p className="sc-fp__stat-value">
+                      {statsData?.avg_latency_ms != null ? `${Math.round(statsData.avg_latency_ms)}ms` : '—'}
+                    </p>
+                    <p className="sc-fp__stat-label">Avg Latency</p>
                   </Card>
-                  <Card style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)', borderRadius: 'var(--radius-lg)' }}>
-                    <CardContent className="p-4 text-center">
-                      <Shield className="h-8 w-8 mx-auto mb-2" style={{ color: 'var(--foil-b)' }} />
-                      <p className="text-2xl font-bold" style={{ color: 'var(--text)' }}>
-                        {functionInfo.trust_score ? `${functionInfo.trust_score}%` : 'N/A'}
-                      </p>
-                      <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Trust Score</p>
-                    </CardContent>
+                  <Card className="sc-fp__stat-card">
+                    <Shield size={28} style={{ color: 'var(--foil-b)' }} />
+                    <p className="sc-fp__stat-value">
+                      {functionInfo.trust_score ? `${functionInfo.trust_score}%` : 'N/A'}
+                    </p>
+                    <p className="sc-fp__stat-label">Trust Score</p>
                   </Card>
                 </div>
               </motion.div>
@@ -807,45 +794,28 @@ export default function FunctionPage() {
                     {versionsData.versions
                       .slice(0, 5)
                       .map(
-                        (
-                          version: { version: string; published_at: string; changelog?: string },
-                          idx: number
-                        ) => (
+                        (version, idx) => (
                           <Card
                             key={version.version}
-                            style={idx === 0 ? { borderColor: 'rgba(143, 255, 208, 0.3)', background: 'rgba(143, 255, 208, 0.03)' } : { background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)' }}
+                            className={idx === 0 ? 'sc-fp__version-card--current' : ''}
                           >
-                            <CardContent className="p-4">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                                    style={idx === 0 ? { background: 'var(--status-ok)', color: 'var(--bg)' } : { background: 'var(--panel)', color: 'var(--text-faint)' }}
-                                  >
-                                    v{version.version}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                                      Version {version.version}
-                                      {idx === 0 && (
-                                        <span className="ml-2 text-xs font-normal" style={{ color: 'var(--status-ok)' }}>
-                                          (current)
-                                        </span>
-                                      )}
-                                    </p>
-                                    <p className="text-xs" style={{ color: 'var(--text-faint)' }}>
-                                      Published{' '}
-                                      {new Date(version.published_at).toLocaleDateString()}
-                                    </p>
-                                  </div>
-                                </div>
-                                {version.changelog && (
-                                  <p className="text-xs line-clamp-1 max-w-xs" style={{ color: 'var(--text-dim)' }}>
-                                    {version.changelog}
-                                  </p>
-                                )}
+                            <div className="sc-fp__version-row">
+                              <div className={`sc-fp__version-badge ${idx === 0 ? 'current' : ''}`}>
+                                v{version.version}
                               </div>
-                            </CardContent>
+                              <div className="sc-fp__version-info">
+                                <p className="sc-fp__version-name">
+                                  Version {version.version}
+                                  {idx === 0 && <span className="sc-fp__version-current">(current)</span>}
+                                </p>
+                                <p className="sc-fp__version-date">
+                                  Published {new Date(version.published_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                              {version.changelog && (
+                                <p className="sc-fp__version-changelog">{version.changelog}</p>
+                              )}
+                            </div>
                           </Card>
                         )
                       )}
@@ -865,11 +835,9 @@ export default function FunctionPage() {
                     <FileJson className="h-6 w-6" style={{ color: 'var(--status-ok)' }} />
                     <h2 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-display)' }}>README</h2>
                   </div>
-                  <Card>
-                    <CardContent className="p-6">
+                  <Chamber nested>
                       <MarkdownRenderer content={functionInfo.readme} />
-                    </CardContent>
-                  </Card>
+                  </Chamber>
                 </motion.div>
               )}
 
@@ -908,61 +876,32 @@ export default function FunctionPage() {
                   <FileJson className="w-6 h-6" style={{ color: 'var(--status-ok)' }} />
                   Input / Output Schema
                 </h2>
-                <div className="function-page-schema-grid">
+                <div className="sc-fp__schema-grid">
                   {functionInfo.manifest?.input ? (
-                    <Card className="function-page-schema-card" style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)' }}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Input</CardTitle>
-                        <CardDescription style={{ color: 'var(--text-dim)' }}>Expected input structure</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <CodeBlock
-                          code={JSON.stringify(functionInfo.manifest.input, null, 2)}
-                          language="json"
-                        />
-                      </CardContent>
-                    </Card>
+                    <Chamber nested className="sc-fp__schema-card">
+                      <h3 className="sc-fp__schema-title">Input</h3>
+                      <p className="sc-fp__schema-desc">Expected input structure</p>
+                      <CodeBlock code={JSON.stringify(functionInfo.manifest.input, null, 2)} language="json" />
+                    </Chamber>
                   ) : (
-                    <Card className="function-page-schema-card" style={{ borderStyle: 'dashed', borderColor: 'var(--panel-edge)' }}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Input</CardTitle>
-                        <CardDescription style={{ color: 'var(--text-dim)' }}>No input schema defined</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
-                          This function does not declare an input schema. Add an <code>input</code>{' '}
-                          field to your function manifest to enable typed inputs.
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <Chamber nested className="sc-fp__schema-card sc-fp__schema-card--empty">
+                      <h3 className="sc-fp__schema-title">Input</h3>
+                      <p className="sc-fp__schema-desc">No input schema defined</p>
+                      <p className="sc-fp__schema-hint">This function does not declare an input schema. Add an <code>input</code> field to your function manifest to enable typed inputs.</p>
+                    </Chamber>
                   )}
                   {functionInfo.manifest?.output ? (
-                    <Card className="function-page-schema-card" style={{ background: 'var(--panel-raised)', borderColor: 'var(--panel-edge)' }}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Output</CardTitle>
-                        <CardDescription style={{ color: 'var(--text-dim)' }}>Expected output structure</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <CodeBlock
-                          code={JSON.stringify(functionInfo.manifest.output, null, 2)}
-                          language="json"
-                        />
-                      </CardContent>
-                    </Card>
+                    <Chamber nested className="sc-fp__schema-card">
+                      <h3 className="sc-fp__schema-title">Output</h3>
+                      <p className="sc-fp__schema-desc">Expected output structure</p>
+                      <CodeBlock code={JSON.stringify(functionInfo.manifest.output, null, 2)} language="json" />
+                    </Chamber>
                   ) : (
-                    <Card className="function-page-schema-card" style={{ borderStyle: 'dashed', borderColor: 'var(--panel-edge)' }}>
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg" style={{ fontFamily: 'var(--font-display)' }}>Output</CardTitle>
-                        <CardDescription style={{ color: 'var(--text-dim)' }}>No output schema defined</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm" style={{ color: 'var(--text-faint)' }}>
-                          This function does not declare an output schema. Add an{' '}
-                          <code>output</code> field to your function manifest to enable typed
-                          outputs.
-                        </p>
-                      </CardContent>
-                    </Card>
+                    <Chamber nested className="sc-fp__schema-card sc-fp__schema-card--empty">
+                      <h3 className="sc-fp__schema-title">Output</h3>
+                      <p className="sc-fp__schema-desc">No output schema defined</p>
+                      <p className="sc-fp__schema-hint">This function does not declare an output schema. Add an <code>output</code> field to your function manifest to enable typed outputs.</p>
+                    </Chamber>
                   )}
                 </div>
               </div>
@@ -980,67 +919,30 @@ export default function FunctionPage() {
       </div>
 
       {/* Report Issue Dialog */}
-      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader className="pb-2">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)]" style={{ background: 'rgba(232, 196, 104, 0.1)', border: '1px solid rgba(232, 196, 104, 0.2)' }}>
-                <AlertTriangle className="h-6 w-6" style={{ color: 'var(--status-pending)' }} />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-semibold">Report a Function Issue</DialogTitle>
-                <DialogDescription className="text-sm" style={{ color: 'var(--text-faint)' }}>
-                  Help @{functionInfo?.author} fix problems with {functionInfo?.name}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="report-description" className="text-sm font-medium" style={{ color: 'var(--text)' }}>
-                Describe the issue
-              </label>
-              <textarea
-                id="report-description"
-                value={reportDescription}
-                onChange={(e) => setReportDescription(e.target.value)}
-                placeholder="The function returns an error when I send X input, or it doesn't work as described..."
-                className="w-full min-h-[100px] px-3 py-2.5 rounded-[var(--radius)] resize-none text-sm"
-                style={{ background: 'var(--panel-raised)', border: '1px solid var(--panel-edge)', color: 'var(--text)' }}
-                autoFocus
-              />
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-[var(--radius)]" style={{ background: 'rgba(232, 196, 104, 0.04)', border: '1px solid rgba(232, 196, 104, 0.1)' }}>
-              <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius)] shrink-0" style={{ background: 'rgba(232, 196, 104, 0.08)' }}>
-                <AlertCircle className="h-4 w-4" style={{ color: 'var(--status-pending)' }} />
-              </div>
-              <div>
-                <p className="text-sm font-medium" style={{ color: 'var(--status-pending)' }}>What happens next</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                  The author will be notified and can investigate. You'll see updates in the
-                  function's activity feed.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowReportDialog(false)} className="flex-1">
-              Cancel
-            </Button>
-            <Button
-              variant="default"
-              onClick={submitReport}
-              disabled={!reportDescription.trim()}
-              className="flex-1"
-            >
-              Submit Report
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Modal open={showReportDialog} onClose={() => setShowReportDialog(false)} title="Report a Function Issue">
+        <p className="sc-fp__dialog-desc">
+          Help @{functionInfo?.author} fix problems with {functionInfo?.name}
+        </p>
+        <div className="sc-fp__report-field">
+          <label htmlFor="report-description-fp" className="sc-fp__report-label">Describe the issue</label>
+          <textarea
+            id="report-description-fp"
+            className="sc-community-textarea"
+            value={reportDescription}
+            onChange={(e) => setReportDescription(e.target.value)}
+            placeholder="The function returns an error when I send X input, or it doesn't work as described..."
+            rows={4}
+          />
+        </div>
+        <div className="sc-fp__report-info">
+          <p className="sc-fp__report-info-title">What happens next</p>
+          <p className="sc-fp__report-info-desc">The author will be notified and can investigate. You'll see updates in the function's activity feed.</p>
+        </div>
+        <div className="sc-fp__dialog-actions">
+          <FrameButton onClick={() => setShowReportDialog(false)}>Cancel</FrameButton>
+          <SealedButton onClick={submitReport} disabled={!reportDescription.trim()}>Submit Report</SealedButton>
+        </div>
+      </Modal>
     </>
     </ErrorBoundary>
   );

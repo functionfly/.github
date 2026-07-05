@@ -35,20 +35,23 @@ export const functionsApi = {
       'functions' in response &&
       Array.isArray((response as any).functions)
     ) {
-      const funcs = (response as any).functions.map((f: any) => ({
-        id: f.id,
-        name: f.name,
-        version: f.version || f.latest_version?.split('@')[0] || '1.0.0',
-        status: f.version ? 'deployed' as const : 'draft' as const,
-        providers: [],
-        region: f.region || 'us-east-1',
-        code: f.code || '',
-        envVars: [],
-        tenantId: f.tenant_id || f.tenantId || '',
-        createdAt: f.created_at || f.createdAt || new Date().toISOString(),
-        updatedAt: f.updated_at || f.updatedAt || new Date().toISOString(),
-        trustScore: f.trust_score || f.trustScore,
-      }));
+      const funcs = (response as any).functions.map((f: any) => {
+        if (!f || typeof f !== 'object') return null;
+        return {
+          id: f.id,
+          name: f.name,
+          version: f.version || f.latest_version?.split('@')[0] || '1.0.0',
+          status: f.version ? 'deployed' as const : 'draft' as const,
+          providers: [],
+          region: f.region || 'us-east-1',
+          code: f.code || '',
+          envVars: [],
+          tenantId: f.tenant_id || f.tenantId || '',
+          createdAt: f.created_at || f.createdAt || new Date().toISOString(),
+          updatedAt: f.updated_at || f.updatedAt || new Date().toISOString(),
+          trustScore: f.trust_score || f.trustScore,
+        };
+      }).filter(Boolean);
       return { functions: funcs };
     }
     return { functions: [] };

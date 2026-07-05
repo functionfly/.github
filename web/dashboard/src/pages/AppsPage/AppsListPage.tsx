@@ -2,7 +2,7 @@ import { usePageTitle } from '@/hooks';
 import { cn } from '@/lib/utils';
 import {
   AlertCircle, ChevronDown, LayoutGrid, List,
-  RefreshCw, Search, SlidersHorizontal, X,
+  RefreshCw, Search, SlidersHorizontal, X, Plus,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,6 +58,16 @@ export function AppsListPage() {
           <div className="apps-hero__title-row">
             <TrustSeal size="lg" />
             <h1 className="apps-hero__title">{t('appsPage.appsTitle')}</h1>
+            {hasApps && (
+              <CreateAppModal
+                onSuccess={() => refetch()}
+                trigger={
+                  <SealedButton size="sm" iconLeft={<Plus className="apps-icon-sm" />}>
+                    New App
+                  </SealedButton>
+                }
+              />
+            )}
           </div>
           <p className="apps-hero__subtitle">
             {isLoading ? t('appsPage.loadingApps')

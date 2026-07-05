@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useBillingHub } from './useBillingHub';
 import { usePageTitle } from '@/hooks';
 import { OverviewTab } from './components/OverviewTab';
@@ -62,7 +62,17 @@ function BillingHubSkeleton() {
 export function BillingHubPage() {
   usePageTitle('Billing');
   const { state, actions, isLoading, errors, projectedBilling, usageMetrics, planLimits } = useBillingHub();
-  const [activeTab, setActiveTab] = useState<BillingTab>('overview');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as BillingTab | null;
+  const activeTab: BillingTab = tabParam && TABS.some((t) => t.id === tabParam) ? tabParam : 'overview';
+
+  const handleTabChange = (newTab: BillingTab) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', newTab);
+      return next;
+    });
+  };
 
   const isInitialLoading = isLoading.subscription && !state.subscription;
 
@@ -113,7 +123,7 @@ export function BillingHubPage() {
               aria-selected={isActive}
               className={`sc-billing-tab ${isActive ? '' : ''}`}
               data-state={isActive ? 'active' : 'inactive'}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
             >
               <Icon style={{ width: 14, height: 14 }} />
               <span>{tab.label}</span>

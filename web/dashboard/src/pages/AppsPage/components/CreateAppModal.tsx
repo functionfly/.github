@@ -245,7 +245,7 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
                       <TooltipTrigger asChild>
                         <Info className="w-3.5 h-3.5 cursor-help" style={{ color: 'var(--text-faint)' }} />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[200px]" style={{ background: 'var(--panel-raised)', borderColor: 'var(--steel)', borderRadius: 'var(--radius-sm)' }}>
+                      <TooltipContent side="top" className="max-w-[200px]">
                         {slugManuallyEdited
                           ? 'Slug is customized. Reset to auto-generate from name.'
                           : 'Slug is auto-generated from the app name.'}
@@ -285,7 +285,7 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top" style={{ background: 'var(--panel-raised)', borderColor: 'var(--steel)', borderRadius: 'var(--radius-sm)' }}>Customize slug</TooltipContent>
+                      <TooltipContent side="top">Customize slug</TooltipContent>
                     </Tooltip>
                   ) : slugManuallyEdited && name ? (
                     <Tooltip>
@@ -303,7 +303,7 @@ export function CreateAppModal({ onSuccess, trigger }: CreateAppModalProps) {
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                       </TooltipTrigger>
-                      <TooltipContent side="top" style={{ background: 'var(--panel-raised)', borderColor: 'var(--steel)', borderRadius: 'var(--radius-sm)' }}>Reset to auto-generate</TooltipContent>
+                      <TooltipContent side="top">Reset to auto-generate</TooltipContent>
                     </Tooltip>
                   ) : null}
                 </div>

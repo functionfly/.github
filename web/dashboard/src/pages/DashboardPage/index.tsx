@@ -25,6 +25,7 @@ import {
   SystemHealthIndicator,
   TrustScoreBadge,
   UsageGraph,
+  BYOKPromptBanner,
   type DraggableSection,
   type ErrorRateDataPoint,
   type FunctionPerformance,
@@ -869,6 +870,11 @@ export function DashboardPage() {
           </div>
         </motion.div>
       )}
+
+      {/* BYOK Prompt Banner - shown to users without AI keys */}
+      <div className="px-4 mb-4">
+        <BYOKPromptBanner />
+      </div>
 
       {/* Draggable Dashboard Sections wrapped in Chamber */}
       <Chamber ribs className="relative">

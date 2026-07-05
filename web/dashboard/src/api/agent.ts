@@ -113,11 +113,26 @@ export interface AgentQuota {
 }
 
 export interface AgentUsage {
+  agentId: string;
   callsThisMinute: number;
-  concurrentExecutions: number;
-  memoryUsageMB: number;
-  executionTimeMs: number;
-  spendToday: number;
+  callsToday: number;
+  stateWritesThisHour: number;
+  spendTodayUSD: number;
+  spendThisMonthUSD: number;
+  lastUpdated: string;
+}
+
+export function normalizeAgentUsage(raw: unknown): AgentUsage {
+  const r = raw as Record<string, unknown>;
+  return {
+    agentId: String(r.agentId ?? r.agent_id ?? ''),
+    callsThisMinute: Number(r.callsThisMinute ?? r.calls_this_minute ?? 0),
+    callsToday: Number(r.callsToday ?? r.calls_today ?? 0),
+    stateWritesThisHour: Number(r.stateWritesThisHour ?? r.state_writes_this_hour ?? 0),
+    spendTodayUSD: Number(r.spendTodayUSD ?? r.spend_today_usd ?? 0),
+    spendThisMonthUSD: Number(r.spendThisMonthUSD ?? r.spend_this_month_usd ?? 0),
+    lastUpdated: String(r.lastUpdated ?? r.last_updated ?? ''),
+  };
 }
 
 export interface BehavioralPolicy {
@@ -129,6 +144,20 @@ export interface BehavioralPolicy {
   forbiddenFunctions?: string[];
   deterministicOnly?: boolean;
   allowedCapabilities?: string[];
+}
+
+export function normalizeBehavioralPolicy(raw: unknown): BehavioralPolicy {
+  const r = raw as Record<string, unknown>;
+  return {
+    agentId: String(r.agentId ?? r.agent_id ?? ''),
+    maxExecutionDepth: Number(r.maxExecutionDepth ?? r.max_execution_depth ?? 10),
+    maxRecursionDepth: Number(r.maxRecursionDepth ?? r.max_recursion_depth ?? 3),
+    maxWallTimeMs: Number(r.maxWallTimeMs ?? r.max_wall_time_ms ?? 300000),
+    maxMemoryGrowthMB: Number(r.maxMemoryGrowthMB ?? r.max_memory_growth_mb ?? 512),
+    forbiddenFunctions: (r.forbiddenFunctions ?? r.forbidden_functions) as string[] | undefined,
+    deterministicOnly: typeof r.deterministicOnly === 'boolean' ? r.deterministicOnly : typeof r.deterministic_only === 'boolean' ? r.deterministic_only : undefined,
+    allowedCapabilities: (r.allowedCapabilities ?? r.allowed_capabilities) as string[] | undefined,
+  };
 }
 
 export interface ExecutionRecord {
@@ -450,7 +479,7 @@ export const agentApi = {
    * GET /v1/agent/{agent_id}/usage
    */
   getUsage: (agentId: string) =>
-    apiClient.get<{ ok: boolean; usage: AgentUsage }>(`/v1/agent/${agentId}/usage`),
+    apiClient.get<{ ok: boolean; usage: AgentUsage }>(`/v1/agent/${agentId}/usage`).then((res) => ({ ...res, usage: normalizeAgentUsage(res.usage) })),
 
   // ---------------------------------------------------------------------------
   // Policy Management
@@ -461,7 +490,7 @@ export const agentApi = {
    * GET /v1/agent/{agent_id}/policy
    */
   getPolicy: (agentId: string) =>
-    apiClient.get<{ ok: boolean; policy: BehavioralPolicy }>(`/v1/agent/${agentId}/policy`),
+    apiClient.get<{ ok: boolean; policy: BehavioralPolicy }>(`/v1/agent/${agentId}/policy`).then((res) => ({ ...res, policy: normalizeBehavioralPolicy(res.policy) })),
 
   /**
    * Update agent behavioral policy.
@@ -1303,7 +1332,7 @@ export const agentApi = {
   getChatHistory: (agentId: string, limit = 50, offset = 0, sessionId?: string) => {
     const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
     if (sessionId) params.set('session_id', sessionId);
-    return apiClient.get<{ ok: boolean; messages: Array<{ role: string; content: string; model?: string; metadata?: { thinking?: { content: string; tokens: number } }; created_at: string }> }>(`/v1/agent/${agentId}/chat/history?${params}`);
+    return apiClient.get<{ ok: boolean; messages: Array<{ id?: string; role: string; content: string; model?: string; metadata?: { thinking?: { content: string; tokens: number } }; created_at: string }> }>(`/v1/agent/${agentId}/chat/history?${params}`);
   },
 
   clearChat: (agentId: string, sessionId?: string) => {

@@ -71,6 +71,9 @@ const BrowseFunctionsPage = lazyPage(() => import('@/pages/BrowseFunctionsPage')
 const BundlePricingPage = lazyPage(() => import('@/pages/BundlePricingPage'), 'BundlePricingPage');
 const BundleProvisioningPage = lazyPage(() => import('@/pages/BundleProvisioningPage'), 'BundleProvisioningPage');
 const BundleOverviewPage = lazyPage(() => import('@/pages/BundleOverviewPage'), 'BundleOverviewPage');
+const BundleFunctionsPage = lazyPage(() => import('@/pages/BundleFunctionsPage'), 'BundleFunctionsPage');
+const BundleIntegrationsPage = lazyPage(() => import('@/pages/BundleIntegrationsPage'), 'BundleIntegrationsPage');
+const BundleIntegrationDetailPage = lazyPage(() => import('@/pages/BundleIntegrationDetailPage'), 'BundleIntegrationDetailPage');
 const BundleConfigPage = lazyPage(() => import('@/pages/BundleConfigPage'), 'BundleConfigPage');
 const MyBundlesPage = lazyPage(() => import('@/pages/MyBundlesPage'), 'MyBundlesPage');
 const BrainPage = lazyPage(() => import('@/pages/BrainPage'), 'BrainPage');
@@ -128,6 +131,7 @@ const PlaygroundPage = lazyPage(() => import('@/pages/PlaygroundPage'), 'Playgro
 const ProfilePage = lazyPage(() => import('@/pages/ProfilePage/ProfilePage'), 'ProfilePage');
 const ProfileSettingsPage = lazyPage(() => import('@/pages/ProfileSettingsPage'), 'ProfileSettingsPage');
 const ProvidersPage = lazyPage(() => import('@/pages/ProvidersPage'), 'ProvidersPage');
+const PublishRegistryFunctionPage = lazyPage(() => import('@/pages/PublishRegistryFunctionPage'), 'PublishRegistryFunctionPage');
 const RegistryDeployPage = lazyPage(() => import('@/pages/RegistryDeployPage'), 'RegistryDeployPage');
 const ReplayPage = lazyPage(() => import('@/pages/ReplayPage'), 'ReplayPage');
 const SecretsPage = lazyPage(() => import('@/pages/SecretsPage'), 'SecretsPage');
@@ -613,6 +617,7 @@ function AppContent() {
             <Route path="gallery" element={<GalleryPage />} />
             <Route path="functions/new" element={<FunctionEditorPage />} />
             <Route path="functions/paste" element={<PasteCodePage />} />
+            <Route path="functions/publish" element={<PublishRegistryFunctionPage />} />
             <Route path="functions/deploy" element={<RegistryDeployPage />} />
             <Route path="functions/:author/:name" element={<FunctionPage />} />
             <Route path="functions/:author/:name/settings" element={<FunctionSettingsPage />} />
@@ -655,6 +660,9 @@ function AppContent() {
             <Route path="bundles" element={<BundlePricingPage />} />
             <Route path="bundles/provisioning" element={<BundleProvisioningPage />} />
             <Route path="bundles/overview" element={<BundleOverviewPage />} />
+            <Route path="bundles/functions" element={<BundleFunctionsPage />} />
+            <Route path="bundles/integrations" element={<BundleIntegrationsPage />} />
+            <Route path="bundles/integrations/:type" element={<BundleIntegrationDetailPage />} />
             <Route path="bundles/mine" element={<MyBundlesPage />} />
             <Route path="founders" element={<FoundersPage />} />
             <Route path="founders/votes/:id" element={<ProposalDetailPage />} />

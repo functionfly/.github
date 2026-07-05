@@ -352,10 +352,9 @@ export function AgentDetailPage() {
                 {usage ? (
                   <div className="adp-stats-grid">
                     <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.callsThisMinute')}</p><p className="adp-stat__value">{usage.callsThisMinute}</p></div>
-                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.concurrentExecutions')}</p><p className="adp-stat__value">{usage.concurrentExecutions}</p></div>
-                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.memoryUsage')}</p><p className="adp-stat__value">{usage.memoryUsageMB} MB</p></div>
-                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.avgExecutionTime')}</p><p className="adp-stat__value">{usage.executionTimeMs} ms</p></div>
-                    <div className="adp-stat adp-stat--full"><p className="adp-stat__label">{t('agentDetail.spendToday')}</p><p className="adp-stat__value">${(usage.spendToday ?? 0).toFixed(4)}</p></div>
+                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.callsToday')}</p><p className="adp-stat__value">{usage.callsToday}</p></div>
+                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.spendToday')}</p><p className="adp-stat__value">${usage.spendTodayUSD.toFixed(4)}</p></div>
+                    <div className="adp-stat"><p className="adp-stat__label">{t('agentDetail.spendThisMonth')}</p><p className="adp-stat__value">${usage.spendThisMonthUSD.toFixed(4)}</p></div>
                   </div>
                 ) : <p className="adp-text adp-text--muted">{t('agentDetail.noUsageData')}</p>}
               </div>

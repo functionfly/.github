@@ -69,7 +69,7 @@ export function DeployWizard({ open, onOpenChange, bundle, pricingMode, onDeploy
     if (open) {
       providersApi.getConnectedProviders().then((providers) => {
         const deployable = providers.filter(p =>
-          p.status === 'active' && ['workers', 'vercel', 'deno', 'fly'].includes(p.name)
+          p.status === 'online' && ['workers', 'vercel', 'deno', 'fly'].includes(p.name)
         );
         setConnectedProviders(deployable);
         if (deployable.length > 0) {

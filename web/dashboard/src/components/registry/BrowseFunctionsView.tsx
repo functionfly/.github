@@ -32,6 +32,7 @@ import {
   LogIn,
   Mail,
   Play,
+  Rocket,
   Search,
   Shield,
   SortAsc,
@@ -872,6 +873,26 @@ export function BrowseFunctionsView({ variant }: { variant: BrowseFunctionsViewV
                     onClick={() => navigate('/signup')}
                   >
                     Sign up free
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {isAuthenticated && (
+              <div className="registry-auth-banner mb-8" data-testid="publish-cta">
+                <Rocket className="h-4 w-4 text-indigo-400 shrink-0" />
+                <span className="text-sm text-text-secondary">
+                  Authored something useful? Publish it to the community registry.
+                </span>
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    onClick={() => navigate('/functions/publish')}
+                  >
+                    <Rocket className="h-3 w-3 mr-1" />
+                    Publish to Registry
                   </Button>
                 </div>
               </div>

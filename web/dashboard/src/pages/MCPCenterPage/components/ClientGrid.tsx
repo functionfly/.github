@@ -32,9 +32,12 @@ const generateMockConnections = (): MCPConnection[] => {
           ? 'active'
           : 'stale'
         : 'never',
+      enabled: true,
       connected_functions: Math.floor(Math.random() * 10) + 1,
       total_invocations: Math.floor(Math.random() * 2000) + 50,
       last_connected_at: lastConnected,
+      avg_latency_ms: Math.floor(Math.random() * 100) + 10,
+      connected_function_names: [],
     };
   });
 };

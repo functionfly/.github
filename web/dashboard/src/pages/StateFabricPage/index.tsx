@@ -242,7 +242,9 @@ export function StateFabricPage() {
             size="sm"
             onClick={() => refetch()}
             iconLeft={<RefreshCw style={{ width: 14, height: 14 }} />}
-          />
+          >
+            Refresh
+          </FrameButton>
         </div>
       </div>
 

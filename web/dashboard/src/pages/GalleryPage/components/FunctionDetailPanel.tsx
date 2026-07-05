@@ -6,6 +6,7 @@ import type { GalleryFunction } from '@/api/composer';
 import { RUNTIME_MONACO_LANG } from '@/api/composer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { LazyMonacoEditor } from '@/components/LazyMonacoEditor';
 import { RUNTIME_COLORS } from '../constants';
 import { useFunctionSource, useFunctionStats } from '../useFunctionSource';
 import { TrustGauge } from './TrustGauge';
@@ -239,7 +240,7 @@ export function FunctionDetailPanel({
                     </div>
                   }
                 >
-                  <MonacoEditor
+                  <LazyMonacoEditor
                     height="100%"
                     language={monacoLang}
                     value={code}

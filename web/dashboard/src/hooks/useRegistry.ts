@@ -160,14 +160,26 @@ export function useSubmitRegistryReview() {
 // Publish function
 export function usePublishRegistryFunction() {
   return useMutation({
-    mutationFn: (data: {
-      author: string;
-      name: string;
-      version: string;
-      manifest: unknown;
-      source: { code: string; language?: string };
-      readme?: string;
-    }) => registryApi.publishFunction(data),
+    mutationFn: (data: Parameters<typeof registryApi.publishFunction>[0]) =>
+      registryApi.publishFunction(data),
+    onSuccess: () => {
+      toast.success('Function published successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to publish function: ${error.message}`);
+    },
+  });
+}
+
+// Publish function via presigned direct upload. For large source/WASM blobs
+// the dashboard uploads the bytes straight to R2 instead of sending them
+// through the orchestrator. Falls back to regular publish when the artifact
+// store is unavailable or below the size threshold.
+export function usePublishRegistryFunctionViaPresigned() {
+  return useMutation({
+    mutationFn: (
+      data: Parameters<typeof registryApi.publishFunctionViaPresigned>[0]
+    ) => registryApi.publishFunctionViaPresigned(data),
     onSuccess: () => {
       toast.success('Function published successfully');
     },

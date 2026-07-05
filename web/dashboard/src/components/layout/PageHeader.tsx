@@ -3,7 +3,7 @@ import { generateBreadcrumbs } from '@/lib/breadcrumbs';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { AlertCircle, ChevronRight, Shield, Sparkles } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import React, { useMemo } from 'react';
 
 interface BreadcrumbItem {

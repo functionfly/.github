@@ -1,6 +1,4 @@
 import { functionsApi } from '@/api/functions';
-import { AviationEmptyState } from '@/components/functions/AviationEmptyState';
-import { AviationFunctionCard } from '@/components/functions/AviationFunctionCard';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import {
@@ -41,11 +39,20 @@ import { usePageTitle } from '@/hooks';
 import { ROUTES } from '@/lib/constants';
 import { toast } from 'sonner';
 import { ToggleButtonGroup } from '@/components/ui';
+import {
+  PageGrid,
+  Chamber,
+  CornerBrace,
+  SealedButton,
+  FrameButton,
+  StatusPill,
+  GaugeStrip,
+  Gauge,
+  AnnotationTag,
+  Card,
+} from '@/components/containment';
+import './styles.css';
 
-/**
- * Functions Page - Aviation-themed cockpit interface
- * Theme-aware: Industrial instrumentation aesthetic for both light/dark modes
- */
 export function FunctionsPage() {
   usePageTitle('Functions');
   const { t } = useTranslation();
@@ -55,14 +62,9 @@ export function FunctionsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [functionToDelete, setFunctionToDelete] = useState<FunctionConfig | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [mounted, setMounted] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [regionFilter, setRegionFilter] = useState<string[]>([]);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['functions'],
@@ -83,14 +85,11 @@ export function FunctionsPage() {
     },
   });
 
-  // Bulk delete mutation
   const bulkDeleteMutation = useMutation({
     mutationFn: async (ids: string[]) => {
       const results = await Promise.allSettled(ids.map((id) => functionsApi.delete(id)));
       const failed = results.filter((r) => r.status === 'rejected');
-      if (failed.length > 0) {
-        throw new Error(`Failed to delete ${failed.length} functions`);
-      }
+      if (failed.length > 0) throw new Error(`Failed to delete ${failed.length} functions`);
       return ids;
     },
     onSuccess: (_, ids) => {
@@ -106,7 +105,6 @@ export function FunctionsPage() {
     (fn, index, self) => self.findIndex((f) => f.id === fn.id) === index
   );
 
-  // Define table columns for list view
   const columns = useMemo<ColumnDef<FunctionConfig>[]>(
     () => [
       {
@@ -114,9 +112,9 @@ export function FunctionsPage() {
         header: t('functionsPage.columnName'),
         size: 200,
         cell: ({ row }) => (
-          <div className="flex flex-col">
-            <span className="font-medium">{row.original.name}</span>
-            <span className="text-xs text-muted-foreground font-mono">{row.original.id}</span>
+          <div className="sc-fns__cell-name">
+            <span className="sc-fns__cell-name-text">{row.original.name}</span>
+            <span className="sc-fns__cell-name-id">{row.original.id}</span>
           </div>
         ),
       },
@@ -125,21 +123,9 @@ export function FunctionsPage() {
         header: t('functionsPage.columnStatus'),
         size: 120,
         cell: ({ row }) => {
-          const status = row.original.status;
-          const statusColors: Record<string, string> = {
-            deployed: 'bg-green-500/20 text-green-600 border-green-500/30',
-            draft: 'bg-amber-500/20 text-amber-600 border-amber-500/30',
-            deploying: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
-            failed: 'bg-red-500/20 text-red-600 border-red-500/30',
-          };
-          return (
-            <Badge
-              variant="outline"
-              className={`${statusColors[status] || 'bg-gray-500/20 text-gray-600'} font-mono text-xs`}
-            >
-              {status}
-            </Badge>
-          );
+          const s = row.original.status;
+          const mapped = s === 'deployed' ? 'live' : s === 'failed' ? 'revoked' : 'pending';
+          return <StatusPill status={mapped} label={s} />;
         },
       },
       {
@@ -147,7 +133,7 @@ export function FunctionsPage() {
         header: t('functionsPage.columnRegion'),
         size: 120,
         cell: ({ row }) => (
-          <span className="text-xs font-mono uppercase">{row.original.region}</span>
+          <span className="sc-fns__cell-mono">{row.original.region}</span>
         ),
       },
       {
@@ -155,16 +141,12 @@ export function FunctionsPage() {
         header: t('functionsPage.columnProviders'),
         size: 150,
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
-            {row.original.providers?.slice(0, 3).map((provider) => (
-              <Badge key={provider} variant="secondary" className="text-xs">
-                {provider}
-              </Badge>
+          <div className="sc-fns__cell-providers">
+            {row.original.providers?.slice(0, 3).map((p) => (
+              <span key={p} className="sc-fns__tag">{p}</span>
             ))}
             {row.original.providers && row.original.providers.length > 3 && (
-              <Badge variant="outline" className="text-xs">
-                +{row.original.providers.length - 3}
-              </Badge>
+              <span className="sc-fns__tag">+{row.original.providers.length - 3}</span>
             )}
           </div>
         ),
@@ -175,13 +157,12 @@ export function FunctionsPage() {
         size: 120,
         cell: ({ row }) => {
           const score = row.original.trustScore;
-          if (score === undefined) return <span className="text-muted-foreground">-</span>;
-          const color =
-            score >= 80 ? 'text-green-500' : score >= 60 ? 'text-amber-500' : 'text-red-500';
+          if (score === undefined) return <span className="sc-fns__cell-dash">-</span>;
+          const color = score >= 80 ? 'var(--status-ok)' : score >= 60 ? 'var(--status-pending)' : 'var(--status-revoked)';
           return (
-            <div className="flex items-center gap-2">
-              <span className={`font-mono font-semibold ${color}`}>{score}</span>
-              <span className="text-xs text-muted-foreground">/100</span>
+            <div className="sc-fns__cell-score">
+              <span style={{ color, fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{score}</span>
+              <span className="sc-fns__cell-dash">/100</span>
             </div>
           );
         },
@@ -193,9 +174,8 @@ export function FunctionsPage() {
         cell: ({ row }) => {
           const date = new Date(row.original.createdAt);
           return (
-            <span className="text-sm text-muted-foreground">
-              {date.toLocaleDateString()}{' '}
-              {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <span className="sc-fns__cell-date">
+              {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           );
         },
@@ -206,31 +186,10 @@ export function FunctionsPage() {
         size: 150,
         enableSorting: false,
         cell: ({ row }) => (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(`/functions/${row.original.id}`)}
-              className="h-8 w-8"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate(`/functions/${row.original.id}/edit`)}
-              className="h-8 w-8"
-            >
-              <Edit3 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handleDeleteClick(row.original)}
-              className="h-8 w-8 text-red-500 hover:text-red-600"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          <div className="sc-fns__cell-actions">
+            <button className="sc-fns__icon-btn" onClick={() => navigate(`/functions/${row.original.id}`)}><Eye size={14} /></button>
+            <button className="sc-fns__icon-btn" onClick={() => navigate(`/functions/${row.original.id}/edit`)}><Edit3 size={14} /></button>
+            <button className="sc-fns__icon-btn sc-fns__icon-btn--danger" onClick={() => handleDeleteClick(row.original)}><Trash2 size={14} /></button>
           </div>
         ),
       },
@@ -238,637 +197,275 @@ export function FunctionsPage() {
     [navigate, t]
   );
 
-  // Handle bulk actions
   const handleBulkAction = (action: string, selectedRows: FunctionConfig[]) => {
-    if (action === 'delete') {
-      const ids = selectedRows.map((row) => row.id);
-      bulkDeleteMutation.mutate(ids);
-    }
+    if (action === 'delete') bulkDeleteMutation.mutate(selectedRows.map((r) => r.id));
   };
 
-  // Get unique regions for filter
   const availableRegions = Array.from(new Set(functions.map((fn) => fn.region).filter(Boolean)));
 
   const filteredFunctions = functions.filter((fn) => {
-    // Search filter
-    const matchesSearch =
-      fn.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      fn.id.toLowerCase().includes(searchQuery.toLowerCase());
-
-    // Status filter
+    const matchesSearch = fn.name.toLowerCase().includes(searchQuery.toLowerCase()) || fn.id.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter.length === 0 || statusFilter.includes(fn.status);
-
-    // Region filter
     const matchesRegion = regionFilter.length === 0 || regionFilter.includes(fn.region);
-
     return matchesSearch && matchesStatus && matchesRegion;
   });
 
   const activeFiltersCount = statusFilter.length + regionFilter.length;
 
-  const toggleStatusFilter = (status: string) => {
-    setStatusFilter((prev) =>
-      prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]
-    );
-  };
+  const toggleStatusFilter = (status: string) => setStatusFilter((prev) => prev.includes(status) ? prev.filter((s) => s !== status) : [...prev, status]);
+  const toggleRegionFilter = (region: string) => setRegionFilter((prev) => prev.includes(region) ? prev.filter((r) => r !== region) : [...prev, region]);
+  const clearFilters = () => { setStatusFilter([]); setRegionFilter([]); };
+  const handleDeleteClick = (fn: FunctionConfig) => { setFunctionToDelete(fn); setDeleteDialogOpen(true); };
+  const handleConfirmDelete = () => { if (functionToDelete) deleteMutation.mutate(functionToDelete.id); };
 
-  const toggleRegionFilter = (region: string) => {
-    setRegionFilter((prev) =>
-      prev.includes(region) ? prev.filter((r) => r !== region) : [...prev, region]
-    );
-  };
+  const deployedCount = functions.filter((f) => f.providers?.length > 0).length;
 
-  const clearFilters = () => {
-    setStatusFilter([]);
-    setRegionFilter([]);
-  };
-
-  const handleDeleteClick = (fn: FunctionConfig) => {
-    setFunctionToDelete(fn);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (functionToDelete) {
-      deleteMutation.mutate(functionToDelete.id);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setDeleteDialogOpen(false);
-    setFunctionToDelete(null);
-  };
-
-  // Error state - theme aware
   if (error) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] aviation-radar-bg p-6 md:p-8">
-        <div className="aviation-panel aviation-panel-glow p-12 text-center max-w-lg mx-auto mt-20">
-          <div
-            className="w-16 h-16 mx-auto mb-6 rounded-full flex items-center justify-center border"
-            style={{
-              background: 'var(--color-aviation-red-subtle, rgba(239,68,68,0.1))',
-              borderColor: 'var(--color-aviation-red-dim, rgba(239,68,68,0.3))',
-            }}
-          >
-            <AlertTriangle className="w-8 h-8" style={{ color: 'var(--color-aviation-red)' }} />
-          </div>
-          <h3
-            className="text-lg font-mono font-semibold mb-2"
-            style={{ color: 'var(--color-aviation-text-primary)' }}
-          >
-            {t('functionsPage.systemError')}
-          </h3>
-          <p
-            className="font-mono text-sm mb-6"
-            style={{ color: 'var(--color-aviation-text-secondary)' }}
-          >
-            {t('functionsPage.failedToLoadRegistry')}
-          </p>
-          <Button
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['functions'] })}
-            className="aviation-button gap-2"
-          >
-            <Radar className="w-4 h-4" />
+      <div className="sc-fns__page">
+        <PageGrid />
+        <Chamber className="sc-fns__error">
+          <div className="sc-fns__error-icon"><AlertTriangle size={32} /></div>
+          <h3 className="sc-fns__error-title">{t('functionsPage.systemError')}</h3>
+          <p className="sc-fns__error-desc">{t('functionsPage.failedToLoadRegistry')}</p>
+          <FrameButton iconLeft={<Radar size={14} />} onClick={() => queryClient.invalidateQueries({ queryKey: ['functions'] })}>
             {t('functionsPage.retryScan')}
-          </Button>
-        </div>
+          </FrameButton>
+        </Chamber>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] aviation-radar-bg aviation-scroll overflow-y-auto">
-      <div className="p-6 md:p-8 space-y-6">
-        {/* Header Section */}
-        <div
-          className={`aviation-panel aviation-panel-glow p-6 transition-all duration-700 ${
-            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
-        >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            {/* Title section */}
-            <div className="flex items-start gap-4">
-              {/* Icon badge - amber themed */}
-              <div
-                className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border"
-                style={{
-                  background: 'var(--color-aviation-amber-subtle)',
-                  borderColor: 'var(--color-aviation-amber-dim)',
-                }}
-              >
-                <Radar className="w-6 h-6" style={{ color: 'var(--color-aviation-amber)' }} />
-              </div>
+    <div className="sc-fns__page">
+      <PageGrid />
 
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="aviation-label">{t('functionsPage.fleetManagement')}</span>
-                  <span className="aviation-value-cyan text-xs">{t('functionsPage.active')}</span>
-                </div>
-                <h1
-                  className="text-2xl md:text-3xl font-bold font-mono tracking-tight uppercase"
-                  style={{ color: 'var(--color-aviation-text-primary)' }}
-                >
-                  {t('functionsPage.title')}
-                </h1>
-                <p
-                  className="text-sm font-mono mt-1"
-                  style={{ color: 'var(--color-aviation-text-secondary)' }}
-                >
-                  {t('functionsPage.subtitle')}
-                </p>
-              </div>
+      {/* Header */}
+      <div className="sc-fns__header">
+        <Chamber ribs>
+          <CornerBrace position="tl" />
+          <CornerBrace position="br" />
+          <AnnotationTag primary="FLEET MANAGEMENT" secondary="ACTIVE" />
+          <div className="sc-fns__header-top">
+            <div className="sc-fns__header-info">
+              <h1 className="sc-fns__title">{t('functionsPage.title')}</h1>
+              <p className="sc-fns__subtitle">{t('functionsPage.subtitle')}</p>
             </div>
-
-            {/* Stats row */}
-            <div className="flex items-center gap-6 lg:gap-8">
-              <div className="text-right">
-                <div className="aviation-label mb-0.5">{t('functionsPage.totalUnits')}</div>
-                <div
-                  className="text-2xl font-mono font-bold"
-                  style={{ color: 'var(--color-aviation-amber)' }}
-                >
-                  {functions.length.toString().padStart(2, '0')}
-                </div>
-              </div>
-
-              <div
-                className="h-10 w-px"
-                style={{ background: 'var(--color-aviation-border-panel)' }}
-              />
-
-              <div className="text-right">
-                <div className="aviation-label mb-0.5">{t('functionsPage.online')}</div>
-                <div
-                  className="text-2xl font-mono font-bold"
-                  style={{ color: 'var(--color-aviation-green)' }}
-                >
-                  {functions
-                    .filter((f) => f.providers?.length > 0)
-                    .length.toString()
-                    .padStart(2, '0')}
-                </div>
-              </div>
-
-              <div
-                className="h-10 w-px"
-                style={{ background: 'var(--color-aviation-border-panel)' }}
-              />
-
-              <Button
-                onClick={() => navigate('/functions/new')}
-                className="aviation-button aviation-button-primary gap-2 hidden md:flex"
-              >
-                <Plus className="w-4 h-4" />
+            <div className="sc-fns__header-actions">
+              <SealedButton iconLeft={<Plus size={14} />} onClick={() => navigate('/functions/new')}>
                 {t('functionsPage.deployNew')}
-              </Button>
-
-              <Button
-                onClick={() => navigate(ROUTES.FRG)}
-                variant="outline"
-                className="aviation-button gap-2 hidden md:flex border-aviation-amber text-aviation-amber hover:bg-aviation-amber/10"
-              >
-                <Network className="w-4 h-4" />
+              </SealedButton>
+              <FrameButton iconLeft={<Network size={14} />} onClick={() => navigate(ROUTES.FRG)}>
                 {t('functionsPage.graphEditor')}
-              </Button>
+              </FrameButton>
             </div>
           </div>
-
-          {/* Mobile CTA */}
-          <Button
-            onClick={() => navigate('/functions/new')}
-            className="aviation-button aviation-button-primary gap-2 w-full mt-4 md:hidden"
-          >
-            <Plus className="w-4 h-4" />
-            {t('functionsPage.deployNewFunction')}
-          </Button>
-        </div>
-
-        {/* Toolbar */}
-        <div
-          className={`flex flex-col sm:flex-row gap-4 transition-all duration-700 delay-100 ${
-            mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
-        >
-          {/* Search */}
-          <div className="relative flex-1 max-w-xl">
-            <Search
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-              style={{ color: 'var(--color-aviation-text-muted)' }}
-            />
-            <input
-              type="text"
-              placeholder={t('functionsPage.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="aviation-input w-full pl-12 pr-4"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 -translate-y-1/2 transition-colors font-mono text-xs"
-                style={{ color: 'var(--color-aviation-text-muted)' }}
-              >
-                {t('functionsPage.clear')}
-              </button>
-            )}
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center gap-2">
-            {/* View toggle using standardized ToggleButtonGroup */}
-            <ToggleButtonGroup
-              value={viewMode}
-              onValueChange={(v) => setViewMode(v as 'grid' | 'list')}
-              options={[
-                {
-                  value: 'grid',
-                  label: t('functionsPage.grid'),
-                  icon: <LayoutGrid className="h-4 w-4" />,
-                },
-                {
-                  value: 'list',
-                  label: t('functionsPage.list'),
-                  icon: <List className="h-4 w-4" />,
-                },
-              ]}
-              variant="outline"
-              size="sm"
-            />
-
-            {/* Filter button */}
-            <Popover open={filterOpen} onOpenChange={setFilterOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="aviation-button gap-2 h-11 relative"
-                  style={{
-                    borderColor: activeFiltersCount > 0 ? 'var(--color-aviation-amber)' : undefined,
-                  }}
-                >
-                  <Filter className="w-4 h-4" />
-                  {t('functionsPage.filter')}
-                  {activeFiltersCount > 0 && (
-                    <span
-                      className="absolute -top-1 -right-1 w-5 h-5 rounded-full text-xs flex items-center justify-center font-mono"
-                      style={{
-                        background: 'var(--color-aviation-amber)',
-                        color: 'var(--color-aviation-bg-primary)',
-                      }}
-                    >
-                      {activeFiltersCount}
-                    </span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="aviation-panel w-64 p-4"
-                style={{
-                  background: 'var(--color-aviation-bg-secondary)',
-                  borderColor: 'var(--color-aviation-border-panel)',
-                }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <span
-                    className="font-mono text-sm font-semibold"
-                    style={{ color: 'var(--color-aviation-text-primary)' }}
-                  >
-                    {t('functionsPage.filterOptions')}
-                  </span>
-                  {activeFiltersCount > 0 && (
-                    <button
-                      onClick={clearFilters}
-                      className="font-mono text-xs flex items-center gap-1 transition-opacity hover:opacity-80"
-                      style={{ color: 'var(--color-aviation-cyan)' }}
-                    >
-                      <X className="w-3 h-3" />
-                      {t('functionsPage.clear')}
-                    </button>
-                  )}
-                </div>
-
-                {/* Status Filter */}
-                <div className="mb-4">
-                  <span
-                    className="aviation-label block mb-2"
-                    style={{ color: 'var(--color-aviation-text-muted)' }}
-                  >
-                    {t('functionsPage.status')}
-                  </span>
-                  <div className="space-y-2">
-                    {['draft', 'deployed', 'deploying', 'failed'].map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => toggleStatusFilter(status)}
-                        className="w-full flex items-center gap-2 p-2 rounded transition-colors"
-                        style={{
-                          background: statusFilter.includes(status)
-                            ? 'var(--color-aviation-amber-subtle)'
-                            : 'transparent',
-                        }}
-                      >
-                        <div
-                          className="w-4 h-4 rounded border flex items-center justify-center"
-                          style={{
-                            borderColor: statusFilter.includes(status)
-                              ? 'var(--color-aviation-amber)'
-                              : 'var(--color-aviation-border-instrument)',
-                            background: statusFilter.includes(status)
-                              ? 'var(--color-aviation-amber)'
-                              : 'transparent',
-                          }}
-                        >
-                          {statusFilter.includes(status) && (
-                            <Check
-                              className="w-3 h-3"
-                              style={{ color: 'var(--color-aviation-bg-primary)' }}
-                            />
-                          )}
-                        </div>
-                        <span
-                          className="font-mono text-xs uppercase"
-                          style={{
-                            color: statusFilter.includes(status)
-                              ? 'var(--color-aviation-amber)'
-                              : 'var(--color-aviation-text-secondary)',
-                          }}
-                        >
-                          {status}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Region Filter */}
-                {availableRegions.length > 0 && (
-                  <div>
-                    <span
-                      className="aviation-label block mb-2"
-                      style={{ color: 'var(--color-aviation-text-muted)' }}
-                    >
-                      {t('functionsPage.region')}
-                    </span>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {availableRegions.map((region) => (
-                        <button
-                          key={region}
-                          onClick={() => toggleRegionFilter(region)}
-                          className="w-full flex items-center gap-2 p-2 rounded transition-colors"
-                          style={{
-                            background: regionFilter.includes(region)
-                              ? 'var(--color-aviation-amber-subtle)'
-                              : 'transparent',
-                          }}
-                        >
-                          <div
-                            className="w-4 h-4 rounded border flex items-center justify-center"
-                            style={{
-                              borderColor: regionFilter.includes(region)
-                                ? 'var(--color-aviation-amber)'
-                                : 'var(--color-aviation-border-instrument)',
-                              background: regionFilter.includes(region)
-                                ? 'var(--color-aviation-amber)'
-                                : 'transparent',
-                            }}
-                          >
-                            {regionFilter.includes(region) && (
-                              <Check
-                                className="w-3 h-3"
-                                style={{ color: 'var(--color-aviation-bg-primary)' }}
-                              />
-                            )}
-                          </div>
-                          <span
-                            className="font-mono text-xs uppercase"
-                            style={{
-                              color: regionFilter.includes(region)
-                                ? 'var(--color-aviation-amber)'
-                                : 'var(--color-aviation-text-secondary)',
-                            }}
-                          >
-                            {region}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="flex items-center justify-center py-20">
-            <div className="text-center">
-              <div className="relative w-16 h-16 mx-auto mb-4">
-                <div
-                  className="absolute inset-0 rounded-full border-2"
-                  style={{ borderColor: 'var(--color-aviation-amber-dim)' }}
-                />
-                <div
-                  className="absolute inset-0 rounded-full border-2 border-transparent animate-spin"
-                  style={{ borderTopColor: 'var(--color-aviation-amber)' }}
-                />
-                <Loader2
-                  className="absolute inset-0 m-auto w-6 h-6 animate-spin"
-                  style={{ color: 'var(--color-aviation-amber)' }}
-                />
-              </div>
-              <p className="aviation-label" style={{ color: 'var(--color-aviation-text-muted)' }}>
-                {t('functionsPage.initializing')}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Content */}
-        {!isLoading && (
-          <>
-            {filteredFunctions.length === 0 ? (
-              <AviationEmptyState
-                onDeploy={() => navigate('/functions/new')}
-                searchQuery={searchQuery}
-              />
-            ) : (
-              <div
-                className={`transition-all duration-700 delay-200 ${
-                  mounted ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                {/* Results count */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="aviation-label">{t('functionsPage.scanResults')}</span>
-                    <span
-                      className="font-mono text-sm font-semibold"
-                      style={{ color: 'var(--color-aviation-text-primary)' }}
-                    >
-                      {t('functionsPage.unitsDetected', {
-                        count: filteredFunctions.length,
-                        plural: filteredFunctions.length !== 1 ? 'S' : '',
-                      })}
-                    </span>
-                  </div>
-
-                  {(searchQuery || activeFiltersCount > 0) && (
-                    <button
-                      onClick={() => {
-                        setSearchQuery('');
-                        clearFilters();
-                      }}
-                      className="font-mono text-xs flex items-center gap-1 transition-colors hover:opacity-80"
-                      style={{ color: 'var(--color-aviation-cyan)' }}
-                    >
-                      {t('functionsPage.clearScan')}
-                      <ArrowUpRight className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Functions Display - Grid or List View */}
-                {viewMode === 'grid' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredFunctions.map((fn, index) => (
-                      <AviationFunctionCard
-                        key={fn.id}
-                        fn={fn}
-                        index={index}
-                        onView={(id) => navigate(`/functions/${id}`)}
-                        onEdit={(id) => navigate(`/functions/${id}/edit`)}
-                        onDelete={handleDeleteClick}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <DataTable
-                    data={filteredFunctions}
-                    columns={columns}
-                    enableRowSelection={true}
-                    enableColumnResize={true}
-                    enableColumnVisibility={true}
-                    enableExport={true}
-                    enableGlobalFilter={true}
-                    enableColumnFilters={true}
-                    onBulkAction={handleBulkAction}
-                    bulkActions={[
-                      {
-                        label: t('functionsPage.deleteSelected'),
-                        value: 'delete',
-                        variant: 'destructive',
-                      },
-                    ]}
-                    exportFileName={`functions-${new Date().toISOString().split('T')[0]}`}
-                    isLoading={isLoading}
-                    emptyState={
-                      <AviationEmptyState
-                        onDeploy={() => navigate('/functions/new')}
-                        searchQuery={searchQuery}
-                      />
-                    }
-                  />
-                )}
-              </div>
-            )}
-          </>
-        )}
+          <GaugeStrip>
+            <Gauge data={{ value: functions.length, label: 'Total' }} isFirst />
+            <Gauge data={{ value: deployedCount, label: 'Online' }} />
+            <Gauge data={{ value: filteredFunctions.length, label: 'Filtered' }} />
+          </GaugeStrip>
+        </Chamber>
       </div>
 
-      {/* Delete Confirmation Dialog - Theme Aware */}
+      {/* Toolbar */}
+      <div className="sc-fns__toolbar">
+        <div className="sc-fns__search">
+          <Search size={14} className="sc-fns__search-icon" />
+          <input
+            type="text"
+            className="sc-fns__search-input"
+            placeholder={t('functionsPage.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="sc-fns__search-clear" onClick={() => setSearchQuery('')}>
+              <X size={12} />
+            </button>
+          )}
+        </div>
+        <div className="sc-fns__toolbar-controls">
+          <ToggleButtonGroup
+            value={viewMode}
+            onValueChange={(v) => setViewMode(v as 'grid' | 'list')}
+            options={[
+              { value: 'grid', label: t('functionsPage.grid'), icon: <LayoutGrid size={14} /> },
+              { value: 'list', label: t('functionsPage.list'), icon: <List size={14} /> },
+            ]}
+            variant="outline"
+            size="sm"
+          />
+          <Popover open={filterOpen} onOpenChange={setFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="sc-fns__filter-btn">
+                <Filter size={14} />
+                {t('functionsPage.filter')}
+                {activeFiltersCount > 0 && <span className="sc-fns__filter-badge">{activeFiltersCount}</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="sc-fns__filter-popover">
+              <div className="sc-fns__filter-header">
+                <span className="sc-fns__filter-title">{t('functionsPage.filterOptions')}</span>
+                {activeFiltersCount > 0 && (
+                  <button className="sc-fns__filter-clear" onClick={clearFilters}>
+                    <X size={10} /> {t('functionsPage.clear')}
+                  </button>
+                )}
+              </div>
+              <div className="sc-fns__filter-section">
+                <span className="sc-fns__filter-label">{t('functionsPage.status')}</span>
+                {['draft', 'deployed', 'deploying', 'failed'].map((status) => (
+                  <button key={status} className={`sc-fns__filter-option ${statusFilter.includes(status) ? 'active' : ''}`} onClick={() => toggleStatusFilter(status)}>
+                    <div className={`sc-fns__filter-check ${statusFilter.includes(status) ? 'checked' : ''}`}>
+                      {statusFilter.includes(status) && <Check size={10} />}
+                    </div>
+                    <span>{status}</span>
+                  </button>
+                ))}
+              </div>
+              {availableRegions.length > 0 && (
+                <div className="sc-fns__filter-section">
+                  <span className="sc-fns__filter-label">{t('functionsPage.region')}</span>
+                  {availableRegions.map((region) => (
+                    <button key={region} className={`sc-fns__filter-option ${regionFilter.includes(region) ? 'active' : ''}`} onClick={() => toggleRegionFilter(region)}>
+                      <div className={`sc-fns__filter-check ${regionFilter.includes(region) ? 'checked' : ''}`}>
+                        {regionFilter.includes(region) && <Check size={10} />}
+                      </div>
+                      <span>{region}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* Loading */}
+      {isLoading && (
+        <Chamber nested className="sc-fns__loading">
+          <Loader2 size={24} className="sc-community-spinner" />
+          <span className="sc-fns__loading-text">{t('functionsPage.initializing')}</span>
+        </Chamber>
+      )}
+
+      {/* Content */}
+      {!isLoading && (
+        <>
+          {filteredFunctions.length === 0 ? (
+            <Chamber className="sc-fns__empty">
+              <Radar size={40} className="sc-fns__empty-icon" />
+              <p className="sc-fns__empty-title">
+                {searchQuery ? `No results for "${searchQuery}"` : 'No functions deployed'}
+              </p>
+              <p className="sc-fns__empty-desc">
+                {searchQuery ? 'Try a different search term or clear filters.' : 'Deploy your first function to get started.'}
+              </p>
+              {!searchQuery && (
+                <SealedButton iconLeft={<Plus size={14} />} onClick={() => navigate('/functions/new')}>
+                  {t('functionsPage.deployNew')}
+                </SealedButton>
+              )}
+            </Chamber>
+          ) : (
+            <>
+              <div className="sc-fns__results-bar">
+                <span className="sc-fns__results-label">
+                  {t('functionsPage.unitsDetected', { count: filteredFunctions.length, plural: filteredFunctions.length !== 1 ? 'S' : '' })}
+                </span>
+                {(searchQuery || activeFiltersCount > 0) && (
+                  <button className="sc-fns__results-clear" onClick={() => { setSearchQuery(''); clearFilters(); }}>
+                    {t('functionsPage.clearScan')} <ArrowUpRight size={12} />
+                  </button>
+                )}
+              </div>
+
+              {viewMode === 'grid' ? (
+                <div className="sc-fns__grid">
+                  {filteredFunctions.map((fn) => (
+                    <Card key={fn.id} className="sc-fns__card">
+                      <div className="sc-fns__card-header">
+                        <div className="sc-fns__card-info">
+                          <span className="sc-fns__card-name">{fn.name}</span>
+                          <span className="sc-fns__card-id">{fn.id}</span>
+                        </div>
+                        <StatusPill status={fn.status === 'deployed' ? 'live' : fn.status === 'failed' ? 'revoked' : 'pending'} label={fn.status} />
+                      </div>
+                      <div className="sc-fns__card-meta">
+                        {fn.region && <span className="sc-fns__tag">{fn.region}</span>}
+                        {fn.providers?.slice(0, 2).map((p) => <span key={p} className="sc-fns__tag">{p}</span>)}
+                      </div>
+                      <div className="sc-fns__card-actions">
+                        <button className="sc-fns__icon-btn" onClick={() => navigate(`/functions/${fn.id}`)}><Eye size={14} /></button>
+                        <button className="sc-fns__icon-btn" onClick={() => navigate(`/functions/${fn.id}/edit`)}><Edit3 size={14} /></button>
+                        {fn.trustScore !== undefined && (
+                          <span className="sc-fns__card-score" style={{ color: fn.trustScore >= 80 ? 'var(--status-ok)' : fn.trustScore >= 60 ? 'var(--status-pending)' : 'var(--status-revoked)' }}>
+                            {fn.trustScore}
+                          </span>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <DataTable
+                  data={filteredFunctions}
+                  columns={columns}
+                  enableRowSelection
+                  enableColumnResize
+                  enableColumnVisibility
+                  enableExport
+                  enableGlobalFilter
+                  enableColumnFilters
+                  onBulkAction={handleBulkAction}
+                  bulkActions={[{ label: t('functionsPage.deleteSelected'), value: 'delete', variant: 'destructive' }]}
+                  exportFileName={`functions-${new Date().toISOString().split('T')[0]}`}
+                  isLoading={isLoading}
+                />
+              )}
+            </>
+          )}
+        </>
+      )}
+
+      {/* Delete Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent
-          className="aviation-panel max-w-md border"
-          style={{
-            background: 'var(--color-aviation-bg-secondary)',
-            borderColor: 'var(--color-aviation-red-dim, rgba(239,68,68,0.3))',
-          }}
-        >
+        <DialogContent className="sc-fns__delete-dialog">
           <DialogHeader>
-            <DialogTitle
-              className="flex items-center gap-2 font-mono"
-              style={{ color: 'var(--color-aviation-text-primary)' }}
-            >
-              <AlertTriangle className="w-5 h-5" style={{ color: 'var(--color-aviation-red)' }} />
+            <DialogTitle className="sc-fns__delete-title">
+              <AlertTriangle size={18} />
               {t('functionsPage.confirmTermination')}
             </DialogTitle>
-            <DialogDescription
-              className="font-mono text-sm"
-              style={{ color: 'var(--color-aviation-text-secondary)' }}
-            >
+            <DialogDescription className="sc-fns__delete-desc">
               {t('functionsPage.confirmTerminationDesc', { name: functionToDelete?.name })}
             </DialogDescription>
           </DialogHeader>
-
-          <div
-            className="my-4 p-3 border rounded"
-            style={{
-              background: 'var(--color-aviation-red-subtle, rgba(239,68,68,0.05))',
-              borderColor: 'var(--color-aviation-red-dim, rgba(239,68,68,0.2))',
-            }}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="aviation-label" style={{ color: 'var(--color-aviation-red)' }}>
-                {t('functionsPage.warning')}
-              </span>
-            </div>
-            <ul
-              className="text-xs font-mono space-y-1 ml-4"
-              style={{ color: 'var(--color-aviation-text-secondary)' }}
-            >
-              <li>• {t('functionsPage.warningInvocations')}</li>
-              <li>• {t('functionsPage.warningProviders')}</li>
-              <li>• {t('functionsPage.warningLogs')}</li>
+          <div className="sc-fns__delete-warning">
+            <span className="sc-fns__delete-warning-label">{t('functionsPage.warning')}</span>
+            <ul>
+              <li>{t('functionsPage.warningInvocations')}</li>
+              <li>{t('functionsPage.warningProviders')}</li>
+              <li>{t('functionsPage.warningLogs')}</li>
             </ul>
           </div>
-
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={handleCancelDelete}
-              className="aviation-button gap-2"
-            >
+          <DialogFooter className="sc-fns__delete-footer">
+            <FrameButton onClick={() => setDeleteDialogOpen(false)}>
               {t('functionsPage.abort')}
-            </Button>
-            <Button
-              variant="destructive"
+            </FrameButton>
+            <SealedButton
+              loading={deleteMutation.isPending}
+              iconLeft={<Zap size={14} />}
               onClick={handleConfirmDelete}
-              disabled={deleteMutation.isPending}
-              className="font-mono text-sm px-4 py-2 rounded-md transition-all flex items-center gap-2"
-              style={{
-                background: 'var(--color-aviation-red)',
-                color: 'white',
-              }}
+              className="sc-fns__delete-confirm"
             >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t('functionsPage.terminating')}
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  {t('functionsPage.confirmTerminate')}
-                </>
-              )}
-            </Button>
+              {t('functionsPage.confirmTerminate')}
+            </SealedButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Global styles for animations */}
-      <style>{`
-        @keyframes aviation-blip {
-          0%, 100% { opacity: 0; transform: scale(0); }
-          50% { opacity: 1; transform: scale(1); }
-        }
-
-        @keyframes aviation-scan {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-      `}</style>
     </div>
   );
 }
+
+export default FunctionsPage;
