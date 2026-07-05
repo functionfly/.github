@@ -150,7 +150,7 @@ func (a *Adapter) runFunctionFlyExecution(ctx context.Context, req *HeartbeatWeb
 	if err != nil {
 		return "", 0, 0, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	durationMs = int(time.Since(start).Milliseconds())
 	var result struct {
@@ -205,7 +205,7 @@ func (a *Adapter) postResultToPaperclip(ctx context.Context, issueID, agentID, e
 		a.log.WithError(err).Warn("paperclip post comment: do")
 		return false
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		a.log.WithField("status", resp.StatusCode).Warn("paperclip post comment: non-2xx")
 		return false
@@ -216,7 +216,9 @@ func (a *Adapter) postResultToPaperclip(ctx context.Context, issueID, agentID, e
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // RegisterRoutes adds Paperclip integration routes to the given router.

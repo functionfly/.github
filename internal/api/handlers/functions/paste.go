@@ -1,6 +1,8 @@
 package functions
 
 import (
+	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -8,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/artifacts"
 	"github.com/functionfly/functionfly/internal/codeparser"
 	"github.com/functionfly/functionfly/internal/storage"
 	registryrepo "github.com/functionfly/functionfly/internal/storage/registry"
@@ -26,6 +29,7 @@ func nullString(s string) sql.NullString {
 type PasteHandler struct {
 	repo        storage.Repository
 	registryRepo *registryrepo.RegistryRepository
+	artifactStore artifacts.Store
 }
 
 func NewPasteHandler(repo storage.Repository, registryRepo *registryrepo.RegistryRepository) *PasteHandler {
@@ -33,6 +37,14 @@ func NewPasteHandler(repo storage.Repository, registryRepo *registryrepo.Registr
 		repo:        repo,
 		registryRepo: registryRepo,
 	}
+}
+
+// SetArtifactStore wires the artifact store. When non-nil, pasted source code
+// is uploaded to object storage and only the storage_key + content hash land
+// in Postgres; when nil the legacy behavior is preserved (source stored in
+// the registry_functions.code column).
+func (h *PasteHandler) SetArtifactStore(s artifacts.Store) {
+	h.artifactStore = s
 }
 
 type ParseCodeRequest struct {
@@ -98,6 +110,22 @@ func sanitizeFunctionName(name string) string {
 
 func sanitizeCode(code string) string {
 	return codeSanitizer.ReplaceAllString(code, "")
+}
+
+// uploadSource uploads source bytes to the artifact store and returns the
+// storage_key and content_hash. The kind is "code" since paste.go is for the
+// tenant "paste code" workflow (vs publish.go's "source" kind for registry
+// publishes).
+func (h *PasteHandler) uploadSource(ctx context.Context, code string) (string, string, error) {
+	if h.artifactStore == nil || code == "" {
+		return "", "", nil
+	}
+	ct := "text/plain; charset=utf-8"
+	meta, err := h.artifactStore.Put(ctx, artifacts.KindCode, bytes.NewReader([]byte(code)), ct)
+	if err != nil {
+		return "", "", err
+	}
+	return meta.Key, meta.ContentHash, nil
 }
 
 func validateFunctionName(name string) error {
@@ -288,6 +316,9 @@ func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Reque
 				Code:      fn.Code,
 				Status:    "draft",
 			}
+			// Note: private tenant functions still store Code in the DB until
+			// the runtime adapters learn to read from object storage. The
+			// public/registry path below already migrates to R2.
 
 			createdFn, err := h.repo.CreateFunction(r.Context(), function)
 			if err != nil {
@@ -312,7 +343,7 @@ func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Reque
 
 			created = append(created, CreatedFunction{
 				ID:     createdFn.ID.String(),
-				Name:   createdFn.Name,
+				Name:   sanitizedName,
 				Status: createdFn.Status,
 			})
 		} else {
@@ -329,6 +360,17 @@ func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Reque
 				TenantID:     &tenantID,
 				OwnerUserID:  &user.UserID,
 				Capabilities: json.RawMessage(`["code_execution"]`),
+			}
+			if h.artifactStore != nil {
+				uploadedKey, uploadedHash, err := h.uploadSource(r.Context(), fn.Code)
+				if err != nil {
+					logrus.WithError(err).WithField("name", sanitizedName).Warn("artifact upload failed; falling back to DB column")
+				} else {
+					function.Code = ""
+					function.CodeStorageBackend = string(h.artifactStore.Backend())
+					function.CodeStorageKey = nullString(uploadedKey)
+					function.CodeContentHash = nullString(uploadedHash)
+				}
 			}
 
 			if fn.Language != "" {
@@ -358,7 +400,7 @@ func (h *PasteHandler) HandleCreateFromCode(w http.ResponseWriter, r *http.Reque
 
 			created = append(created, CreatedFunction{
 				ID:     function.ID.String(),
-				Name:   function.Name,
+				Name:   sanitizedName,
 				Status: function.Status,
 			})
 		}

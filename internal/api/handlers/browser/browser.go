@@ -72,7 +72,9 @@ func (h *Handler) CreateSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(session)
+	if err := json.NewEncoder(w).Encode(session); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // ListSessions lists all sessions for an agent.
@@ -88,7 +90,9 @@ func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(sessions)
+	if err := json.NewEncoder(w).Encode(sessions); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // GetSession gets a session by ID.
@@ -107,7 +111,9 @@ func (h *Handler) GetSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(session)
+	if err := json.NewEncoder(w).Encode(session); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // CloseSession closes a browser session.
@@ -123,7 +129,9 @@ func (h *Handler) CloseSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "session closed"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "session closed"}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // NavigateRequest is the request body for navigation.
@@ -159,7 +167,9 @@ func (h *Handler) Navigate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	if err := json.NewEncoder(w).Encode(result); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // ClickRequest is the request body for clicking.
@@ -187,7 +197,9 @@ func (h *Handler) Click(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "clicked"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "clicked"}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // FillRequest is the request body for filling forms.
@@ -216,7 +228,9 @@ func (h *Handler) Fill(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "filled"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "filled"}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // ExtractRequest is the request body for extraction.
@@ -244,7 +258,9 @@ func (h *Handler) Extract(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"content": content})
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{"content": content}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // ScreenshotRequest is the request body for screenshots.
@@ -271,7 +287,9 @@ func (h *Handler) Screenshot(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"screenshot": screenshot})
+	if err := json.NewEncoder(w).Encode(map[string]string{"screenshot": screenshot}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // StoreCredentialRequest is the request body for storing credentials.
@@ -311,7 +329,9 @@ func (h *Handler) StoreCredential(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(credential)
+	if err := json.NewEncoder(w).Encode(credential); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // ListCredentials lists all credentials for an agent.
@@ -326,7 +346,9 @@ func (h *Handler) ListCredentials(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(credentials)
+	if err := json.NewEncoder(w).Encode(credentials); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // GetCredential gets a credential by ID.
@@ -342,7 +364,9 @@ func (h *Handler) GetCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(credential)
+	if err := json.NewEncoder(w).Encode(credential); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // DeleteCredential deletes a credential.
@@ -358,7 +382,9 @@ func (h *Handler) DeleteCredential(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "credential deleted"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "credential deleted"}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // GetConfig gets browser configuration for an agent.
@@ -373,7 +399,9 @@ func (h *Handler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(perm)
+	if err := json.NewEncoder(w).Encode(perm); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // UpsertConfigRequest is the request body for updating config.
@@ -415,7 +443,9 @@ func (h *Handler) UpsertConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"message": "config updated"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"message": "config updated"}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // GetUsage gets browser usage statistics for an agent.
@@ -437,7 +467,9 @@ func (h *Handler) GetUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func serverError(w http.ResponseWriter, r *http.Request, err error) {

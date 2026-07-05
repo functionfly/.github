@@ -1086,7 +1086,9 @@ func (h *SwarmHandler) TriggerKillSwitch(w http.ResponseWriter, r *http.Request)
 	var req struct {
 		Reason string `json:"reason"`
 	}
-	json.NewDecoder(r.Body).Decode(&req) // Optional body
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logrus.WithError(err).Warn("failed to decode request body")
+	} // Optional body
 
 	if req.Reason == "" {
 		req.Reason = "manual_trigger"

@@ -140,7 +140,9 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 			code := string(violation.Code)
 			record.PolicyViolation = &code
 		}
-		h.attributionRepo.RecordExecution(r.Context(), record)
+		if err := h.attributionRepo.RecordExecution(r.Context(), record); err != nil {
+			logrus.WithError(err).Warn("failed to record execution")
+		}
 
 		writeError(w, http.StatusForbidden, string(violation.Code), violation.Message)
 		return
@@ -264,15 +266,21 @@ func (h *Handler) HandleExecute(w http.ResponseWriter, r *http.Request) {
 		ErrorCode:   errorCode,
 		Timestamp:   time.Now(),
 	}
-	h.attributionRepo.RecordExecution(r.Context(), record)
+	if err := h.attributionRepo.RecordExecution(r.Context(), record); err != nil {
+		logrus.WithError(err).Warn("failed to record execution")
+	}
 
 	// 10. Update session cost if session is active
 	if sessionID != "" {
-		h.attributionRepo.IncrementSessionCost(r.Context(), sessionID, record.CostUSD)
+		if err := h.attributionRepo.IncrementSessionCost(r.Context(), sessionID, record.CostUSD); err != nil {
+			logrus.WithError(err).Warn("failed to increment session cost")
+		}
 	}
 
 	// 11. Record spend
-	h.quotaEnforcer.RecordSpend(r.Context(), agentID, record.CostUSD)
+	if err := h.quotaEnforcer.RecordSpend(r.Context(), agentID, record.CostUSD); err != nil {
+		logrus.WithError(err).Warn("failed to record spend")
+	}
 
 	// 12. Push cost to Paperclip for budget enforcement (if configured)
 	if record.CostUSD >= 0 {

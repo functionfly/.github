@@ -1,7 +1,6 @@
 package functions
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/api/types"
@@ -17,10 +15,8 @@ import (
 	"github.com/functionfly/functionfly/internal/bundler"
 	"github.com/functionfly/functionfly/internal/config"
 	deployPkg "github.com/functionfly/functionfly/internal/deployment"
-	"github.com/functionfly/functionfly/internal/flypy"
 	"github.com/functionfly/functionfly/internal/manifest"
 	"github.com/functionfly/functionfly/internal/storage"
-	"github.com/functionfly/functionfly/internal/wasm"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -121,6 +117,11 @@ func (h *Handler) HandleCreateFunction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.checkBundleFunctionLimit(r.Context(), user.TenantID); err != nil {
+		apierror.WriteError(w, apierror.NewForbidden(err.Error()))
+		return
+	}
+
 	function := &storage.FunctionConfig{
 		TenantID:  user.TenantID,
 		Name:      req.Name,
@@ -143,6 +144,35 @@ func (h *Handler) HandleCreateFunction(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(types.CreateFunctionResponse{
 		FunctionID: createdFunction.ID.String(),
 	})
+}
+
+func (h *Handler) checkBundleFunctionLimit(ctx context.Context, tenantID uuid.UUID) error {
+	sub, err := h.repo.GetBundleSubscriptionByTenant(ctx, tenantID)
+	if err != nil || sub == nil {
+		return nil
+	}
+
+	bundle, err := h.repo.GetPricingBundleByID(ctx, sub.BundleID)
+	if err != nil || bundle == nil {
+		return nil
+	}
+
+	limit, exists := bundle.FeatureLimits["functions"]
+	if !exists || limit <= 0 {
+		return nil
+	}
+
+	functions, err := h.repo.ListFunctionsByTenant(ctx, tenantID)
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to list functions for bundle quota check")
+		return nil
+	}
+
+	if len(functions) >= limit {
+		return fmt.Errorf("function limit reached (%d/%d). Upgrade your bundle to create more functions", len(functions), limit)
+	}
+
+	return nil
 }
 
 // HandleUpdateFunction handles PUT /v1/functions/{id}
@@ -701,150 +731,7 @@ func determineSideEffects(capabilities []string) string {
 
 // executeTestFunction executes a function for testing purposes
 func (h *Handler) executeTestFunction(ctx context.Context, req *types.TestFunctionRequest, user *storage.User) (*types.TestFunctionResponse, error) {
-	startTime := time.Now()
-
-	var functionCode string
-	var functionName string
-
-	// Get function code either from database or request
-	if req.FunctionId != nil {
-		// Load function from database
-		function, err := h.repo.GetFunctionByID(ctx, *req.FunctionId)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get function: %w", err)
-		}
-
-		if function.TenantID != user.TenantID {
-			return nil, fmt.Errorf("function does not belong to user")
-		}
-
-		functionCode = function.Code
-		functionName = function.Name
-	} else {
-		// Use code from request (for testing arbitrary code)
-		functionCode = req.Input
-		functionName = "test-function"
-	}
-
-	// Create temporary directory for compilation
-	tempDir, err := os.MkdirTemp("", fmt.Sprintf("test-function-%d", time.Now().Unix()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create temp directory: %w", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Compile the function
-	config := &flypy.Config{
-		Mode:      flypy.CompatibleMode, // Allow some non-deterministic operations for testing
-		OutputDir: tempDir,
-		Verbose:   false,
-	}
-
-	compiler := flypy.NewCompiler(config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create compiler: %w", err)
-	}
-
-	compileCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	result, err := compiler.Compile(compileCtx, functionCode, functionName)
-	if err != nil {
-		return &types.TestFunctionResponse{
-			Success:         false,
-			Output:          nil,
-			ExecutionTimeMs: int(time.Since(startTime).Milliseconds()),
-			Logs:            []*storage.FunctionLog{{Message: fmt.Sprintf("Compilation failed: %v", err)}},
-		}, nil
-	}
-
-	// Check for compilation warnings/errors
-	if len(result.Warnings) > 0 {
-		logs := make([]*storage.FunctionLog, len(result.Warnings))
-		for i, warning := range result.Warnings {
-			logs[i] = &storage.FunctionLog{Message: fmt.Sprintf("Warning: %s", warning)}
-		}
-		return &types.TestFunctionResponse{
-			Success:         false,
-			Output:          nil,
-			ExecutionTimeMs: int(time.Since(startTime).Milliseconds()),
-			Logs:            logs,
-		}, nil
-	}
-
-	// Execute the compiled function
-	wasmPath := filepath.Join(tempDir, "state_transition.wasm")
-
-	// Create output buffers for capturing logs
-	var stdoutBuf, stderrBuf bytes.Buffer
-
-	// Create runtime
-	runtime, err := wasm.NewPythonRuntimeWithDebug(wasmPath, &stdoutBuf, &stderrBuf, nil, false)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create runtime: %w", err)
-	}
-	defer runtime.Close()
-
-	// Initialize runtime
-	if err := runtime.Init(); err != nil {
-		return nil, fmt.Errorf("failed to initialize runtime: %w", err)
-	}
-
-	// Load the compiled code
-	if err := runtime.LoadCode(functionCode); err != nil {
-		return nil, fmt.Errorf("failed to load code: %w", err)
-	}
-
-	// Prepare input for execution
-	var inputData []byte
-	if req.FunctionId != nil {
-		// For database functions, use the input as JSON
-		inputData = []byte(req.Input)
-	} else {
-		// For direct code testing, the input is already the code
-		inputData = []byte("{}") // Empty JSON object as default input
-	}
-
-	// Execute the function
-	output, err := runtime.Execute(inputData)
-	executionTime := time.Since(startTime)
-
-	var response *types.TestFunctionResponse
-	if err != nil {
-		response = &types.TestFunctionResponse{
-			Success:         false,
-			Output:          nil,
-			ExecutionTimeMs: int(executionTime.Milliseconds()),
-			Logs:            []*storage.FunctionLog{{Message: fmt.Sprintf("Execution failed: %v", err)}},
-		}
-	} else {
-		// Parse output as JSON
-		var parsedOutput interface{}
-		if err := json.Unmarshal(output, &parsedOutput); err != nil {
-			parsedOutput = string(output) // Fallback to string if not JSON
-		}
-
-		response = &types.TestFunctionResponse{
-			Success:         true,
-			Output:          parsedOutput,
-			ExecutionTimeMs: int(executionTime.Milliseconds()),
-			Logs:            []*storage.FunctionLog{}, // Could add execution logs here
-		}
-	}
-
-	// Add any stdout/stderr output as logs
-	if stdoutBuf.Len() > 0 {
-		response.Logs = append(response.Logs, &storage.FunctionLog{
-			Message: fmt.Sprintf("stdout: %s", stdoutBuf.String()),
-		})
-	}
-	if stderrBuf.Len() > 0 {
-		response.Logs = append(response.Logs, &storage.FunctionLog{
-			Message: fmt.Sprintf("stderr: %s", stderrBuf.String()),
-		})
-	}
-
-	return response, nil
+	return executeTestFunctionImpl(ctx, h, req, user)
 }
 
 func (h *Handler) HandleParseCode(w http.ResponseWriter, r *http.Request) {

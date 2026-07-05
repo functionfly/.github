@@ -62,15 +62,33 @@ func NewHandler(
 
 	dbTool := tools.NewDatabaseTool(db)
 	dbTool.SetDB(db)
-	reg.Register(dbTool)
-	reg.Register(&tools.FileReadTool{})
-	reg.Register(&tools.FileWriteTool{})
-	reg.Register(&tools.HTTPTool{})
-	reg.Register(&tools.CodeExecutionTool{})
-	reg.Register(&tools.ImageGenerationTool{})
-	reg.Register(&tools.TextToSpeechTool{})
-	reg.Register(&tools.EmailTool{})
-	reg.Register(&tools.NotificationTool{})
+	if err := reg.Register(dbTool); err != nil {
+		logrus.WithError(err).Warn("failed to register dbTool")
+	}
+	if err := reg.Register(&tools.FileReadTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register FileReadTool")
+	}
+	if err := reg.Register(&tools.FileWriteTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register FileWriteTool")
+	}
+	if err := reg.Register(&tools.HTTPTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register HTTPTool")
+	}
+	if err := reg.Register(&tools.CodeExecutionTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register CodeExecutionTool")
+	}
+	if err := reg.Register(&tools.ImageGenerationTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register ImageGenerationTool")
+	}
+	if err := reg.Register(&tools.TextToSpeechTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register TextToSpeechTool")
+	}
+	if err := reg.Register(&tools.EmailTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register EmailTool")
+	}
+	if err := reg.Register(&tools.NotificationTool{}); err != nil {
+		logrus.WithError(err).Warn("failed to register NotificationTool")
+	}
 
 	return &Handler{
 		identityRepo:    identity.NewRepository(db),
@@ -610,7 +628,9 @@ func (h *Handler) HandleStartSession(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		SessionID string `json:"session_id"`
 	}
-	json.NewDecoder(r.Body).Decode(&req)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logrus.WithError(err).Warn("failed to decode request body")
+	}
 
 	sessionID := req.SessionID
 	if sessionID == "" {
@@ -707,7 +727,9 @@ func (h *Handler) HandleGetSession(w http.ResponseWriter, r *http.Request) {
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func writeError(w http.ResponseWriter, status int, code, message string) {

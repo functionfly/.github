@@ -39,6 +39,20 @@ func deployURLForSlug(slug string) string {
 	return fmt.Sprintf("http://%s.localhost:8082", slug)
 }
 
+// resolveDeployURL returns the URL that should be surfaced to the user when
+// opening the deployed app. It prefers the first enabled backend's actual URL
+// (the real, deployed endpoint) and falls back to the slug-derived intent URL
+// when no backends exist yet (the app has not been deployed).
+func resolveDeployURL(backends []*storage.Backend, intentURL string) string {
+	for _, b := range backends {
+		if b == nil || !b.Enabled || b.URL == "" {
+			continue
+		}
+		return b.URL
+	}
+	return intentURL
+}
+
 // HandleListApps handles GET /v1/apps - list apps for the authenticated user's tenant
 func (h *Handler) HandleListApps(w http.ResponseWriter, r *http.Request) {
 	user := middleware.GetUserFromContext(r)
@@ -56,13 +70,20 @@ func (h *Handler) HandleListApps(w http.ResponseWriter, r *http.Request) {
 
 	responses := make([]*types.AppResponse, 0, len(apps))
 	for _, app := range apps {
+		intent := deployURLForSlug(app.Slug)
+		backends, bErr := h.repo.ListBackendsByAppID(context.Background(), app.ID)
+		deployURL := intent
+		if bErr == nil {
+			deployURL = resolveDeployURL(backends, intent)
+		}
 		responses = append(responses, &types.AppResponse{
-			ID:        app.ID.String(),
-			Name:      app.Name,
-			Slug:      app.Slug,
-			TenantID:  app.TenantID.String(),
-			DeployUrl: deployURLForSlug(app.Slug),
-			CreatedAt: app.CreatedAt,
+			ID:              app.ID.String(),
+			Name:            app.Name,
+			Slug:            app.Slug,
+			TenantID:        app.TenantID.String(),
+			DeployUrl:       deployURL,
+			DeployUrlIntent: intent,
+			CreatedAt:       app.CreatedAt,
 		})
 	}
 
@@ -181,12 +202,17 @@ func (h *Handler) HandleGetAppStatus(w http.ResponseWriter, r *http.Request) {
 
 	appID := app.ID
 
-	// Get backend status data
-	backendStatuses, err := h.repo.GetBackendStatusByAppID(context.Background(), appID)
-	if err != nil {
-		logrus.WithError(err).WithField("app_id", appID).Error("Failed to get backend status")
-		apierror.WriteError(w, apierror.NewInternal("Failed to get backend status"))
-		return
+	// Get backend status data. A failure here must NOT take down the entire
+	// app status response: the page is useless without the app payload, but
+	// a transient DB error on the backends/circuit/health-checks tables
+	// should degrade gracefully (empty list + warning) so the user can still
+	// see app metadata and recover.
+	var backendStatuses []*storage.BackendStatus
+	if bs, err := h.repo.GetBackendStatusByAppID(context.Background(), appID); err != nil {
+		logrus.WithError(err).WithField("app_id", appID).Warn("Failed to get backend status; returning empty list")
+		w.Header().Set("X-FunctionFly-Status-Warning", "backend-status-unavailable")
+	} else {
+		backendStatuses = bs
 	}
 
 	// Convert to API response format
@@ -228,13 +254,22 @@ func (h *Handler) HandleGetAppStatus(w http.ResponseWriter, r *http.Request) {
 		backendStatusResponses[i] = backendResp
 	}
 
+	intentURL := deployURLForSlug(app.Slug)
+	backendURLs := make([]*storage.Backend, 0, len(backendStatuses))
+	for _, status := range backendStatuses {
+		if status != nil && status.Backend != nil {
+			backendURLs = append(backendURLs, status.Backend)
+		}
+	}
+
 	appResp := &types.AppResponse{
-		ID:        app.ID.String(),
-		Name:      app.Name,
-		Slug:      app.Slug,
-		TenantID:  app.TenantID.String(),
-		DeployUrl: deployURLForSlug(app.Slug),
-		CreatedAt: app.CreatedAt,
+		ID:              app.ID.String(),
+		Name:            app.Name,
+		Slug:            app.Slug,
+		TenantID:        app.TenantID.String(),
+		DeployUrl:       resolveDeployURL(backendURLs, intentURL),
+		DeployUrlIntent: intentURL,
+		CreatedAt:       app.CreatedAt,
 	}
 
 	response := &types.StatusResponse{
@@ -355,14 +390,22 @@ func (h *Handler) HandleUpdateApp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	intent := deployURLForSlug(updated.Slug)
+	backends, bErr := h.repo.ListBackendsByAppID(context.Background(), updated.ID)
+	deployURL := intent
+	if bErr == nil {
+		deployURL = resolveDeployURL(backends, intent)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(&types.AppResponse{
-		ID:        updated.ID.String(),
-		Name:      updated.Name,
-		Slug:      updated.Slug,
-		TenantID:  updated.TenantID.String(),
-		DeployUrl: deployURLForSlug(updated.Slug),
-		CreatedAt: updated.CreatedAt,
+		ID:              updated.ID.String(),
+		Name:            updated.Name,
+		Slug:            updated.Slug,
+		TenantID:        updated.TenantID.String(),
+		DeployUrl:       deployURL,
+		DeployUrlIntent: intent,
+		CreatedAt:       updated.CreatedAt,
 	})
 }
 

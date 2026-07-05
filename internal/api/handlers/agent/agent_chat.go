@@ -41,6 +41,7 @@ type agentChatResponse struct {
 	PromptTokens     int                   `json:"prompt_tokens,omitempty"`
 	CompletionTokens int                   `json:"completion_tokens,omitempty"`
 	TotalTokens      int                   `json:"total_tokens,omitempty"`
+	KeySource        string                `json:"key_source,omitempty"`
 }
 
 // agentSessionID returns a deterministic UUID for an agent's chat session.
@@ -197,6 +198,7 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 	h.saveChatMessage(r.Context(), sessionID, "user", req.Message, &modelCopy, nil, claims.UserID.String(), claims.TenantID.String(), agent.AgentID)
 
 	// Try BYOK direct path: call the LLM provider directly, bypassing FlyMind
+	// BYOK is the primary path — users bring their own keys
 	if h.byokRepo != nil {
 		reply, thinkingContent, byokResp, ok := h.tryBYOKDirect(r.Context(), model, systemPrompt, messageWithContext, claims, thinking)
 		if ok {
@@ -221,7 +223,9 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 					ReasoningTokens:  byokResp.ReasoningTokens,
 					Timestamp:        time.Now(),
 				}
-				h.attributionRepo.RecordExecution(r.Context(), execRecord)
+				if err := h.attributionRepo.RecordExecution(r.Context(), execRecord); err != nil {
+				logrus.WithError(err).Warn("failed to record execution")
+			}
 			}
 
 			writeJSON(w, http.StatusOK, agentChatResponse{
@@ -233,12 +237,13 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 				PromptTokens:     byokResp.PromptTokens,
 				CompletionTokens: byokResp.CompletionTokens,
 				TotalTokens:      byokResp.TotalTokens,
+				KeySource:        "byok",
 			})
 			return
 		}
 	}
 
-	// Fall back to FlyMind
+	// Fall back to FlyMind (uses OpenRouter free models when no platform key is configured)
 	aiBaseURL := os.Getenv("AI_SERVICE_URL")
 	if aiBaseURL == "" {
 		aiBaseURL = "http://localhost:18081"
@@ -281,7 +286,7 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadGateway, "AI_UNREACHABLE", "AI service is unreachable")
 		return
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, _ := io.ReadAll(resp.Body)
 
@@ -322,6 +327,7 @@ func (h *Handler) HandleAgentChat(w http.ResponseWriter, r *http.Request) {
 		Message:   reply,
 		Model:     model,
 		Thinking:  flyMindThinking,
+		KeySource: "platform",
 	})
 }
 
@@ -503,7 +509,7 @@ func (h *Handler) HandleAgentChatHistory(w http.ResponseWriter, r *http.Request)
 		writeJSON(w, http.StatusOK, map[string]interface{}{"ok": true, "messages": []interface{}{}})
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	type chatMsg struct {
 		Role      string                 `json:"role"`
@@ -707,7 +713,7 @@ func (h *Handler) tryWebSearch(ctx context.Context, msg, message string, agent *
 	if err != nil {
 		return h.executeSearchDirect(ctx, message)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return h.executeSearchDirect(ctx, message)
@@ -771,7 +777,7 @@ func (h *Handler) tryDatabaseQuery(ctx context.Context, msg, message string, age
 	if err != nil {
 		return fmt.Sprintf("query error: %s", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	cols, _ := rows.Columns()
 	var results []map[string]interface{}
@@ -826,7 +832,9 @@ func (h *Handler) tryFileRead(ctx context.Context, msg, message string) string {
 	if workspace == "" {
 		workspace = "/tmp/agent-workspace"
 	}
-	os.MkdirAll(workspace, 0o755)
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		logrus.WithError(err).Warn("failed to create workspace directory")
+	}
 
 	var filePath string
 	lower := strings.ToLower(message)
@@ -879,7 +887,9 @@ func (h *Handler) tryFileWrite(ctx context.Context, msg, message string) string 
 	if workspace == "" {
 		workspace = "/tmp/agent-workspace"
 	}
-	os.MkdirAll(workspace, 0o755)
+	if err := os.MkdirAll(workspace, 0o755); err != nil {
+		logrus.WithError(err).Warn("failed to create workspace directory")
+	}
 
 	lower := strings.ToLower(message)
 	var filePath string
@@ -984,7 +994,7 @@ func (h *Handler) tryHTTPRequest(ctx context.Context, msg, message string) strin
 	if err != nil {
 		return fmt.Sprintf("request error: %s", err.Error())
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	if len(body) > 5000 {
@@ -1012,7 +1022,7 @@ func (h *Handler) executeSearchDirect(ctx context.Context, query string) string 
 	if err != nil {
 		return ""
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -1272,7 +1282,9 @@ func (h *Handler) HandleWorkspaceManifest(w http.ResponseWriter, r *http.Request
 	}
 
 	var manifest interface{}
-	json.Unmarshal(data, &manifest)
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		logrus.WithError(err).Warn("failed to unmarshal manifest")
+	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":       true,
 		"manifest": manifest,

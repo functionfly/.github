@@ -35,7 +35,7 @@ func TestCrossTenantIsolation(t *testing.T) {
 
 		req := newAuthRequest(t, "GET", fmt.Sprintf("%s/v1/apps/%s", serverURL, appID), nil, tenantAToken)
 		resp := doRequest(t, req)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound,
 			"Expected 403 or 404 when tenant A reads tenant B's app, got %d", resp.StatusCode)
@@ -49,7 +49,7 @@ func TestCrossTenantIsolation(t *testing.T) {
 
 		req := newAuthRequest(t, "DELETE", fmt.Sprintf("%s/v1/apps/%s", serverURL, appID), nil, tenantAToken)
 		resp := doRequest(t, req)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		assert.True(t, resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusNotFound,
 			"Expected 403 or 404 when tenant A deletes tenant B's app, got %d", resp.StatusCode)
@@ -61,7 +61,7 @@ func TestCrossTenantIsolation(t *testing.T) {
 
 		req := newAuthRequest(t, "GET", fmt.Sprintf("%s/v1/apps", serverURL), nil, tenantAToken)
 		resp := doRequest(t, req)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -83,7 +83,7 @@ func TestCrossTenantIsolation(t *testing.T) {
 	t.Run("TenantA_cannot_access_TenantB_backends", func(t *testing.T) {
 		req := newAuthRequest(t, "GET", fmt.Sprintf("%s/v1/backends", serverURL), nil, tenantAToken)
 		resp := doRequest(t, req)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 
@@ -138,7 +138,7 @@ func getTenantID(t *testing.T, serverURL, token string) string {
 	t.Helper()
 	req := newAuthRequest(t, "GET", serverURL+"/v1/auth/me", nil, token)
 	resp := doRequest(t, req)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		return ""
 	}
@@ -159,7 +159,7 @@ func createTestApp(t *testing.T, serverURL, token, name string) string {
 	}
 	req := newAuthRequest(t, "POST", serverURL+"/v1/apps", body, token)
 	resp := doRequest(t, req)
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
 		return ""
 	}

@@ -7,11 +7,14 @@ package wasm
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/sirupsen/logrus"
 )
+
+var errWasmNotAvailable = errors.New("WASM runtime not available: CGO disabled")
 
 // PooledInstance stub (returned by pool.Get in cgo build; stub Get returns error).
 type PooledInstance struct {

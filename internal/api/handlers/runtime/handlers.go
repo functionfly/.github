@@ -9,6 +9,7 @@ import (
 
 	"github.com/functionfly/functionfly/internal/apierror"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
 
 // Handler handles runtime-related API requests
@@ -266,9 +267,11 @@ func (h *Handler) ListRuntimes(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"runtimes": runtimes,
-	})
+	}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // GetRuntimeInfo returns information about a specific runtime
@@ -394,7 +397,9 @@ func (h *Handler) GetRuntimeInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(runtime)
+	if err := json.NewEncoder(w).Encode(runtime); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // GetDiagnostics returns diagnostics for a function's runtime
@@ -453,7 +458,9 @@ func (h *Handler) GetDiagnostics(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(diagnostics)
+	if err := json.NewEncoder(w).Encode(diagnostics); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // UpdateRuntimeConfig updates runtime configuration for a function
@@ -529,10 +536,12 @@ func (h *Handler) UpdateRuntimeConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":  "updated",
 		"message": fmt.Sprintf("Runtime configuration for '%s' updated", functionID),
-	})
+	}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // ListToolchains returns available WASM compilation toolchains
@@ -559,9 +568,11 @@ func (h *Handler) ListToolchains(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"toolchains": toolchains,
-	})
+	}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // RegisterRoutes registers runtime routes

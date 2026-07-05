@@ -371,8 +371,8 @@ func (r *WazeroRuntime) wazeroFetch(ctx context.Context, m api.Module, reqPtr, r
 		return -1
 	}
 
-	reqData, err := mem.Read(uint32(reqPtr), uint32(reqLen))
-	if err != nil {
+	reqData, ok := mem.Read(uint32(reqPtr), uint32(reqLen))
+	if !ok {
 		return -1
 	}
 
@@ -388,8 +388,8 @@ func (r *WazeroRuntime) wazeroFetch(ctx context.Context, m api.Module, reqPtr, r
 		return -1
 	}
 
-	response, err := r.handler.Fetch(requestStr)
-	if err != nil {
+	response, fetchErr := r.handler.Fetch(requestStr)
+	if fetchErr != nil {
 		return -1
 	}
 
@@ -400,7 +400,7 @@ func (r *WazeroRuntime) wazeroFetch(ctx context.Context, m api.Module, reqPtr, r
 		return -1
 	}
 
-	if err := mem.Write(uint32(respPtr), responseBytes); err != nil {
+	if ok := mem.Write(uint32(respPtr), responseBytes); !ok {
 		return -1
 	}
 
@@ -418,14 +418,14 @@ func (r *WazeroRuntime) wazeroKVGet(ctx context.Context, m api.Module, keyPtr, k
 		return -2
 	}
 
-	keyData, err := mem.Read(uint32(keyPtr), uint32(keyLen))
-	if err != nil {
+	keyData, ok := mem.Read(uint32(keyPtr), uint32(keyLen))
+	if !ok {
 		return -2
 	}
 	key := string(keyData)
 
-	value, err := r.handler.KVGet(key)
-	if err != nil {
+	value, kvErr := r.handler.KVGet(key)
+	if kvErr != nil {
 		return -1
 	}
 
@@ -436,7 +436,7 @@ func (r *WazeroRuntime) wazeroKVGet(ctx context.Context, m api.Module, keyPtr, k
 		return -1
 	}
 
-	if err := mem.Write(uint32(valPtr), valueBytes); err != nil {
+	if ok := mem.Write(uint32(valPtr), valueBytes); !ok {
 		return -2
 	}
 
@@ -453,14 +453,14 @@ func (r *WazeroRuntime) wazeroKVSet(ctx context.Context, m api.Module, keyPtr, k
 		return -2
 	}
 
-	keyData, err := mem.Read(uint32(keyPtr), uint32(keyLen))
-	if err != nil {
+	keyData, ok := mem.Read(uint32(keyPtr), uint32(keyLen))
+	if !ok {
 		return -2
 	}
 	key := string(keyData)
 
-	valueData, err := mem.Read(uint32(valPtr), uint32(valLen))
-	if err != nil {
+	valueData, ok := mem.Read(uint32(valPtr), uint32(valLen))
+	if !ok {
 		return -2
 	}
 	value := string(valueData)
@@ -482,16 +482,13 @@ func (r *WazeroRuntime) wazeroGetEnv(ctx context.Context, m api.Module, namePtr,
 		return -2
 	}
 
-	nameData, err := mem.Read(uint32(namePtr), uint32(nameLen))
-	if err != nil {
+	nameData, ok := mem.Read(uint32(namePtr), uint32(nameLen))
+	if !ok {
 		return -2
 	}
 	name := string(nameData)
 
-	value, err := r.handler.GetEnv(name)
-	if err != nil {
-		return -1
-	}
+	value := r.handler.GetEnv(name)
 
 	valueBytes := []byte(value)
 	valLen := len(valueBytes)
@@ -500,7 +497,7 @@ func (r *WazeroRuntime) wazeroGetEnv(ctx context.Context, m api.Module, namePtr,
 		return -1
 	}
 
-	if err := mem.Write(uint32(valPtr), valueBytes); err != nil {
+	if ok := mem.Write(uint32(valPtr), valueBytes); !ok {
 		return -2
 	}
 
@@ -521,21 +518,21 @@ func (r *WazeroRuntime) wazeroAIInference(ctx context.Context, m api.Module, mod
 		return -1
 	}
 
-	modelData, err := mem.Read(uint32(modelPtr), uint32(modelLen))
-	if err != nil {
+	modelData, ok := mem.Read(uint32(modelPtr), uint32(modelLen))
+	if !ok {
 		return -1
 	}
 	model := string(modelData)
 
-	input, err := mem.Read(uint32(inputPtr), uint32(inputLen))
-	if err != nil {
+	input, ok := mem.Read(uint32(inputPtr), uint32(inputLen))
+	if !ok {
 		return -1
 	}
 
 	var params string
 	if paramsLen > 0 {
 		paramsData, perr := mem.Read(uint32(paramsPtr), uint32(paramsLen))
-		if perr == nil {
+		if !perr {
 			params = string(paramsData)
 		}
 	}
@@ -553,7 +550,7 @@ func (r *WazeroRuntime) wazeroAIInference(ctx context.Context, m api.Module, mod
 		return -1
 	}
 
-	if err := mem.Write(uint32(respPtr), responseBytes); err != nil {
+	if ok := mem.Write(uint32(respPtr), responseBytes); !ok {
 		return -1
 	}
 
@@ -570,8 +567,8 @@ func (r *WazeroRuntime) wazeroStateGet(ctx context.Context, m api.Module, pathPt
 		return -2
 	}
 
-	pathData, err := mem.Read(uint32(pathPtr), uint32(pathLen))
-	if err != nil {
+	pathData, ok := mem.Read(uint32(pathPtr), uint32(pathLen))
+	if !ok {
 		return -2
 	}
 	path := string(pathData)
@@ -588,7 +585,7 @@ func (r *WazeroRuntime) wazeroStateGet(ctx context.Context, m api.Module, pathPt
 		return -1
 	}
 
-	if err := mem.Write(uint32(valPtr), valueBytes); err != nil {
+	if ok := mem.Write(uint32(valPtr), valueBytes); !ok {
 		return -2
 	}
 
@@ -605,14 +602,14 @@ func (r *WazeroRuntime) wazeroStateSet(ctx context.Context, m api.Module, pathPt
 		return -2
 	}
 
-	pathData, err := mem.Read(uint32(pathPtr), uint32(pathLen))
-	if err != nil {
+	pathData, ok := mem.Read(uint32(pathPtr), uint32(pathLen))
+	if !ok {
 		return -2
 	}
 	path := string(pathData)
 
-	valueData, err := mem.Read(uint32(valPtr), uint32(valLen))
-	if err != nil {
+	valueData, ok := mem.Read(uint32(valPtr), uint32(valLen))
+	if !ok {
 		return -2
 	}
 	value := string(valueData)
@@ -634,8 +631,8 @@ func (r *WazeroRuntime) wazeroStateDelete(ctx context.Context, m api.Module, pat
 		return -2
 	}
 
-	pathData, err := mem.Read(uint32(pathPtr), uint32(pathLen))
-	if err != nil {
+	pathData, ok := mem.Read(uint32(pathPtr), uint32(pathLen))
+	if !ok {
 		return -2
 	}
 	path := string(pathData)
@@ -653,8 +650,8 @@ func (r *WazeroRuntime) wazeroStateGetFabric(ctx context.Context, m api.Module, 
 		return -2
 	}
 
-	fabricData, err := mem.Read(uint32(fabricIDPtr), uint32(fabricIDLen))
-	if err != nil {
+	fabricData, ok := mem.Read(uint32(fabricIDPtr), uint32(fabricIDLen))
+	if !ok {
 		return -2
 	}
 	fabricID := string(fabricData)
@@ -671,7 +668,7 @@ func (r *WazeroRuntime) wazeroStateGetFabric(ctx context.Context, m api.Module, 
 		return -1
 	}
 
-	if err := mem.Write(uint32(respPtr), fabricBytes); err != nil {
+	if ok := mem.Write(uint32(respPtr), fabricBytes); !ok {
 		return -2
 	}
 
@@ -688,8 +685,8 @@ func (r *WazeroRuntime) wazeroStateCreateSnapshot(ctx context.Context, m api.Mod
 		return -2
 	}
 
-	pathData, err := mem.Read(uint32(pathPtr), uint32(pathLen))
-	if err != nil {
+	pathData, ok := mem.Read(uint32(pathPtr), uint32(pathLen))
+	if !ok {
 		return -2
 	}
 	path := string(pathData)
@@ -697,7 +694,7 @@ func (r *WazeroRuntime) wazeroStateCreateSnapshot(ctx context.Context, m api.Mod
 	var label string
 	if labelLen > 0 {
 		labelData, lerr := mem.Read(uint32(labelPtr), uint32(labelLen))
-		if lerr == nil {
+		if !lerr {
 			label = string(labelData)
 		}
 	}
@@ -714,7 +711,7 @@ func (r *WazeroRuntime) wazeroStateCreateSnapshot(ctx context.Context, m api.Mod
 		return -1
 	}
 
-	if err := mem.Write(uint32(respPtr), snapshotBytes); err != nil {
+	if ok := mem.Write(uint32(respPtr), snapshotBytes); !ok {
 		return -2
 	}
 
@@ -825,11 +822,11 @@ func (r *WazeroRuntime) LoadCode(code string) error {
 		return fmt.Errorf("failed to allocate memory for code: %w", err)
 	}
 
-	if err := r.memory.Write(uint32(codePtr), codeBytes); err != nil {
-		return fmt.Errorf("failed to write code to memory: %w", err)
+	if !r.memory.Write(codePtr, codeBytes) {
+		return fmt.Errorf("failed to write code to memory")
 	}
 
-	_, err = loadCodeFunc.Call(ctx, codePtr, uint64(len(codeBytes)))
+	_, err = loadCodeFunc.Call(ctx, uint64(codePtr), uint64(len(codeBytes)))
 	if err != nil {
 		return fmt.Errorf("load_code call failed: %w", err)
 	}
@@ -902,11 +899,11 @@ func (r *WazeroRuntime) executeInternal(input []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to allocate memory for input: %w", err)
 	}
 
-	if err := r.memory.Write(uint32(inputPtr), input); err != nil {
-		return nil, fmt.Errorf("failed to write input to memory: %w", err)
+	if !r.memory.Write(inputPtr, input) {
+		return nil, fmt.Errorf("failed to write input to memory")
 	}
 
-	result, err := executeFunc.Call(ctx, inputPtr, uint64(len(input)))
+	result, err := executeFunc.Call(ctx, uint64(inputPtr), uint64(len(input)))
 	if err != nil {
 		return nil, fmt.Errorf("execute call failed: %w", err)
 	}
@@ -915,10 +912,7 @@ func (r *WazeroRuntime) executeInternal(input []byte) ([]byte, error) {
 		return nil, fmt.Errorf("execute returned no result")
 	}
 
-	resultPtr, ok := result[0].(uint64)
-	if !ok {
-		return nil, fmt.Errorf("execute returned invalid result type")
-	}
+	resultPtr := result[0]
 
 	output, err := r.extractOutputFromResult(uint32(resultPtr))
 	if err != nil {
@@ -936,8 +930,8 @@ func (r *WazeroRuntime) extractOutputFromResult(resultPtr uint32) ([]byte, error
 
 	// Try to read as embedder result structure: { status i32, input_ref i32, result_data i32 }
 	const resultStructSize = 12
-	header, err := r.memory.Read(resultPtr, resultStructSize)
-	if err == nil && len(header) >= resultStructSize {
+	header, ok := r.memory.Read(resultPtr, resultStructSize)
+	if ok && len(header) >= resultStructSize {
 		status := readUint32LE(header[0:4])
 		resultDataPtr := readUint32LE(header[8:12])
 
@@ -964,9 +958,9 @@ func (r *WazeroRuntime) readNullTerminatedString(ptr uint32) ([]byte, error) {
 		maxLen = 65536
 	}
 
-	data, err := r.memory.Read(ptr, uint32(maxLen))
-	if err != nil {
-		return nil, fmt.Errorf("failed to read memory: %w", err)
+	data, ok := r.memory.Read(ptr, uint32(maxLen))
+	if !ok {
+		return nil, fmt.Errorf("failed to read memory")
 	}
 
 	for i, b := range data {
@@ -1015,12 +1009,7 @@ func (r *WazeroRuntime) allocate(size uint32) (uint32, error) {
 		return 0, fmt.Errorf("alloc returned no result")
 	}
 
-	ptr, ok := result[0].(uint64)
-	if !ok {
-		return 0, fmt.Errorf("alloc returned invalid pointer type")
-	}
-
-	return uint32(ptr), nil
+	return uint32(result[0]), nil
 }
 
 // GetMemoryUsage returns the current memory usage in bytes.
@@ -1045,7 +1034,7 @@ func (r *WazeroRuntime) Close() error {
 	if r.runtime != nil {
 		ctx := context.Background()
 		if r.module != nil {
-			r.runtime.CloseModule(ctx, r.module)
+			r.module.Close(ctx)
 		}
 		r.runtime.Close(ctx)
 	}
@@ -1359,4 +1348,14 @@ func (p *WazeroRuntimePool) GetPoolStats() map[string]interface{} {
 	stats["per_tenant"] = tenantStats
 
 	return stats
+}
+
+type PythonRuntime = WazeroRuntime
+
+func NewPythonRuntime(wasmPath string, stdout, stderr io.Writer, handler HostFunctionHandler) (*PythonRuntime, error) {
+	return NewWazeroRuntime(wasmPath, stdout, stderr, handler)
+}
+
+func NewPythonRuntimeWithConfig(wasmPath string, stdout, stderr io.Writer, handler HostFunctionHandler, config *WASMSecurityConfig) (*PythonRuntime, error) {
+	return NewWazeroRuntimeWithConfig(wasmPath, stdout, stderr, handler, config)
 }

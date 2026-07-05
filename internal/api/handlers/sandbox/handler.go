@@ -61,7 +61,9 @@ func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
 		status := h.cachedStatus
 		h.mu.RUnlock()
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(status)
+		if err := json.NewEncoder(w).Encode(status); err != nil {
+			logrus.WithError(err).Warn("failed to encode response")
+		}
 		return
 	}
 	h.mu.RUnlock()
@@ -74,7 +76,9 @@ func (h *Handler) GetStatus(w http.ResponseWriter, r *http.Request) {
 	h.mu.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	if err := json.NewEncoder(w).Encode(status); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func (h *Handler) refreshStatus() *SandboxStatus {
@@ -246,12 +250,14 @@ func (h *Handler) UpdateTierConfig(w http.ResponseWriter, r *http.Request) {
 	}).Info("Updating function sandbox tier")
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":       "updated",
 		"function_id":  functionID,
 		"sandbox_tier": req.SandboxTier,
 		"message":      "Sandbox tier updated successfully",
-	})
+	}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
@@ -263,8 +269,10 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 func (h *Handler) ListTiers(w http.ResponseWriter, r *http.Request) {
 	status := h.refreshStatus()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"tiers":       status.SupportedTiers,
 		"active_tier": status.ActiveTier,
-	})
+	}); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }

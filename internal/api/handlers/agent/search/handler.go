@@ -411,7 +411,9 @@ func getResultCount(result interface{}) int {
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		logrus.WithError(err).Warn("failed to encode response")
+	}
 }
 
 // writeError is a helper to write error responses

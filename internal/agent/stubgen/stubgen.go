@@ -432,7 +432,7 @@ async def search_%s(query_params: Dict[str, List[str]]) -> Dict[str, Any]:
 		resource, resource, resource, resource, resource, resource, resource, resource, resource,
 		resource, resource, resource, resource, resource, resource, resource, resource,
 		resource, resource, resource, resource, resource, resource, resource, resource,
-		resource, resource, resource, resource)
+		resource, resource, resource, resource, resource, resource)
 
 	return code, nil
 }

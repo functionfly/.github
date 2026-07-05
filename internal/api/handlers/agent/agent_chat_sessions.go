@@ -82,7 +82,7 @@ func (h *Handler) HandleListChatSessions(w http.ResponseWriter, r *http.Request)
 		writeError(w, http.StatusInternalServerError, "QUERY_FAILED", "failed to list sessions")
 		return
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	sessions := make([]chatSession, 0)
 	for rows.Next() {

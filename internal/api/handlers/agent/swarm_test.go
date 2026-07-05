@@ -26,7 +26,9 @@ func TestSwarmHandler_requireAgentTenant(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ok": true}`))
+		if _, err := w.Write([]byte(`{"ok": true}`)); err != nil {
+			t.Logf("failed to write response: %v", err)
+		}
 	}).Methods("GET")
 
 	t.Run("returns 401 when no auth claims in context", func(t *testing.T) {

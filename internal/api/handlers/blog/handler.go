@@ -33,7 +33,7 @@ type BlogPost struct {
 	HeroImage     *HeroImage             `json:"heroImage,omitempty"`
 	Status        string                 `json:"status"`
 	PublishedAt   *time.Time            `json:"publishedAt,omitempty"`
-	ScheduledAt   *time.Time            `json:"publishedAt,omitempty"`
+	ScheduledAt   *time.Time            `json:"scheduledAt,omitempty"`
 	UpdatedAt     *time.Time            `json:"updatedAt,omitempty"`
 	CreatedAt     time.Time             `json:"createdAt"`
 	SEOTitle      *string               `json:"seoTitle,omitempty"`

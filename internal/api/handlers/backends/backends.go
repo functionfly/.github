@@ -81,6 +81,12 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check bundle provider limit if tenant has a bundle subscription
+	if err := h.checkBundleProviderLimit(r.Context(), tenant.ID); err != nil {
+		http.Error(w, err.Error(), http.StatusForbidden)
+		return
+	}
+
 	var req types.CreateBackendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		apierror.WriteError(w, apierror.NewBadRequest("Invalid request body"))
@@ -160,6 +166,35 @@ func (h *Handler) HandleCreateBackend(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(backend)
+}
+
+func (h *Handler) checkBundleProviderLimit(ctx context.Context, tenantID uuid.UUID) error {
+	sub, err := h.repo.GetBundleSubscriptionByTenant(ctx, tenantID)
+	if err != nil || sub == nil {
+		return nil
+	}
+
+	bundle, err := h.repo.GetPricingBundleByID(ctx, sub.BundleID)
+	if err != nil || bundle == nil {
+		return nil
+	}
+
+	limit, exists := bundle.FeatureLimits["providers"]
+	if !exists || limit <= 0 {
+		return nil
+	}
+
+	count, err := h.repo.CountBackendsByTenant(ctx, tenantID)
+	if err != nil {
+		logrus.WithError(err).Warn("Failed to count backends for bundle quota check")
+		return nil
+	}
+
+	if count >= limit {
+		return fmt.Errorf("provider limit reached for your bundle (%d/%d). Upgrade your bundle to add more providers", count, limit)
+	}
+
+	return nil
 }
 
 // HandleListBackends handles listing backends for an app
