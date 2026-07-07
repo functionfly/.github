@@ -77,7 +77,9 @@ export function InvoicesTab({ invoices, isLoading, error }: InvoicesTabProps) {
                       Download
                     </FrameButton>
                   ) : invoice.status === 'paid' ? (
-                    <span className={styles.processingText}>Processing...</span>
+                    <FrameButton size="sm" disabled className={styles.processingText}>
+                      Processing...
+                    </FrameButton>
                   ) : null}
                 </div>
               </div>

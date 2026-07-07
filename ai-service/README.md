@@ -14,14 +14,6 @@ Optional: self-hosted content moderation (Detoxify) for toxicity/hate/violence:
 uv sync --extra moderation
 ```
 
-gRPC server (optional): generate stubs using the project venv (do not use system `pip`/`python`):
-
-```bash
-uv sync
-uv run python scripts/generate_grpc.py
-# then start the app; gRPC listens on 0.0.0.0:50051 by default
-```
-
 ## Run
 
 From the `ai-service` directory (uses `ai-service/.env`; clear a conflicting repo-root `VIRTUAL_ENV` if `uv` warns):
