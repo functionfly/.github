@@ -3,8 +3,11 @@ package workflow
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -607,10 +610,16 @@ func (h *Handler) executeNodeRecursive(ctx context.Context, graphID, execID stri
 			"waited_ms": 50,
 		}
 	case "http", "api":
-		// API call node - would make actual HTTP request in production
-		output = map[string]any{
-			"called":      true,
-			"status_code": 200,
+		httpOutput, httpErr := h.executeHTTPNode(node)
+		if httpErr != nil {
+			status = "error"
+			nodeErr = httpErr.Error()
+			output = map[string]any{
+				"called": false,
+				"error":  httpErr.Error(),
+			}
+		} else {
+			output = httpOutput
 		}
 	default:
 		// Default node execution
@@ -642,6 +651,63 @@ func (h *Handler) executeNodeRecursive(ctx context.Context, graphID, execID stri
 			}
 		}
 	}
+}
+
+func (h *Handler) executeHTTPNode(node WorkflowNode) (map[string]any, error) {
+	cfg := node.Config
+	if cfg == nil {
+		return nil, fmt.Errorf("HTTP node config is required")
+	}
+
+	url, ok := cfg["url"].(string)
+	if !ok || url == "" {
+		return nil, fmt.Errorf("HTTP node requires valid url in config")
+	}
+
+	method := "GET"
+	if m, ok := cfg["method"].(string); ok && m != "" {
+		method = m
+	}
+
+	var body io.Reader
+	if b, ok := cfg["body"].(string); ok && b != "" {
+		body = strings.NewReader(b)
+	} else if b, ok := cfg["body"].(map[string]any); ok {
+		bodyBytes, _ := json.Marshal(b)
+		body = strings.NewReader(string(bodyBytes))
+	}
+
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	if headers, ok := cfg["headers"].(map[string]any); ok {
+		for k, v := range headers {
+			if vStr, ok := v.(string); ok {
+				req.Header.Set(k, vStr)
+			}
+		}
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	var respBodyParsed any
+	_ = json.Unmarshal(respBody, &respBodyParsed)
+
+	return map[string]any{
+		"called":       true,
+		"status_code":  resp.StatusCode,
+		"status_text":  resp.Status,
+		"headers":      resp.Header,
+		"body":         respBodyParsed,
+	}, nil
 }
 
 func (h *Handler) HandleCancelExecution(w http.ResponseWriter, r *http.Request) {

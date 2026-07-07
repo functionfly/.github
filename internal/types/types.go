@@ -419,19 +419,24 @@ func (EmailEvent) TableName() string {
 
 // NewsletterSubscriber represents a newsletter subscription
 type NewsletterSubscriber struct {
-	ID                 uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Email              string     `json:"email" gorm:"uniqueIndex;not null;size:255"`
-	Name               string     `json:"name,omitempty" gorm:"size:255"`
-	Status             string     `json:"status" gorm:"size:20;not null;default:'active'"`
-	Source             string     `json:"source,omitempty" gorm:"size:50"`
-	IPAddress          string     `json:"ip_address,omitempty" gorm:"size:45"`
-	UserAgent          string     `json:"user_agent,omitempty" gorm:"size:500"`
-	ConfirmationToken  *string    `json:"confirmation_token,omitempty" gorm:"size:255;index"`
-	SubscribedAt       time.Time  `json:"subscribed_at" gorm:"autoCreateTime"`
-	UnsubscribedAt     *time.Time `json:"unsubscribed_at,omitempty"`
-	ConfirmedAt        *time.Time `json:"confirmed_at,omitempty"`
-	CreatedAt          time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt          time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	ID                       uuid.UUID  `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Email                    string     `json:"email" gorm:"uniqueIndex;not null;size:255"`
+	Name                     string     `json:"name,omitempty" gorm:"size:255"`
+	Status                   string     `json:"status" gorm:"size:20;not null;default:'active'"`
+	Source                   string     `json:"source,omitempty" gorm:"size:50"`
+	IPAddress                string     `json:"ip_address,omitempty" gorm:"size:45"`
+	UserAgent                string     `json:"user_agent,omitempty" gorm:"size:500"`
+	ConfirmationToken        *string    `json:"confirmation_token,omitempty" gorm:"size:255;index"`
+	SubscribedAt             time.Time  `json:"subscribed_at" gorm:"autoCreateTime"`
+	UnsubscribedAt           *time.Time `json:"unsubscribed_at,omitempty"`
+	ConfirmedAt              *time.Time `json:"confirmed_at,omitempty"`
+	CreatedAt                time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt                time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	MailchimpSubscriberID   string     `json:"mailchimp_subscriber_id,omitempty" gorm:"size:255;index"`
+	MailchimpListID          string     `json:"mailchimp_list_id,omitempty" gorm:"size:255"`
+	MailchimpSyncStatus      string     `json:"mailchimp_sync_status,omitempty" gorm:"size:50;default:'pending'"`
+	MailchimpLastSyncedAt    *time.Time `json:"mailchimp_last_synced_at,omitempty"`
+	EmailFrequency           string     `json:"email_frequency,omitempty" gorm:"size:20;default:'weekly'"`
 }
 
 func (NewsletterSubscriber) TableName() string {

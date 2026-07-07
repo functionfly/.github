@@ -162,6 +162,34 @@ func (r *StateRepository) GetAllStateValues(ctx context.Context, stateID uuid.UU
 	return values, nil
 }
 
+type StateValueCounts struct {
+	Total     int
+	Encrypted int
+	Unencrypted int
+}
+
+func (r *StateRepository) CountStateValues(ctx context.Context, stateID uuid.UUID) (*StateValueCounts, error) {
+	var counts StateValueCounts
+	err := r.db.WithContext(ctx).
+		Raw(`
+			SELECT
+				COUNT(*) as total,
+				COUNT(*) FILTER (WHERE is_encrypted) as encrypted,
+				COUNT(*) FILTER (WHERE NOT is_encrypted) as unencrypted
+			FROM (
+				SELECT DISTINCT ON (key) is_encrypted
+				FROM state_values
+				WHERE state_id = ? AND (expires_at IS NULL OR expires_at > NOW())
+				ORDER BY key, version DESC
+			) latest_values
+		`, stateID).
+		Scan(&counts).Error
+	if err != nil {
+		return nil, fmt.Errorf("failed to count state values: %w", err)
+	}
+	return &counts, nil
+}
+
 // DeleteStateValue deletes a value from state
 func (r *StateRepository) DeleteStateValue(ctx context.Context, stateID uuid.UUID, key string, sourceType, sourceID string) error {
 	// Start a transaction

@@ -36999,6 +36999,178 @@ func (_c *MockRepository_UpdateCampaignStats_Call) RunAndReturn(run func(ctx con
 	return _c
 }
 
+// UpdateNewsletterSubscriberMailchimp provides a mock function for the type MockRepository
+func (_mock *MockRepository) UpdateNewsletterSubscriberMailchimp(ctx context.Context, id, mailchimpID string, syncStatus string) error {
+	ret := _mock.Called(ctx, id, mailchimpID, syncStatus)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateNewsletterSubscriberMailchimp")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) error); ok {
+		r0 = returnFunc(ctx, id, mailchimpID, syncStatus)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRepository_UpdateNewsletterSubscriberMailchimp_Call is a *mock.Call that shadows Run/Return methods
+type MockRepository_UpdateNewsletterSubscriberMailchimp_Call struct {
+	*mock.Call
+}
+
+// UpdateNewsletterSubscriberMailchimp is a helper method to define mock.On call
+func (_e *MockRepository_Expecter) UpdateNewsletterSubscriberMailchimp(ctx any, id any, mailchimpID any, syncStatus any) *MockRepository_UpdateNewsletterSubscriberMailchimp_Call {
+	return &MockRepository_UpdateNewsletterSubscriberMailchimp_Call{Call: _e.mock.On("UpdateNewsletterSubscriberMailchimp", ctx, id, mailchimpID, syncStatus)}
+}
+
+func (_c *MockRepository_UpdateNewsletterSubscriberMailchimp_Call) Run(run func(ctx context.Context, id, mailchimpID, syncStatus string)) *MockRepository_UpdateNewsletterSubscriberMailchimp_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 string
+		if args[3] != nil {
+			arg3 = args[3].(string)
+		}
+		run(arg0, arg1, arg2, arg3)
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpdateNewsletterSubscriberMailchimp_Call) Return(err error) *MockRepository_UpdateNewsletterSubscriberMailchimp_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRepository_UpdateNewsletterSubscriberMailchimp_Call) RunAndReturn(run func(ctx context.Context, id, mailchimpID, syncStatus string) error) *MockRepository_UpdateNewsletterSubscriberMailchimp_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateNewsletterSubscriberEmailFrequency provides a mock function for the type MockRepository
+func (_mock *MockRepository) UpdateNewsletterSubscriberEmailFrequency(ctx context.Context, email, frequency string) error {
+	ret := _mock.Called(ctx, email, frequency)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateNewsletterSubscriberEmailFrequency")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = returnFunc(ctx, email, frequency)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call is a *mock.Call that shadows Run/Return methods
+type MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call struct {
+	*mock.Call
+}
+
+// UpdateNewsletterSubscriberEmailFrequency is a helper method to define mock.On call
+func (_e *MockRepository_Expecter) UpdateNewsletterSubscriberEmailFrequency(ctx any, email any, frequency any) *MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call {
+	return &MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call{Call: _e.mock.On("UpdateNewsletterSubscriberEmailFrequency", ctx, email, frequency)}
+}
+
+func (_c *MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call) Run(run func(ctx context.Context, email, frequency string)) *MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(arg0, arg1, arg2)
+	})
+	return _c
+}
+
+func (_c *MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call) Return(err error) *MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call) RunAndReturn(run func(ctx context.Context, email, frequency string) error) *MockRepository_UpdateNewsletterSubscriberEmailFrequency_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetNewsletterSubscribersNeedingSync provides a mock function for the type MockRepository
+func (_mock *MockRepository) GetNewsletterSubscribersNeedingSync(ctx context.Context, limit int) ([]NewsletterSubscriber, error) {
+	ret := _mock.Called(ctx, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNewsletterSubscribersNeedingSync")
+	}
+
+	var r0 []NewsletterSubscriber
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, int) ([]NewsletterSubscriber, error)); ok {
+		r0, r1 = returnFunc(ctx, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]NewsletterSubscriber)
+		}
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockRepository_GetNewsletterSubscribersNeedingSync_Call is a *mock.Call that shadows Run/Return methods
+type MockRepository_GetNewsletterSubscribersNeedingSync_Call struct {
+	*mock.Call
+}
+
+// GetNewsletterSubscribersNeedingSync is a helper method to define mock.On call
+func (_e *MockRepository_Expecter) GetNewsletterSubscribersNeedingSync(ctx any, limit any) *MockRepository_GetNewsletterSubscribersNeedingSync_Call {
+	return &MockRepository_GetNewsletterSubscribersNeedingSync_Call{Call: _e.mock.On("GetNewsletterSubscribersNeedingSync", ctx, limit)}
+}
+
+func (_c *MockRepository_GetNewsletterSubscribersNeedingSync_Call) Run(run func(ctx context.Context, limit int)) *MockRepository_GetNewsletterSubscribersNeedingSync_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 int
+		if args[1] != nil {
+			arg1 = args[1].(int)
+		}
+		run(arg0, arg1)
+	})
+	return _c
+}
+
+func (_c *MockRepository_GetNewsletterSubscribersNeedingSync_Call) Return(subscribers []NewsletterSubscriber, err error) *MockRepository_GetNewsletterSubscribersNeedingSync_Call {
+	_c.Call.Return(subscribers, err)
+	return _c
+}
+
+func (_c *MockRepository_GetNewsletterSubscribersNeedingSync_Call) RunAndReturn(run func(ctx context.Context, limit int) ([]NewsletterSubscriber, error)) *MockRepository_GetNewsletterSubscribersNeedingSync_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateChangelogChange provides a mock function for the type MockRepository
 func (_mock *MockRepository) UpdateChangelogChange(ctx context.Context, id uuid.UUID, updates map[string]interface{}) (*ChangelogChange, error) {
 	ret := _mock.Called(ctx, id, updates)

@@ -602,13 +602,14 @@ func (sm *SecurityMiddleware) validateHeaderValue(value string) error {
 // SECURITY: For rate limiting and security purposes, X-Forwarded-For is NOT trusted
 // because it can be easily spoofed by attackers. Only trust proxy headers when the
 // connection comes from a known trusted proxy (127.0.0.1 or configured proxy IPs).
+// Configure TRUSTED_PROXY_IPS environment variable with your load balancer/CDN IPs
+// in production to properly extract client IPs behind proxies.
 func getClientIP(r *http.Request) string {
 	// Always validate against trusted proxy list for forwarded headers
 	remoteAddr := r.RemoteAddr
 	xff := r.Header.Get("X-Forwarded-For")
 
 	// Only trust X-Forwarded-For from known trusted proxies
-	// In production, this should be configured to only trust your load balancer/CDN IPs
 	if xff != "" && isTrustedProxy(r) {
 		// X-Forwarded-For can contain multiple IPs, take the first one (original client)
 		s := strings.TrimSpace(xff)
@@ -622,6 +623,15 @@ func getClientIP(r *http.Request) string {
 	xri := r.Header.Get("X-Real-IP")
 	if xri != "" && isTrustedProxy(r) {
 		return stripPortFromHost(strings.TrimSpace(xri))
+	}
+
+	// Warn if X-Forwarded-For was present but proxy wasn't trusted
+	if xff != "" {
+		logrus.WithFields(logrus.Fields{
+			"remote_addr":      remoteAddr,
+			"x_forwarded_for":  xff,
+			"trusted_proxies":  os.Getenv("TRUSTED_PROXY_IPS"),
+		}).Warn("security: X-Forwarded-For header ignored - request not from trusted proxy. Set TRUSTED_PROXY_IPS in production.")
 	}
 
 	// Fall back to RemoteAddr (e.g. "127.0.0.1:50286") — must strip port for INET

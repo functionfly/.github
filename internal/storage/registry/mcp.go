@@ -447,6 +447,100 @@ func (r *RegistryRepository) SetMCPSettingsVerified(ctx context.Context, functio
 }
 
 // =============================================================================
+// MCP Global Settings (platform-wide defaults)
+// =============================================================================
+
+// MCPSettingsGlobalRow is used to scan the single global settings row.
+type MCPSettingsGlobalRow struct {
+	Config []byte `gorm:"column:config;type:jsonb"`
+}
+
+// MCPSettingsGlobal represents platform-wide MCP configuration defaults.
+type MCPSettingsGlobalInput struct {
+	DefaultTransport      string   `json:"default_transport"`
+	DefaultRateLimit      int      `json:"default_rate_limit"`
+	DefaultExposeInput    bool     `json:"default_expose_input"`
+	DefaultExposeOutput   bool     `json:"default_expose_output"`
+	AutoAddToRegistry     bool     `json:"auto_add_to_registry"`
+	RequireVerification   bool     `json:"require_verification"`
+	PublicListing         bool     `json:"public_listing"`
+	CORSAllowlist         []string `json:"cors_allowlist"`
+	RateLimitMultiplier   int      `json:"rate_limit_multiplier"`
+}
+
+func defaultMCPSettingsGlobal() MCPSettingsGlobalInput {
+	return MCPSettingsGlobalInput{
+		DefaultTransport:    "streamable-http",
+		DefaultRateLimit:    60,
+		DefaultExposeInput:  true,
+		DefaultExposeOutput: false,
+		AutoAddToRegistry:   false,
+		RequireVerification: true,
+		PublicListing:       true,
+		CORSAllowlist:       []string{},
+		RateLimitMultiplier: 1,
+	}
+}
+
+// GetMCPSettingsGlobal returns the platform-wide MCP configuration defaults.
+func (r *RegistryRepository) GetMCPSettingsGlobal(ctx context.Context) (MCPSettingsGlobalInput, error) {
+	var row MCPSettingsGlobalRow
+	err := r.db.WithContext(ctx).Raw(
+		"SELECT config FROM registry_mcp_global_settings WHERE id = 1",
+	).Scan(&row).Error
+	if err != nil {
+		return defaultMCPSettingsGlobal(), err
+	}
+	if len(row.Config) == 0 {
+		return defaultMCPSettingsGlobal(), nil
+	}
+	var out MCPSettingsGlobalInput
+	if err := json.Unmarshal(row.Config, &out); err != nil {
+		return defaultMCPSettingsGlobal(), nil
+	}
+	mergeMCPSettingsGlobalDefaults(&out)
+	return out, nil
+}
+
+// UpdateMCPSettingsGlobal updates the platform-wide MCP configuration defaults.
+func (r *RegistryRepository) UpdateMCPSettingsGlobal(ctx context.Context, input MCPSettingsGlobalInput) error {
+	mergeMCPSettingsGlobalDefaults(&input)
+	payload, err := json.Marshal(input)
+	if err != nil {
+		return fmt.Errorf("marshal MCP global settings: %w", err)
+	}
+	res := r.db.WithContext(ctx).Exec(
+		"UPDATE registry_mcp_global_settings SET config = $1, updated_at = NOW() WHERE id = 1",
+		payload,
+	)
+	if res.Error != nil {
+		return fmt.Errorf("update MCP global settings: %w", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		return r.db.WithContext(ctx).Exec(
+			"INSERT INTO registry_mcp_global_settings (id, config) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET config = EXCLUDED.config, updated_at = NOW()",
+			payload,
+		).Error
+	}
+	return nil
+}
+
+func mergeMCPSettingsGlobalDefaults(cfg *MCPSettingsGlobalInput) {
+	if cfg.DefaultTransport == "" {
+		cfg.DefaultTransport = "streamable-http"
+	}
+	if cfg.DefaultRateLimit == 0 {
+		cfg.DefaultRateLimit = 60
+	}
+	if cfg.RateLimitMultiplier == 0 {
+		cfg.RateLimitMultiplier = 1
+	}
+	if cfg.CORSAllowlist == nil {
+		cfg.CORSAllowlist = []string{}
+	}
+}
+
+// =============================================================================
 // MCP Invocations (observability)
 // =============================================================================
 

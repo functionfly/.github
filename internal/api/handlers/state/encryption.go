@@ -177,21 +177,14 @@ func (h *Handler) HandleGetEncryptionStats(w http.ResponseWriter, r *http.Reques
 			stats.UnencryptedStates++
 		}
 
-		// Count values - this is a simplified count, in production you'd want a more efficient query
-		values, err := h.stateRepo.GetAllStateValues(r.Context(), state.ID)
+		counts, err := h.stateRepo.CountStateValues(r.Context(), state.ID)
 		if err != nil {
-			logrus.WithError(err).Warnf("failed to get values for state %s", state.ID)
+			logrus.WithError(err).Warnf("failed to count values for state %s", state.ID)
 			continue
 		}
-
-		for _, value := range values {
-			stats.TotalValues++
-			if value.IsEncrypted {
-				stats.EncryptedValues++
-			} else {
-				stats.UnencryptedValues++
-			}
-		}
+		stats.TotalValues += counts.Total
+		stats.EncryptedValues += counts.Encrypted
+		stats.UnencryptedValues += counts.Unencrypted
 	}
 
 	w.Header().Set("Content-Type", "application/json")

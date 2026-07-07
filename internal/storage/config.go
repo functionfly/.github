@@ -394,6 +394,41 @@ func LoadTenantDatabaseConfig() *TenantDatabaseConfig {
 	return cfg
 }
 
+// DedicatedDatabaseConfig holds configuration for a dedicated database (e.g., for status page health checks)
+type DedicatedDatabaseConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Database string
+	SSLMode  string
+}
+
+// LoadDedicatedDatabaseConfig loads configuration for a dedicated database from environment variables.
+// This is used for health checking external databases (e.g., the main dedi server PostgreSQL).
+func LoadDedicatedDatabaseConfig() *DedicatedDatabaseConfig {
+	cfg := &DedicatedDatabaseConfig{
+		Host:     getEnvOrDefault("DEDI_DB_HOST", ""),
+		Port:     parseEnvInt("DEDI_DB_PORT", 5432),
+		User:     getEnvOrDefault("DEDI_DB_USER", "postgres"),
+		Password: os.Getenv("DEDI_DB_PASSWORD"),
+		Database: getEnvOrDefault("DEDI_DB_NAME", "functionfly"),
+		SSLMode:  getEnvOrDefault("DEDI_DB_SSLMODE", "require"),
+	}
+	return cfg
+}
+
+// IsConfigured returns true if the dedicated database is configured
+func (c *DedicatedDatabaseConfig) IsConfigured() bool {
+	return c.Host != "" && c.Password != ""
+}
+
+// BuildConnectionString builds a PostgreSQL connection string for the dedicated database
+func (c *DedicatedDatabaseConfig) BuildConnectionString() string {
+	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		c.Host, c.Port, c.User, c.Password, c.Database, c.SSLMode)
+}
+
 // GetTenantDBName returns the database name for a given tenant ID
 func (c *TenantDatabaseConfig) GetTenantDBName(tenantID string) string {
 	// Use first 8 chars of tenant ID for brevity

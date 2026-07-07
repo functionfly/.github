@@ -961,6 +961,9 @@ type Repository interface {
 	UpdateNewsletterCampaignEmailStatus(ctx context.Context, id uuid.UUID, status string, emailID string) error
 	GetNewsletterCampaignEmailsByCampaign(ctx context.Context, campaignID uuid.UUID) ([]NewsletterCampaignEmail, error)
 	UpdateCampaignStats(ctx context.Context, campaignID uuid.UUID) error
+	UpdateNewsletterSubscriberMailchimp(ctx context.Context, id, mailchimpID string, syncStatus string) error
+	UpdateNewsletterSubscriberEmailFrequency(ctx context.Context, email, frequency string) error
+	GetNewsletterSubscribersNeedingSync(ctx context.Context, limit int) ([]NewsletterSubscriber, error)
 
 	// Usage Forecasting and Alerting operations
 	CreateUsageAlert(ctx context.Context, alert *UsageAlert) error

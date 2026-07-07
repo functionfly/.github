@@ -916,17 +916,17 @@ func (h *Handler) HandleLatencyForecast(w http.ResponseWriter, r *http.Request) 
 // Stress Test
 // ============================================================
 
-// In-memory stress test state (use Redis in production for multi-instance)
 var (
 	stressTests = make(map[string]*StressTestState)
 	stressTestMu sync.RWMutex
 )
 
 type StressTestState struct {
-	Config   StressTestConfig
-	Result   *StressTestResult
-	AbortCh  chan struct{}
-	mu       sync.RWMutex
+	Config    StressTestConfig
+	Result    *StressTestResult
+	AbortCh   chan struct{}
+	Aborted   bool
+	mu        sync.RWMutex
 }
 
 func (h *Handler) HandleStartStressTest(w http.ResponseWriter, r *http.Request) {
@@ -994,8 +994,11 @@ func (h *Handler) runStressTest(id string, config StressTestConfig, abortCh chan
 		stressTestMu.Lock()
 		if s, ok := stressTests[id]; ok {
 			s.mu.Lock()
-			s.Result.Status = "completed"
+			if !s.Aborted {
+				s.Result.Status = "completed"
+			}
 			s.mu.Unlock()
+			delete(stressTests, id)
 		}
 		stressTestMu.Unlock()
 	}()
@@ -1016,6 +1019,7 @@ func (h *Handler) runStressTest(id string, config StressTestConfig, abortCh chan
 			stressTestMu.Lock()
 			if s, ok := stressTests[id]; ok {
 				s.mu.Lock()
+				s.Aborted = true
 				s.Result.Status = "aborted"
 				s.mu.Unlock()
 			}
@@ -1118,13 +1122,20 @@ func (h *Handler) HandleGetStressTest(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) HandleAbortStressTest(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	stressTestMu.RLock()
+	stressTestMu.Lock()
 	state, ok := stressTests[id]
-	stressTestMu.RUnlock()
 	if !ok {
+		stressTestMu.Unlock()
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "stress test not found")
 		return
 	}
+	if state.Aborted {
+		stressTestMu.Unlock()
+		writeError(w, http.StatusConflict, "ALREADY_ABORTED", "stress test already aborted")
+		return
+	}
+	state.Aborted = true
+	stressTestMu.Unlock()
 
 	close(state.AbortCh)
 	writeJSON(w, http.StatusOK, map[string]interface{}{

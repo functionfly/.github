@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/functionfly/functionfly/internal/email"
+	"github.com/functionfly/functionfly/internal/mailchimp"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -19,6 +20,7 @@ type Handler struct {
 	repo         storage.Repository
 	emailService email.Service
 	baseURL      string
+	syncService  *mailchimp.SyncService
 }
 
 func NewHandler(repo storage.Repository, emailService email.Service, baseURL string) *Handler {
@@ -27,6 +29,10 @@ func NewHandler(repo storage.Repository, emailService email.Service, baseURL str
 		emailService: emailService,
 		baseURL:      baseURL,
 	}
+}
+
+func (h *Handler) SetSyncService(syncService *mailchimp.SyncService) {
+	h.syncService = syncService
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
@@ -160,6 +166,16 @@ func (h *Handler) ConfirmSubscription(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).Warn("Failed to send welcome email after confirmation")
 	}
 
+	if h.syncService != nil {
+		mergeFields := mailchimp.MergeFields{
+			"FNAME":   subscriber.Name,
+			"SOURCE":  subscriber.Source,
+		}
+		if err := h.syncService.EnqueueSubscribe(r.Context(), subscriber.ID.String(), emailAddr, mergeFields); err != nil {
+			logrus.WithError(err).Warn("Failed to enqueue Mailchimp sync for confirmed subscription")
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -193,6 +209,17 @@ func (h *Handler) Unsubscribe(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).Error("Failed to unsubscribe newsletter subscriber")
 		apierror.WriteError(w, apierror.NewInternal("Failed to unsubscribe"))
 		return
+	}
+
+	if h.syncService != nil {
+		subscriber, _ := h.repo.GetNewsletterSubscriberByEmail(r.Context(), emailAddr)
+		var subscriberID string
+		if subscriber != nil {
+			subscriberID = subscriber.ID.String()
+		}
+		if err := h.syncService.EnqueueUnsubscribe(r.Context(), subscriberID, emailAddr); err != nil {
+			logrus.WithError(err).Warn("Failed to enqueue Mailchimp sync for unsubscribe")
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

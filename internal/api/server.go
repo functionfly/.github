@@ -37,6 +37,7 @@ import (
 	"github.com/functionfly/functionfly/internal/email"
 	"github.com/functionfly/functionfly/internal/health"
 	"github.com/functionfly/functionfly/internal/logging"
+	"github.com/functionfly/functionfly/internal/mailchimp"
 	"github.com/functionfly/functionfly/internal/monitoring"
 	"github.com/functionfly/functionfly/internal/notification"
 	"github.com/functionfly/functionfly/internal/provisioning"
@@ -126,6 +127,10 @@ type Server struct {
 
 	// Email service for sending emails
 	emailSvc email.Service
+
+	// Mailchimp client and sync service
+	mailchimpClient     *mailchimp.Client
+	mailchimpSyncService *mailchimp.SyncService
 
 	// Unified analytics sync job (Phase 3: fills analytics_rollups from source tables)
 	unifiedSyncJob *unified.SyncJob
@@ -309,6 +314,25 @@ func NewServer(db *storage.PostgresDB) *Server {
 		logging.Logger().WithError(err).Warn("Email service validation failed - magic links and other emails may not send")
 	} else {
 		logging.Logger().Info("Email service configuration validated successfully")
+	}
+
+	// Initialize Mailchimp client and sync service
+	var mailchimpClient *mailchimp.Client
+	var mailchimpSyncService *mailchimp.SyncService
+	mailchimpConfig := mailchimp.NewConfig()
+	if mailchimpConfig.IsConfigured() {
+		mailchimpClient = mailchimp.NewClient(mailchimpConfig)
+		logging.Logger().Info("Mailchimp client configured successfully")
+
+		// Initialize FREQUENCY merge field if not exists
+		if redisClient != nil {
+			mailchimpSyncService = mailchimp.NewSyncService(redisClient, mailchimpClient, repo, logging.Logger())
+			logging.Logger().Info("Mailchimp sync service initialized")
+		} else {
+			logging.Logger().Warn("Redis not available - Mailchimp sync service not initialized")
+		}
+	} else {
+		logging.Logger().Info("Mailchimp not configured (set MAILCHIMP_API_KEY, MAILCHIMP_SERVER_PREFIX, MAILCHIMP_DEFAULT_LIST_ID to enable)")
 	}
 
 	authSvc, err := auth.NewAuthService(repo, jwtSecret)
@@ -499,6 +523,8 @@ func NewServer(db *storage.PostgresDB) *Server {
 		usageMetricsAgg:        usageMetricsAgg,
 		stateUsageAggregator:   stateUsageAggregator,
 		emailSvc:               emailSvc,
+		mailchimpClient:        mailchimpClient,
+		mailchimpSyncService:    mailchimpSyncService,
 		deferredBillingChecker: deferredBillingChecker,
 		dunningRepo:            dunningRepo,
 		usageReportingRepo:     usageReportingRepo,

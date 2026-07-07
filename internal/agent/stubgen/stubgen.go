@@ -246,27 +246,78 @@ func (g *stubGenerator) generateHTTPAPI(req *GenerationRequest) (string, error) 
 
 	resource := extractResourceName(req)
 
-	code := fmt.Sprintf(`"""HTTP API Function: %s"""
+	code := fmt.Sprintf(`"""HTTP API Function: %s
+
+Environment variables for production:
+    STORAGE_TYPE    Set to "postgres" to use database storage
+    DATABASE_URL    PostgreSQL connection string (required for postgres storage)
+"""
 
 import json
 import re
+import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs
 
-# In-memory storage (replace with database in production)
-_storage: Dict[str, List[Dict[str, Any]]] = {}
-_resource_id_counter: Dict[str, int] = {}
+# Storage interface - replace with database implementation in production
+class StorageInterface:
+    async def get(self, resource: str) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    async def set(self, resource: str, items: List[Dict[str, Any]]) -> None:
+        raise NotImplementedError
+
+    async def get_counter(self, resource: str) -> int:
+        raise NotImplementedError
+
+    async def increment_counter(self, resource: str) -> int:
+        raise NotImplementedError
+
+
+class InMemoryStorage(StorageInterface):
+    def __init__(self):
+        self._storage: Dict[str, List[Dict[str, Any]]] = {}
+        self._counters: Dict[str, int] = {}
+
+    async def get(self, resource: str) -> List[Dict[str, Any]]:
+        return self._storage.get(resource, [])
+
+    async def set(self, resource: str, items: List[Dict[str, Any]]) -> None:
+        self._storage[resource] = items
+
+    async def get_counter(self, resource: str) -> int:
+        return self._counters.get(resource, 0)
+
+    async def increment_counter(self, resource: str) -> int:
+        current = self._counters.get(resource, 0) + 1
+        self._counters[resource] = current
+        return current
+
+
+def get_storage() -> StorageInterface:
+    storage_type = os.environ.get("STORAGE_TYPE", "memory")
+    if storage_type == "postgres":
+        return PostgresStorage()
+    return InMemoryStorage()
+
+
+_storage: Optional[StorageInterface] = None
+
+def _get_storage() -> StorageInterface:
+    global _storage
+    if _storage is None:
+        _storage = get_storage()
+    return _storage
 
 
 def _get_resource_id(resource: str) -> int:
-    """Get and increment counter for resource IDs."""
-    if resource not in _resource_id_counter:
-        _resource_id_counter[resource] = 1
-        return 1
-    current = _resource_id_counter[resource]
-    _resource_id_counter[resource] = current + 1
-    return current
+    """Get and increment counter for resource IDs (for InMemoryStorage only)."""
+    store = _get_storage()
+    if isinstance(store, InMemoryStorage):
+        return store.increment_counter(resource)
+    import asyncio
+    return asyncio.get_event_loop().run_until_complete(store.increment_counter(resource))
 
 
 def _parse_path(url: str) -> tuple[str, Dict[str, str]]:
@@ -316,7 +367,7 @@ def _serialize_response(data: Any, status: int = 200) -> Dict[str, Any]:
 async def handler(event, env=None, ctx=None) -> Dict[str, Any]:
     """
     Handle HTTP requests with RESTful routing.
-    
+
     Routes:
         GET    /%s              - List all %s
         GET    /%s/{{id}}       - Get %s by ID
@@ -338,7 +389,6 @@ async def handler(event, env=None, ctx=None) -> Dict[str, Any]:
 
     path, path_params = _parse_path(url)
     query_params = _get_query_params(url)
-    resource_path = "/".join(path.split("/")[:-1]) if "/" in path else path
 
     # Route matching
     if path == "%s" or path == "%s/":
@@ -346,11 +396,10 @@ async def handler(event, env=None, ctx=None) -> Dict[str, Any]:
             return await list_%s(query_params)
         if method == "POST":
             return await create_%s(body)
-    
+
     if path.startswith("%s/") and method == "GET" and path.endswith("/search"):
-        resource = path.split("/")[0]
         return await search_%s(query_params)
-    
+
     if re.match(r"^%s/[^/]+$", path):
         resource_id = path.split("/")[-1]
         if method == "GET":
@@ -359,20 +408,22 @@ async def handler(event, env=None, ctx=None) -> Dict[str, Any]:
             return await update_%s(resource_id, body)
         if method == "DELETE":
             return await delete_%s(resource_id)
-    
+
     return {"status": 404, "body": {"error": "Not found", "path": path}, "headers": {}}
 
 
 async def list_%s(query_params: Dict[str, List[str]]) -> Dict[str, Any]:
     """List all %s with optional filtering."""
-    items = _storage.get("%s", [])
+    store = _get_storage()
+    items = await store.get("%s")
     filtered = _filter_by_query(items, query_params)
     return _serialize_response({"items": filtered, "count": len(filtered)})
 
 
 async def get_%s(resource_id: str) -> Dict[str, Any]:
     """Get %s by ID."""
-    items = _storage.get("%s", [])
+    store = _get_storage()
+    items = await store.get("%s")
     for item in items:
         if str(item.get("id", "")) == resource_id:
             return _serialize_response(item)
@@ -383,16 +434,18 @@ async def create_%s(body: Any) -> Dict[str, Any]:
     """Create new %s."""
     if not body:
         return {"status": 400, "body": {"error": "Request body required"}, "headers": {}}
-    
+
+    store = _get_storage()
     resource = "%s"
-    if resource not in _storage:
-        _storage[resource] = []
-    
+
     item = body if isinstance(body, dict) else {"data": body}
-    item["id"] = _get_resource_id(resource)
+    item["id"] = await store.increment_counter(resource)
     item["created_at"] = datetime.utcnow().isoformat()
-    _storage[resource].append(item)
-    
+
+    items = await store.get(resource)
+    items = items + [item]
+    await store.set(resource, items)
+
     return {"status": 201, "body": item, "headers": {"Content-Type": "application/json"}}
 
 
@@ -400,34 +453,173 @@ async def update_%s(resource_id: str, body: Any) -> Dict[str, Any]:
     """Update existing %s."""
     if not body:
         return {"status": 400, "body": {"error": "Request body required"}, "headers": {}}
-    
+
+    store = _get_storage()
     resource = "%s"
-    items = _storage.get(resource, [])
+    items = await store.get(resource)
+
     for i, item in enumerate(items):
         if str(item.get("id", "")) == resource_id:
             item.update(body if isinstance(body, dict) else {"data": body})
             item["updated_at"] = datetime.utcnow().isoformat()
-            _storage[resource][i] = item
+            items[i] = item
+            await store.set(resource, items)
             return _serialize_response(item)
-    
+
     return {"status": 404, "body": {"error": "Not found"}, "headers": {}}
 
 
 async def delete_%s(resource_id: str) -> Dict[str, Any]:
     """Delete %s."""
+    store = _get_storage()
     resource = "%s"
-    items = _storage.get(resource, [])
+    items = await store.get(resource)
+
     for i, item in enumerate(items):
         if str(item.get("id", "")) == resource_id:
-            _storage[resource].pop(i)
+            items = items[:i] + items[i+1:]
+            await store.set(resource, items)
             return {"status": 204, "body": {}, "headers": {}}
-    
+
     return {"status": 404, "body": {"error": "Not found"}, "headers": {}}
 
 
 async def search_%s(query_params: Dict[str, List[str]]) -> Dict[str, Any]:
     """Search %s by query parameters."""
     return await list_%s(query_params)
+
+
+class PostgresStorage(StorageInterface):
+    """PostgreSQL storage backend using asyncpg.
+
+    Requires:
+        pip install asyncpg
+
+    Environment variables:
+        DATABASE_URL - PostgreSQL connection string
+                      (e.g., postgresql://user:pass@host:5432/dbname)
+
+    Table schema (auto-created on first use):
+        CREATE TABLE IF NOT EXISTS api_resources (
+            resource TEXT NOT NULL,
+            data JSONB NOT NULL,
+            id BIGSERIAL PRIMARY KEY,
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_api_resources_resource ON api_resources(resource);
+
+        CREATE TABLE IF NOT EXISTS api_counters (
+            resource TEXT PRIMARY KEY,
+            value BIGINT NOT NULL DEFAULT 0
+        );
+    """
+    _pool: Optional[Any] = None
+    _initialized: bool = False
+
+    @classmethod
+    async def _get_pool(cls) -> Any:
+        """Get or create the asyncpg connection pool."""
+        if cls._pool is None:
+            import asyncpg
+            database_url = os.environ.get("DATABASE_URL")
+            if not database_url:
+                raise RuntimeError("DATABASE_URL environment variable not set")
+            cls._pool = await asyncpg.create_pool(
+                database_url,
+                min_size=2,
+                max_size=10,
+                command_timeout=30,
+            )
+        return cls._pool
+
+    @classmethod
+    async def _ensure_table(cls) -> None:
+        """Ensure the required tables exist."""
+        if cls._initialized:
+            return
+        pool = await cls._get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS api_resources (
+                    resource TEXT NOT NULL,
+                    data JSONB NOT NULL,
+                    id BIGSERIAL PRIMARY KEY,
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """)
+            await conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_api_resources_resource ON api_resources(resource)
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS api_counters (
+                    resource TEXT PRIMARY KEY,
+                    value BIGINT NOT NULL DEFAULT 0
+                )
+            """)
+        cls._initialized = True
+
+    @classmethod
+    async def close(cls) -> None:
+        """Close the connection pool."""
+        if cls._pool is not None:
+            await cls._pool.close()
+            cls._pool = None
+            cls._initialized = False
+
+    async def get(self, resource: str) -> List[Dict[str, Any]]:
+        """Retrieve all items for a resource."""
+        await self._ensure_table()
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT data FROM api_resources WHERE resource = $1 ORDER BY id",
+                resource,
+            )
+            return [dict(row["data"]) for row in rows]
+
+    async def set(self, resource: str, items: List[Dict[str, Any]]) -> None:
+        """Replace all items for a resource."""
+        await self._ensure_table()
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute("DELETE FROM api_resources WHERE resource = $1", resource)
+                for item in items:
+                    await conn.execute(
+                        "INSERT INTO api_resources (resource, data) VALUES ($1, $2)",
+                        resource,
+                        json.dumps(item),
+                    )
+
+    async def get_counter(self, resource: str) -> int:
+        """Get current counter value for a resource."""
+        await self._ensure_table()
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT value FROM api_counters WHERE resource = $1",
+                resource,
+            )
+            return int(row["value"]) if row else 0
+
+    async def increment_counter(self, resource: str) -> int:
+        """Atomically increment and return the new counter value."""
+        await self._ensure_table()
+        pool = await self._get_pool()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO api_counters (resource, value)
+                VALUES ($1, 1)
+                ON CONFLICT (resource)
+                DO UPDATE SET value = api_counters.value + 1
+                RETURNING value
+                """,
+                resource,
+            )
+            return int(row["value"])
 `, req.Name, resource, resource, resource, resource, resource, resource, resource, resource, resource,
 		resource, resource, resource, resource, resource, resource, resource, resource, resource,
 		resource, resource, resource, resource, resource, resource, resource, resource,

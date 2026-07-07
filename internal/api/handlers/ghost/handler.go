@@ -4,11 +4,14 @@
 package ghost
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -19,15 +22,136 @@ import (
 	"github.com/functionfly/functionfly/internal/config"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 )
+
+type architectureRequest struct {
+	Goal   string `json:"goal"`
+	Domain string `json:"domain"`
+}
+
+type architectureResponse struct {
+	Components    []ComponentSpec `json:"components"`
+	DataModel     []EntitySpec    `json:"data_model"`
+	APIDesign    []EndpointSpec  `json:"api_design"`
+	TechStack     []string        `json:"tech_stack"`
+	Dependencies  []string        `json:"dependencies"`
+	EstimatedCost string          `json:"estimated_cost"`
+	RiskFactors   []string        `json:"risk_factors"`
+}
+
+type ArchitectureAIClient struct {
+	baseURL    string
+	apiKey     string
+	httpClient *http.Client
+}
+
+func NewArchitectureAIClient() *ArchitectureAIClient {
+	baseURL := os.Getenv("AI_SERVICE_URL")
+	if baseURL == "" {
+		logrus.Warn("AI_SERVICE_URL not set for ArchitectureAIClient")
+		baseURL = ""
+	}
+	return &ArchitectureAIClient{
+		baseURL: baseURL,
+		apiKey:  os.Getenv("AI_SERVICE_API_KEY"),
+		httpClient: &http.Client{
+			Timeout: 60 * time.Second,
+		},
+	}
+}
+
+func (c *ArchitectureAIClient) GenerateArchitecturePlan(ctx context.Context, goal, domain string) (*architectureResponse, error) {
+	if c.baseURL == "" {
+		return nil, fmt.Errorf("AI_SERVICE_URL not configured")
+	}
+
+	url := fmt.Sprintf("%s/api/ghost/architecture/plan", c.baseURL)
+
+	systemPrompt := buildArchitectureSystemPrompt(domain)
+
+	reqBody := map[string]interface{}{
+		"goal":         goal,
+		"domain":       domain,
+		"system_prompt": systemPrompt,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if c.apiKey != "" {
+		httpReq.Header.Set("X-API-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call AI service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("AI service returned status %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var result architectureResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return &result, nil
+}
+
+func buildArchitectureSystemPrompt(domain string) string {
+	basePrompt := `You are an expert software architect. Generate a detailed architecture plan for the following goal.
+Your response must be a valid JSON object with the following structure:
+{
+  "components": [{"name": "...", "type": "...", "description": "...", "technology": "..."}],
+  "data_model": [{"name": "...", "fields": [{"name": "...", "type": "...", "required": true}], "indexes": [...]}],
+  "api_design": [{"method": "...", "path": "...", "handler": "...", "auth": true}],
+  "tech_stack": ["..."],
+  "dependencies": ["..."],
+  "estimated_cost": "...",
+  "risk_factors": ["..."]
+}
+
+Consider best practices for scalability, security, and maintainability.`
+
+	if domain == "" {
+		return basePrompt
+	}
+
+	domainGuidelines := map[string]string{
+		"ecommerce": "Focus on high-concurrency checkout, inventory management, payment processing, and order fulfillment pipelines.",
+		"saas": "Focus on multi-tenancy, subscription billing, user management, and integration capabilities.",
+		"social": "Focus on real-time feeds, media handling, notifications, and relationship graphs.",
+		"fintech": "Focus on security compliance (PCI, SOC2), transaction integrity, audit trails, and regulatory reporting.",
+		"healthcare": "Focus on HIPAA compliance, data privacy, interoperability standards (HL7, FHIR), and audit logging.",
+		"iot": "Focus on device management, real-time data ingestion, time-series storage, and alerting.",
+	}
+
+	if specific, ok := domainGuidelines[domain]; ok {
+		return fmt.Sprintf("%s\n\nDomain-specific considerations for %s: %s", basePrompt, domain, specific)
+	}
+
+	return fmt.Sprintf("%s\n\nDomain: %s", basePrompt, domain)
+}
 
 // Handler contains all Ghost Mode orchestration handlers
 type Handler struct {
-	db          interface{ DB() interface{} }
-	genSvc      *generation.Service
-	deployGen   *deployment.Generator
-	builds      map[string]*BuildState
-	mu          sync.RWMutex
+	db        interface{ DB() interface{} }
+	genSvc    *generation.Service
+	deployGen *deployment.Generator
+	builds    map[string]*BuildState
+	mu        sync.RWMutex
 }
 
 // DBGetter interface for database access
@@ -874,10 +998,12 @@ func (h *Handler) HandlePlanArchitecture(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// LLM-driven architecture planning simulation
-	// In production, this would call the LLM with a system prompt that includes
-	// the goal, best practices for the domain, and existing infrastructure patterns
-	plan := h.generateArchitecturePlan(req.Goal, req.Domain)
+	if req.Goal == "" {
+		writeError(w, http.StatusBadRequest, "MISSING_FIELD", "goal is required")
+		return
+	}
+
+	plan := h.generateArchitecturePlan(r.Context(), req.Goal, req.Domain)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":   true,
@@ -885,8 +1011,70 @@ func (h *Handler) HandlePlanArchitecture(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func (h *Handler) generateArchitecturePlan(goal, domain string) *ArchitecturePlan {
-	// Simulated LLM generation — in production, integrate with generation.Service
+func (h *Handler) generateArchitecturePlan(ctx context.Context, goal, domain string) *ArchitecturePlan {
+	// Try AI-driven architecture planning via generation.Service
+	if h.genSvc != nil {
+		aiPlan, err := h.generateArchitectureViaLLM(ctx, goal, domain)
+		if err == nil && aiPlan != nil {
+			return aiPlan
+		}
+		if err != nil {
+			logrus.WithError(err).Warn("ghost: LLM architecture planning failed, using template fallback")
+		}
+	}
+
+	// Fallback to template-based generation
+	return h.generateTemplateArchitecturePlan(goal, domain)
+}
+
+func (h *Handler) generateArchitectureViaLLM(ctx context.Context, goal, domain string) (*ArchitecturePlan, error) {
+	architecturePrompt := fmt.Sprintf(`Generate a detailed software architecture plan for: %s
+
+Requirements:
+1. List all required components (APIs, databases, caches, workers, frontends)
+2. Define the data model with entities, fields, types, and indexes
+3. Design the REST API endpoints with methods, paths, and authentication
+4. Specify the tech stack and key dependencies
+5. Estimate monthly cost range
+6. Identify risk factors
+
+Respond with ONLY a valid JSON object in this exact format:
+{
+  "components": [{"name": "...", "type": "...", "description": "...", "technology": "..."}],
+  "data_model": [{"name": "...", "fields": [{"name": "...", "type": "...", "required": true}], "indexes": [...] }],
+  "api_design": [{"method": "...", "path": "...", "handler": "...", "auth": true}],
+  "tech_stack": ["..."],
+  "dependencies": ["..."],
+  "estimated_cost": "...",
+  "risk_factors": ["..."]
+}
+
+Do not include any explanation, only the JSON object.`, goal)
+
+	result, err := h.genSvc.GenerateFunction(ctx, &generation.GenerationRequest{
+		Name:        "architecture-planner",
+		Description: "Architecture planning for: " + goal,
+		Category:    "planning",
+		Runtime:     "python3.11",
+		Prompt:      architecturePrompt,
+		Model:       "claude-sonnet-4",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("generation.Service failed: %w", err)
+	}
+	if !result.Success || result.Code == "" {
+		return nil, fmt.Errorf("generation returned unsuccessful result: %s", result.Error)
+	}
+
+	var plan ArchitecturePlan
+	if err := json.Unmarshal([]byte(result.Code), &plan); err != nil {
+		return nil, fmt.Errorf("failed to parse architecture plan JSON: %w", err)
+	}
+
+	return &plan, nil
+}
+
+func (h *Handler) generateTemplateArchitecturePlan(goal, domain string) *ArchitecturePlan {
 	components := []ComponentSpec{
 		{Name: "api-gateway", Type: "api", Description: "Main API gateway with auth and rate limiting", Technology: "Go/hTTP"},
 		{Name: "user-service", Type: "api", Description: "User management and authentication", Technology: "Go"},
@@ -960,7 +1148,7 @@ func (h *Handler) HandleProvisionDatabase(w http.ResponseWriter, r *http.Request
 	}
 
 	// Generate SQL schema from JSON spec
-	sql := h.generateSQLSchema(req.Schema)
+	sql := h.generateSQLSchema(r.Context(), req.Schema)
 
 	// Generate migration file content
 	migration := fmt.Sprintf("-- Auto-generated by Ghost Mode\n-- Generated at: %s\n\n%s", time.Now().Format(time.RFC3339), sql)
@@ -975,9 +1163,58 @@ func (h *Handler) HandleProvisionDatabase(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (h *Handler) generateSQLSchema(schemaJSON string) string {
-	// Simplified schema generation — parse JSON and produce SQL
-	// In production, this would use the LLM to generate proper schema from requirements
+func (h *Handler) generateSQLSchema(ctx context.Context, schemaJSON string) string {
+	// Try LLM-driven schema generation first
+	if h.genSvc != nil {
+		sql, err := h.generateSQLSchemaViaLLM(ctx, schemaJSON)
+		if err == nil && sql != "" {
+			return sql
+		}
+		if err != nil {
+			logrus.WithError(err).Warn("ghost: LLM schema generation failed, using template fallback")
+		}
+	}
+
+	// Fallback: parse JSON schema and generate basic SQL
+	return h.generateSQLSchemaFromJSON(schemaJSON)
+}
+
+func (h *Handler) generateSQLSchemaViaLLM(ctx context.Context, schemaJSON string) (string, error) {
+	prompt := fmt.Sprintf(`Generate PostgreSQL DDL (CREATE TABLE statements) from the following JSON schema definition.
+
+Requirements:
+1. Use proper PostgreSQL types (UUID, VARCHAR, TEXT, TIMESTAMPTZ, JSONB, INTEGER, BIGINT, BOOLEAN, DECIMAL, etc.)
+2. Add appropriate PRIMARY KEY, FOREIGN KEY, UNIQUE, and NOT NULL constraints
+3. Create reasonable indexes for frequently queried columns
+4. Include created_at and updated_at timestamp columns with defaults
+5. Add CHECK constraints where appropriate
+
+Respond with ONLY the SQL DDL statements, no explanation.
+
+JSON Schema:
+%s
+
+Generate the SQL now:`, schemaJSON)
+
+	result, err := h.genSvc.GenerateFunction(ctx, &generation.GenerationRequest{
+		Name:        "schema-generator",
+		Description: "PostgreSQL schema from JSON schema",
+		Category:    "database",
+		Runtime:     "python3.11",
+		Prompt:      prompt,
+		Model:       "claude-sonnet-4",
+	})
+	if err != nil {
+		return "", fmt.Errorf("generation.Service failed: %w", err)
+	}
+	if !result.Success || result.Code == "" {
+		return "", fmt.Errorf("generation returned unsuccessful result: %s", result.Error)
+	}
+
+	return result.Code, nil
+}
+
+func (h *Handler) generateSQLSchemaFromJSON(schemaJSON string) string {
 	tables := []string{
 		`CREATE TABLE IF NOT EXISTS users (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

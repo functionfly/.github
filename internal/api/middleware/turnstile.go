@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -130,11 +132,12 @@ func (t *TurnstileMiddleware) RequireTurnstile(next http.HandlerFunc) http.Handl
 				}
 				// Only try to decode if content type is JSON
 				if r.Header.Get("Content-Type") == "application/json" {
-					// Preserve body for next handler by reading and restoring
-					// This is a simplified approach - in production, use a body buffer
-					decoder := json.NewDecoder(r.Body)
-					if err := decoder.Decode(&body); err == nil {
-						token = body.TurnstileToken
+					bodyBytes, err := io.ReadAll(r.Body)
+					if err == nil {
+						r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+						if err := json.Unmarshal(bodyBytes, &body); err == nil {
+							token = body.TurnstileToken
+						}
 					}
 				}
 			}

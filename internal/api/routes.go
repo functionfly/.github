@@ -73,6 +73,7 @@ import (
 	githubhandler "github.com/functionfly/functionfly/internal/api/handlers/github"
 	marketplacehandler "github.com/functionfly/functionfly/internal/api/handlers/marketplace"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
+	mailchimpadmin "github.com/functionfly/functionfly/internal/api/handlers/mailchimp"
 	"github.com/functionfly/functionfly/internal/api/handlers/microvm"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	"github.com/functionfly/functionfly/internal/api/handlers/newsletter"
@@ -194,15 +195,21 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	}
 	if artifactStore != nil {
 		logging.Logger().WithField("backend", artifactStore.Backend()).Info("artifacts: store ready")
+	} else if artifactErr == nil {
+		// Degraded mode: store is nil but no error means R2/env not configured
+		// and ARTIFACT_REQUIRE=false. Artifact endpoints will return 503.
+		logging.Logger().Warn("artifacts: store unavailable; running in degraded mode (no R2 or local storage)")
 	}
 
-	// Stand up the dev-mode local upload/download endpoints when the artifact
-	// store is the local filesystem backend. In production (R2), the dashboard
-	// talks directly to R2 via presigned URLs and these handlers aren't
-	// needed.
+	// Dev-mode local upload/download endpoints are only available when using
+	// the local filesystem backend. In production with R2, the dashboard
+	// uploads directly via presigned URLs. In degraded mode (nil store),
+	// these routes are not registered since there's no storage backend.
 	var localUploadHandler *registryhandler.LocalUploadHandler
-	if ls, ok := artifactStore.(*artifacts.LocalStore); ok {
-		localUploadHandler = &registryhandler.LocalUploadHandler{LocalStore: ls}
+	if artifactStore != nil {
+		if ls, ok := artifactStore.(*artifacts.LocalStore); ok {
+			localUploadHandler = &registryhandler.LocalUploadHandler{LocalStore: ls}
+		}
 	}
 
 	pasteHandler := functions.NewPasteHandler(s.repo, nil)
@@ -527,7 +534,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	studioCodeEditorRepo := studio.NewCodeEditorRepository(s.postgresDB.DB)
 	studioCodeEditorHandler := studio.NewCodeEditorHandler(studioCodeEditorRepo)
 	studioDevOpsRepo := studio.NewDevOpsRepository(s.postgresDB.DB)
-	studioDevOpsHandler := studio.NewDevOpsHandler(studioDevOpsRepo)
+	studioDevOpsHandler := studio.NewDevOpsHandler(studioDevOpsRepo, s.dnaRepo)
 	// Initialize DevOps schema on startup
 	go func() {
 		if err := studioDevOpsRepo.InitSchema(context.Background()); err != nil {
@@ -1198,6 +1205,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	// Public newsletter routes
 	newsletterHandler.RegisterRoutes(api)
 
+	// ── Mailchimp Integration ──────────────────────────────────────────────────
+	mailchimpWebhookHandler := mailchimpadmin.NewWebhookHandler(s.mailchimpClient, s.repo, s.logger)
+	mailchimpWebhookHandler.RegisterRoutes(api)
+
+	if s.mailchimpSyncService != nil {
+		newsletterHandler.SetSyncService(s.mailchimpSyncService)
+		s.mailchimpSyncService.StartWorker(s.Context())
+		s.logger.Info("Mailchimp sync worker started")
+	}
+
 	// ── GitHub Integration ─────────────────────────────────────────────────────
 	registerGitHubRoutes(api, authMiddleware, githubHandler)
 
@@ -1389,6 +1406,9 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	alertHandler := admin.NewAlertHandler(s.postgresDB.DB)
 	adminNewsletterHandler := admin.NewNewsletterHandler(s.repo, s.emailSvc)
 
+	// Initialize Mailchimp admin handler
+	mailchimpAdminHandler := mailchimpadmin.NewAdminHandler(s.mailchimpClient, s.mailchimpSyncService, s.repo, s.logger)
+
 	// Initialize retention handler with cleanup service for admin management
 	retentionHandler := admin.NewRetentionHandler(s.postgresDB, s.executionLogCleanup)
 
@@ -1404,13 +1424,16 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 		stateFabricHandler, blogHandler, contentHandler,
 		csrfMiddleware, adminRateLimiter, adminSessionMiddleware,
 		ipAllowlistMiddleware, adminIPAllowlistHandler, adminAuditHandler, securityEventHandler, alertHandler,
-		adminNewsletterHandler, usageHandler, costAllocationHandler,
+		adminNewsletterHandler, mailchimpAdminHandler, usageHandler, costAllocationHandler,
 		retentionHandler, disputesHandler,
 		stateUsageHandler,
 		unfairAdvantageHandler,
 		certHandler,
 		founderVotesHandler,
 	)
+
+	// ── Slack Integration ──────────────────────────────────────────────────
+	registerSlackRoutes(s, s.router, authMiddleware)
 
 	// ── Admin AI Model Preferences (provider/model enable/disable) ──────────
 	aiModelsPrefsRepo := storage.NewAIModelPreferencesRepository(s.postgresDB.DB)
@@ -1617,6 +1640,7 @@ func (s *Server) setupRoutes(realtimeMonitor *monitoringPkg.RealtimeMonitor) {
 	s.router.HandleFunc("/health/detailed", s.handleDetailedHealth).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/check", s.handleHealthCheck).Methods("GET", "OPTIONS")
 	s.router.HandleFunc("/health/dna", s.handleDNAServiceHealth).Methods("GET", "OPTIONS")
+	s.router.HandleFunc("/health/dedicated", s.handleDedicatedDBHealth).Methods("GET", "OPTIONS")
 	api.HandleFunc("/tenant/health", authMiddleware.RequireAuth(s.handleTenantHealth)).Methods("GET", "OPTIONS")
 	s.router.Handle("/metrics", middleware.MetricsAuthMiddleware(authMiddleware)(promhttp.Handler())).Methods("GET")
 	s.router.HandleFunc("/ws/v1/status", statusHandlerInst.HandleWebSocketStatus).Methods("GET")

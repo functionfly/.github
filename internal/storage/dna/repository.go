@@ -227,6 +227,7 @@ type ExecutionMetric struct {
 	StatusCode     *int      `json:"status_code"`
 	ErrorCategory  string    `json:"error_category"`
 	ColdStart      bool      `json:"cold_start"`
+	ColdStartMs    int       `json:"cold_start_ms"`
 	CacheHit       bool      `json:"cache_hit"`
 	Region         *string   `json:"region"`
 }
@@ -237,12 +238,12 @@ func (r *Repository) InsertExecutionMetric(ctx context.Context, m *ExecutionMetr
 		INSERT INTO function_dna_execution_metrics
 			(function_id, function_type, execution_id, duration_ms, memory_peak_mb,
 			 cpu_time_ms, input_size_bytes, output_size_bytes, input_shape_hash,
-			 status_code, error_category, cold_start, cache_hit, region)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			 status_code, error_category, cold_start, cold_start_ms, cache_hit, region)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 	`, m.FunctionID, m.FunctionType, m.ExecutionID, m.DurationMs,
 		m.MemoryPeakMb, m.CPUTimeMs, m.InputSizeBytes, m.OutputSizeBytes,
 		m.InputShapeHash, m.StatusCode, m.ErrorCategory,
-		m.ColdStart, m.CacheHit, m.Region)
+		m.ColdStart, m.ColdStartMs, m.CacheHit, m.Region)
 	return err
 }
 
@@ -257,6 +258,7 @@ type AggregatedMetrics struct {
 	ErrorDistribution map[string]int64  `json:"error_distribution"`
 	InputPatterns    []InputPattern     `json:"input_patterns"`
 	ColdStartRate    float64            `json:"cold_start_rate"`
+	AvgColdStartMs   float64            `json:"avg_cold_start_ms"`
 	AvgMemoryPeakMb  float64            `json:"avg_memory_peak_mb"`
 }
 
@@ -292,6 +294,7 @@ func (r *Repository) AggregateMetrics(ctx context.Context, functionID string, si
 				COALESCE(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration_ms), 0) AS p99,
 				COALESCE(AVG(CASE WHEN error_category = 'none' THEN 1.0 ELSE 0.0 END), 1.0) AS success_rate,
 				COALESCE(AVG(CASE WHEN cold_start THEN 1.0 ELSE 0.0 END), 0.0) AS cold_start_rate,
+				COALESCE(AVG(CASE WHEN cold_start THEN cold_start_ms ELSE NULL END), 0) AS avg_cold_start_ms,
 				COALESCE(AVG(memory_peak_mb), 0) AS avg_memory
 			FROM base
 		),
@@ -313,7 +316,7 @@ func (r *Repository) AggregateMetrics(ctx context.Context, functionID string, si
 		)
 		SELECT
 			ms.total_executions, ms.avg_latency, ms.p50, ms.p95, ms.p99,
-			ms.success_rate, ms.cold_start_rate, ms.avg_memory,
+			ms.success_rate, ms.cold_start_rate, ms.avg_cold_start_ms, ms.avg_memory,
 			e.dist::text, p.pats::text
 		FROM main_stats ms
 		CROSS JOIN errors e
@@ -321,7 +324,7 @@ func (r *Repository) AggregateMetrics(ctx context.Context, functionID string, si
 	`, functionID, cutoff).Scan(
 		&m.TotalExecutions, &m.AvgLatencyMs, &m.P50LatencyMs,
 		&m.P95LatencyMs, &m.P99LatencyMs, &m.SuccessRate,
-		&m.ColdStartRate, &m.AvgMemoryPeakMb,
+		&m.ColdStartRate, &m.AvgColdStartMs, &m.AvgMemoryPeakMb,
 		&errorDistJSON, &inputPatternsJSON,
 	)
 	if err != nil {
@@ -1056,6 +1059,30 @@ func (r *Repository) GetDistinctTenantIDs(ctx context.Context) ([]string, error)
 		return nil, fmt.Errorf("get distinct tenants iteration: %w", err)
 	}
 	return tenants, nil
+}
+
+// TenantColdStartStats holds aggregated cold start metrics for a tenant.
+type TenantColdStartStats struct {
+	AvgColdStartMs float64 `json:"avg_cold_start_ms"`
+	TotalColdStarts int64   `json:"total_cold_starts"`
+}
+
+// GetTenantColdStartStats returns aggregated cold start metrics for a tenant.
+func (r *Repository) GetTenantColdStartStats(ctx context.Context, tenantID string, since time.Duration) (*TenantColdStartStats, error) {
+	cutoff := time.Now().Add(-since)
+	stats := &TenantColdStartStats{}
+	err := r.db.QueryRowContext(ctx, `
+		SELECT
+			COALESCE(AVG(m.cold_start_ms), 0) AS avg_cold_start_ms,
+			COUNT(*) FILTER (WHERE m.cold_start = true) AS total_cold_starts
+		FROM function_dna_execution_metrics m
+		INNER JOIN function_dna_profiles p ON m.function_id = p.function_id
+		WHERE p.tenant_id = $1 AND m.recorded_at > $2
+	`, tenantID, cutoff).Scan(&stats.AvgColdStartMs, &stats.TotalColdStarts)
+	if err != nil {
+		return nil, fmt.Errorf("get tenant cold start stats: %w", err)
+	}
+	return stats, nil
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

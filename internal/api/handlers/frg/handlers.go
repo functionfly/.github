@@ -1112,26 +1112,24 @@ func (h *Handler) SemanticSearch(w http.ResponseWriter, r *http.Request) {
 		// Generate embedding for the query
 		embedding, embedErr := h.embedClient.GenerateEmbedding(ctx, query)
 		if embedErr != nil {
-			// Log the error but fall back to text search
-			// (In production, you might want to log this properly)
-			_ = embedErr
+			logrus.WithError(embedErr).Warn("frg: failed to generate embedding for semantic search, falling back to text search")
 			useVectorSearch = false
-		}
-
-		if embedding != nil && len(embedding) > 0 {
+		} else if embedding != nil && len(embedding) > 0 {
 			// Convert []float32 to []byte for pgvector
 			embeddingBytes := embeddingToBytes(embedding)
 			results, err = h.frgRepo.SearchByEmbedding(ctx, embeddingBytes, 10)
 			if err != nil {
-				// Fall back to text search on error
+				logrus.WithError(err).Warn("frg: embedding search failed, falling back to text search")
 				results, err = h.frgRepo.SearchByText(ctx, query, 10)
 			}
 		} else {
-			// No embedding generated, fall back to text search
-			results, err = h.frgRepo.SearchByText(ctx, query, 10)
+			logrus.Warn("frg: no embedding generated, falling back to text search")
+			useVectorSearch = false
 		}
-	} else {
-		// Vector search disabled or no embedding client configured, use text search
+	}
+
+	if !useVectorSearch || err != nil {
+		// Fall back to text search if vector search failed or was disabled
 		results, err = h.frgRepo.SearchByText(ctx, query, 10)
 	}
 

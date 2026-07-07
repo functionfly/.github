@@ -1,15 +1,33 @@
 package studio
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/storage/dna"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
+
+// ColdStartStatsProvider interface for getting cold start metrics
+type ColdStartStatsProvider interface {
+	GetTenantColdStartStats(ctx context.Context, tenantID string, since time.Duration) (*dna.TenantColdStartStats, error)
+}
+
+// DevOpsHandler handles studio DevOps HTTP requests
+type DevOpsHandler struct {
+	devopsRepo          *DevOpsRepository
+	coldStartStatsRepo  ColdStartStatsProvider
+}
+
+// NewDevOpsHandler creates a new DevOps handler
+func NewDevOpsHandler(devopsRepo *DevOpsRepository, coldStartStatsRepo ColdStartStatsProvider) *DevOpsHandler {
+	return &DevOpsHandler{devopsRepo: devopsRepo, coldStartStatsRepo: coldStartStatsRepo}
+}
 
 // generateID generates a unique ID with the given prefix
 func generateID(prefix string) string {
@@ -149,20 +167,6 @@ type CloudRegion struct {
 	Specs        *CloudRegionSpec `json:"specs,omitempty"`
 	TenantID     string         `json:"tenant_id"`
 	CreatedAt    int64          `json:"created_at"`
-}
-
-// ============================================================================
-// DevOps Handler
-// ============================================================================
-
-// DevOpsHandler handles studio DevOps HTTP requests
-type DevOpsHandler struct {
-	devopsRepo *DevOpsRepository
-}
-
-// NewDevOpsHandler creates a new DevOps handler
-func NewDevOpsHandler(devopsRepo *DevOpsRepository) *DevOpsHandler {
-	return &DevOpsHandler{devopsRepo: devopsRepo}
 }
 
 // ============================================================================
@@ -727,7 +731,7 @@ func (h *DevOpsHandler) HandleGetDevOpsStats(w http.ResponseWriter, r *http.Requ
 	environments, _ := h.devopsRepo.ListEnvironments(r.Context(), tenantID, "")
 	regions, _ := h.devopsRepo.ListCloudRegions(r.Context(), tenantID, "")
 
-	var activePipelines, successRate, avgColdStart int64
+	var activePipelines, successRate int64
 	for _, p := range pipelines {
 		if p.Status == PipelineStatusActive {
 			activePipelines++
@@ -748,8 +752,13 @@ func (h *DevOpsHandler) HandleGetDevOpsStats(w http.ResponseWriter, r *http.Requ
 		successRate = (completedStages * 100) / totalStages
 	}
 
-	// Simulated avg cold start (would come from actual metrics in production)
-	avgColdStart = 2100 // 2.1 seconds in ms
+	// Get cold start metrics from DNA repository (last 7 days)
+	var avgColdStart int64
+	if h.coldStartStatsRepo != nil {
+		if stats, err := h.coldStartStatsRepo.GetTenantColdStartStats(r.Context(), tenantID, 7*24*time.Hour); err == nil {
+			avgColdStart = int64(stats.AvgColdStartMs)
+		}
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"pipelines":      len(pipelines),

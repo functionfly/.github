@@ -1,16 +1,27 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/agent/identity"
 	"github.com/functionfly/functionfly/internal/api/middleware"
+	"github.com/functionfly/functionfly/internal/plans"
 	"github.com/gorilla/mux"
+	"github.com/nats-io/nats.go"
 	"github.com/sirupsen/logrus"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
+)
+
+const (
+	daemonStartSubject  = "orchestrator.agent.daemon.start"
+	daemonStopSubject   = "orchestrator.agent.daemon.stop"
+	daemonResponseSubj  = "orchestrator.agent.daemon.response"
+	daemonTimeout       = 10 * time.Second
 )
 
 // DaemonConfig represents the daemon configuration for an agent
@@ -67,14 +78,84 @@ type DaemonStatus struct {
 	EventSourcesActive  []string   `json:"event_sources_active"`
 }
 
+// DaemonCommand represents a command to send to the SAR runtime
+type DaemonCommand struct {
+	AgentID      string                 `json:"agent_id"`
+	TenantID     string                 `json:"tenant_id"`
+	Command      string                 `json:"command"` // "start" | "stop" | "status"
+	DaemonConfig map[string]interface{}  `json:"daemon_config,omitempty"`
+}
+
+// DaemonResponse represents the response from the SAR runtime
+type DaemonResponse struct {
+	OK     bool   `json:"ok"`
+	Error  string `json:"error,omitempty"`
+	CellID string `json:"cell_id,omitempty"`
+}
+
+// sendDaemonCommand sends a command to the SAR runtime via NATS and waits for response
+func (h *DaemonHandler) sendDaemonCommand(ctx context.Context, cmd *DaemonCommand) (*DaemonResponse, error) {
+	if !h.natsEnabled || h.natsConn == nil {
+		logrus.WithField("command", cmd.Command).Debug("NATS not enabled, skipping runtime call")
+		return &DaemonResponse{OK: true}, nil
+	}
+
+	cmdBytes, err := json.Marshal(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("marshal command: %w", err)
+	}
+
+	// Determine subject based on command
+	subject := daemonStartSubject
+	if cmd.Command == "stop" {
+		subject = daemonStopSubject
+	}
+
+	// Create unique inbox for response
+	inbox := h.natsConn.NewRespInbox()
+
+	// Subscribe to response
+	sub, err := h.natsConn.SubscribeSync(inbox)
+	if err != nil {
+		return nil, fmt.Errorf("subscribe to response: %w", err)
+	}
+	defer sub.Unsubscribe()
+
+	// Publish command
+	if err := h.natsConn.PublishRequest(subject, inbox, cmdBytes); err != nil {
+		return nil, fmt.Errorf("publish command: %w", err)
+	}
+
+	// Wait for response with timeout
+	msg, err := sub.NextMsgWithContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("wait for response: %w", err)
+	}
+
+	var resp DaemonResponse
+	if err := json.Unmarshal(msg.Data, &resp); err != nil {
+		return nil, fmt.Errorf("unmarshal response: %w", err)
+	}
+
+	return &resp, nil
+}
+
 // DaemonHandler handles always-on daemon control endpoints
 type DaemonHandler struct {
-	db *gorm.DB
+	db          *gorm.DB
+	natsConn    *nats.Conn
+	natsEnabled bool
 }
 
 // NewDaemonHandler creates a new daemon handler
 func NewDaemonHandler(db *gorm.DB) *DaemonHandler {
-	return &DaemonHandler{db: db}
+	return &DaemonHandler{db: db, natsEnabled: false}
+}
+
+// SetNATSConnection sets the NATS connection for runtime communication
+func (h *DaemonHandler) SetNATSConnection(nc *nats.Conn) {
+	h.natsConn = nc
+	h.natsEnabled = nc != nil
 }
 
 // requireAgentTenant verifies the request is authenticated and the agent belongs to the caller's tenant
@@ -205,18 +286,51 @@ func (h *DaemonHandler) StartDaemon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check always-on allowance (billing check)
-	// In production, this would check the tenant's plan limits
-	tier := getTenantTier(agent.TenantID.String())
-	if tier == "free" && agent.AlwaysOnCount >= 1 {
+	// Get tenant plan from auth context
+	tier := middleware.GetTenantPlan(r)
+	if tier == "" {
+		tier = plans.PlanStarter
+		logrus.WithField("tenant_id", agent.TenantID).Warn("tenant plan not in context, defaulting to starter")
+	}
+
+	// Get max always-on agents for this plan
+	maxAgents, _, _, _ := plans.GetAgentLimitsForPlan(tier)
+
+	// Count currently running always-on agents for this tenant
+	var runningCount int64
+	h.db.WithContext(r.Context()).
+		Model(&identity.AgentIdentity{}).
+		Where("tenant_id = ? AND is_daemon_running = ?", agent.TenantID, true).
+		Count(&runningCount)
+
+	if int(runningCount) >= maxAgents {
 		writeError(w, http.StatusPaymentRequired, "LIMIT_REACHED",
-			"Free tier allows only 1 always-on agent. Upgrade to enable more.")
+			fmt.Sprintf("Your plan (%s) allows %d always-on agent(s). Upgrade to enable more.", tier, maxAgents))
 		return
 	}
 
-	// In production, this would call the Rust runtime to start the daemon
-	// For now, we update the status
+	// Call the SAR runtime via NATS to start the daemon
+	ctx, cancel := context.WithTimeout(r.Context(), daemonTimeout)
+	defer cancel()
+
 	now := time.Now().UTC()
+	startResp, err := h.sendDaemonCommand(ctx, &DaemonCommand{
+		AgentID:      agentID,
+		TenantID:     agent.TenantID.String(),
+		Command:      "start",
+		DaemonConfig: agent.DaemonConfig,
+	})
+	if err != nil {
+		logrus.WithError(err).WithField("agent_id", agentID).Warn("Failed to start daemon via runtime, updating DB only")
+		// Fallback: update DB only (daemon may start later via heartbeat registration)
+	}
+
+	if startResp != nil && !startResp.OK {
+		writeError(w, http.StatusInternalServerError, "DAEMON_START_FAILED", startResp.Error)
+		return
+	}
+
+	// Update daemon status in database
 	h.db.WithContext(r.Context()).
 		Model(&identity.AgentIdentity{}).
 		Where("agent_id = ?", agentID).
@@ -225,12 +339,13 @@ func (h *DaemonHandler) StartDaemon(w http.ResponseWriter, r *http.Request) {
 			"is_daemon_running": true,
 		})
 
-	logrus.WithField("agent_id", agentID).Info("Daemon started")
+	logrus.WithField("agent_id", agentID).Info("Daemon started via SAR runtime")
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":         true,
 		"message":    "Daemon started successfully",
 		"started_at": now,
+		"runtime":    "sar",
 	})
 }
 
@@ -241,7 +356,34 @@ func (h *DaemonHandler) StopDaemon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In production, this would call the Rust runtime to stop the daemon
+	// Get agent to find tenant
+	var agent identity.AgentIdentity
+	if err := h.db.WithContext(r.Context()).
+		Where("agent_id = ?", agentID).
+		First(&agent).Error; err != nil {
+		writeError(w, http.StatusNotFound, "NOT_FOUND", "agent not found")
+		return
+	}
+
+	// Call the SAR runtime via NATS to stop the daemon
+	ctx, cancel := context.WithTimeout(r.Context(), daemonTimeout)
+	defer cancel()
+
+	stopResp, err := h.sendDaemonCommand(ctx, &DaemonCommand{
+		AgentID:  agentID,
+		TenantID: agent.TenantID.String(),
+		Command:  "stop",
+	})
+	if err != nil {
+		logrus.WithError(err).WithField("agent_id", agentID).Warn("Failed to stop daemon via runtime, updating DB only")
+	}
+
+	if stopResp != nil && !stopResp.OK {
+		writeError(w, http.StatusInternalServerError, "DAEMON_STOP_FAILED", stopResp.Error)
+		return
+	}
+
+	// Update daemon status in database
 	h.db.WithContext(r.Context()).
 		Model(&identity.AgentIdentity{}).
 		Where("agent_id = ?", agentID).
@@ -249,11 +391,12 @@ func (h *DaemonHandler) StopDaemon(w http.ResponseWriter, r *http.Request) {
 			"is_daemon_running": false,
 		})
 
-	logrus.WithField("agent_id", agentID).Info("Daemon stopped")
+	logrus.WithField("agent_id", agentID).Info("Daemon stopped via SAR runtime")
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":      true,
 		"message": "Daemon stopped successfully",
+		"runtime": "sar",
 	})
 }
 
@@ -317,19 +460,12 @@ func (h *DaemonHandler) GetAlwaysOnAllowance(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	tier := getTenantTier(agent.TenantID.String())
-
-	var allowance int
-	switch tier {
-	case "free":
-		allowance = 1
-	case "builder":
-		allowance = 3
-	case "pro":
-		allowance = 10
-	default:
-		allowance = 1
+	tier := middleware.GetTenantPlan(r)
+	if tier == "" {
+		tier = plans.PlanStarter
 	}
+
+	maxAgents, _, _, _ := plans.GetAgentLimitsForPlan(tier)
 
 	// Count always-on agents for this tenant
 	var used int64
@@ -341,9 +477,9 @@ func (h *DaemonHandler) GetAlwaysOnAllowance(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"ok":        true,
 		"tier":      tier,
-		"allowance": allowance,
+		"allowance": maxAgents,
 		"used":      int(used),
-		"remaining": allowance - int(used),
+		"remaining": maxAgents - int(used),
 	})
 }
 
@@ -358,15 +494,4 @@ func (h *DaemonHandler) RegisterDaemonRoutes(router *mux.Router, basePath string
 	agent.HandleFunc("/{id}/daemon/stop", auth(h.StopDaemon)).Methods(http.MethodPost)
 	agent.HandleFunc("/{id}/daemon/status", auth(h.GetDaemonStatus)).Methods(http.MethodGet)
 	agent.HandleFunc("/{id}/daemon/allowance", auth(h.GetAlwaysOnAllowance)).Methods(http.MethodGet)
-}
-
-// getTenantTier returns the tier for a tenant
-// In production, this would query the billing/subscription system
-func getTenantTier(tenantID string) string {
-	// For now, return based on a simple lookup
-	// In production, this would check the subscription table
-	if tenantID == "free" {
-		return "free"
-	}
-	return "pro" // Default to pro for development
 }

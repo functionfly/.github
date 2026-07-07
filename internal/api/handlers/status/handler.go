@@ -1,20 +1,24 @@
 package status
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/auth"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
 	"github.com/functionfly/functionfly/internal/apierror"
 )
@@ -1043,7 +1047,7 @@ func (h *Handler) getComponentSummaries(ctx context.Context) []Component {
 			ID:          "database",
 			Name:        "Database",
 			Type:        "database",
-			Status:      statusOrDefault("postgres"),
+			Status:      func() string { healthy, _ := checkDedicatedDBHealth(ctx); return mapBoolStatus(healthy) }(),
 			Description: "Primary PostgreSQL database",
 			Uptime24h:   0, // Will be calculated from health history
 		},
@@ -1131,7 +1135,7 @@ func (h *Handler) getComponentSummaries(ctx context.Context) []Component {
 			ID:          "cdn",
 			Name:        "CDN",
 			Type:        "cdn",
-			Status:      statusOrDefault("cdn"),
+			Status:      func() string { healthy, _, _ := checkCloudflareHealth(ctx); return mapBoolStatus(healthy) }(),
 			Description: "Cloudflare edge caching and delivery",
 			Uptime24h:   0,
 		},
@@ -1278,6 +1282,121 @@ func mapBoolStatus(healthy bool) string {
 		return "operational"
 	}
 	return "major_outage"
+}
+
+// checkDedicatedDBHealth checks the health of the local/primary database server
+func checkDedicatedDBHealth(ctx context.Context) (bool, int) {
+	connString := storage.GetConnectionString()
+	if connString == "" {
+		logrus.Warn("checkDedicatedDBHealth: connection string empty")
+		return true, 0 // Return healthy if not configured (fallback)
+	}
+
+	dbCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	poolConfig, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		logrus.WithError(err).Warn("checkDedicatedDBHealth: failed to parse connection string")
+		return false, 0
+	}
+
+	poolConfig.MaxConns = 1
+	poolConfig.MinConns = 0
+
+	pool, err := pgxpool.NewWithConfig(dbCtx, poolConfig)
+	if err != nil {
+		logrus.WithError(err).Warn("checkDedicatedDBHealth: failed to create pool")
+		return false, 0
+	}
+	defer pool.Close()
+
+	start := time.Now()
+	err = pool.Ping(dbCtx)
+	latencyMs := int(time.Since(start).Milliseconds())
+
+	if err != nil {
+		logrus.WithError(err).Warn("checkDedicatedDBHealth: ping failed")
+		return false, latencyMs
+	}
+
+	return true, latencyMs
+}
+
+// checkCloudflareHealth checks CDN health via Cloudflare API
+func checkCloudflareHealth(ctx context.Context) (bool, int, string) {
+	apiToken := os.Getenv("CF_API_TOKEN")
+	zoneID := os.Getenv("CF_ZONE_ID")
+
+	if apiToken == "" || zoneID == "" {
+		return true, 0, "cloudflare not configured"
+	}
+
+	reqCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	query := fmt.Sprintf(`{
+  viewer {
+    zones(filter: { zoneTag: "%s" }) {
+      zoneStatus
+      healthCheck {
+        status
+      }
+    }
+  }
+}`, zoneID)
+
+	body := map[string]interface{}{"query": query}
+	bodyBytes, _ := json.Marshal(body)
+
+	req, err := http.NewRequestWithContext(reqCtx, "POST", "https://api.cloudflare.com/graphql", bytes.NewReader(bodyBytes))
+	if err != nil {
+		return false, 0, fmt.Sprintf("request creation failed: %v", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiToken)
+	req.Header.Set("Content-Type", "application/json")
+
+	start := time.Now()
+	resp, err := http.DefaultClient.Do(req)
+	latencyMs := int(time.Since(start).Milliseconds())
+
+	if err != nil {
+		return false, latencyMs, fmt.Sprintf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, latencyMs, fmt.Sprintf("cloudflare returned status %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Data struct {
+			Viewer struct {
+				Zones []struct {
+					ZoneStatus   string `json:"zoneStatus"`
+					HealthCheck  struct {
+						Status string `json:"status"`
+					} `json:"healthCheck"`
+				} `json:"zones"`
+			} `json:"viewer"`
+		} `json:"data"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return false, latencyMs, fmt.Sprintf("failed to parse response: %v", err)
+	}
+
+	if len(result.Data.Viewer.Zones) == 0 {
+		return false, latencyMs, "zone not found"
+	}
+
+	zone := result.Data.Viewer.Zones[0]
+	if zone.ZoneStatus != "active" {
+		return false, latencyMs, fmt.Sprintf("zone status: %s", zone.ZoneStatus)
+	}
+
+	return true, latencyMs, "operational"
 }
 
 // getUptimeForComponent gets uptime percentage for a component from Prometheus

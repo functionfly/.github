@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -134,19 +135,30 @@ func (h *EvolutionHandler) ApproveSuggestion(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Auto-implement if approved (can be made async in production)
+	implemented := false
+	// Auto-implement if approved - run asynchronously to not block HTTP response
 	if proposal.Status == "approved" {
-		if err := h.evolutionSvc.ImplementProposal(r.Context(), suggestionID); err != nil {
-			logrus.WithError(err).Warn("failed to auto-implement approved proposal")
-			// Don't fail the request - the proposal is approved, implementation can be retried
-		}
+		// Spawn goroutine with detached context so implementation continues even if HTTP request ends
+		// Use a timeout context to prevent runaway implementations
+		go func(proposalID uuid.UUID, agentID string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+
+			if err := h.evolutionSvc.ImplementProposal(ctx, proposalID); err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{
+					"suggestion_id": proposalID,
+					"agent_id":      agentID,
+				}).Warn("failed to auto-implement approved proposal - will need manual retry")
+			}
+		}(suggestionID, agentID)
+		implemented = true // Indicates implementation was triggered, not that it completed
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":            true,
 		"suggestion_id": suggestionID,
 		"status":        "approved",
-		"implemented":   proposal.Status == "approved",
+		"implemented":   implemented, // true = auto-implementation triggered
 	})
 }
 

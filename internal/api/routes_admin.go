@@ -15,6 +15,7 @@ import (
 	factoryhandler "github.com/functionfly/functionfly/internal/api/handlers/factory"
 	feedbackHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/feedback"
 	mfaHandlerPkg "github.com/functionfly/functionfly/internal/api/handlers/mfa"
+	mailchimpadmin "github.com/functionfly/functionfly/internal/api/handlers/mailchimp"
 	"github.com/functionfly/functionfly/internal/api/handlers/monitoring"
 	registryhandler "github.com/functionfly/functionfly/internal/api/handlers/registry"
 	"github.com/functionfly/functionfly/internal/api/handlers/security"
@@ -66,6 +67,7 @@ func registerAdminRoutes(
 	securityEventHandler *admin.SecurityEventHandler,
 	alertHandler *admin.AlertHandler,
 	newsletterHandler *admin.NewsletterHandler,
+	mailchimpAdminHandler *mailchimpadmin.AdminHandler,
 	usageHandler *billing.UsageHandler,
 	costAllocationHandler *billing.CostAllocationHandler,
 	retentionHandler *admin.RetentionHandler,
@@ -697,6 +699,13 @@ func registerAdminRoutes(
 	adminRoutes.HandleFunc("/newsletter/campaigns", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.CreateCampaign)).Methods("POST", "OPTIONS")
 	adminRoutes.HandleFunc("/newsletter/campaigns/{id}", authMiddleware.RequirePermission(auth.PermSystemRead)(newsletterHandler.GetCampaign)).Methods("GET", "OPTIONS")
 	adminRoutes.HandleFunc("/newsletter/campaigns/{id}/send", authMiddleware.RequirePermission(auth.PermSystemWrite)(newsletterHandler.SendCampaign)).Methods("POST", "OPTIONS")
+
+	// Mailchimp management
+	adminRoutes.HandleFunc("/mailchimp/stats", authMiddleware.RequirePermission(auth.PermSystemRead)(mailchimpAdminHandler.GetStats)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/mailchimp/subscribers", authMiddleware.RequirePermission(auth.PermSystemRead)(mailchimpAdminHandler.ListSubscribers)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/mailchimp/sync", authMiddleware.RequirePermission(auth.PermSystemWrite)(mailchimpAdminHandler.TriggerSync)).Methods("POST", "OPTIONS")
+	adminRoutes.HandleFunc("/mailchimp/sync-status", authMiddleware.RequirePermission(auth.PermSystemRead)(mailchimpAdminHandler.GetSyncStatus)).Methods("GET", "OPTIONS")
+	adminRoutes.HandleFunc("/mailchimp/subscribers/{email}/activity", authMiddleware.RequirePermission(auth.PermSystemRead)(mailchimpAdminHandler.GetSubscriberActivity)).Methods("GET", "OPTIONS")
 
 	// ── Certification Admin ─────────────────────────────────────────────
 	adminRoutes.HandleFunc("/certification/tiers", authMiddleware.RequirePermission(auth.PermSystemWrite)(certHandler.AdminListTiers)).Methods("GET", "POST", "OPTIONS")

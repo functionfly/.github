@@ -3,10 +3,13 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/functionfly/functionfly/internal/agent/policy"
 	"github.com/functionfly/functionfly/internal/agent/tools"
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/gorilla/mux"
@@ -32,24 +35,32 @@ func (h *Handler) HandleListTools(w http.ResponseWriter, r *http.Request) {
 
 	toolsOut := h.toolRegistry.ListDefinitions()
 
-	// Build response with costs
-	costMap := make(map[string]float64, len(toolsOut))
+	// Filter tools based on agent's policy
+	agentID := claims.UserID.String()
+	policy, _ := h.policyEngine.GetPolicy(r.Context(), agentID)
+	filteredTools := make([]tools.ToolDefinition, 0, len(toolsOut))
 	for _, t := range toolsOut {
+		if policy != nil && h.isToolBlockedByPolicy(t.Name, policy) {
+			continue
+		}
+		filteredTools = append(filteredTools, t)
+	}
+
+	// Build response with costs
+	costMap := make(map[string]float64, len(filteredTools))
+	for _, t := range filteredTools {
 		costMap[t.Name] = t.CostUSD
 	}
 
-	// Filter tools based on agent's policy - but for now return all definitions
-	// In production, you'd check policyEngine.IsToolAllowed for each tool
-
 	logrus.WithFields(logrus.Fields{
-		"tenant_id": claims.TenantID,
-		"agent_id":  claims.UserID,
-		"tool_count": len(toolsOut),
+		"tenant_id":  claims.TenantID,
+		"agent_id":   claims.UserID,
+		"tool_count": len(filteredTools),
 	}).Debug("listing tools")
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":       true,
-		"tools":    toolsOut,
+		"ok":        true,
+		"tools":     filteredTools,
 		"costs_usd": costMap,
 	})
 }
@@ -81,14 +92,17 @@ func (h *Handler) HandleGetTool(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check policy - is this tool allowed for this agent?
-	// allowed, violation := h.policyEngine.IsToolAllowed(r.Context(), agentID, toolName)
-	// if !allowed { ... }
+	agentID := claims.UserID.String()
+	policy, _ := h.policyEngine.GetPolicy(r.Context(), agentID)
+	if policy != nil && h.isToolBlockedByPolicy(toolName, policy) {
+		writeError(w, http.StatusForbidden, "TOOL_BLOCKED", "tool is blocked by agent policy")
+		return
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"ok":          true,
-		"tool":        tool.Definition(),
-		"cost_usd":    tool.Definition().CostUSD,
+		"ok":       true,
+		"tool":     tool.Definition(),
+		"cost_usd": tool.Definition().CostUSD,
 	})
 }
 
@@ -147,6 +161,13 @@ func (h *Handler) HandleExecuteTool(w http.ResponseWriter, r *http.Request) {
 
 	// Generate execution ID for tracing
 	executionID := fmt.Sprintf("exec_%d", time.Now().UnixNano())
+
+	// Check policy - is this tool allowed for this agent?
+	policy, _ := h.policyEngine.GetPolicy(r.Context(), claims.UserID.String())
+	if policy != nil && h.isToolBlockedByPolicy(toolName, policy) {
+		writeError(w, http.StatusForbidden, "TOOL_BLOCKED", "tool is blocked by agent policy")
+		return
+	}
 
 	// Build execution context
 	execCtx := tools.ExecutionContext{
@@ -219,6 +240,31 @@ func (h *Handler) HandleExecuteTool(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// isToolBlockedByPolicy checks if a tool is blocked by the agent's policy
+func (h *Handler) isToolBlockedByPolicy(toolName string, p *policy.BehavioralPolicy) bool {
+	if p == nil {
+		return false
+	}
+	for _, forbidden := range p.ForbiddenFunctions {
+		if matchPattern(toolName, forbidden) {
+			return true
+		}
+	}
+	return false
+}
+
+// matchPattern matches a tool name against a forbidden pattern
+func matchPattern(toolName, pattern string) bool {
+	if pattern == "*" {
+		return true
+	}
+	if strings.HasSuffix(pattern, "/*") {
+		prefix := strings.TrimSuffix(pattern, "/*")
+		return strings.HasPrefix(toolName, prefix+"/")
+	}
+	return toolName == pattern
+}
+
 // HandleListToolCalls returns tool call history for the agent
 // GET /v1/agent/tools/calls
 func (h *Handler) HandleListToolCalls(w http.ResponseWriter, r *http.Request) {
@@ -272,13 +318,24 @@ func (h *Handler) HandleListToolCalls(w http.ResponseWriter, r *http.Request) {
 // getClientIP extracts the client IP address from the request
 func getClientIP(r *http.Request) string {
 	// Check X-Forwarded-For header first (for proxied requests)
+	// X-Forwarded-For can contain multiple IPs: client, proxy1, proxy2, ...
+	// Return only the first (original client) IP
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		if idx := strings.Index(xff, ","); idx != -1 {
+			return strings.TrimSpace(xff[:idx])
+		}
 		return xff
 	}
 	// Check X-Real-IP header
 	if xri := r.Header.Get("X-Real-IP"); xri != "" {
 		return xri
 	}
-	// Fall back to RemoteAddr
-	return r.RemoteAddr
+	// Fall back to RemoteAddr (contains host:port)
+	if ra := r.RemoteAddr; ra != "" {
+		if host, _, err := net.SplitHostPort(ra); err == nil {
+			return host
+		}
+		return ra
+	}
+	return ""
 }

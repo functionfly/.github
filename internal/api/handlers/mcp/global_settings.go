@@ -87,21 +87,34 @@ func NewGlobalHandler(repo *registry.RegistryRepository) *GlobalHandler {
 // HandleGetMCPSettings serves GET /v1/mcp/settings.
 // Returns platform-wide MCP configuration defaults.
 func (h *GlobalHandler) HandleGetMCPSettings(w http.ResponseWriter, r *http.Request) {
-	// Return default global settings (in production, these would come from a config table)
-	settings := MCPSettingsGlobal{
-		DefaultTransport:    "streamable-http",
-		DefaultRateLimit:    60,
-		DefaultExposeInput:  true,
-		DefaultExposeOutput: false,
-		AutoAddToRegistry:   false,
-		RequireVerification: true,
-		PublicListing:       true,
-		CORSAllowlist:       []string{},
-		RateLimitMultiplier: 1,
+	settings, err := h.repo.GetMCPSettingsGlobal(r.Context())
+	if err != nil {
+		logrus.WithError(err).Warn("mcp: failed to get global settings, using defaults")
+		settings = registry.MCPSettingsGlobalInput{
+			DefaultTransport:    "streamable-http",
+			DefaultRateLimit:    60,
+			DefaultExposeInput:  true,
+			DefaultExposeOutput: false,
+			AutoAddToRegistry:   false,
+			RequireVerification: true,
+			PublicListing:       true,
+			CORSAllowlist:       []string{},
+			RateLimitMultiplier: 1,
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(settings)
+	json.NewEncoder(w).Encode(MCPSettingsGlobal{
+		DefaultTransport:    settings.DefaultTransport,
+		DefaultRateLimit:    settings.DefaultRateLimit,
+		DefaultExposeInput:  settings.DefaultExposeInput,
+		DefaultExposeOutput: settings.DefaultExposeOutput,
+		AutoAddToRegistry:   settings.AutoAddToRegistry,
+		RequireVerification: settings.RequireVerification,
+		PublicListing:       settings.PublicListing,
+		CORSAllowlist:       settings.CORSAllowlist,
+		RateLimitMultiplier: settings.RateLimitMultiplier,
+	})
 }
 
 // HandleUpdateMCPSettings serves PATCH /v1/mcp/settings.
@@ -124,8 +137,24 @@ func (h *GlobalHandler) HandleUpdateMCPSettings(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// In production, we would save these to a config table
-	// For now, just return the settings as confirmation
+	// Save to database
+	err := h.repo.UpdateMCPSettingsGlobal(r.Context(), registry.MCPSettingsGlobalInput{
+		DefaultTransport:    input.DefaultTransport,
+		DefaultRateLimit:    input.DefaultRateLimit,
+		DefaultExposeInput:  input.DefaultExposeInput,
+		DefaultExposeOutput: input.DefaultExposeOutput,
+		AutoAddToRegistry:   input.AutoAddToRegistry,
+		RequireVerification: input.RequireVerification,
+		PublicListing:       input.PublicListing,
+		CORSAllowlist:       input.CORSAllowlist,
+		RateLimitMultiplier: input.RateLimitMultiplier,
+	})
+	if err != nil {
+		logrus.WithError(err).Error("mcp: failed to update global settings")
+		apierror.WriteError(w, apierror.NewInternal("Failed to update settings"))
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(input)
 }

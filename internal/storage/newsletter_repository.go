@@ -385,3 +385,54 @@ func (db *PostgresDB) UpdateCampaignStats(ctx context.Context, campaignID uuid.U
 		"updated_at":   time.Now(),
 	}).Error
 }
+
+// UpdateNewsletterSubscriberMailchimp updates Mailchimp sync fields for a subscriber
+func (db *PostgresDB) UpdateNewsletterSubscriberMailchimp(ctx context.Context, id, mailchimpID string, syncStatus string) error {
+	updates := map[string]interface{}{
+		"mailchimp_sync_status": syncStatus,
+		"updated_at":            time.Now(),
+	}
+
+	if mailchimpID != "" {
+		updates["mailchimp_subscriber_id"] = mailchimpID
+	}
+
+	now := time.Now()
+	updates["mailchimp_last_synced_at"] = now
+
+	return db.GORM.WithContext(ctx).Model(&NewsletterSubscriber{}).Where("id = ?", id).Updates(updates).Error
+}
+
+// UpdateNewsletterSubscriberEmailFrequency updates the email frequency preference
+func (db *PostgresDB) UpdateNewsletterSubscriberEmailFrequency(ctx context.Context, email, frequency string) error {
+	email = strings.ToLower(strings.TrimSpace(email))
+	now := time.Now()
+
+	result := db.GORM.WithContext(ctx).Model(&NewsletterSubscriber{}).
+		Where("email = ?", email).
+		Updates(map[string]interface{}{
+			"email_frequency": frequency,
+			"updated_at":      now,
+		})
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrSubscriberNotFound
+	}
+	return nil
+}
+
+// GetNewsletterSubscribersNeedingSync returns subscribers that need to be synced to Mailchimp
+func (db *PostgresDB) GetNewsletterSubscribersNeedingSync(ctx context.Context, limit int) ([]NewsletterSubscriber, error) {
+	var subscribers []NewsletterSubscriber
+	if err := db.GORM.WithContext(ctx).
+		Where("mailchimp_sync_status IN (?, ?)", "pending", "failed").
+		Where("status = ?", "active").
+		Limit(limit).
+		Find(&subscribers).Error; err != nil {
+		return nil, err
+	}
+	return subscribers, nil
+}

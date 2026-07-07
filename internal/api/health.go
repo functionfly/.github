@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"runtime"
@@ -13,8 +14,10 @@ import (
 	"github.com/functionfly/functionfly/internal/api/middleware"
 	"github.com/functionfly/functionfly/internal/dna"
 	"github.com/functionfly/functionfly/internal/monitoring"
+	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/sirupsen/logrus"
 	"github.com/functionfly/functionfly/internal/apierror"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // getVersion returns the application version from build info
@@ -619,6 +622,79 @@ func (s *Server) handleDNAServiceHealth(w http.ResponseWriter, r *http.Request) 
 
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(health)
+}
+
+// handleDedicatedDBHealth checks the health of the local/primary database server.
+// GET /health/dedicated
+func (s *Server) handleDedicatedDBHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	connString := storage.GetConnectionString()
+	if connString == "" {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":    "unhealthy",
+			"message":   "database not configured",
+			"timestamp": time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	dbCtx, dbCancel := context.WithTimeout(ctx, 15*time.Second)
+	defer dbCancel()
+
+	poolConfig, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":    "unhealthy",
+			"message":   fmt.Sprintf("invalid connection string: %v", err),
+			"timestamp": time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	poolConfig.MaxConns = 1
+	poolConfig.MinConns = 0
+
+	pool, err := pgxpool.NewWithConfig(dbCtx, poolConfig)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":    "unhealthy",
+			"message":   fmt.Sprintf("failed to create connection pool: %v", err),
+			"timestamp": time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+	defer pool.Close()
+
+	var latencyMs float64
+	start := time.Now()
+	err = pool.Ping(dbCtx)
+	latencyMs = float64(time.Since(start).Milliseconds())
+
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":      "unhealthy",
+			"message":     fmt.Sprintf("database ping failed: %v", err),
+			"latency_ms":  latencyMs,
+			"timestamp":   time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":      "healthy",
+		"message":     "database reachable",
+		"latency_ms":  latencyMs,
+		"timestamp":   time.Now().Format(time.RFC3339),
+	})
 }
 
 // handleTenantHealth returns the authenticated tenant's isolation health status.

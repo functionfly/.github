@@ -2,12 +2,35 @@ package brain
 
 import (
 	"context"
+	"log"
 	"math"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
+)
+
+const (
+	defaultFeedbackDays     = 7
+	defaultSemanticBlend   = 0.7
+	defaultHalfLifeHours   = 72.0
+	defaultFreqScale       = 0.2
+	defaultMaxResults      = 10
+)
+
+var (
+	recencyDecay   = math.Log(2) / defaultHalfLifeHours
+	signalWeights  = map[string]float64{
+		"click":       1.0,
+		"view":        0.5,
+		"search":      1.2,
+		"purchase":    1.5,
+		"bookmark":    1.1,
+		"dismiss":     0.3,
+	}
+	signalWeightsMu sync.RWMutex
 )
 
 type Scorer struct {
@@ -23,13 +46,15 @@ type ScoredSignal struct {
 	Score  float64
 }
 
-// ScoreSignals applies relevance scoring: importance × recency_weight × frequency_weight
-func (s *Scorer) ScoreSignals(ctx context.Context, signals []*storage.BrainSignal, queryTime time.Time) []*ScoredSignal {
+func (s *Scorer) ScoreSignals(_ context.Context, signals []*storage.BrainSignal, queryTime time.Time) []*ScoredSignal {
 	if len(signals) == 0 {
 		return nil
 	}
 
-	// Count entity frequencies
+	signalWeightsMu.RLock()
+	weights := signalWeights
+	signalWeightsMu.RUnlock()
+
 	freq := make(map[string]int)
 	for _, sig := range signals {
 		freq[sig.EntityID]++
@@ -39,7 +64,11 @@ func (s *Scorer) ScoreSignals(ctx context.Context, signals []*storage.BrainSigna
 	for i, sig := range signals {
 		recency := recencyWeight(sig.CreatedAt, queryTime)
 		frequency := frequencyWeight(freq[sig.EntityID])
-		score := float64(sig.Importance) * recency * frequency
+		typeWeight := weights[sig.SignalType]
+		if typeWeight == 0 {
+			typeWeight = 1.0
+		}
+		score := float64(sig.Importance) * recency * frequency * typeWeight
 		scored[i] = &ScoredSignal{
 			Signal: sig,
 			Score:  score,
@@ -53,24 +82,25 @@ func (s *Scorer) ScoreSignals(ctx context.Context, signals []*storage.BrainSigna
 	return scored
 }
 
-// ScoreWithEmbeddings combines text scoring with pgvector similarity (Pro+)
 func (s *Scorer) ScoreWithEmbeddings(ctx context.Context, tenantID uuid.UUID, signals []*storage.BrainSignal, queryEmbedding []float32, queryTime time.Time, maxResults int) []*ScoredSignal {
 	if maxResults <= 0 {
-		maxResults = 10
+		maxResults = defaultMaxResults
 	}
 
 	scored := s.ScoreSignals(ctx, signals, queryTime)
 
 	if len(queryEmbedding) > 0 {
 		semResults, err := s.repo.SemanticSearch(ctx, tenantID, queryEmbedding, maxResults*2)
-		if err == nil {
+		if err != nil {
+			log.Printf("semantic search failed: %v", err)
+		} else {
 			semScores := make(map[string]float64)
 			for _, r := range semResults {
 				semScores[r.Signal.ID.String()] = r.Score
 			}
 			for _, ss := range scored {
 				if semScore, ok := semScores[ss.Signal.ID.String()]; ok {
-					ss.Score = ss.Score*0.7 + semScore*0.3
+					ss.Score = ss.Score*defaultSemanticBlend + semScore*(1-defaultSemanticBlend)
 				}
 			}
 		}
@@ -87,18 +117,20 @@ func (s *Scorer) ScoreWithEmbeddings(ctx context.Context, tenantID uuid.UUID, si
 	return scored
 }
 
-// RetrainFromFeedback adjusts importance weights based on user feedback
 func (s *Scorer) RetrainFromFeedback(ctx context.Context, repo *storage.AnalyticsEventRepository) error {
-	positives, err := repo.GetFeedbackEvents(ctx, true, 7)
+	positives, err := repo.GetFeedbackEvents(ctx, true, defaultFeedbackDays)
 	if err != nil {
 		return err
 	}
-	negatives, err := repo.GetFeedbackEvents(ctx, false, 7)
+	negatives, err := repo.GetFeedbackEvents(ctx, false, defaultFeedbackDays)
 	if err != nil {
 		return err
 	}
 
-	// Calculate positive/negative signal type ratios
+	if len(positives)+len(negatives) < 10 {
+		return nil
+	}
+
 	typeScores := make(map[string]float64)
 	for _, e := range positives {
 		typeScores[e.SignalType] += 1.0
@@ -107,28 +139,35 @@ func (s *Scorer) RetrainFromFeedback(ctx context.Context, repo *storage.Analytic
 		typeScores[e.SignalType] -= 1.0
 	}
 
-	// Log retraining results (in production, update a weight table)
-	_ = typeScores
-	_ = len(positives) + len(negatives)
+	signalWeightsMu.Lock()
+	defer signalWeightsMu.Unlock()
+
+	for signalType, delta := range typeScores {
+		current := signalWeights[signalType]
+		if current == 0 {
+			current = 1.0
+		}
+		adjustment := delta / float64(len(positives)+len(negatives))
+		newWeight := current * (1 + adjustment)
+		newWeight = math.Max(0.1, math.Min(3.0, newWeight))
+		signalWeights[signalType] = newWeight
+		log.Printf("updated signal weight: type=%s weight=%.3f", signalType, newWeight)
+	}
 
 	return nil
 }
 
-// recencyWeight returns a weight between 0 and 1 based on how recent the signal is
 func recencyWeight(createdAt, queryTime time.Time) float64 {
 	hours := queryTime.Sub(createdAt).Hours()
 	if hours < 0 {
 		hours = 0
 	}
-	// Exponential decay: half-life of 72 hours
-	return math.Exp(-0.0096 * hours)
+	return math.Exp(-recencyDecay * hours)
 }
 
-// frequencyWeight returns a weight based on how often an entity appears
 func frequencyWeight(count int) float64 {
 	if count <= 1 {
 		return 1.0
 	}
-	// Logarithmic scaling: diminishing returns for repeated entities
-	return 1.0 + math.Log2(float64(count))*0.2
+	return 1.0 + math.Log2(float64(count))*defaultFreqScale
 }

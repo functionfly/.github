@@ -1,10 +1,14 @@
 package brain
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
+	"time"
 
 	brainEngine "github.com/functionfly/functionfly/internal/agent/brain"
 	"github.com/functionfly/functionfly/internal/api/middleware"
@@ -15,9 +19,86 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type embeddingRequest struct {
+	Text string `json:"text"`
+}
+
+type embeddingResponse struct {
+	Embedding  []float64 `json:"embedding"`
+	Model      string    `json:"model"`
+	Dimensions int       `json:"dimensions"`
+}
+
+type EmbeddingServiceClient struct {
+	baseURL    string
+	apiKey     string
+	httpClient *http.Client
+}
+
+func NewEmbeddingServiceClient() *EmbeddingServiceClient {
+	baseURL := os.Getenv("AI_SERVICE_URL")
+	if baseURL == "" {
+		baseURL = ""
+	}
+	return &EmbeddingServiceClient{
+		baseURL: baseURL,
+		apiKey:  os.Getenv("AI_SERVICE_API_KEY"),
+		httpClient: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
+func (c *EmbeddingServiceClient) GenerateEmbedding(ctx context.Context, text string) ([]float32, error) {
+	if c.baseURL == "" {
+		return nil, fmt.Errorf("AI_SERVICE_URL not configured")
+	}
+
+	url := fmt.Sprintf("%s/api/embed", c.baseURL)
+
+	reqBody := embeddingRequest{Text: text}
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	if c.apiKey != "" {
+		httpReq.Header.Set("X-API-Key", c.apiKey)
+	}
+
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call embedding service: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("embedding service returned status %d", resp.StatusCode)
+	}
+
+	var embedResp embeddingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&embedResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	embedding := make([]float32, len(embedResp.Embedding))
+	for i, v := range embedResp.Embedding {
+		embedding[i] = float32(v)
+	}
+
+	return embedding, nil
+}
+
 type Handler struct {
 	repo            *storage.BrainRepository
 	contextBuilder  *brainEngine.ContextBuilder
+	embedClient    *EmbeddingServiceClient
 	logger          *logrus.Logger
 }
 
@@ -25,6 +106,7 @@ func NewHandler(repo *storage.BrainRepository, logger *logrus.Logger) *Handler {
 	return &Handler{
 		repo:           repo,
 		contextBuilder: brainEngine.NewContextBuilder(repo),
+		embedClient:    NewEmbeddingServiceClient(),
 		logger:         logger,
 	}
 }
@@ -123,8 +205,6 @@ func (h *Handler) HandleSearchSignals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// In production, generate embedding from query text using an embedding model
-	// For now, return recent signals as a fallback
 	limit := 10
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
@@ -132,24 +212,49 @@ func (h *Handler) HandleSearchSignals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	signals, err := h.repo.GetRecentSignals(r.Context(), claims.TenantID, 7, limit)
+	embedding, err := h.embedClient.GenerateEmbedding(r.Context(), query)
+	if err != nil {
+		h.logger.WithError(err).Warn("Failed to generate embedding, falling back to recent signals")
+		signals, err := h.repo.GetRecentSignals(r.Context(), claims.TenantID, 7, limit)
+		if err != nil {
+			h.logger.WithError(err).Error("Failed to get recent signals")
+			h.respondError(w, 500, "INTERNAL_ERROR", "Failed to search signals")
+			return
+		}
+		results := make([]map[string]interface{}, len(signals))
+		for i, s := range signals {
+			results[i] = map[string]interface{}{
+				"signal": s,
+				"score":  1.0,
+			}
+		}
+		h.respondJSON(w, 200, map[string]interface{}{
+			"results":       results,
+			"query":         query,
+			"search_type":   "recent",
+		})
+		return
+	}
+
+	searchResults, err := h.repo.SemanticSearch(r.Context(), claims.TenantID, embedding, limit)
 	if err != nil {
 		h.logger.WithError(err).Error("Failed to search signals")
 		h.respondError(w, 500, "INTERNAL_ERROR", "Failed to search signals")
 		return
 	}
 
-	results := make([]map[string]interface{}, len(signals))
-	for i, s := range signals {
+	results := make([]map[string]interface{}, len(searchResults))
+	for i, sr := range searchResults {
 		results[i] = map[string]interface{}{
-			"signal": s,
-			"score":  1.0,
+			"signal": sr.Signal,
+			"score":  sr.Score,
 		}
 	}
 
 	h.respondJSON(w, 200, map[string]interface{}{
-		"results": results,
-		"query":   query,
+		"results":     results,
+		"query":       query,
+		"search_type": "semantic",
 	})
 }
 
