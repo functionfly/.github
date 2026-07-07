@@ -56,6 +56,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = self.PERMISSIONS_POLICY
 
+        # Add auth degraded warning header if set by auth dependency
+        if getattr(request.state, "auth_degraded_warning", False):
+            response.headers["X-Auth-Degraded-Warning"] = "orchestrator unavailable, using cached credentials"
+            logger.debug("Added X-Auth-Degraded-Warning header")
+
         # Remove server identification
         if "server" in response.headers:
             del response.headers["server"]

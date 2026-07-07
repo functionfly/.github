@@ -52,6 +52,7 @@ primary_region = "ord"
 # - OPENROUTER_API_KEY (optional)
 # - ORCHESTRATOR_API_KEY (for callbacks to orchestrator)
 # - UPSTASH_REDIS_URL / UPSTASH_REDIS_TOKEN (if using Upstash)
+# - ML_MODEL_ENCRYPTION_KEY (generate with: python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 
 # Health check configuration
 [checks]

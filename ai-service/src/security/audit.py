@@ -10,28 +10,35 @@ import logging
 import os
 import threading
 import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from enum import Enum
+from enum import StrEnum
+from typing import Any
 
-import psycopg2
-from psycopg2.extras import execute_batch
 from psycopg2 import pool
+from psycopg2.extras import execute_batch
 
 logger = logging.getLogger(__name__)
 
 
-class AuditOperation(str, Enum):
+class AuditOperation(StrEnum):
     """Types of audit operations."""
     EMBED_GENERATE = "embed_generate"
     EMBED_BATCH_GENERATE = "embed_batch_generate"
     EMBED_SEARCH = "embed_search"
     EMBED_QUERY = "embed_query"
     RAG_RETRIEVE = "rag_retrieve"
+    # ML Intelligence Layer operations
+    ML_ANOMALY_CHECK = "ml_anomaly_check"
+    ML_PREWARM_PREDICT = "ml_prewarm_predict"
+    ML_ROUTE_DECIDE = "ml_route_decide"
+    ML_ROUTE_OUTCOME = "ml_route_outcome"
+    ML_RECOMMENDATIONS = "ml_recommendations"
+    ML_INTERACTION_RECORD = "ml_interaction_record"
+    ML_TRAIN = "ml_train"
 
 
-class AuditEventStatus(str, Enum):
+class AuditEventStatus(StrEnum):
     """Status of audit events."""
     SUCCESS = "success"
     FAILURE = "failure"
@@ -41,30 +48,30 @@ class AuditEventStatus(str, Enum):
 @dataclass
 class EmbeddingAuditEvent:
     """Audit event for embedding operations.
-    
+
     Stores comprehensive information about embedding operations for
     security auditing, compliance, and debugging.
     """
     timestamp: datetime
     tenant_id: str
-    user_id: Optional[str]
+    user_id: str | None
     api_key_id: str
     operation: str
-    function_id: Optional[str]
+    function_id: str | None
     model: str
     dimensions: int
     text_hash: str
     success: bool
     status: str
     latency_ms: float
-    error_message: Optional[str]
-    client_ip: Optional[str]
-    request_id: Optional[str]
-    token_count: Optional[int]
-    cost_usd: Optional[float]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error_message: str | None
+    client_ip: str | None
+    request_id: str | None
+    token_count: int | None
+    cost_usd: float | None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary for logging."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -91,26 +98,26 @@ class EmbeddingAuditEvent:
 @dataclass
 class RagAuditEvent:
     """Audit event for RAG operations.
-    
+
     Tracks RAG retrieval for security and debugging.
     """
     timestamp: datetime
     tenant_id: str
-    user_id: Optional[str]
+    user_id: str | None
     api_key_id: str
     query_hash: str
     chunks_retrieved: int
-    sources: List[str]
+    sources: list[str]
     latency_ms: float
     cache_hit: bool
     success: bool
     status: str
-    error_message: Optional[str]
-    client_ip: Optional[str]
-    request_id: Optional[str]
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error_message: str | None
+    client_ip: str | None
+    request_id: str | None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert event to dictionary for logging."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -124,6 +131,47 @@ class RagAuditEvent:
             "cache_hit": self.cache_hit,
             "success": self.success,
             "status": self.status,
+            "error_message": self.error_message,
+            "client_ip": self.client_ip,
+            "request_id": self.request_id,
+            "metadata": self.metadata,
+        }
+
+
+@dataclass
+class MLAuditEvent:
+    """Audit event for ML Intelligence Layer operations.
+
+    Tracks ML operations for security, compliance, and debugging.
+    """
+    timestamp: datetime
+    tenant_id: str
+    user_id: str | None
+    api_key_id: str
+    operation: str
+    function_id: str | None
+    model_type: str
+    success: bool
+    status: str
+    latency_ms: float
+    error_message: str | None
+    client_ip: str | None
+    request_id: str | None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert event to dictionary for logging."""
+        return {
+            "timestamp": self.timestamp.isoformat(),
+            "tenant_id": self.tenant_id,
+            "user_id": self.user_id,
+            "api_key_id": self.api_key_id,
+            "operation": self.operation,
+            "function_id": self.function_id,
+            "model_type": self.model_type,
+            "success": self.success,
+            "status": self.status,
+            "latency_ms": self.latency_ms,
             "error_message": self.error_message,
             "client_ip": self.client_ip,
             "request_id": self.request_id,
@@ -148,12 +196,12 @@ class AuditLogger:
     def __init__(self):
         self._logger = logging.getLogger("flymind.audit")
         self._lock = threading.Lock()
-        self._buffer: List[Dict[str, Any]] = []
+        self._buffer: list[dict[str, Any]] = []
         self._buffer_size = 100
         self._buffer_flush_interval = 30  # seconds
         self._last_flush_time = time.time()
-        self._retry_queue: List[Dict[str, Any]] = []  # Failed events for retry
-        self._retry_count: Dict[str, int] = {}  # event_id -> retry count
+        self._retry_queue: list[dict[str, Any]] = []  # Failed events for retry
+        self._retry_count: dict[str, int] = {}  # event_id -> retry count
         self._rq_queue = None
         self._use_rq = False
         self._db_pool = None
@@ -167,6 +215,7 @@ class AuditLogger:
 
         try:
             import os
+
             import redis
             from rq import Queue
 
@@ -187,15 +236,15 @@ class AuditLogger:
             self._logger.warning(f"RQ queue unavailable: {e}. Using direct DB writes.")
             self._use_rq = False
             return None
-        
+
     def _hash_text(self, text: str) -> str:
         """Create SHA256 hash of text for audit logging.
-        
+
         We store hashes instead of actual text to protect sensitive data
         while still enabling deduplication and correlation.
         """
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
-    
+
     def log_embedding_event(
         self,
         tenant_id: str,
@@ -206,18 +255,18 @@ class AuditLogger:
         text: str,
         success: bool,
         latency_ms: float,
-        user_id: Optional[str] = None,
-        function_id: Optional[str] = None,
-        error_message: Optional[str] = None,
-        client_ip: Optional[str] = None,
-        request_id: Optional[str] = None,
-        token_count: Optional[int] = None,
-        cost_usd: Optional[float] = None,
+        user_id: str | None = None,
+        function_id: str | None = None,
+        error_message: str | None = None,
+        client_ip: str | None = None,
+        request_id: str | None = None,
+        token_count: int | None = None,
+        cost_usd: float | None = None,
         status: str = "success",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> EmbeddingAuditEvent:
         """Log an embedding operation event.
-        
+
         Args:
             tenant_id: Tenant ID
             api_key_id: API key ID used
@@ -236,7 +285,7 @@ class AuditLogger:
             cost_usd: Cost in USD
             status: Event status (success, failure, blocked)
             metadata: Additional metadata
-            
+
         Returns:
             The logged audit event
         """
@@ -260,7 +309,7 @@ class AuditLogger:
             cost_usd=cost_usd,
             metadata=metadata or {},
         )
-        
+
         # Log to structured logger
         self._logger.info(
             "Embedding audit event",
@@ -290,26 +339,26 @@ class AuditLogger:
                 self._lock.acquire()
 
         return event
-    
+
     def log_rag_event(
         self,
         tenant_id: str,
         api_key_id: str,
         query: str,
         chunks_retrieved: int,
-        sources: List[str],
+        sources: list[str],
         latency_ms: float,
         cache_hit: bool,
         success: bool,
-        user_id: Optional[str] = None,
-        error_message: Optional[str] = None,
-        client_ip: Optional[str] = None,
-        request_id: Optional[str] = None,
+        user_id: str | None = None,
+        error_message: str | None = None,
+        client_ip: str | None = None,
+        request_id: str | None = None,
         status: str = "success",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> RagAuditEvent:
         """Log a RAG retrieval event.
-        
+
         Args:
             tenant_id: Tenant ID
             api_key_id: API key ID used
@@ -325,7 +374,7 @@ class AuditLogger:
             request_id: Request correlation ID
             status: Event status
             metadata: Additional metadata
-            
+
         Returns:
             The logged audit event
         """
@@ -346,7 +395,7 @@ class AuditLogger:
             request_id=request_id,
             metadata=metadata or {},
         )
-        
+
         # Log to structured logger
         self._logger.info(
             "RAG audit event",
@@ -376,7 +425,87 @@ class AuditLogger:
                 self._lock.acquire()
 
         return event
-    
+
+    def log_ml_event(
+        self,
+        tenant_id: str,
+        api_key_id: str,
+        operation: str,
+        model_type: str,
+        success: bool,
+        latency_ms: float,
+        user_id: str | None = None,
+        function_id: str | None = None,
+        error_message: str | None = None,
+        client_ip: str | None = None,
+        request_id: str | None = None,
+        status: str = "success",
+        metadata: dict[str, Any] | None = None,
+    ) -> MLAuditEvent:
+        """Log an ML Intelligence Layer operation event.
+
+        Args:
+            tenant_id: Tenant ID
+            api_key_id: API key ID used
+            operation: Operation type (ml_anomaly_check, ml_prewarm_predict, etc.)
+            model_type: Type of ML model (cost_anomaly, prewarming, routing, recommendations)
+            success: Whether the operation succeeded
+            latency_ms: Operation latency in milliseconds
+            user_id: Optional user ID
+            function_id: Optional function ID
+            error_message: Error message if operation failed
+            client_ip: Client IP address
+            request_id: Request correlation ID
+            status: Event status (success, failure, blocked)
+            metadata: Additional metadata
+
+        Returns:
+            The logged audit event
+        """
+        event = MLAuditEvent(
+            timestamp=datetime.utcnow(),
+            tenant_id=tenant_id,
+            user_id=user_id,
+            api_key_id=api_key_id,
+            operation=operation,
+            function_id=function_id,
+            model_type=model_type,
+            success=success,
+            status=status,
+            latency_ms=latency_ms,
+            error_message=error_message,
+            client_ip=client_ip,
+            request_id=request_id,
+            metadata=metadata or {},
+        )
+
+        self._logger.info(
+            "ML audit event",
+            extra={
+                "audit_event": "ml",
+                "event_data": event.to_dict(),
+            }
+        )
+
+        with self._lock:
+            if len(self._buffer) >= self.MAX_BUFFER_SIZE:
+                self._logger.warning("Audit buffer full, forcing flush")
+                self._lock.release()
+                self._flush_buffer()
+                self._lock.acquire()
+            self._buffer.append(event.to_dict())
+
+            should_flush = (
+                len(self._buffer) >= self._buffer_size or
+                (time.time() - self._last_flush_time) >= self._buffer_flush_interval
+            )
+            if should_flush:
+                self._lock.release()
+                self._flush_buffer()
+                self._lock.acquire()
+
+        return event
+
     def _get_db_pool(self):
         """Get or create database connection pool with TLS."""
         if self._db_pool is not None:
@@ -431,7 +560,7 @@ class AuditLogger:
         if self._use_rq and self._rq_queue:
             try:
                 from datetime import datetime
-                from ..workers.rq_worker import process_audit_batch
+
 
                 job_id = f"audit-{datetime.utcnow().timestamp()}"
                 self._rq_queue.enqueue(
@@ -497,13 +626,13 @@ class AuditLogger:
             if conn:
                 db_pool.putconn(conn)
 
-    def _get_event_id(self, event: Dict[str, Any]) -> str:
+    def _get_event_id(self, event: dict[str, Any]) -> str:
         """Generate a unique ID for an event for retry tracking."""
         import hashlib
         event_str = json.dumps(event, sort_keys=True, default=str)
         return hashlib.sha256(event_str.encode()).hexdigest()[:16]
 
-    def _add_to_retry_queue(self, events: List[Dict[str, Any]]) -> None:
+    def _add_to_retry_queue(self, events: list[dict[str, Any]]) -> None:
         """Add failed events to retry queue.
 
         Args:
@@ -523,14 +652,14 @@ class AuditLogger:
             self._retry_count.pop(removed_id, None)
 
         self._logger.warning(f"Added {len(events)} events to retry queue (total: {len(self._retry_queue)})")
-    
+
     def flush(self) -> None:
         """Force flush the audit buffer."""
         with self._lock:
             if self._buffer:
                 self._flush_buffer()
-    
-    def get_stats(self) -> Dict[str, int]:
+
+    def get_stats(self) -> dict[str, int]:
         """Get audit logger statistics.
 
         Returns:
@@ -546,12 +675,12 @@ class AuditLogger:
 
 
 # Global audit logger instance
-_audit_logger: Optional[AuditLogger] = None
+_audit_logger: AuditLogger | None = None
 
 
 def get_audit_logger() -> AuditLogger:
     """Get the global audit logger instance.
-    
+
     Returns:
         AuditLogger instance
     """
@@ -572,7 +701,7 @@ def create_embedding_audit_event(
     **kwargs
 ) -> EmbeddingAuditEvent:
     """Convenience function to create and log an embedding audit event.
-    
+
     Args:
         text: The text that was embedded
         api_key_info: APIKeyInfo object with tenant_id and key_id
@@ -582,12 +711,12 @@ def create_embedding_audit_event(
         success: Whether operation succeeded
         latency_ms: Operation latency
         **kwargs: Additional event fields
-        
+
     Returns:
         The logged audit event
     """
     logger = get_audit_logger()
-    
+
     return logger.log_embedding_event(
         tenant_id=getattr(api_key_info, 'tenant_id', 'unknown'),
         api_key_id=getattr(api_key_info, 'key_id', 'unknown'),
@@ -595,6 +724,40 @@ def create_embedding_audit_event(
         model=model,
         dimensions=dimensions,
         text=text,
+        success=success,
+        latency_ms=latency_ms,
+        **kwargs
+    )
+
+
+def create_ml_audit_event(
+    api_key_info: Any,
+    operation: str,
+    model_type: str,
+    success: bool,
+    latency_ms: float,
+    **kwargs
+) -> MLAuditEvent:
+    """Convenience function to create and log an ML operation audit event.
+
+    Args:
+        api_key_info: APIKeyInfo object with tenant_id and key_id
+        operation: Operation type (ml_anomaly_check, ml_prewarm_predict, etc.)
+        model_type: Type of ML model (cost_anomaly, prewarming, routing, recommendations)
+        success: Whether operation succeeded
+        latency_ms: Operation latency
+        **kwargs: Additional event fields
+
+    Returns:
+        The logged audit event
+    """
+    logger = get_audit_logger()
+
+    return logger.log_ml_event(
+        tenant_id=getattr(api_key_info, 'tenant_id', 'unknown'),
+        api_key_id=getattr(api_key_info, 'key_id', 'unknown'),
+        operation=operation,
+        model_type=model_type,
         success=success,
         latency_ms=latency_ms,
         **kwargs

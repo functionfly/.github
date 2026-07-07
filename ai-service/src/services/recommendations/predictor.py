@@ -26,14 +26,16 @@ class RecommendationEngine:
     Maintains a user-function interaction matrix in Redis.
     Trains ALS factors periodically and serves recommendations.
     Falls back to popularity/content-based for cold-start users.
+
+    Tenant-isolated: all Redis keys are namespaced by tenant.
     """
 
-    INTERACTIONS_KEY = "ml:recommendations:interactions"
-    FACTORS_USER_KEY = "ml:recommendations:users"
-    FACTORS_ITEM_KEY = "ml:recommendations:items"
-    POPULARITY_KEY = "ml:recommendations:popularity"
-    USER_MAP_KEY = "ml:recommendations:user_map"
-    ITEM_MAP_KEY = "ml:recommendations:item_map"
+    INTERACTIONS_KEY_PREFIX = "ml:recommendations:interactions:"
+    FACTORS_USER_KEY_PREFIX = "ml:recommendations:users:"
+    FACTORS_ITEM_KEY_PREFIX = "ml:recommendations:items:"
+    POPULARITY_KEY_PREFIX = "ml:recommendations:popularity:"
+    USER_MAP_KEY_PREFIX = "ml:recommendations:user_map:"
+    ITEM_MAP_KEY_PREFIX = "ml:recommendations:item_map:"
     EXPIRY_DAYS = 90
 
     # Interaction weights
@@ -55,6 +57,30 @@ class RecommendationEngine:
         self._item_map: Dict[str, int] = {}
         self._reverse_item_map: Dict[int, str] = {}
 
+    def _make_interactions_key(self, tenant_id: str) -> str:
+        """Create tenant-isolated Redis key for interactions."""
+        return f"{self.INTERACTIONS_KEY_PREFIX}{tenant_id}"
+
+    def _make_factors_user_key(self, tenant_id: str) -> str:
+        """Create tenant-isolated Redis key for user factors."""
+        return f"{self.FACTORS_USER_KEY_PREFIX}{tenant_id}"
+
+    def _make_factors_item_key(self, tenant_id: str) -> str:
+        """Create tenant-isolated Redis key for item factors."""
+        return f"{self.FACTORS_ITEM_KEY_PREFIX}{tenant_id}"
+
+    def _make_popularity_key(self, tenant_id: str) -> str:
+        """Create tenant-isolated Redis key for popularity."""
+        return f"{self.POPULARITY_KEY_PREFIX}{tenant_id}"
+
+    def _make_user_map_key(self, tenant_id: str) -> str:
+        """Create tenant-isolated Redis key for user map."""
+        return f"{self.USER_MAP_KEY_PREFIX}{tenant_id}"
+
+    def _make_item_map_key(self, tenant_id: str) -> str:
+        """Create tenant-isolated Redis key for item map."""
+        return f"{self.ITEM_MAP_KEY_PREFIX}{tenant_id}"
+
     async def get_redis(self) -> Optional[redis.Redis]:
         if self._redis is None:
             try:
@@ -67,8 +93,8 @@ class RecommendationEngine:
                 self._redis = None
         return self._redis
 
-    async def record_interaction(self, event: InteractionEvent) -> None:
-        """Record a user-function interaction."""
+    async def record_interaction(self, tenant_id: str, event: InteractionEvent) -> None:
+        """Record a user-function interaction with tenant isolation."""
         r = await self.get_redis()
         if not r:
             return
@@ -83,24 +109,27 @@ class RecommendationEngine:
                 "ts": event.timestamp.isoformat(),
             })
             score = event.timestamp.timestamp()
-            await r.zadd(self.INTERACTIONS_KEY, {entry: score})
 
-            # Update popularity counter
-            await r.zincrby(self.POPULARITY_KEY, weight, event.function_id)
+            interactions_key = self._make_interactions_key(tenant_id)
+            popularity_key = self._make_popularity_key(tenant_id)
+            factors_user_key = self._make_factors_user_key(tenant_id)
+            factors_item_key = self._make_factors_item_key(tenant_id)
 
-            # Invalidate cached factors
-            await r.delete(self.FACTORS_USER_KEY, self.FACTORS_ITEM_KEY)
+            await r.zadd(interactions_key, {entry: score})
+            await r.zincrby(popularity_key, weight, event.function_id)
+            await r.delete(factors_user_key, factors_item_key)
         except Exception as e:
             logger.error(f"Failed to record interaction: {e}")
 
-    async def _build_interaction_matrix(self) -> Tuple[csr_matrix, Dict[str, int], Dict[str, int]]:
-        """Build user-function interaction matrix from Redis."""
+    async def _build_interaction_matrix(self, tenant_id: str) -> Tuple[csr_matrix, Dict[str, int], Dict[str, int]]:
+        """Build user-function interaction matrix from Redis for a tenant."""
         r = await self.get_redis()
         if not r:
             return csr_matrix((0, 0)), {}, {}
 
         try:
-            items = await r.zrange(self.INTERACTIONS_KEY, 0, -1)
+            interactions_key = self._make_interactions_key(tenant_id)
+            items = await r.zrange(interactions_key, 0, -1)
 
             user_map: Dict[str, int] = {}
             item_map: Dict[str, int] = {}
@@ -142,13 +171,13 @@ class RecommendationEngine:
             logger.error(f"Failed to build interaction matrix: {e}")
             return csr_matrix((0, 0)), {}, {}
 
-    async def train(self) -> bool:
-        """Train ALS collaborative filtering model.
+    async def train(self, tenant_id: str) -> bool:
+        """Train ALS collaborative filtering model for a tenant.
 
         Uses alternating least squares to factorize the interaction matrix
         into user and item latent factor matrices.
         """
-        matrix, user_map, item_map = await self._build_interaction_matrix()
+        matrix, user_map, item_map = await self._build_interaction_matrix(tenant_id)
 
         if matrix.shape[0] < 2 or matrix.shape[1] < 2:
             logger.info("Not enough data to train recommendation model")
@@ -202,7 +231,7 @@ class RecommendationEngine:
         self._item_map = item_map
         self._reverse_item_map = {v: k for k, v in item_map.items()}
 
-        # Cache in Redis
+        # Cache in Redis with tenant isolation
         r = await self.get_redis()
         if r:
             try:
@@ -210,23 +239,26 @@ class RecommendationEngine:
                 buf = io.BytesIO()
                 np.savez_compressed(buf, user=user_factors, item=item_factors)
                 buf.seek(0)
-                await r.set(self.FACTORS_USER_KEY, buf.read().hex(), ex=self.EXPIRY_DAYS * 86400)
-                await r.set(
-                    self.USER_MAP_KEY, json.dumps(user_map), ex=self.EXPIRY_DAYS * 86400
-                )
-                await r.set(
-                    self.ITEM_MAP_KEY, json.dumps(item_map), ex=self.EXPIRY_DAYS * 86400
-                )
+
+                factors_user_key = self._make_factors_user_key(tenant_id)
+                factors_item_key = self._make_factors_item_key(tenant_id)
+                user_map_key = self._make_user_map_key(tenant_id)
+                item_map_key = self._make_item_map_key(tenant_id)
+
+                await r.set(factors_user_key, buf.read().hex(), ex=self.EXPIRY_DAYS * 86400)
+                await r.set(user_map_key, json.dumps(user_map), ex=self.EXPIRY_DAYS * 86400)
+                await r.set(item_map_key, json.dumps(item_map), ex=self.EXPIRY_DAYS * 86400)
             except Exception as e:
                 logger.warning(f"Failed to cache factors: {e}")
 
         logger.info(
-            f"Trained recommendation model: {n_users} users, {n_items} items, {k} dims"
+            f"Trained recommendation model for tenant {tenant_id}: {n_users} users, {n_items} items, {k} dims"
         )
         return True
 
     async def recommend(
         self,
+        tenant_id: str,
         user_id: str,
         limit: int = 20,
         exclude_ids: Optional[List[str]] = None,
@@ -272,10 +304,10 @@ class RecommendationEngine:
             )
 
         # Fallback: popularity-based
-        return await self._popularity_recommendations(user_id, limit, exclude_set)
+        return await self._popularity_recommendations(tenant_id, user_id, limit, exclude_set)
 
     async def _popularity_recommendations(
-        self, user_id: str, limit: int, exclude_set: set
+        self, tenant_id: str, user_id: str, limit: int, exclude_set: set
     ) -> RecommendationResponse:
         """Popularity-based fallback for cold-start users."""
         r = await self.get_redis()
@@ -287,7 +319,8 @@ class RecommendationEngine:
             )
 
         try:
-            popular = await r.zrevrange(self.POPULARITY_KEY, 0, limit + len(exclude_set) - 1, withscores=True)
+            popularity_key = self._make_popularity_key(tenant_id)
+            popular = await r.zrevrange(popularity_key, 0, limit + len(exclude_set) - 1, withscores=True)
             results = []
             for fid, score in popular:
                 if fid not in exclude_set and len(results) < limit:

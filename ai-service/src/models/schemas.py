@@ -3,14 +3,26 @@
 This module contains all schemas for Phase 1 (Foundation) and Phase 2 (Intelligence).
 """
 
-from typing import Optional, Any, Dict, List
-from datetime import datetime, timedelta
-from enum import Enum
-from pydantic import BaseModel, Field
 import uuid
+from datetime import datetime
+from enum import StrEnum
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
 
 
-class ProviderType(str, Enum):
+class InteractionType(StrEnum):
+    """Valid interaction types for recommendation system."""
+    
+    VIEW = "view"
+    INSTALL = "install"
+    EXECUTE = "execute"
+    RATE = "rate"
+    SEARCH_CLICK = "search_click"
+    SEARCH_IMPRESSION = "search_impression"
+
+
+class ProviderType(StrEnum):
     """Supported LLM providers."""
 
     OPENAI = "openai"
@@ -26,7 +38,7 @@ class ProviderType(str, Enum):
     STEPFUN = "stepfun"
 
 
-class TrafficType(str, Enum):
+class TrafficType(StrEnum):
     """Traffic types for provider routing."""
 
     REALTIME = "realtime"  # Low-latency agent function calls
@@ -36,7 +48,7 @@ class TrafficType(str, Enum):
     GENERAL = "general"  # Default routing
 
 
-class MessageRole(str, Enum):
+class MessageRole(StrEnum):
     """Chat message roles."""
 
     SYSTEM = "system"
@@ -61,15 +73,15 @@ class ThinkingConfig(BaseModel):
 class CompletionRequest(BaseModel):
     """Request for LLM completion."""
 
-    provider: Optional[ProviderType] = None
-    model: Optional[str] = None
+    provider: ProviderType | None = None
+    model: str | None = None
     messages: list[ChatMessage]
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    max_tokens: Optional[int] = Field(default=None, ge=1)
+    max_tokens: int | None = Field(default=None, ge=1)
     stream: bool = False
-    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
-    stop: Optional[list[str]] = None
-    thinking: Optional[ThinkingConfig] = None
+    top_p: float | None = Field(default=None, ge=0.0, le=1.0)
+    stop: list[str] | None = None
+    thinking: ThinkingConfig | None = None
 
 
 class CompletionResponse(BaseModel):
@@ -81,19 +93,19 @@ class CompletionResponse(BaseModel):
     usage: dict[str, int] = Field(
         default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
     )
-    finish_reason: Optional[str] = None
+    finish_reason: str | None = None
     latency_ms: float = 0.0
-    thinking_content: Optional[str] = None
+    thinking_content: str | None = None
     thinking_tokens: int = 0
 
 
 class EmbeddingRequest(BaseModel):
     """Request for embeddings generation."""
 
-    provider: Optional[ProviderType] = None
-    model: Optional[str] = None
+    provider: ProviderType | None = None
+    model: str | None = None
     text: str = Field(..., min_length=1, max_length=8192)
-    dimensions: Optional[int] = Field(default=None, ge=1, le=4096)
+    dimensions: int | None = Field(default=None, ge=1, le=4096)
 
 
 class EmbeddingResponse(BaseModel):
@@ -143,9 +155,9 @@ class ErrorResponse(BaseModel):
     """Error response."""
 
     error: str
-    detail: Optional[str] = None
-    provider: Optional[str] = None
-    retry_after: Optional[int] = None  # seconds
+    detail: str | None = None
+    provider: str | None = None
+    retry_after: int | None = None  # seconds
 
 
 class CostTracking(BaseModel):
@@ -164,7 +176,7 @@ class CostTracking(BaseModel):
 # =============================================================================
 
 
-class EdgeProvider(str, Enum):
+class EdgeProvider(StrEnum):
     """Supported edge providers."""
 
     CLOUDFLARE = "cloudflare"
@@ -198,11 +210,11 @@ class RoutingDecisionRequest(BaseModel):
     """Request for routing decision."""
 
     function_id: str
-    user_geography: Optional[str] = None  # e.g., "us-east", "eu-west"
-    user_country: Optional[str] = None
-    user_latitude: Optional[float] = None
-    user_longitude: Optional[float] = None
-    metadata: Dict[str, str] = Field(default_factory=dict)
+    user_geography: str | None = None  # e.g., "us-east", "eu-west"
+    user_country: str | None = None
+    user_latitude: float | None = None
+    user_longitude: float | None = None
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class RoutingDecision(BaseModel):
@@ -212,7 +224,7 @@ class RoutingDecision(BaseModel):
     recommended_edge: EdgeProvider
     confidence: float = Field(ge=0.0, le=1.0)
     reasoning: str
-    alternatives: List[EdgeProvider] = Field(default_factory=list)
+    alternatives: list[EdgeProvider] = Field(default_factory=list)
     latency_estimate_ms: float
     decided_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -220,7 +232,7 @@ class RoutingDecision(BaseModel):
 class EdgeListResponse(BaseModel):
     """Response containing all available edges with status."""
 
-    edges: List[EdgeStatus]
+    edges: list[EdgeStatus]
     total_count: int
     last_updated: datetime
 
@@ -264,7 +276,7 @@ class PrewarmTriggerRequest(BaseModel):
 
     function_id: str
     instances: int = Field(default=1, ge=1, le=10)
-    edge: Optional[EdgeProvider] = None
+    edge: EdgeProvider | None = None
 
 
 class PrewarmStatus(BaseModel):
@@ -275,7 +287,7 @@ class PrewarmStatus(BaseModel):
     instances_warmed: int
     status: str  # "pending", "warming", "complete", "failed"
     triggered_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 class HistoricalRequestData(BaseModel):
@@ -291,7 +303,7 @@ class HistoricalRequestData(BaseModel):
 # =============================================================================
 
 
-class AnomalyType(str, Enum):
+class AnomalyType(StrEnum):
     """Types of anomalies that can be detected."""
 
     LATENCY_SPIKE = "latency_spike"
@@ -301,7 +313,7 @@ class AnomalyType(str, Enum):
     UNUSUAL_PATTERN = "unusual_pattern"
 
 
-class AnomalySeverity(str, Enum):
+class AnomalySeverity(StrEnum):
     """Severity levels for anomalies."""
 
     LOW = "low"
@@ -322,16 +334,16 @@ class Anomaly(BaseModel):
     metric_name: str  # e.g., "latency_ms", "error_rate"
     metric_value: float
     threshold: float
-    z_score: Optional[float] = None
+    z_score: float | None = None
     acknowledged: bool = False
-    acknowledged_by: Optional[str] = None
-    acknowledged_at: Optional[datetime] = None
+    acknowledged_by: str | None = None
+    acknowledged_at: datetime | None = None
 
 
 class AnomalyListResponse(BaseModel):
     """Response containing list of anomalies."""
 
-    anomalies: List[Anomaly]
+    anomalies: list[Anomaly]
     total_count: int
     page: int = 1
     page_size: int = 20
@@ -362,7 +374,7 @@ class ExecutionMetrics(BaseModel):
     latency_ms: float
     cold_start: bool
     memory_mb: int
-    error: Optional[str] = None
+    error: str | None = None
     target: EdgeProvider
 
 
@@ -371,7 +383,7 @@ class ExecutionMetrics(BaseModel):
 # =============================================================================
 
 
-class ChatIntent(str, Enum):
+class ChatIntent(StrEnum):
     """Chat intent types."""
 
     EXPLAIN = "explain_intent"
@@ -398,7 +410,7 @@ class ChatMessageResponse(BaseModel):
     message: str
     intent: ChatIntent
     confidence: float
-    thinking_content: Optional[str] = None
+    thinking_content: str | None = None
     thinking_tokens: int = 0
 
 
@@ -406,7 +418,7 @@ class ChatHistoryResponse(BaseModel):
     """Chat history response."""
 
     session_id: str
-    messages: List[Dict[str, Any]]
+    messages: list[dict[str, Any]]
     created_at: datetime
 
 
@@ -420,9 +432,9 @@ class SearchQuery(BaseModel):
 
     query: str = Field(..., min_length=1, max_length=500)
     limit: int = Field(default=20, ge=1, le=50)
-    filters: Optional[Dict[str, Any]] = None
+    filters: dict[str, Any] | None = None
     use_triple: bool = Field(default=True, description="Enable triple-vector search")
-    weights: Optional[Dict[str, float]] = Field(
+    weights: dict[str, float] | None = Field(
         default=None, description="Custom weights for contract/semantic/code triple scoring"
     )
 
@@ -432,9 +444,9 @@ class SearchResult(BaseModel):
 
     function_id: str
     function_name: str
-    description: Optional[str] = None
-    runtime: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
+    description: str | None = None
+    runtime: str | None = None
+    tags: list[str] = Field(default_factory=list)
     score: float
     rank: int
 
@@ -443,7 +455,7 @@ class SearchResponse(BaseModel):
     """Search response."""
 
     query: str
-    results: List[SearchResult]
+    results: list[SearchResult]
     total_count: int
     query_type: str = "semantic"
 
@@ -458,7 +470,7 @@ class DebugAnalyzeRequest(BaseModel):
 
     function_id: str
     error_message: str
-    stack_trace: Optional[str] = None
+    stack_trace: str | None = None
 
 
 class DebugAnalysis(BaseModel):
@@ -470,8 +482,8 @@ class DebugAnalysis(BaseModel):
     category_confidence: float
     root_cause: str
     confidence: float
-    details: Dict[str, Any]
-    suggestions: List[str]
+    details: dict[str, Any]
+    suggestions: list[str]
 
 
 class FixSuggestion(BaseModel):
@@ -480,7 +492,7 @@ class FixSuggestion(BaseModel):
     id: str
     title: str
     description: str
-    code_example: Optional[str] = None
+    code_example: str | None = None
     effort: str  # low, medium, high
     impact: str  # low, medium, high
 
@@ -495,8 +507,8 @@ class DebugSuggestResponse(BaseModel):
     """Debug suggestion response."""
 
     analysis: DebugAnalysis
-    suggestions: List[FixSuggestion]
-    documentation_links: List[Dict[str, str]]
+    suggestions: list[FixSuggestion]
+    documentation_links: list[dict[str, str]]
 
 
 # =============================================================================
@@ -512,8 +524,8 @@ class OptimizationResult(BaseModel):
     runtime: str
     memory_mb: int
     analyzed_at: datetime
-    patterns: List[Dict[str, Any]]
-    issues: List[Dict[str, Any]]
+    patterns: list[dict[str, Any]]
+    issues: list[dict[str, Any]]
 
 
 class Recommendation(BaseModel):
@@ -536,7 +548,7 @@ class OptimizationRecommendationsResponse(BaseModel):
     """Optimization recommendations response."""
 
     function_id: str
-    recommendations: List[Recommendation]
+    recommendations: list[Recommendation]
     total_count: int
 
 
@@ -564,7 +576,7 @@ class OrchestratorConfig(BaseModel):
     """Configuration for connecting to the Go orchestrator."""
 
     orchestrator_url: str = "http://localhost:8080"
-    api_key: Optional[str] = None
+    api_key: str | None = None
     timeout_seconds: int = 30
 
 
@@ -588,10 +600,80 @@ class ExecutionResult(BaseModel):
     function_id: str
     status: str
     latency_ms: float
-    output: Optional[str] = None
-    error: Optional[str] = None
+    output: str | None = None
+    error: str | None = None
     started_at: datetime
     completed_at: datetime
+
+
+# =============================================================================
+# ML Intelligence Layer Schemas
+# =============================================================================
+
+
+class CostAnomalyCheckRequest(BaseModel):
+    """Request for cost anomaly check."""
+
+    function_id: str = Field(..., max_length=64)
+    cost_cents: float = Field(ge=0, le=1e6)
+    duration_ms: float = Field(ge=0, le=1e9)
+    memory_mb: float = Field(ge=0, le=1e6)
+    region: str = Field(max_length=32, default="unknown")
+
+
+class CostAnomalyCheckResponse(BaseModel):
+    """Response from cost anomaly check."""
+
+    is_anomaly: bool
+    z_score: float | None = None
+    severity: str | None = None
+    message: str | None = None
+
+
+class PrewarmRecordRequest(BaseModel):
+    """Request to record a prewarm event."""
+
+    function_id: str = Field(..., max_length=64)
+    count: int = Field(default=1, ge=1, le=10000)
+
+
+class RoutingOutcomeRequest(BaseModel):
+    """Request to record routing outcome for Thompson Sampling."""
+
+    edge: str = Field(..., max_length=128)
+    function_id: str = Field(..., max_length=64)
+    latency_ms: float = Field(ge=0, le=60000)
+    success: bool = Field(default=True)
+    cost_cents: float = Field(ge=0, le=100)
+
+
+class RecommendationInteractionRequest(BaseModel):
+    """Request to record user-function interaction."""
+
+    user_id: str = Field(..., max_length=64)
+    function_id: str = Field(..., max_length=64)
+    interaction_type: InteractionType = Field(default=InteractionType.VIEW)
+    context: dict[str, Any] | None = None
+
+
+class RecommendationResponse(BaseModel):
+    """Response with recommendations."""
+
+    user_id: str
+    recommendations: list[str]
+    scores: dict[str, float]
+    fallback: bool = False
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class MLHealthResponse(BaseModel):
+    """Health check response for ML services."""
+
+    status: str
+    services: dict[str, Any]
+    model_dir: str
+    synthetic_data: bool
+    redis_connected: bool
 
 
 # =============================================================================
@@ -604,23 +686,23 @@ class TripleEmbeddingRequest(BaseModel):
 
     function_id: str
     name: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    category: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
-    manifest: Dict[str, Any] = Field(default_factory=dict)
-    source_code: Optional[str] = None
-    runtime: Optional[str] = None
-    capabilities: List[str] = Field(default_factory=list)
+    title: str | None = None
+    description: str | None = None
+    category: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    manifest: dict[str, Any] = Field(default_factory=dict)
+    source_code: str | None = None
+    runtime: str | None = None
+    capabilities: list[str] = Field(default_factory=list)
 
 
 class TripleEmbeddingResult(BaseModel):
     """Response with triple embeddings for a function."""
 
     function_id: str
-    contract_embedding: List[float]
-    semantic_embedding: List[float]
-    code_embedding: List[float]
+    contract_embedding: list[float]
+    semantic_embedding: list[float]
+    code_embedding: list[float]
     contract_text: str
     semantic_text: str
     code_text: str
@@ -639,9 +721,9 @@ class TripleQueryVector(BaseModel):
     """Triple query vectors for search."""
 
     query: str
-    contract_vector: List[float]
-    semantic_vector: List[float]
-    code_vector: List[float]
+    contract_vector: list[float]
+    semantic_vector: list[float]
+    code_vector: list[float]
     dimensions: int = 512
     latency_ms: float = 0.0
 
@@ -649,13 +731,13 @@ class TripleQueryVector(BaseModel):
 class TripleEmbeddingBatchRequest(BaseModel):
     """Request to batch generate triple embeddings."""
 
-    functions: List[TripleEmbeddingRequest] = Field(..., max_length=50)
+    functions: list[TripleEmbeddingRequest] = Field(..., max_length=50)
 
 
 class TripleEmbeddingBatchResponse(BaseModel):
     """Response for batch triple embeddings."""
 
-    results: List[TripleEmbeddingResult]
+    results: list[TripleEmbeddingResult]
     total_count: int
     latency_ms: float = 0.0
 
@@ -675,16 +757,16 @@ class FunctionGenerationRequest(BaseModel):
         description="Natural language description of what the function should do",
     )
     runtime: str = Field(default="python", description="Target runtime (python, nodejs, go, etc.)")
-    inputs: Optional[List[Dict[str, Any]]] = Field(
+    inputs: list[dict[str, Any]] | None = Field(
         default=None, description="Optional input schema hints"
     )
-    outputs: Optional[List[Dict[str, Any]]] = Field(
+    outputs: list[dict[str, Any]] | None = Field(
         default=None, description="Optional output schema hints"
     )
-    constraints: Optional[str] = Field(
+    constraints: str | None = Field(
         default=None, description="Optional constraints or requirements"
     )
-    examples: Optional[List[str]] = Field(
+    examples: list[str] | None = Field(
         default=None, description="Optional example inputs/outputs"
     )
 
@@ -695,12 +777,12 @@ class FunctionManifest(BaseModel):
     name: str
     description: str
     version: str = "1.0.0"
-    inputs: List[Dict[str, Any]] = Field(default_factory=list)
-    outputs: List[Dict[str, Any]] = Field(default_factory=list)
+    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    outputs: list[dict[str, Any]] = Field(default_factory=list)
     runtime: str
     timeout_seconds: int = 30
     memory_mb: int = 256
-    capabilities: List[str] = Field(default_factory=list)
+    capabilities: list[str] = Field(default_factory=list)
 
 
 class FunctionGenerationResult(BaseModel):
@@ -710,7 +792,7 @@ class FunctionGenerationResult(BaseModel):
     runtime: str
     manifest: FunctionManifest
     explanation: str
-    suggested_tests: List[str] = Field(default_factory=list)
+    suggested_tests: list[str] = Field(default_factory=list)
     estimated_complexity: str  # simple, moderate, complex
 
 
@@ -718,11 +800,11 @@ class FunctionGenerationResponse(BaseModel):
     """Response for AI function generation."""
 
     success: bool
-    result: Optional[FunctionGenerationResult] = None
-    error: Optional[str] = None
+    result: FunctionGenerationResult | None = None
+    error: str | None = None
     generation_id: str
     latency_ms: float = 0.0
-    tokens_used: Dict[str, int] = Field(
+    tokens_used: dict[str, int] = Field(
         default_factory=lambda: {"prompt": 0, "completion": 0, "total": 0}
     )
 
@@ -731,8 +813,8 @@ class GallerySearchRequest(BaseModel):
     """Request to search the function gallery."""
 
     query: str = Field(..., min_length=1, max_length=500)
-    category: Optional[str] = None
-    runtime: Optional[str] = None
+    category: str | None = None
+    runtime: str | None = None
     sort_by: str = Field(default="popular", description="popular, recent, rating, name")
     limit: int = Field(default=20, ge=1, le=100)
     offset: int = Field(default=0, ge=0)
@@ -746,7 +828,7 @@ class GalleryFunctionInfo(BaseModel):
     name: str
     title: str
     description: str
-    category: Optional[str] = None
+    category: str | None = None
     runtime: str
     trust_score: float = Field(ge=0.0, le=100.0)
     popularity_score: int = 0
@@ -760,7 +842,7 @@ class GallerySearchResponse(BaseModel):
     """Response for gallery search."""
 
     query: str
-    results: List[GalleryFunctionInfo]
+    results: list[GalleryFunctionInfo]
     total_count: int
     limit: int
     offset: int
@@ -772,8 +854,8 @@ class RemixRequest(BaseModel):
     source_author: str
     source_name: str
     target_tenant_id: str
-    new_name: Optional[str] = None
-    customizations: Optional[str] = Field(
+    new_name: str | None = None
+    customizations: str | None = Field(
         default=None, description="Optional customization instructions"
     )
 
@@ -782,7 +864,7 @@ class RemixResponse(BaseModel):
     """Response for function remix."""
 
     success: bool
-    new_function_id: Optional[str] = None
+    new_function_id: str | None = None
     message: str
     remix_id: str
 
@@ -799,7 +881,7 @@ class GraphNodeInput(BaseModel):
     type: str  # string, number, boolean, object, array
     description: str
     required: bool = True
-    default: Optional[Any] = None
+    default: Any | None = None
 
 
 class GraphNodeOutput(BaseModel):
@@ -819,24 +901,24 @@ class GraphNodeRef(BaseModel):
     author: str = Field(..., description="Function author (namespace)")
     name: str = Field(..., description="Function name")
     version: str = Field(default="latest", description="Function version or 'latest'")
-    config: Dict[str, Any] = Field(default_factory=dict, description="Node-specific configuration")
-    description: Optional[str] = None
+    config: dict[str, Any] = Field(default_factory=dict, description="Node-specific configuration")
+    description: str | None = None
 
 
 class GraphEdgeMapping(BaseModel):
     """Data mapping between nodes."""
 
-    source_path: Optional[str] = Field(
+    source_path: str | None = Field(
         default=None, description="JSONPath in source output (e.g., '$.user.id', or '*' for all)"
     )
-    target_path: Optional[str] = Field(
+    target_path: str | None = Field(
         default=None, description="JSONPath in target input (e.g., '$.userId')"
     )
-    transform: Optional[str] = Field(
+    transform: str | None = Field(
         default=None,
         description="Transformation: 'map', 'filter', 'reduce', 'flat', or custom script",
     )
-    script: Optional[str] = Field(
+    script: str | None = Field(
         default=None, description="Custom transformation script if transform is 'custom'"
     )
 
@@ -858,9 +940,9 @@ class GraphEdge(BaseModel):
     source_node_id: str
     target_node_id: str
     mapping: GraphEdgeMapping = Field(default_factory=lambda: GraphEdgeMapping())
-    condition: Optional[GraphEdgeCondition] = None
+    condition: GraphEdgeCondition | None = None
     type: str = Field(default="sync", description="Edge type: 'sync', 'async', 'stream'")
-    fallback_node_id: Optional[str] = None
+    fallback_node_id: str | None = None
 
 
 class GraphTriggerConfig(BaseModel):
@@ -869,7 +951,7 @@ class GraphTriggerConfig(BaseModel):
     type: str = Field(
         ..., description="Trigger type: 'webhook', 'schedule', 'state_trigger', 'manual'"
     )
-    config: Dict[str, Any] = Field(default_factory=dict, description="Trigger-specific config")
+    config: dict[str, Any] = Field(default_factory=dict, description="Trigger-specific config")
     # Examples:
     # webhook: { "path": "/webhook/signup", "method": "POST" }
     # schedule: { "cron": "0 9 * * *", "timezone": "UTC" }
@@ -883,14 +965,14 @@ class GraphDefinition(BaseModel):
     name: str = Field(..., description="Graph name (URL-friendly)")
     description: str
     execution_mode: str = Field(default="sync", description="sync, async, streaming, event_driven")
-    nodes: List[GraphNodeRef] = Field(default_factory=list)
-    edges: List[GraphEdge] = Field(default_factory=list)
-    input_schema: Optional[Dict[str, Any]] = None
-    output_schema: Optional[Dict[str, Any]] = None
-    trigger_config: Optional[GraphTriggerConfig] = None
+    nodes: list[GraphNodeRef] = Field(default_factory=list)
+    edges: list[GraphEdge] = Field(default_factory=list)
+    input_schema: dict[str, Any] | None = None
+    output_schema: dict[str, Any] | None = None
+    trigger_config: GraphTriggerConfig | None = None
     visibility: str = Field(default="public", description="public, unlisted, private")
-    estimated_cost_usd: Optional[float] = None
-    estimated_latency_ms: Optional[int] = None
+    estimated_cost_usd: float | None = None
+    estimated_latency_ms: int | None = None
 
 
 class GraphCompositionRequest(BaseModel):
@@ -908,44 +990,44 @@ class GraphCompositionRequest(BaseModel):
         max_length=2000,
         description="Natural language description of the backend workflow",
     )
-    requirements: List[str] = Field(
+    requirements: list[str] = Field(
         default_factory=list,
         description="Requirements: 'low_latency', 'cost_optimized', 'high_availability'",
     )
     preferred_runtime: str = Field(default="python", description="Preferred function runtime")
-    tenant_id: Optional[str] = None
+    tenant_id: str | None = None
 
 
 class GraphCompositionExplanation(BaseModel):
     """Explanation of the composed graph."""
 
     summary: str
-    node_purposes: Dict[str, str] = Field(default_factory=dict, description="What each node does")
+    node_purposes: dict[str, str] = Field(default_factory=dict, description="What each node does")
     data_flow_description: str
     trigger_explanation: str
-    suggested_tests: List[str] = Field(default_factory=list)
-    estimated_monthly_cost_usd: Optional[float] = None
+    suggested_tests: list[str] = Field(default_factory=list)
+    estimated_monthly_cost_usd: float | None = None
 
 
 class GraphCompositionResponse(BaseModel):
     """Response for AI graph composition."""
 
     success: bool
-    graph: Optional[GraphDefinition] = None
-    explanation: Optional[GraphCompositionExplanation] = None
+    graph: GraphDefinition | None = None
+    explanation: GraphCompositionExplanation | None = None
     confidence: float = Field(ge=0.0, le=1.0, description="AI confidence score")
     generation_id: str
     latency_ms: float
-    tokens_used: Dict[str, int] = Field(
+    tokens_used: dict[str, int] = Field(
         default_factory=lambda: {"prompt": 0, "completion": 0, "total": 0}
     )
-    error: Optional[str] = None
-    suggestions: List[str] = Field(
+    error: str | None = None
+    suggestions: list[str] = Field(
         default_factory=list, description="Follow-up suggestions or improvements"
     )
 
 
-class TemplateCategory(str, Enum):
+class TemplateCategory(StrEnum):
     """Categories for prebuilt graph templates."""
 
     SAAS_STARTER = "saas_starter"
@@ -965,17 +1047,17 @@ class GraphTemplateInfo(BaseModel):
     name: str
     description: str
     category: TemplateCategory
-    tags: List[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     node_count: int
     complexity: str  # simple, moderate, complex
     estimated_setup_time_minutes: int
-    popular_use_cases: List[str] = Field(default_factory=list)
+    popular_use_cases: list[str] = Field(default_factory=list)
 
 
 class GraphTemplateListResponse(BaseModel):
     """Response listing available templates."""
 
-    templates: List[GraphTemplateInfo]
+    templates: list[GraphTemplateInfo]
     total_count: int
 
 
@@ -983,8 +1065,8 @@ class GraphTemplateRequest(BaseModel):
     """Request to instantiate a template."""
 
     template_id: str
-    customization_prompt: Optional[str] = None
-    tenant_id: Optional[str] = None
+    customization_prompt: str | None = None
+    tenant_id: str | None = None
 
 
 # ============================================================================
@@ -1002,9 +1084,9 @@ class ExtractedMemory(BaseModel):
     """A single extracted memory from conversation analysis."""
 
     type: str = Field(..., description="Memory type: decision, preference, process, client_context")
-    category: Optional[str] = Field(None, description="Optional category like 'client:acme-corp'")
+    category: str | None = Field(None, description="Optional category like 'client:acme-corp'")
     summary: str = Field(..., description="Human-readable summary (max 100 chars)")
-    content: Dict[str, Any] = Field(default_factory=dict, description="Structured content object")
+    content: dict[str, Any] = Field(default_factory=dict, description="Structured content object")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Extraction confidence score")
     rationale: str = Field(..., description="Why this memory is important")
 
@@ -1015,15 +1097,15 @@ class MemoryExtractionRequest(BaseModel):
     transcript: str = Field(
         ..., min_length=10, max_length=50000, description="Conversation transcript to analyze"
     )
-    team_id: Optional[str] = Field(None, description="Team ID for context")
-    conversation_id: Optional[str] = Field(None, description="Conversation ID")
-    context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
+    team_id: str | None = Field(None, description="Team ID for context")
+    conversation_id: str | None = Field(None, description="Conversation ID")
+    context: dict[str, Any] | None = Field(None, description="Additional context")
 
 
 class MemoryExtractionResponse(BaseModel):
     """Response with extracted memories."""
 
-    memories: List[ExtractedMemory] = Field(default_factory=list, description="Extracted memories")
+    memories: list[ExtractedMemory] = Field(default_factory=list, description="Extracted memories")
     confidence: float = Field(0.0, description="Average confidence score")
     tokens_used: int = Field(0, description="Tokens consumed")
     model: str = Field("unknown", description="Model used for extraction")
@@ -1049,12 +1131,12 @@ class AIChatRequest(BaseModel):
     Reserved for future conversational AI features.
     """
 
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         None, description="Existing session ID or null for new session"
     )
     user_id: str = Field(..., description="User ID")
     message: str = Field(..., min_length=1, max_length=10000, description="User message")
-    context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
+    context: dict[str, Any] | None = Field(None, description="Additional context")
     streaming: bool = Field(default=False, description="Enable streaming response")
 
 
@@ -1066,7 +1148,7 @@ class AIChatResponse(BaseModel):
 
     session_id: str = Field(..., description="Session ID")
     message: str = Field(..., description="AI response message")
-    messages: List[AIChatMessage] = Field(
+    messages: list[AIChatMessage] = Field(
         default_factory=list, description="Full conversation history"
     )
     intent: str = Field(default="general", description="Detected intent")
@@ -1081,9 +1163,9 @@ class AISuggestRequest(BaseModel):
     """
 
     code_context: str = Field(..., description="Current code context (file content or snippet)")
-    cursor_position: Optional[int] = Field(None, description="Cursor position in code")
-    file_path: Optional[str] = Field(None, description="Path to the file being edited")
-    function_id: Optional[str] = Field(None, description="Related function ID if applicable")
+    cursor_position: int | None = Field(None, description="Cursor position in code")
+    file_path: str | None = Field(None, description="Path to the file being edited")
+    function_id: str | None = Field(None, description="Related function ID if applicable")
     suggestion_type: str = Field(
         default="completion", description="Type: completion, fix, explain, optimize"
     )
@@ -1097,7 +1179,7 @@ class AISuggestion(BaseModel):
     label: str = Field(..., description="Display label")
     description: str = Field(..., description="Detailed description")
     insert_text: str = Field(..., description="Text to insert")
-    range: Optional[Dict[str, Any]] = Field(None, description="Suggested edit range")
+    range: dict[str, Any] | None = Field(None, description="Suggested edit range")
     confidence: float = Field(ge=0.0, le=1.0, default=0.8)
 
 
@@ -1107,7 +1189,7 @@ class AISuggestResponse(BaseModel):
     Reserved for future code suggestion/intellisense features.
     """
 
-    suggestions: List[AISuggestion] = Field(default_factory=list, description="AI suggestions")
+    suggestions: list[AISuggestion] = Field(default_factory=list, description="AI suggestions")
     context_used: str = Field(default="", description="Context that was analyzed")
     latency_ms: float = Field(0.0, description="Processing time in milliseconds")
 
@@ -1120,4 +1202,4 @@ class AIPlaceholderResponse(BaseModel):
     message: str = Field(
         default="This feature is coming soon. Check back later!", description="Status message"
     )
-    estimated_release: Optional[str] = Field(None, description="Estimated release timeframe")
+    estimated_release: str | None = Field(None, description="Estimated release timeframe")

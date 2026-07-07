@@ -26,12 +26,45 @@ EDGES = [
     EdgeProvider.FUNCTIONFLY.value,
 ]
 
+FUNCTION_TYPE_PRIORS = {
+    "http_trigger": {
+        EdgeProvider.CLOUDFLARE.value: ArmState(edge=EdgeProvider.CLOUDFLARE.value, alpha=2.0, beta=1.0),
+        EdgeProvider.VERCEL.value: ArmState(edge=EdgeProvider.VERCEL.value, alpha=2.0, beta=1.0),
+        EdgeProvider.FLY.value: ArmState(edge=EdgeProvider.FLY.value, alpha=1.5, beta=1.5),
+        EdgeProvider.DENO.value: ArmState(edge=EdgeProvider.DENO.value, alpha=1.5, beta=1.5),
+        EdgeProvider.FUNCTIONFLY.value: ArmState(edge=EdgeProvider.FUNCTIONFLY.value, alpha=1.5, beta=1.5),
+    },
+    "scheduled": {
+        EdgeProvider.CLOUDFLARE.value: ArmState(edge=EdgeProvider.CLOUDFLARE.value, alpha=1.5, beta=1.5),
+        EdgeProvider.VERCEL.value: ArmState(edge=EdgeProvider.VERCEL.value, alpha=1.5, beta=1.5),
+        EdgeProvider.FLY.value: ArmState(edge=EdgeProvider.FLY.value, alpha=2.0, beta=1.0),
+        EdgeProvider.DENO.value: ArmState(edge=EdgeProvider.DENO.value, alpha=1.5, beta=1.5),
+        EdgeProvider.FUNCTIONFLY.value: ArmState(edge=EdgeProvider.FUNCTIONFLY.value, alpha=2.0, beta=1.0),
+    },
+    "queue_triggered": {
+        EdgeProvider.CLOUDFLARE.value: ArmState(edge=EdgeProvider.CLOUDFLARE.value, alpha=1.5, beta=1.5),
+        EdgeProvider.VERCEL.value: ArmState(edge=EdgeProvider.VERCEL.value, alpha=1.5, beta=1.5),
+        EdgeProvider.FLY.value: ArmState(edge=EdgeProvider.FLY.value, alpha=2.0, beta=1.0),
+        EdgeProvider.DENO.value: ArmState(edge=EdgeProvider.DENO.value, alpha=1.5, beta=1.5),
+        EdgeProvider.FUNCTIONFLY.value: ArmState(edge=EdgeProvider.FUNCTIONFLY.value, alpha=2.5, beta=0.5),
+    },
+    "default": {
+        EdgeProvider.CLOUDFLARE.value: ArmState(edge=EdgeProvider.CLOUDFLARE.value, alpha=1.0, beta=1.0),
+        EdgeProvider.VERCEL.value: ArmState(edge=EdgeProvider.VERCEL.value, alpha=1.0, beta=1.0),
+        EdgeProvider.FLY.value: ArmState(edge=EdgeProvider.FLY.value, alpha=1.0, beta=1.0),
+        EdgeProvider.DENO.value: ArmState(edge=EdgeProvider.DENO.value, alpha=1.0, beta=1.0),
+        EdgeProvider.FUNCTIONFLY.value: ArmState(edge=EdgeProvider.FUNCTIONFLY.value, alpha=1.0, beta=1.0),
+    },
+}
+
 
 class ThompsonSamplingRouter:
     """Thompson Sampling multi-armed bandit for edge routing.
 
     Each function maintains its own set of arm states, allowing
     per-function learning of the optimal edge provider.
+    Tenant-isolated: arms are stored per-tenant-per-function.
+    Supports function-type-based priors for faster cold-start.
     """
 
     ARMS_KEY_PREFIX = "ml:thompson:arms:"
@@ -42,6 +75,9 @@ class ThompsonSamplingRouter:
         self._redis: Optional[redis.Redis] = None
         self._exploration_rate = settings.ml_routing_exploration
         self._arm_cache: Dict[str, Dict[str, ArmState]] = {}
+        self._use_informed_priors = getattr(
+            settings, 'ml_routing_use_informed_priors', True
+        )
 
     async def get_redis(self) -> Optional[redis.Redis]:
         if self._redis is None:
@@ -55,51 +91,106 @@ class ThompsonSamplingRouter:
                 self._redis = None
         return self._redis
 
-    async def _get_arms(self, function_id: str) -> Dict[str, ArmState]:
-        """Get arm states for a function."""
-        if function_id in self._arm_cache:
-            return self._arm_cache[function_id]
+    def _make_arms_key(self, tenant_id: str, function_id: str) -> str:
+        """Create tenant-isolated Redis key for arm states."""
+        return f"{self.ARMS_KEY_PREFIX}{tenant_id}:{function_id}"
+
+    def _make_outcomes_key(self, tenant_id: str, function_id: str) -> str:
+        """Create tenant-isolated Redis key for outcomes."""
+        return f"{self.OUTCOMES_KEY_PREFIX}{tenant_id}:{function_id}"
+
+    def _get_function_type(self, function_id: str) -> str:
+        """Extract function type from function_id.
+
+        Attempts to determine the function type from naming conventions.
+        Falls back to 'default' if type cannot be determined.
+        """
+        function_id_lower = function_id.lower()
+
+        if any(pattern in function_id_lower for pattern in ['http', 'webhook', 'api', 'rest']):
+            return "http_trigger"
+        elif any(pattern in function_id_lower for pattern in ['cron', 'scheduled', 'timer', ' recurring']):
+            return "scheduled"
+        elif any(pattern in function_id_lower for pattern in ['queue', 'worker', 'job', 'task']):
+            return "queue_triggered"
+
+        return "default"
+
+    def _get_priors_for_function(self, function_id: str) -> Dict[str, ArmState]:
+        """Get informed priors for a function based on its type.
+
+        Args:
+            function_id: The function identifier
+
+        Returns:
+            Dict of arm states with informed priors
+        """
+        if not self._use_informed_priors:
+            return {edge: ArmState(edge=edge) for edge in EDGES}
+
+        function_type = self._get_function_type(function_id)
+        priors = FUNCTION_TYPE_PRIORS.get(function_type, FUNCTION_TYPE_PRIORS["default"])
+
+        logger.debug(
+            f"Using {function_type} priors for function {function_id}: "
+            f"{[(k, v.alpha, v.beta) for k, v in priors.items()]}"
+        )
+
+        return priors
+
+    async def _get_arms(self, tenant_id: str, function_id: str) -> Dict[str, ArmState]:
+        """Get arm states for a tenant-function pair.
+
+        Uses informed priors based on function type for cold-start.
+        """
+        cache_key = f"{tenant_id}:{function_id}"
+        if cache_key in self._arm_cache:
+            return self._arm_cache[cache_key]
 
         r = await self.get_redis()
         if r:
             try:
-                key = f"{self.ARMS_KEY_PREFIX}{function_id}"
+                key = self._make_arms_key(tenant_id, function_id)
                 data = await r.get(key)
                 if data:
                     arms_data = json.loads(data)
                     arms = {k: ArmState(**v) for k, v in arms_data.items()}
-                    self._arm_cache[function_id] = arms
+                    self._arm_cache[cache_key] = arms
                     return arms
             except Exception as e:
-                logger.warning(f"Failed to load arms for {function_id}: {e}")
+                logger.warning(f"Failed to load arms for {tenant_id}/{function_id}: {e}")
 
-        # Initialize with equal priors
-        arms = {edge: ArmState(edge=edge) for edge in EDGES}
-        self._arm_cache[function_id] = arms
+        arms = self._get_priors_for_function(function_id)
+        self._arm_cache[cache_key] = arms
         return arms
 
-    async def _save_arms(self, function_id: str, arms: Dict[str, ArmState]) -> None:
-        """Persist arm states to Redis."""
-        self._arm_cache[function_id] = arms
+    async def _save_arms(self, tenant_id: str, function_id: str, arms: Dict[str, ArmState]) -> None:
+        """Persist arm states to Redis with tenant isolation."""
+        cache_key = f"{tenant_id}:{function_id}"
+        self._arm_cache[cache_key] = arms
         r = await self.get_redis()
         if r:
             try:
-                key = f"{self.ARMS_KEY_PREFIX}{function_id}"
+                key = self._make_arms_key(tenant_id, function_id)
                 data = {k: v.model_dump() for k, v in arms.items()}
                 await r.set(key, json.dumps(data), ex=self.ARMS_EXPIRY_DAYS * 86400)
             except Exception as e:
-                logger.error(f"Failed to save arms for {function_id}: {e}")
+                logger.error(f"Failed to save arms for {tenant_id}/{function_id}: {e}")
 
     async def decide(
-        self, request: RoutingDecisionRequest
+        self, tenant_id: str, request: RoutingDecisionRequest
     ) -> RoutingDecision:
         """Make a routing decision using Thompson Sampling.
 
         For each arm, sample from Beta(alpha, beta) and pick the highest.
         With probability exploration_rate, force exploration of a random arm.
+
+        Args:
+            tenant_id: Tenant ID for isolation
+            request: Routing decision request
         """
         function_id = request.function_id
-        arms = await self._get_arms(function_id)
+        arms = await self._get_arms(tenant_id, function_id)
 
         # Force exploration with small probability
         is_exploration = random.random() < self._exploration_rate
@@ -152,12 +243,16 @@ class ThompsonSamplingRouter:
             latency_estimate_ms=round(latency_estimate, 2),
         )
 
-    async def update(self, outcome: RoutingOutcome) -> None:
+    async def update(self, tenant_id: str, outcome: RoutingOutcome) -> None:
         """Update arm state based on execution outcome.
 
         Reward = 0.4 * (1 - normalize(latency)) + 0.4 * success + 0.2 * (1 - normalize(cost))
+
+        Args:
+            tenant_id: Tenant ID for isolation
+            outcome: Routing outcome to record
         """
-        arms = await self._get_arms(outcome.function_id)
+        arms = await self._get_arms(tenant_id, outcome.function_id)
         edge = outcome.edge
 
         if edge not in arms:
@@ -190,22 +285,22 @@ class ThompsonSamplingRouter:
             arm.success_count += 1
 
         arms[edge] = arm
-        await self._save_arms(outcome.function_id, arms)
+        await self._save_arms(tenant_id, outcome.function_id, arms)
 
         # Log outcome for analysis
         r = await self.get_redis()
         if r:
             try:
-                key = f"{self.OUTCOMES_KEY_PREFIX}{outcome.function_id}"
+                key = self._make_outcomes_key(tenant_id, outcome.function_id)
                 await r.lpush(key, outcome.model_dump_json())
                 await r.ltrim(key, 0, 999)
                 await r.expire(key, 86400 * 7)
             except Exception:
                 pass
 
-    async def get_arm_stats(self, function_id: str) -> Dict[str, ArmState]:
-        """Get current arm states for a function."""
-        return await self._get_arms(function_id)
+    async def get_arm_stats(self, tenant_id: str, function_id: str) -> Dict[str, ArmState]:
+        """Get current arm states for a tenant-function pair."""
+        return await self._get_arms(tenant_id, function_id)
 
     async def close(self):
         if self._redis:

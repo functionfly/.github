@@ -124,6 +124,13 @@ class MetricsCollector:
         self._chat_sessions = 0
         self._search_queries = 0
 
+        # Redis connection metrics (in-memory)
+        self._redis_retries = 0
+        self._redis_failures = 0
+        self._redis_latencies: List[float] = []
+        self._redis_connected = False
+        self._max_latency_samples = 100
+
         # Initialize Prometheus metrics if available
         self._prom_metrics = {}
         if PROMETHEUS_AVAILABLE:
@@ -224,6 +231,28 @@ class MetricsCollector:
             "Number of active requests"
         )
 
+        # Redis connection metrics
+        self._prom_metrics["redis_connection_retries"] = Counter(
+            f"{self._service_name}_redis_connection_retries_total",
+            "Total Redis connection retries"
+        )
+
+        self._prom_metrics["redis_connection_failures"] = Counter(
+            f"{self._service_name}_redis_connection_failures_total",
+            "Total Redis connection failures"
+        )
+
+        self._prom_metrics["redis_connection_latency"] = Histogram(
+            f"{self._service_name}_redis_connection_latency_seconds",
+            "Redis connection latency in seconds",
+            buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
+        )
+
+        self._prom_metrics["redis_is_connected"] = Gauge(
+            f"{self._service_name}_redis_is_connected",
+            "Redis connection status (1 if connected, 0 if not)"
+        )
+
         # Security metrics
         self._prom_metrics["embedding_auth_failures"] = Counter(
             f"{self._service_name}_embedding_auth_failures_total",
@@ -259,6 +288,169 @@ class MetricsCollector:
             f"{self._service_name}_security_alerts_total",
             "Total security alerts",
             ["alert_type", "severity"]
+        )
+
+        self._init_ml_metrics()
+        self._init_ml_model_accuracy_metrics()
+        self._init_circuit_breaker_metrics()
+
+    def _init_circuit_breaker_metrics(self) -> None:
+        """Initialize circuit breaker Prometheus metrics."""
+        self._prom_metrics["circuit_breaker_state"] = Gauge(
+            f"{self._service_name}_circuit_breaker_state",
+            "Circuit breaker state (0=closed, 1=half_open, 2=open)",
+            ["service"]
+        )
+
+        self._prom_metrics["circuit_breaker_errors"] = Counter(
+            f"{self._service_name}_circuit_breaker_errors_total",
+            "Total circuit breaker errors",
+            ["service", "error_type"]
+        )
+
+    def _init_ml_metrics(self) -> None:
+        """Initialize ML-specific Prometheus metrics."""
+
+        self._prom_metrics["ml_cost_anomaly_checks"] = Counter(
+            f"{self._service_name}_ml_cost_anomaly_checks_total",
+            "Total cost anomaly checks",
+            ["function_id"]
+        )
+
+        self._prom_metrics["ml_cost_anomaly_detections"] = Counter(
+            f"{self._service_name}_ml_cost_anomaly_detections_total",
+            "Total cost anomaly detections",
+            ["function_id", "severity", "anomaly_type"]
+        )
+
+        self._prom_metrics["ml_cost_anomaly_latency"] = Histogram(
+            f"{self._service_name}_ml_cost_anomaly_latency_seconds",
+            "Cost anomaly check latency",
+            ["function_id"],
+            buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5]
+        )
+
+        self._prom_metrics["ml_prewarm_predictions"] = Counter(
+            f"{self._service_name}_ml_prewarm_predictions_total",
+            "Total prewarming predictions",
+            ["function_id"]
+        )
+
+        self._prom_metrics["ml_prewarm_confidence"] = Histogram(
+            f"{self._service_name}_ml_prewarm_confidence",
+            "Prewarming prediction confidence",
+            ["function_id"],
+            buckets=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        )
+
+        self._prom_metrics["ml_prewarm_decisions"] = Counter(
+            f"{self._service_name}_ml_prewarm_decisions_total",
+            "Total prewarm decisions (should_prewarm=true/false)",
+            ["function_id", "decision"]
+        )
+
+        self._prom_metrics["ml_thompson_decisions"] = Counter(
+            f"{self._service_name}_ml_thompson_decisions_total",
+            "Total Thompson Sampling routing decisions",
+            ["function_id", "edge", "exploration"]
+        )
+
+        self._prom_metrics["ml_thompson_arm_pulls"] = Counter(
+            f"{self._service_name}_ml_thompson_arm_pulls_total",
+            "Total Thompson Sampling arm pulls",
+            ["function_id", "edge"]
+        )
+
+        self._prom_metrics["ml_thompson_reward"] = Histogram(
+            f"{self._service_name}_ml_thompson_reward",
+            "Thompson Sampling reward distribution",
+            ["function_id", "edge"],
+            buckets=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+        )
+
+        self._prom_metrics["ml_recommendations_served"] = Counter(
+            f"{self._service_name}_ml_recommendations_served_total",
+            "Total recommendations served",
+            ["user_id", "strategy"]
+        )
+
+        self._prom_metrics["ml_recommendations_interactions"] = Counter(
+            f"{self._service_name}_ml_recommendations_interactions_total",
+            "Total recommendation interactions recorded",
+            ["interaction_type"]
+        )
+
+        self._prom_metrics["ml_model_training"] = Counter(
+            f"{self._service_name}_ml_model_training_total",
+            "Total ML model training runs",
+            ["model_type", "status"]
+        )
+
+        self._prom_metrics["ml_model_training_duration"] = Histogram(
+            f"{self._service_name}_ml_model_training_duration_seconds",
+            "ML model training duration",
+            ["model_type"],
+            buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0]
+        )
+
+        self._init_cache_warming_metrics()
+
+    def _init_cache_warming_metrics(self) -> None:
+        """Initialize cache warming Prometheus metrics."""
+
+        self._prom_metrics["cache_warming_duration"] = Histogram(
+            f"{self._service_name}_cache_warming_duration_seconds",
+            "Cache warming duration in seconds",
+            buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0]
+        )
+
+        self._prom_metrics["cache_warming_keys_loaded"] = Counter(
+            f"{self._service_name}_cache_warming_keys_loaded_total",
+            "Total number of cache keys loaded during warming"
+        )
+
+        self._prom_metrics["cache_warming_errors"] = Counter(
+            f"{self._service_name}_cache_warming_errors_total",
+            "Total number of cache warming errors"
+        )
+
+    def _init_ml_model_accuracy_metrics(self) -> None:
+        """Initialize ML model accuracy and drift Prometheus metrics."""
+
+        self._prom_metrics["ml_drift_score"] = Gauge(
+            f"{self._service_name}_ml_drift_score",
+            "Current model drift score (0.0-1.0)",
+            ["service", "tenant_id", "metric_name"]
+        )
+
+        self._prom_metrics["ml_drift_severity"] = Gauge(
+            f"{self._service_name}_ml_drift_severity",
+            "Model drift severity level (0=none, 1=low, 2=medium, 3=high, 4=critical)",
+            ["service", "tenant_id"]
+        )
+
+        self._prom_metrics["ml_model_accuracy"] = Gauge(
+            f"{self._service_name}_ml_model_accuracy",
+            "Estimated model accuracy score (0.0-1.0)",
+            ["model_type", "tenant_id"]
+        )
+
+        self._prom_metrics["ml_model_predictions"] = Counter(
+            f"{self._service_name}_ml_model_predictions_total",
+            "Total model predictions",
+            ["model_type", "tenant_id", "correct"]
+        )
+
+        self._prom_metrics["ml_model_rollbacks"] = Counter(
+            f"{self._service_name}_ml_model_rollbacks_total",
+            "Total model rollback events",
+            ["model_type", "tenant_id", "success"]
+        )
+
+        self._prom_metrics["ml_backup_verification"] = Gauge(
+            f"{self._service_name}_ml_backup_verification",
+            "Backup verification status (1=valid, 0=invalid)",
+            ["model_type", "backup_version"]
         )
 
     def record_request(self, metrics: RequestMetrics) -> None:
@@ -531,6 +723,290 @@ class MetricsCollector:
                 severity=severity
             ).inc()
 
+    def record_cost_anomaly_check(self, function_id: str) -> None:
+        """Record a cost anomaly check."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_cost_anomaly_checks"].labels(
+                function_id=function_id
+            ).inc()
+
+    def record_cost_anomaly_detection(
+        self,
+        function_id: str,
+        severity: str,
+        anomaly_type: str,
+    ) -> None:
+        """Record a cost anomaly detection."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_cost_anomaly_detections"].labels(
+                function_id=function_id,
+                severity=severity,
+                anomaly_type=anomaly_type,
+            ).inc()
+
+    def record_cost_anomaly_latency(self, function_id: str, latency_ms: float) -> None:
+        """Record cost anomaly check latency."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_cost_anomaly_latency"].labels(
+                function_id=function_id
+            ).observe(latency_ms / 1000)
+
+    def record_prewarm_prediction(self, function_id: str, confidence: float) -> None:
+        """Record a prewarming prediction."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_prewarm_predictions"].labels(
+                function_id=function_id
+            ).inc()
+            self._prom_metrics["ml_prewarm_confidence"].labels(
+                function_id=function_id
+            ).observe(confidence)
+
+    def record_prewarm_decision(self, function_id: str, should_prewarm: bool) -> None:
+        """Record a prewarm decision."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_prewarm_decisions"].labels(
+                function_id=function_id,
+                decision="true" if should_prewarm else "false",
+            ).inc()
+
+    def record_thompson_decision(
+        self,
+        function_id: str,
+        edge: str,
+        is_exploration: bool,
+    ) -> None:
+        """Record a Thompson Sampling routing decision."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_thompson_decisions"].labels(
+                function_id=function_id,
+                edge=edge,
+                exploration="true" if is_exploration else "false",
+            ).inc()
+
+    def record_thompson_arm_pull(self, function_id: str, edge: str) -> None:
+        """Record a Thompson Sampling arm pull."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_thompson_arm_pulls"].labels(
+                function_id=function_id,
+                edge=edge,
+            ).inc()
+
+    def record_thompson_reward(
+        self,
+        function_id: str,
+        edge: str,
+        reward: float,
+    ) -> None:
+        """Record a Thompson Sampling reward."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_thompson_reward"].labels(
+                function_id=function_id,
+                edge=edge,
+            ).observe(reward)
+
+    def record_recommendation_served(
+        self,
+        user_id: str,
+        strategy: str,
+    ) -> None:
+        """Record a recommendation served."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_recommendations_served"].labels(
+                user_id=user_id,
+                strategy=strategy,
+            ).inc()
+
+    def record_recommendation_interaction(self, interaction_type: str) -> None:
+        """Record a recommendation interaction."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_recommendations_interactions"].labels(
+                interaction_type=interaction_type,
+            ).inc()
+
+    def record_model_training(self, model_type: str, success: bool) -> None:
+        """Record a model training run."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_model_training"].labels(
+                model_type=model_type,
+                status="success" if success else "failure",
+            ).inc()
+
+    def record_model_training_duration(
+        self,
+        model_type: str,
+        duration_seconds: float,
+    ) -> None:
+        """Record model training duration."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_model_training_duration"].labels(
+                model_type=model_type
+            ).observe(duration_seconds)
+
+    def record_cache_warming_duration(self, duration_seconds: float) -> None:
+        """Record cache warming duration."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["cache_warming_duration"].observe(duration_seconds)
+
+    def record_cache_warming_keys_loaded(self, keys: int) -> None:
+        """Record number of cache keys loaded during warming."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["cache_warming_keys_loaded"].inc(keys)
+
+    def record_cache_warming_error(self) -> None:
+        """Record a cache warming error."""
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["cache_warming_errors"].inc()
+
+    def record_drift_score(
+        self,
+        service: str,
+        tenant_id: str,
+        metric_name: str,
+        score: float,
+    ) -> None:
+        """Record model drift score.
+
+        Args:
+            service: ML service name
+            tenant_id: Tenant ID
+            metric_name: Metric being tracked
+            score: Drift score (0.0-1.0)
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_drift_score"].labels(
+                service=service,
+                tenant_id=tenant_id,
+                metric_name=metric_name,
+            ).set(score)
+
+    def record_drift_severity(
+        self,
+        service: str,
+        tenant_id: str,
+        severity: str,
+    ) -> None:
+        """Record model drift severity level.
+
+        Args:
+            service: ML service name
+            tenant_id: Tenant ID
+            severity: Severity level (none, low, medium, high, critical)
+        """
+        severity_values = {
+            "none": 0, "low": 1, "medium": 2, "high": 3, "critical": 4
+        }
+        value = severity_values.get(severity.lower(), 0)
+
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_drift_severity"].labels(
+                service=service,
+                tenant_id=tenant_id,
+            ).set(value)
+
+    def record_model_accuracy(
+        self,
+        model_type: str,
+        tenant_id: str,
+        accuracy: float,
+    ) -> None:
+        """Record estimated model accuracy.
+
+        Args:
+            model_type: Type of ML model
+            tenant_id: Tenant ID
+            accuracy: Accuracy score (0.0-1.0)
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_model_accuracy"].labels(
+                model_type=model_type,
+                tenant_id=tenant_id,
+            ).set(accuracy)
+
+    def record_model_prediction(
+        self,
+        model_type: str,
+        tenant_id: str,
+        correct: bool,
+    ) -> None:
+        """Record a model prediction outcome.
+
+        Args:
+            model_type: Type of ML model
+            tenant_id: Tenant ID
+            correct: Whether the prediction was correct
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_model_predictions"].labels(
+                model_type=model_type,
+                tenant_id=tenant_id,
+                correct="true" if correct else "false",
+            ).inc()
+
+    def record_model_rollback(
+        self,
+        model_type: str,
+        tenant_id: str,
+        success: bool,
+    ) -> None:
+        """Record a model rollback event.
+
+        Args:
+            model_type: Type of ML model
+            tenant_id: Tenant ID
+            success: Whether rollback succeeded
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_model_rollbacks"].labels(
+                model_type=model_type,
+                tenant_id=tenant_id,
+                success="true" if success else "false",
+            ).inc()
+
+    def record_backup_verification(
+        self,
+        model_type: str,
+        backup_version: str,
+        is_valid: bool,
+    ) -> None:
+        """Record backup verification result.
+
+        Args:
+            model_type: Type of ML model
+            backup_version: Backup version string
+            is_valid: Whether backup is valid
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["ml_backup_verification"].labels(
+                model_type=model_type,
+                backup_version=backup_version,
+            ).set(1 if is_valid else 0)
+
+    def record_circuit_breaker_state(self, service: str, state: str) -> None:
+        """Record circuit breaker state.
+
+        Args:
+            service: Service name (e.g., openai, anthropic, redis)
+            state: Circuit state (closed, half_open, open)
+        """
+        if PROMETHEUS_AVAILABLE:
+            state_value = {"closed": 0, "half_open": 1, "open": 2}.get(state, 0)
+            self._prom_metrics["circuit_breaker_state"].labels(
+                service=service
+            ).set(state_value)
+
+    def record_circuit_breaker_error(self, service: str, error_type: str) -> None:
+        """Record circuit breaker error.
+
+        Args:
+            service: Service name
+            error_type: Type of error (e.g., timeout, connection_error, server_error)
+        """
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["circuit_breaker_errors"].labels(
+                service=service,
+                error_type=error_type
+            ).inc()
+
     def increment_active_requests(self) -> None:
         """Increment active request counter."""
         if PROMETHEUS_AVAILABLE:
@@ -540,6 +1016,48 @@ class MetricsCollector:
         """Decrement active request counter."""
         if PROMETHEUS_AVAILABLE:
             self._prom_metrics["active_requests"].dec()
+
+    def record_redis_connection_retry(self) -> None:
+        """Record a Redis connection retry."""
+        with self._lock:
+            self._redis_retries += 1
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["redis_connection_retries"].inc()
+
+    def record_redis_connection_failure(self) -> None:
+        """Record a Redis connection failure."""
+        with self._lock:
+            self._redis_failures += 1
+            self._redis_connected = False
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["redis_connection_failures"].inc()
+            self._prom_metrics["redis_is_connected"].set(0)
+
+    def record_redis_connection_success(self, latency_seconds: float) -> None:
+        """Record a successful Redis connection.
+
+        Args:
+            latency_seconds: Connection latency in seconds
+        """
+        with self._lock:
+            self._redis_latencies.append(latency_seconds)
+            if len(self._redis_latencies) > self._max_latency_samples:
+                self._redis_latencies = self._redis_latencies[-self._max_latency_samples:]
+            self._redis_connected = True
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["redis_connection_latency"].observe(latency_seconds)
+            self._prom_metrics["redis_is_connected"].set(1)
+
+    def set_redis_connected_status(self, is_connected: bool) -> None:
+        """Set Redis connection status gauge.
+
+        Args:
+            is_connected: Whether Redis is connected
+        """
+        with self._lock:
+            self._redis_connected = is_connected
+        if PROMETHEUS_AVAILABLE:
+            self._prom_metrics["redis_is_connected"].set(1 if is_connected else 0)
 
     def get_cache_metrics(self) -> CacheMetrics:
         """Get current cache metrics.
@@ -663,6 +1181,15 @@ class MetricsCollector:
             "# HELP flymind_ai_search_queries_total Total search queries",
             "# TYPE flymind_ai_search_queries_total counter",
             f"flymind_ai_search_queries_total {self._search_queries}",
+            "# HELP flymind_ai_redis_connection_retries_total Total Redis connection retries",
+            "# TYPE flymind_ai_redis_connection_retries_total counter",
+            f"flymind_ai_redis_connection_retries_total {self._redis_retries}",
+            "# HELP flymind_ai_redis_connection_failures_total Total Redis connection failures",
+            "# TYPE flymind_ai_redis_connection_failures_total counter",
+            f"flymind_ai_redis_connection_failures_total {self._redis_failures}",
+            "# HELP flymind_ai_redis_is_connected Redis connection status",
+            "# TYPE flymind_ai_redis_is_connected gauge",
+            f"flymind_ai_redis_is_connected {1 if self._redis_connected else 0}",
         ]
         return "\n".join(lines)
 

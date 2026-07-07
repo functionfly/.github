@@ -5,16 +5,17 @@ and all its dependencies.
 """
 
 import asyncio
+import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
-import logging
+from enum import StrEnum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status levels."""
 
     HEALTHY = "healthy"
@@ -29,9 +30,9 @@ class ComponentHealth:
 
     name: str
     status: HealthStatus
-    message: Optional[str] = None
-    latency_ms: Optional[float] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    message: str | None = None
+    latency_ms: float | None = None
+    details: dict[str, Any] = field(default_factory=dict)
     checked_at: datetime = field(default_factory=datetime.utcnow)
 
     def is_healthy(self) -> bool:
@@ -45,9 +46,9 @@ class HealthChecker:
     def __init__(self):
         """Initialize the health checker."""
         self._logger = logging.getLogger(__name__)
-        self._checks: Dict[str, Callable] = {}
-        self._components: Dict[str, ComponentHealth] = {}
-        self._degraded_reason: Optional[str] = None
+        self._checks: dict[str, Callable] = {}
+        self._components: dict[str, ComponentHealth] = {}
+        self._degraded_reason: str | None = None
 
     def set_degraded(self, reason: str) -> None:
         """Mark the service as degraded with a reason.
@@ -66,7 +67,7 @@ class HealthChecker:
         """Check if the service is in degraded state."""
         return self._degraded_reason is not None
 
-    def get_degraded_reason(self) -> Optional[str]:
+    def get_degraded_reason(self) -> str | None:
         """Get the degraded reason if any."""
         return self._degraded_reason
 
@@ -143,7 +144,7 @@ class HealthChecker:
         self._components[component_name] = health
         return health
 
-    async def check_all(self) -> Dict[str, ComponentHealth]:
+    async def check_all(self) -> dict[str, ComponentHealth]:
         """Check health of all registered components.
 
         Returns:
@@ -179,7 +180,7 @@ class HealthChecker:
 
         return HealthStatus.DEGRADED
 
-    def get_health_summary(self) -> Dict[str, Any]:
+    def get_health_summary(self) -> dict[str, Any]:
         """Get a summary of health status.
 
         Returns:
@@ -225,6 +226,7 @@ def create_default_checks(checker: HealthChecker) -> None:
     async def check_redis():
         try:
             import redis
+
             from ..config import settings
 
             r = redis.from_url(settings.redis_url)
@@ -264,11 +266,8 @@ def create_default_checks(checker: HealthChecker) -> None:
     # Check if orchestrator is reachable (for API key validation)
     async def check_orchestrator():
         try:
-            from ..security.auth import get_api_key_validator
-
-            validator = get_api_key_validator()
-            # Use the existing async validation
             import httpx
+
             from ..config import settings
 
             async with httpx.AsyncClient(timeout=5.0) as client:
@@ -282,9 +281,28 @@ def create_default_checks(checker: HealthChecker) -> None:
     checker.register_check("providers", check_providers)
     checker.register_check("orchestrator", check_orchestrator)
 
+    async def check_ml_services():
+        try:
+            from ..config import settings
+
+            if not settings.ml_enabled:
+                return True
+
+            redis_ok = check_redis()
+            if asyncio.iscoroutine(redis_ok):
+                redis_ok = await redis_ok
+            if not redis_ok:
+                return False
+
+            return True
+        except Exception:
+            return False
+
+    checker.register_check("ml_services", check_ml_services)
+
 
 # Global health checker
-_health_checker: Optional[HealthChecker] = None
+_health_checker: HealthChecker | None = None
 
 
 def get_health_checker() -> HealthChecker:

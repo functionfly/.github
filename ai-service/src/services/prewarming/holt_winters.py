@@ -24,9 +24,11 @@ class HoltWintersForecaster:
 
     Supports additive seasonality with configurable period (default 24h).
     Falls back to simple exponential smoothing when insufficient data.
+
+    Tenant-isolated: all Redis keys are namespaced by tenant.
     """
 
-    HISTORY_KEY_PREFIX = "prewarming:history:"
+    HISTORY_KEY_PREFIX = "ml:prewarming:history:"
     MODEL_KEY_PREFIX = "ml:prewarming:model:"
     HISTORY_EXPIRY_HOURS = 168  # 7 days
 
@@ -35,6 +37,10 @@ class HoltWintersForecaster:
         self._seasonality = settings.ml_prewarm_seasonality_periods
         self._prediction_window = settings.prewarming_window_minutes
         self._model_cache = {}
+
+    def _make_history_key(self, tenant_id: str, function_id: str) -> str:
+        """Create tenant-isolated Redis key for prewarming history."""
+        return f"{self.HISTORY_KEY_PREFIX}{tenant_id}:{function_id}"
 
     async def get_redis(self) -> Optional[redis.Redis]:
         if self._redis is None:
@@ -48,14 +54,14 @@ class HoltWintersForecaster:
                 self._redis = None
         return self._redis
 
-    async def record_request(self, function_id: str, count: int = 1) -> None:
-        """Record a request for a function."""
+    async def record_request(self, tenant_id: str, function_id: str, count: int = 1) -> None:
+        """Record a request for a function with tenant isolation."""
         r = await self.get_redis()
         if not r:
             return
 
         try:
-            key = f"{self.HISTORY_KEY_PREFIX}{function_id}"
+            key = self._make_history_key(tenant_id, function_id)
             data = json.dumps({"request_count": count, "timestamp": datetime.utcnow().isoformat()})
             score = datetime.utcnow().timestamp()
             await r.zadd(key, {data: score})
@@ -63,14 +69,14 @@ class HoltWintersForecaster:
         except Exception as e:
             logger.error(f"Failed to record request: {e}")
 
-    async def _get_hourly_counts(self, function_id: str, hours: int = 168) -> np.ndarray:
-        """Get request counts aggregated into hourly bins."""
+    async def _get_hourly_counts(self, tenant_id: str, function_id: str, hours: int = 168) -> np.ndarray:
+        """Get request counts aggregated into hourly bins for a tenant-function."""
         r = await self.get_redis()
         if not r:
             return np.zeros(hours)
 
         try:
-            key = f"{self.HISTORY_KEY_PREFIX}{function_id}"
+            key = self._make_history_key(tenant_id, function_id)
             min_score = (datetime.utcnow() - timedelta(hours=hours)).timestamp()
             items = await r.zrangebyscore(key, min_score, "+inf", withscores=True)
 
@@ -171,14 +177,19 @@ class HoltWintersForecaster:
         return forecasts, residual_std
 
     async def predict(
-        self, request: PredictionRequest
+        self, tenant_id: str, request: PredictionRequest
     ) -> Prediction:
-        """Generate a demand prediction using Holt-Winters."""
+        """Generate a demand prediction using Holt-Winters.
+
+        Args:
+            tenant_id: Tenant ID for isolation
+            request: Prediction request
+        """
         function_id = request.function_id
         window_minutes = request.prediction_window_minutes
 
         # Get hourly request counts
-        hourly = await self._get_hourly_counts(function_id, hours=168)
+        hourly = await self._get_hourly_counts(tenant_id, function_id, hours=168)
 
         total_requests = int(np.sum(hourly))
 
@@ -250,13 +261,20 @@ class HoltWintersForecaster:
             trend="stable",
         )
 
-    async def should_prewarm(self, function_id: str, threshold: Optional[int] = None) -> bool:
+    async def should_prewarm(self, tenant_id: str, function_id: str, threshold: Optional[int] = None) -> bool:
+        """Check if a function should be prewarmed.
+
+        Args:
+            tenant_id: Tenant ID for isolation
+            function_id: Function to check
+            threshold: Optional custom threshold
+        """
         threshold = threshold or settings.prewarming_threshold
         request = PredictionRequest(
             function_id=function_id,
             prediction_window_minutes=self._prediction_window,
         )
-        prediction = await self.predict(request)
+        prediction = await self.predict(tenant_id, request)
         return prediction.predicted_requests >= threshold
 
     async def close(self):

@@ -6,8 +6,182 @@ for cost-optimized generation using retrieval-augmented techniques.
 
 import json
 import logging
+import re
 from typing import List, Optional, Dict, Any, Tuple
 from dataclasses import dataclass
+
+
+class SafeQueryBuilder:
+    """Safe SQL query builder with proper input validation."""
+
+    DANGEROUS_KEYWORDS = {
+        'DROP', 'DELETE', 'INSERT', 'UPDATE', 'TRUNCATE',
+        'ALTER', 'CREATE', 'GRANT', 'REVOKE', 'EXEC', 'EXECUTE',
+        'UNION', 'INTO', 'LOAD_FILE', 'OUTFILE', 'SHUTDOWN',
+    }
+
+    DANGEROUS_COMMENTS = frozenset({'--', '/*', '*/', '#'})
+
+    CONDITION_PATTERN = re.compile(
+        r'^[a-zA-Z_][a-zA-Z0-9_]*\s*(=|!=|<>|>=|<=|>|<|LIKE|ILIKE)\s*\?$'
+    )
+
+    @staticmethod
+    def validate_sql_identifier(name: str, allow_wildcard: bool = False) -> str:
+        """Validate SQL identifier (table name, column name).
+
+        Args:
+            name: The identifier to validate
+            allow_wildcard: Whether to allow '*' as a valid identifier
+
+        Returns:
+            The validated identifier
+
+        Raises:
+            ValueError: If the identifier is invalid or dangerous
+        """
+        if not name:
+            raise ValueError("Identifier cannot be empty")
+
+        if allow_wildcard and name == "*":
+            return name
+
+        if not re.match(r'^[a-zA-Z0-9_]+$', name):
+            raise ValueError(f"Invalid identifier: {name}")
+
+        upper_name = name.upper()
+        if upper_name in SafeQueryBuilder.DANGEROUS_KEYWORDS:
+            raise ValueError(f"Forbidden identifier: {name}")
+
+        for comment in SafeQueryBuilder.DANGEROUS_COMMENTS:
+            if comment in name:
+                raise ValueError(f"Invalid identifier contains forbidden sequence: {name}")
+
+        return name
+
+    @staticmethod
+    def validate_condition(condition: str) -> str:
+        """Validate a WHERE condition.
+
+        Only allows simple single-parameter conditions like 'column = ?' or 'id > ?'.
+
+        Args:
+            condition: The condition string to validate
+
+        Returns:
+            The validated condition
+
+        Raises:
+            ValueError: If the condition format is invalid
+        """
+        if not condition or not condition.strip():
+            raise ValueError("Condition cannot be empty")
+
+        stripped = condition.strip()
+        if not SafeQueryBuilder.CONDITION_PATTERN.match(stripped):
+            raise ValueError(f"Invalid condition format: {condition}")
+
+        return stripped
+
+    @staticmethod
+    def build_select(table: str, columns: str = "*", condition: Optional[str] = None) -> Tuple[str, list]:
+        """Build a parameterized SELECT query.
+
+        Args:
+            table: Table name (will be validated)
+            columns: Column names (will be validated if not '*')
+            condition: Optional WHERE condition (will be validated)
+
+        Returns:
+            Tuple of (sql_string, parameters_list)
+        """
+        safe_table = SafeQueryBuilder.validate_sql_identifier(table)
+
+        if columns == "*":
+            safe_columns = "*"
+        else:
+            col_parts = [c.strip() for c in columns.split(",")]
+            safe_columns = ", ".join(
+                SafeQueryBuilder.validate_sql_identifier(c, allow_wildcard=True)
+                for c in col_parts
+            )
+
+        if condition:
+            safe_condition = SafeQueryBuilder.validate_condition(condition)
+            return f"SELECT {safe_columns} FROM {safe_table} WHERE {safe_condition}", []
+        else:
+            return f"SELECT {safe_columns} FROM {safe_table}", []
+
+    @staticmethod
+    def build_insert(table: str, data: Dict[str, Any]) -> Tuple[str, list]:
+        """Build a parameterized INSERT query.
+
+        Args:
+            table: Table name (will be validated)
+            data: Dictionary of column -> value
+
+        Returns:
+            Tuple of (sql_string, parameters_list)
+        """
+        safe_table = SafeQueryBuilder.validate_sql_identifier(table)
+
+        if not data:
+            raise ValueError("INSERT data cannot be empty")
+
+        columns = list(data.keys())
+        for col in columns:
+            SafeQueryBuilder.validate_sql_identifier(col)
+
+        placeholders = ", ".join(["%s"] * len(columns))
+        safe_columns = ", ".join(columns)
+        values = list(data.values())
+
+        return f"INSERT INTO {safe_table} ({safe_columns}) VALUES ({placeholders})", values
+
+    @staticmethod
+    def build_update(table: str, data: Dict[str, Any], condition: str) -> Tuple[str, list]:
+        """Build a parameterized UPDATE query.
+
+        Args:
+            table: Table name (will be validated)
+            data: Dictionary of column -> new_value
+            condition: WHERE condition (will be validated)
+
+        Returns:
+            Tuple of (sql_string, parameters_list)
+        """
+        safe_table = SafeQueryBuilder.validate_sql_identifier(table)
+        safe_condition = SafeQueryBuilder.validate_condition(condition)
+
+        if not data:
+            raise ValueError("UPDATE data cannot be empty")
+
+        set_parts = []
+        params = []
+        for col, val in data.items():
+            SafeQueryBuilder.validate_sql_identifier(col)
+            set_parts.append(f"{col} = %s")
+            params.append(val)
+
+        params.append(None)
+
+        return f"UPDATE {safe_table} SET {', '.join(set_parts)} WHERE {safe_condition}", params
+
+    @staticmethod
+    def build_delete(table: str, condition: str) -> Tuple[str, list]:
+        """Build a parameterized DELETE query.
+
+        Args:
+            table: Table name (will be validated)
+            condition: WHERE condition (will be validated)
+
+        Returns:
+            Tuple of (sql_string, parameters_list)
+        """
+        safe_table = SafeQueryBuilder.validate_sql_identifier(table)
+        safe_condition = SafeQueryBuilder.validate_condition(condition)
+
+        return f"DELETE FROM {safe_table} WHERE {safe_condition}", []
 
 from ...models.schemas import TripleQueryRequest
 from ..flyembed import get_flyembed_service
@@ -278,55 +452,153 @@ function toXml(data) {
         "db_operation": {
             "id": "db_operation",
             "name": "Database Operation",
-            "description": "Read or write from database",
+            "description": "Read or write from database using safe parameterized queries",
             "keywords": ["database", "db", "sql", "query", "store", "save", "postgres", "mongodb"],
             "python": {
                 "base_code": '''import os
 import re
 import psycopg2
 
-ALLOWED_TABLE_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+SAFE_IDENTIFIER_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+DANGEROUS_KEYWORDS = {
+    'DROP', 'DELETE', 'INSERT', 'UPDATE', 'TRUNCATE',
+    'ALTER', 'CREATE', 'GRANT', 'REVOKE', 'EXEC', 'EXECUTE',
+}
+CONDITION_PATTERN = re.compile(
+    r'^[a-zA-Z_][a-zA-Z0-9_]*\\s*(=|!=|>|<|>=|<=|LIKE|ILIKE)\\s*\\?$'
+)
 
-def validate_table_name(table: str) -> str:
-    """Validate table name to prevent SQL injection."""
-    if not ALLOWED_TABLE_PATTERN.match(table):
-        raise ValueError(f"Invalid table name: {table}")
-    return table
+def validate_sql_identifier(name: str, allow_wildcard: bool = False) -> str:
+    """Validate SQL identifier to prevent injection.
+
+    Args:
+        name: The identifier to validate
+        allow_wildcard: Whether to allow '*'
+
+    Returns:
+        The validated identifier
+
+    Raises:
+        ValueError: If identifier is invalid or dangerous
+    """
+    if not name:
+        raise ValueError("Identifier cannot be empty")
+
+    if allow_wildcard and name == "*":
+        return name
+
+    if not SAFE_IDENTIFIER_PATTERN.match(name):
+        raise ValueError(f"Invalid identifier: {name}")
+
+    if name.upper() in DANGEROUS_KEYWORDS:
+        raise ValueError(f"Forbidden identifier: {name}")
+
+    for dangerous in ['--', '/*', '*/', '#']:
+        if dangerous in name:
+            raise ValueError(f"Invalid identifier: {name}")
+
+    return name
+
+def validate_condition(condition: str) -> str:
+    """Validate a parameterized WHERE condition.
+
+    Only allows simple single-parameter conditions like 'column = ?'.
+
+    Args:
+        condition: The condition string to validate
+
+    Returns:
+        The validated condition
+
+    Raises:
+        ValueError: If the condition format is invalid
+    """
+    if not condition:
+        raise ValueError("Condition cannot be empty")
+
+    stripped = condition.strip()
+    if not CONDITION_PATTERN.match(stripped):
+        raise ValueError(f"Invalid condition format: {condition}")
+
+    return stripped
+
+def build_select(table: str, condition: str = None) -> tuple:
+    """Build a safe SELECT query."""
+    safe_table = validate_sql_identifier(table)
+    if condition:
+        safe_condition = validate_condition(condition)
+        return f"SELECT * FROM {safe_table} WHERE {safe_condition}", []
+    return f"SELECT * FROM {safe_table}", []
+
+def build_insert(table: str, data: dict) -> tuple:
+    """Build a safe INSERT query."""
+    safe_table = validate_sql_identifier(table)
+    if not data:
+        raise ValueError("INSERT data cannot be empty")
+
+    columns = list(data.keys())
+    for col in columns:
+        validate_sql_identifier(col)
+
+    placeholders = ", ".join(["%s"] * len(columns))
+    safe_columns = ", ".join(columns)
+    values = list(data.values())
+
+    return f"INSERT INTO {safe_table} ({safe_columns}) VALUES ({placeholders})", values
+
+def build_update(table: str, data: dict, condition: str) -> tuple:
+    """Build a safe UPDATE query."""
+    safe_table = validate_sql_identifier(table)
+    safe_condition = validate_condition(condition)
+
+    if not data:
+        raise ValueError("UPDATE data cannot be empty")
+
+    set_parts = []
+    params = []
+    for col, val in data.items():
+        validate_sql_identifier(col)
+        set_parts.append(f"{col} = %s")
+        params.append(val)
+
+    params.append(None)
+
+    return f"UPDATE {safe_table} SET {', '.join(set_parts)} WHERE {safe_condition}", params
+
+def build_delete(table: str, condition: str) -> tuple:
+    """Build a safe DELETE query."""
+    safe_table = validate_sql_identifier(table)
+    safe_condition = validate_condition(condition)
+
+    return f"DELETE FROM {safe_table} WHERE {safe_condition}", []
 
 def handler(input):
-    """Perform database operation with parameterized queries."""
+    """Perform database operation with safe parameterized queries."""
     operation = input.get("operation")
     table = input.get("table")
     data = input.get("data", {})
     condition = input.get("condition")
-    condition_params = input.get("condition_params", [])
-
-    # Validate table name to prevent SQL injection
-    table = validate_table_name(table)
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         with conn.cursor() as cur:
             if operation == "SELECT":
-                if condition:
-                    cur.execute(f"SELECT * FROM {table} WHERE {condition}", condition_params)
-                else:
-                    cur.execute(f"SELECT * FROM {table}")
+                sql, params = build_select(table, condition)
+                cur.execute(sql, params)
                 result = cur.fetchall()
             elif operation == "INSERT":
-                columns = ", ".join(data.keys())
-                placeholders = ", ".join(["%s"] * len(data))
-                cur.execute(f"INSERT INTO {table} ({columns}) VALUES ({placeholders})", list(data.values()))
+                sql, params = build_insert(table, data)
+                cur.execute(sql, params)
                 conn.commit()
                 result = {"inserted": cur.rowcount}
             elif operation == "UPDATE":
-                set_clause = ", ".join([f"{k} = %s" for k in data.keys()])
-                params = list(data.values()) + condition_params
-                cur.execute(f"UPDATE {table} SET {set_clause} WHERE {condition}", params)
+                sql, params = build_update(table, data, condition)
+                cur.execute(sql, params)
                 conn.commit()
                 result = {"updated": cur.rowcount}
             elif operation == "DELETE":
-                cur.execute(f"DELETE FROM {table} WHERE {condition}", condition_params)
+                sql, params = build_delete(table, condition)
+                cur.execute(sql, params)
                 conn.commit()
                 result = {"deleted": cur.rowcount}
             else:
@@ -334,7 +606,7 @@ def handler(input):
         return {"result": result}
     finally:
         conn.close()''',
-                "fill_prompt": "Configure the database table name, column mappings, SQL operation type (SELECT, INSERT, UPDATE, DELETE), and WHERE clause conditions for your use case. Always use condition_params for any user-provided values in WHERE clauses."
+                "fill_prompt": "Configure the database table name, column mappings, SQL operation type (SELECT, INSERT, UPDATE, DELETE), and WHERE clause conditions for your use case. Conditions must use parameterized format like 'id = ?' or 'name LIKE ?'."
             },
             "nodejs": {
                 "base_code": '''const { Pool } = require('pg');
@@ -343,30 +615,60 @@ const pool = new Pool({
     connectionString: process.env.DATABASE_URL
 });
 
-const ALLOWED_TABLE_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const SAFE_IDENTIFIER_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const DANGEROUS_KEYWORDS = new Set([
+    'DROP', 'DELETE', 'INSERT', 'UPDATE', 'TRUNCATE',
+    'ALTER', 'CREATE', 'GRANT', 'REVOKE', 'EXEC', 'EXECUTE',
+]);
+const CONDITION_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*\\s*(=|!=|>|<|>=|<=|LIKE|ILIKE)\\s*\\?$/;
 
-function validateTableName(table) {
-    if (!ALLOWED_TABLE_PATTERN.test(table)) {
-        throw new Error(`Invalid table name: ${table}`);
+function validateSqlIdentifier(name, allowWildcard = false) {
+    if (!name) {
+        throw new Error("Identifier cannot be empty");
     }
-    return table;
+
+    if (allowWildcard && name === "*") {
+        return name;
+    }
+
+    if (!SAFE_IDENTIFIER_PATTERN.test(name)) {
+        throw new Error(`Invalid identifier: ${name}`);
+    }
+
+    if (DANGEROUS_KEYWORDS.has(name.toUpperCase())) {
+        throw new Error(`Forbidden identifier: ${name}`);
+    }
+
+    return name;
+}
+
+function validateCondition(condition) {
+    if (!condition) {
+        throw new Error("Condition cannot be empty");
+    }
+
+    const stripped = condition.trim();
+    if (!CONDITION_PATTERN.test(stripped)) {
+        throw new Error(`Invalid condition format: ${condition}`);
+    }
+
+    return stripped;
 }
 
 exports.handler = async (input) => {
-    const { operation, table, data = {}, condition, conditionParams = [] } = input;
-
-    // Validate table name to prevent SQL injection
-    const safeTable = validateTableName(table);
+    const { operation, table, data = {}, condition } = input;
 
     const client = await pool.connect();
     try {
         let result;
         switch (operation) {
-            case 'SELECT':
+            case 'SELECT': {
+                const safeTable = validateSqlIdentifier(table);
                 if (condition) {
+                    const safeCondition = validateCondition(condition);
                     const selectResult = await client.query(
-                        `SELECT * FROM ${safeTable} WHERE ${condition}`,
-                        conditionParams
+                        `SELECT * FROM ${safeTable} WHERE ${safeCondition}`,
+                        []
                     );
                     result = selectResult.rows;
                 } else {
@@ -374,31 +676,59 @@ exports.handler = async (input) => {
                     result = selectResult.rows;
                 }
                 break;
+            }
             case 'INSERT': {
-                const columns = Object.keys(data).join(', ');
-                const placeholders = Object.keys(data).map((_, i) => `$${i + 1}`).join(', ');
+                const safeTable = validateSqlIdentifier(table);
+                if (!data || Object.keys(data).length === 0) {
+                    throw new Error("INSERT data cannot be empty");
+                }
+
+                const columns = Object.keys(data);
+                columns.forEach(col => validateSqlIdentifier(col));
+
+                const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
                 const values = Object.values(data);
+
                 await client.query(
-                    `INSERT INTO ${safeTable} (${columns}) VALUES (${placeholders})`,
+                    `INSERT INTO ${safeTable} (${columns.join(', ')}) VALUES (${placeholders})`,
                     values
                 );
                 result = { inserted: client.rowCount };
                 break;
             }
             case 'UPDATE': {
-                const setClause = Object.keys(data).map((k, i) => `${k} = $${i + 1}`).join(', ');
-                const values = [...Object.values(data), ...conditionParams];
+                const safeTable = validateSqlIdentifier(table);
+                const safeCondition = validateCondition(condition);
+
+                if (!data || Object.keys(data).length === 0) {
+                    throw new Error("UPDATE data cannot be empty");
+                }
+
+                const setClause = Object.keys(data).map((k, i) => {
+                    validateSqlIdentifier(k);
+                    return `${k} = $${i + 1}`;
+                }).join(', ');
+
+                const values = [...Object.values(data)];
+
                 await client.query(
-                    `UPDATE ${safeTable} SET ${setClause} WHERE ${condition}`,
+                    `UPDATE ${safeTable} SET ${setClause} WHERE ${safeCondition}`,
                     values
                 );
                 result = { updated: client.rowCount };
                 break;
             }
-            case 'DELETE':
-                await client.query(`DELETE FROM ${safeTable} WHERE ${condition}`, conditionParams);
+            case 'DELETE': {
+                const safeTable = validateSqlIdentifier(table);
+                const safeCondition = validateCondition(condition);
+
+                await client.query(
+                    `DELETE FROM ${safeTable} WHERE ${safeCondition}`,
+                    []
+                );
                 result = { deleted: client.rowCount };
                 break;
+            }
             default:
                 result = { error: 'Unknown operation' };
         }
@@ -407,7 +737,7 @@ exports.handler = async (input) => {
         client.release();
     }
 };''',
-                "fill_prompt": "Fill in the specific SQL operations, table names, and parameter handling. Always use conditionParams for any user-provided values in WHERE clauses."
+                "fill_prompt": "Fill in the specific SQL operations, table names, and parameter handling. Conditions must use parameterized format like 'id = ?' or 'name LIKE ?'."
             }
         },
         "auth_handler": {

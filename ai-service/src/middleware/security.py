@@ -47,19 +47,33 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
     """Middleware to enforce maximum request body size.
 
     Prevents memory exhaustion from oversized payloads.
+    Supports both content-length header checking and streaming body reading.
     """
 
     MAX_BODY_SIZE = 10 * 1024 * 1024
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        from starlette.responses import JSONResponse
+
         content_length = request.headers.get("content-length")
 
-        if content_length and int(content_length) > self.MAX_BODY_SIZE:
-            from starlette.responses import JSONResponse
-            return JSONResponse(
-                status_code=413,
-                content={"detail": "Request body too large"},
-            )
+        if content_length:
+            try:
+                if int(content_length) > self.MAX_BODY_SIZE:
+                    return JSONResponse(
+                        status_code=413,
+                        content={"detail": "Request body too large"},
+                    )
+            except ValueError:
+                pass
+
+        if request.method in ("POST", "PUT", "PATCH"):
+            body = await request.body()
+            if len(body) > self.MAX_BODY_SIZE:
+                return JSONResponse(
+                    status_code=413,
+                    content={"detail": "Request body too large"},
+                )
 
         return await call_next(request)
 

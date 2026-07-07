@@ -35,8 +35,6 @@ dependencies = [
     "anthropic>=0.92.0",
     "python-dotenv>=1.2.2",
     "asyncpg>=0.31.0",
-    "grpcio>=1.80.0",
-    "grpcio-tools>=1.80.0",
     "prometheus-client>=0.24.1",
     "cryptography>=46.0.7",
     "psycopg2-binary>=2.9.12",
@@ -56,6 +54,8 @@ dev = [
     "ruff>=0.15.9",
     "mypy>=1.20.0",
     "pre-commit>=4.5.1",
+    "testcontainers[redis]>=4.0.0",
+    "testcontainers[postgres]>=4.0.0",
 ]
 # Native SDKs for optimal provider performance (recommended)
 # Install with: pip install .[providers] or uv sync --extra providers
@@ -130,7 +130,6 @@ ignore = [
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/api",
-    "src/grpc",
     "src/integrations",
     "src/middleware",
     "src/models",

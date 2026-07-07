@@ -1056,3 +1056,41 @@ async def get_model_catalog():
     from ..providers.model_registry import CURATED_MODELS
 
     return {"models": CURATED_MODELS}
+
+
+@router.get("/health/cache_warming_status")
+async def cache_warming_status():
+    """Get cache warming status.
+
+    Returns the current status of the cache warming service including:
+    - Whether warming is running, completed, or idle
+    - Last run timestamp
+    - Keys loaded per service
+    - Any errors encountered
+    """
+    from fastapi import Request
+
+    request_state = getattr(Request, "_state", None)
+
+    try:
+        from ..main import app
+        warming_service = getattr(app.state, "cache_warming", None)
+
+        if not warming_service:
+            return {
+                "status": "not_initialized",
+                "message": "Cache warming service not initialized",
+            }
+
+        return {
+            "status": warming_service.status,
+            "last_run": warming_service.last_run.isoformat() if warming_service.last_run else None,
+            "last_result": warming_service.last_result,
+        }
+
+    except Exception as e:
+        logger.warning(f"Cache warming status check failed: {e}")
+        return {
+            "status": "error",
+            "message": str(e),
+        }

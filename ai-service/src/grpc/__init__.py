@@ -1,10 +1,8 @@
-"""gRPC service definitions for FlyMind.
+"""gRPC service directory (deprecated).
 
-This module contains proto-generated code stubs for future
-high-performance routing via gRPC.
+The FlyMind gRPC server was removed in favor of HTTP/REST APIs.
+The ML services (cost anomaly, prewarming, routing, recommendations)
+are available via the HTTP API routes in src/api/routes_ml.py.
 """
-
-# gRPC stubs will be generated from flymind.proto
-# Currently using HTTP API - gRPC is optional for Phase 2
 
 __all__ = []
