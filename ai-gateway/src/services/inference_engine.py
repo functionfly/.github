@@ -302,6 +302,8 @@ class OpenAICompatibleBackend(InferenceBackendBase):
                 timeout=httpx.Timeout(
                     connect=10.0,
                     read=self._settings.REQUEST_TIMEOUT_SECONDS,
+                    write=10.0,
+                    pool=10.0,
                 ),
             )
             response.raise_for_status()
@@ -744,7 +746,6 @@ class InferenceEngine:
         # Provider multipliers
         multipliers = {
             ModelProvider.OPENAI: 1.0,
-            ModelProvider.ANTHROPIC: 1.5,
             ModelProvider.RUNPOD: 0.8,
             ModelProvider.ONNX: 0.1,
             ModelProvider.OPENROUTER: 1.2,

@@ -1,0 +1,24 @@
+services:
+  infisical:
+    image: infisical/infisical:latest
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - staging-data:/app/backend/data
+    environment:
+      - AUTH_SECRET=487305a312aee0040da393891ee1df77e9932b594ab4226c63898423d415cdb6
+      - ENCRYPTION_KEY=3f8dc6065f888e296039e5a8775aaee2
+      - API_URL=https://staging-secrets.functionfly.com
+      - SITE_URL=https://staging-secrets.functionfly.com
+      - DB_CONNECTION_URI=postgresql://postgres:postgres@127.0.0.1:5432/infisical_staging
+      - REDIS_URL=redis://127.0.0.1:6379
+      - SMTP_HOST=smtp.resend.com
+      - SMTP_USERNAME=resend
+      - SMTP_PASSWORD=re_9yA5efjf_89k42gQBAKxBFA4YEnvWUZnv
+      - SMTP_PORT=587
+      - SMTP_FROM_ADDRESS=noreply@functionfly.com
+      - SMTP_FROM_NAME=FunctionFly Secrets
+
+volumes:
+  staging-data:
+    driver: local

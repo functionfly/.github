@@ -1,14 +1,13 @@
 # Umami Analytics - Self-hosted, GDPR-compliant web analytics
 # Usage: docker compose -f docker-compose.analytics.yml up -d
-# Access: http://localhost:3002 (default admin: umami / umami)
+# Access: http://localhost:3000 (default admin: umami / umami)
 
 services:
   umami:
     image: ghcr.io/umami-software/umami:postgresql-latest
-    ports:
-      - "3003:3000"
+    network_mode: host
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/umami?sslmode=disable
+      - DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/umami?sslmode=disable
       - DATABASE_TYPE=postgresql
       - APP_SECRET=${UMAMI_APP_SECRET:-change-me-in-production}
     volumes:

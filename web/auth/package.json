@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "description": "FunctionFly™ Auth Service",
   "scripts": {
+    "predev": "rm -rf node_modules/.vite 2>/dev/null || true",
     "dev": "bun run astro dev --port 4324",
     "start": "bun run astro dev",
     "build": "bun run astro build",

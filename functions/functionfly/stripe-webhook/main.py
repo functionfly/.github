@@ -135,15 +135,24 @@ def verify_signature(secret, payload, header, tolerance=WEBHOOK_TOLERANCE_SECOND
 
 
 class _MemoryCache:
-    """In-process LRU-ish cache. Replace with platform state in production."""
+    """In-process TTL cache with lazy cleanup. Replace with platform state in production."""
+
+    MAX_ENTRIES = 100_000
 
     def __init__(self, ttl):
         self.ttl = ttl
-        self.store = {}
+        self.store: dict[str, float] = {}
+
+    def _clean_expired(self):
+        if self.ttl <= 0 or len(self.store) < self.MAX_ENTRIES:
+            return
+        now = time.time()
+        self.store = {k: v for k, v in self.store.items() if now - v <= self.ttl}
 
     def seen(self, key):
         if self.ttl <= 0:
             return False
+        self._clean_expired()
         entry = self.store.get(key)
         if entry is None:
             return False
@@ -153,6 +162,9 @@ class _MemoryCache:
         return True
 
     def remember(self, key):
+        if self.ttl <= 0:
+            return
+        self._clean_expired()
         self.store[key] = time.time()
 
 
@@ -304,7 +316,14 @@ def dispatch(event):
 # ─── Entry point ─────────────────────────────────────────────────────────────
 
 
-_idempotency = build_idempotency_store()
+_idempotency: _MemoryCache | _PlatformCache | None = None
+
+
+def _get_idempotency_store():
+    global _idempotency
+    if _idempotency is None:
+        _idempotency = build_idempotency_store()
+    return _idempotency
 
 
 def handler(event):
@@ -364,12 +383,13 @@ def handler(event):
         if not isinstance(event_type, str) or not event_type:
             return fail("event missing type")
 
-        if _idempotency.seen(event_id):
+        store = _get_idempotency_store()
+        if store.seen(event_id):
             log("info", "duplicate event ignored", event_id=event_id, event_type=event_type)
             return {"ok": True, "status": "duplicate", "event_id": event_id, "event_type": event_type, "handled": False}
 
         handled = dispatch(parsed)
-        _idempotency.remember(event_id)
+        store.remember(event_id)
 
         return {
             "ok": True,

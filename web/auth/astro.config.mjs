@@ -76,5 +76,13 @@ export default defineConfig({
       cssMinify: true,
       minify: "esbuild",
     },
+    optimizeDeps: {
+      include: [
+        "react",
+        "react-dom",
+        "clsx",
+        "tailwind-merge",
+      ],
+    },
   },
 });

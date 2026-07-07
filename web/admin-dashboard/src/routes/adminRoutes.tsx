@@ -138,6 +138,9 @@ const AdminCommunityRulesPage = lazy(() =>
 const AdminFounderVotesPage = lazy(() =>
   import('@/pages/AdminFounderVotesPage').then((m) => ({ default: m.AdminFounderVotesPage }))
 );
+const AdminSlackPage = lazy(() =>
+  import('@/pages/AdminSlackPage').then((m) => ({ default: m.AdminSlackPage }))
+);
 
 interface AdminRouteConfig {
   path: string;
@@ -191,6 +194,7 @@ const ADMIN_ROUTES: AdminRouteConfig[] = [
   { path: 'siem', component: AdminSIEMPage, permission: 'system:write', featureName: 'SIEM' },
   { path: 'community-rules', component: AdminCommunityRulesPage, permission: 'system:write', featureName: 'Community Rules' },
   { path: 'founders/votes', component: AdminFounderVotesPage, permission: 'system:write', featureName: 'Founder Votes' },
+  { path: 'integrations/slack', component: AdminSlackPage, permission: 'system:write', featureName: 'Slack' },
 ];
 
 export function renderAdminRoutes(): ReactNode[] {

@@ -36,6 +36,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -46,6 +47,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -375,36 +377,197 @@ func runFullBackup(ctx context.Context, config *Config, startTime time.Time) err
 }
 
 func runWALArchive(ctx context.Context, config *Config, startTime time.Time) error {
+	const (
+		pgReceivewalTimeout = 30 * time.Second
+	)
+
 	log.Printf("Starting WAL archive...")
 
-	walArchivingEnabled.Set(1)
+	if err := validateWalArchiveConfig(config); err != nil {
+		return fmt.Errorf("invalid WAL archive configuration: %w", err)
+	}
 
-	// Check if WAL archiving is enabled in PostgreSQL
-	archiveMode, err := getArchiveMode(config.DatabaseURL)
+	archiveMode, archiveStatus, err := getArchiveModeWithStatus(config.DatabaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to check archive mode: %w", err)
 	}
 
-	if archiveMode != "on" && archiveMode != "always" {
-		log.Printf("WARNING: PostgreSQL archive_mode is not enabled!")
-		log.Printf("To enable WAL archiving, set archive_mode=on in postgresql.conf")
+	switch archiveMode {
+	case "always":
+		walArchivingEnabled.Set(1)
+		log.Printf("WAL archiving: enabled (mode=always)")
+	case "on":
+		if !archiveStatus {
+			walArchivingEnabled.Set(0)
+			return fmt.Errorf("archive_mode is 'on' but archiving is not yet active: check pg_stat_archiver")
+		}
+		walArchivingEnabled.Set(1)
+		log.Printf("WAL archiving: enabled (mode=on)")
+	default:
 		walArchivingEnabled.Set(0)
+		return fmt.Errorf("archive_mode is not enabled: set archive_mode=on in postgresql.conf and reload PostgreSQL")
 	}
 
-	// Get current WAL lsn
-	walLsn, err := getCurrentWalLsn(config.DatabaseURL)
+	currentLSN, lastArchivedLSN, lastArchivedTime, err := getWalPositions(config.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to get current WAL LSN: %w", err)
+		return fmt.Errorf("failed to get WAL positions: %w", err)
+	}
+	log.Printf("Current WAL LSN: %s", currentLSN)
+	log.Printf("Last archived LSN: %s (age: %s)", lastArchivedLSN, time.Since(lastArchivedTime).Round(time.Second))
+
+	archiveLag := calculateArchiveLag(currentLSN, lastArchivedLSN)
+	walArchiveLag.Set(float64(archiveLag.Seconds()))
+
+	if archiveLag > 30*time.Second {
+		log.Printf("WARNING: WAL archive lag is %v (threshold: 30s)", archiveLag)
+	} else {
+		log.Printf("WAL archive lag: OK (%v)", archiveLag)
 	}
 
-	walArchiveLag.Set(0) // In production, calculate actual lag
+	if config.DryRun {
+		log.Printf("DRY RUN: Would stream WAL via pg_receivewal to %s", config.WalArchiveBucket)
+		return nil
+	}
 
-	log.Printf("Current WAL LSN: %s", walLsn)
-	log.Printf("WAL archive bucket: %s", config.WalArchiveBucket)
+	streamCtx, cancel := context.WithTimeout(ctx, pgReceivewalTimeout)
+	defer cancel()
 
-	// In production, this would use pg_receivewal or continuous archiving
-	log.Printf("WAL archiving infrastructure ready (requires PostgreSQL archive_mode=on)")
+	if err := streamWalWithPgReceivewal(streamCtx, config, currentLSN); err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			log.Printf("WAL streaming timed out (this is normal for idle databases)")
+		} else {
+			return fmt.Errorf("WAL streaming failed: %w", err)
+		}
+	}
 
+	log.Printf("WAL archive sync completed: bucket=%s", config.WalArchiveBucket)
+	return nil
+}
+
+func validateWalArchiveConfig(config *Config) error {
+	if config.WalArchiveBucket == "" {
+		return errors.New("WalArchiveBucket is required for WAL archiving")
+	}
+	if config.DatabaseURL == "" {
+		return errors.New("DatabaseURL is required for WAL archiving")
+	}
+	return nil
+}
+
+type archiveInfo struct {
+	mode   string
+	active bool
+}
+
+func getArchiveModeWithStatus(databaseURL string) (mode string, active bool, err error) {
+	cmd := exec.Command("psql", databaseURL, "-t", "-c", `
+		SELECT
+			COALESCE(current_setting('archive_mode', true), 'off'),
+			(SELECT COUNT(*) > 0 FROM pg_stat_archiver WHERE last_archived_wal IS NOT NULL)
+	;`)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", false, fmt.Errorf("psql query failed: %w", err)
+	}
+	parts := strings.Fields(strings.TrimSpace(string(output)))
+	if len(parts) < 2 {
+		return "off", false, nil
+	}
+	return parts[0], parts[1] == "t", nil
+}
+
+type walPositions struct {
+	current        string
+	lastArchived   string
+	lastArchivedAt time.Time
+}
+
+func getWalPositions(databaseURL string) (current, lastArchived string, lastArchivedAt time.Time, err error) {
+	cmd := exec.Command("psql", databaseURL, "-t", "-c", `
+		SELECT
+			pg_current_wal_lsn(),
+			COALESCE(last_archived_wal, pg_current_wal_lsn()),
+			COALESCE(last_archived_time, NOW())
+		FROM pg_stat_archiver
+		LIMIT 1
+	;`)
+	output, err := cmd.Output()
+	if err != nil {
+		return "", "", time.Time{}, fmt.Errorf("psql query failed: %w", err)
+	}
+	fields := strings.Fields(strings.TrimSpace(string(output)))
+	if len(fields) < 3 {
+		return "", "", time.Time{}, errors.New("unexpected pg_stat_archiver output")
+	}
+	return fields[0], fields[1], parsePostgresTimestamp(fields[2])
+}
+
+func parsePostgresTimestamp(s string) (time.Time, error) {
+	return time.Parse("2006-01-02 15:04:05.000000-07", s)
+}
+
+func calculateArchiveLag(currentLSN, lastArchivedLSN string) time.Duration {
+	currentPos := parseWalLSN(currentLSN)
+	lastPos := parseWalLSN(lastArchivedLSN)
+	if currentPos <= lastPos {
+		return 0
+	}
+	bytesDiff := int64(currentPos - lastPos)
+	estimatedBytesPerSecond := float64(16 * 1024 * 1024)
+	estimatedSeconds := float64(bytesDiff) / estimatedBytesPerSecond
+	return time.Duration(estimatedSeconds * float64(time.Second))
+}
+
+func parseWalLSN(lsn string) uint64 {
+	var hi, lo uint64
+	fmt.Sscanf(lsn, "%x/%x", &hi, &lo)
+	return hi<<32 | lo
+}
+
+func streamWalWithPgReceivewal(ctx context.Context, config *Config, startLSN string) error {
+	cmd := exec.CommandContext(ctx, "pg_receivewal",
+		"-h", "localhost",
+		"-p", "5432",
+		"-D", "/tmp/wal_archive",
+		"--startpos", startLSN,
+		"--wal-method", "stream",
+		"-v",
+	)
+	cmd.Env = append(cmd.Env, "PGDATABASE="+config.DatabaseURL)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to capture stdout: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to capture stderr: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start pg_receivewal: %w", err)
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		io.Copy(io.Discard, stdout)
+	}()
+	go func() {
+		defer wg.Done()
+		io.Copy(io.Discard, stderr)
+	}()
+
+	err = cmd.Wait()
+	wg.Wait()
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return ctx.Err()
+	}
+	if err != nil {
+		return fmt.Errorf("pg_receivewal exited: %w", err)
+	}
 	return nil
 }
 

@@ -6,7 +6,13 @@ FROM rust:1.96.1-bookworm AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
-        gnupg
+        gnupg \
+        wget \
+    && wget -qO - https://apt.wasmedge.org/wasmedge.pub | apt-key add - \
+    && echo "deb [arch=amd64] https://apt.wasmedge.org bookworm latest" > /etc/apt/sources.list.d/wasmedge.list \
+    && apt-get update \
+    && apt-get install -y wasmedge_0.14.0 wasmedge-dev_0.14.0 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /build
 

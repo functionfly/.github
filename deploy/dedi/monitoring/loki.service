@@ -1,0 +1,13 @@
+[Unit]
+Description=Loki Log Aggregator
+After=network.target
+
+[Service]
+User=loki
+Group=loki
+ExecStart=/usr/local/bin/loki -config.file=/etc/loki/loki.yml
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+server:
+  http_listen_port: 9080
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://localhost:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: system
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: system
+          __path__: /var/log/**/*.log
+
+  - job_name: orchestrator
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: orchestrator
+          __path__: /opt/functionfly/*.log

@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/functionfly/functionfly/internal/payment"
 	"github.com/functionfly/functionfly/internal/storage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
@@ -791,8 +792,26 @@ func (a *AuthService) ChangeUsername(ctx context.Context, userID uuid.UUID, req 
 		// Paid early change
 		feePaidCents = eligibility.EarlyChangeFeeCents
 		wasEarlyChange = true
-		// Note: In production, verify the Stripe payment here
-		// For now, we assume the payment is valid if provided
+
+		// Verify the Stripe payment
+		if req.StripePaymentID == "" {
+			return nil, fmt.Errorf("stripe_payment_id is required when paying early change fee")
+		}
+		pi, err := payment.VerifyPaymentIntent(ctx, req.StripePaymentID)
+		if err != nil {
+			return nil, fmt.Errorf("payment verification failed: %w", err)
+		}
+		// Verify the amount matches the expected fee (with small tolerance for rounding)
+		amountDiff := int(pi.AmountCents) - feePaidCents
+		if amountDiff < 0 {
+			amountDiff = -amountDiff
+		}
+		if amountDiff > 1 {
+			return nil, fmt.Errorf("payment amount mismatch: expected %d cents, got %d cents", feePaidCents, pi.AmountCents)
+		}
+		if pi.Currency != "usd" {
+			return nil, fmt.Errorf("payment must be in USD, got %s", pi.Currency)
+		}
 	} else {
 		// Not eligible
 		if eligibility.NextFreeChangeDate != nil {

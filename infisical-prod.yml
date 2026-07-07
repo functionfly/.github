@@ -1,0 +1,19 @@
+services:
+  infisical:
+    image: infisical/infisical:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8082:80"
+      - "127.0.0.1:8444:443"
+    volumes:
+      - prod-data:/app/backend/data
+    environment:
+      - ENCRYPTION_KEY=c092a845fa08c463a749a26fc114c398e837d8ec1386ce82048418ef586ceb56
+      - API_URL=https://secrets.functionfly.com
+      - SITE_URL=https://secrets.functionfly.com
+      - DATABASE_URL=postgresql://postgres:postgres@10.0.0.51:5432/infisical_prod
+      - REDIS_URL=redis://10.0.0.51:6379
+
+volumes:
+  prod-data:
+    driver: local

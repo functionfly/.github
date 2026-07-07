@@ -8,8 +8,8 @@ license = "MIT"
 
 [features]
 default = ["wasm-sandbox", "secure-execution", "resource-limits"]
-secure-execution = ["dep:seccomp", "dep:landlock"]
 wasm-sandbox = ["dep:wasmedge-sdk"]
+secure-execution = ["dep:seccomp", "dep:landlock"]
 resource-limits = []
 nats-client = ["dep:async-nats", "dep:bytes"]
 

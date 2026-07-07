@@ -45,6 +45,7 @@ const (
 	ChannelInApp   = "in_app"
 	ChannelWebhook = "webhook"
 	ChannelPush    = "push"
+	ChannelSlack   = "slack"
 )
 
 // Categories

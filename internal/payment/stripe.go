@@ -13,6 +13,15 @@ import (
 	"github.com/stripe/stripe-go/v83/paymentintent"
 )
 
+// PaymentIntentResult holds the result of verifying a PaymentIntent
+type PaymentIntentResult struct {
+	ID                string
+	AmountCents       int64
+	Currency          string
+	Status            string
+	Metadata          map[string]string
+}
+
 var (
 	stripeKeyOnce sync.Once
 	stripeKeyVal  string
@@ -89,6 +98,40 @@ func Charge(ctx context.Context, paymentMethodID string, amountUSD float64, meta
 	default:
 		return nil, fmt.Errorf("unexpected payment status: %s", pi.Status)
 	}
+}
+
+// VerifyPaymentIntent retrieves and verifies a PaymentIntent by ID.
+// Returns the payment intent details if valid and succeeded, or an error if invalid/failed.
+func VerifyPaymentIntent(ctx context.Context, paymentIntentID string) (*PaymentIntentResult, error) {
+	if stripeKey() == "" {
+		return nil, fmt.Errorf("STRIPE_SECRET_KEY is not set")
+	}
+	if paymentIntentID == "" {
+		return nil, fmt.Errorf("payment_intent_id is required")
+	}
+
+	params := &stripe.PaymentIntentParams{}
+	pi, err := paymentintent.Get(paymentIntentID, params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve payment intent: %w", err)
+	}
+
+	if pi.Status != stripe.PaymentIntentStatusSucceeded {
+		return nil, fmt.Errorf("payment intent not successful: status=%s", pi.Status)
+	}
+
+	result := &PaymentIntentResult{
+		ID:          pi.ID,
+		AmountCents: pi.Amount,
+		Currency:    string(pi.Currency),
+		Status:      string(pi.Status),
+		Metadata:    make(map[string]string),
+	}
+	for k, v := range pi.Metadata {
+		result.Metadata[k] = v
+	}
+
+	return result, nil
 }
 
 // IsConfigured reports whether Stripe is configured (secret key set).
