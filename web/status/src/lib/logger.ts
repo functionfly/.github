@@ -39,7 +39,7 @@ function formatTime(): string {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${now.getMilliseconds().toString().padStart(3, '0')}`;
 }
 
-function styledLog(level: LogLevel, consoleFn: typeof console.log, badge: string, badgeStyle: string, msgStyle: string, message: string, args: unknown[]) {
+function styledLog(_level: LogLevel, consoleFn: typeof console.log, badge: string, badgeStyle: string, msgStyle: string, message: string, args: unknown[]) {
   const time = formatTime();
   if (args.length === 0) {
     consoleFn(`%c${badge}%c ${time} %c${message}`, `${STYLES.base} ${badgeStyle}`, STYLES.timestamp, msgStyle);

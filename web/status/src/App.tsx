@@ -1,4 +1,5 @@
 import { PageViewTracker } from '@/components/PageViewTracker';
+import { ReducedMotionGate } from '@/components/containment';
 import HistoryPage from '@/pages/HistoryPage';
 import IncidentDetailPage from '@/pages/IncidentDetailPage';
 import StatusPage from '@/pages/StatusPage';
@@ -8,8 +9,8 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30000, // 30 seconds
-      refetchInterval: 60000, // 1 minute
+      staleTime: 30000,
+      refetchInterval: 60000,
     },
   },
 });
@@ -17,14 +18,16 @@ const queryClient = new QueryClient({
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <PageViewTracker />
-        <Routes>
-          <Route path="/" element={<StatusPage />} />
-          <Route path="/incidents/:id" element={<IncidentDetailPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-        </Routes>
-      </BrowserRouter>
+      <ReducedMotionGate>
+        <BrowserRouter>
+          <PageViewTracker />
+          <Routes>
+            <Route path="/" element={<StatusPage />} />
+            <Route path="/incidents/:id" element={<IncidentDetailPage />} />
+            <Route path="/history" element={<HistoryPage />} />
+          </Routes>
+        </BrowserRouter>
+      </ReducedMotionGate>
     </QueryClientProvider>
   );
 }
