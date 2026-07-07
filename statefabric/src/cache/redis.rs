@@ -14,7 +14,7 @@ use redis::{AsyncCommands, Client, aio::ConnectionManager, RedisResult};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Redis cache configuration
+/// Redis cache configuration (security-hardened)
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
     /// Redis connection URL
@@ -27,16 +27,62 @@ pub struct RedisConfig {
     pub max_connections: u32,
     /// Key prefix for namespacing
     pub key_prefix: String,
+    /// Password for Redis AUTH (from STATEFABRIC_REDIS_PASSWORD env)
+    pub password: Option<String>,
+    /// TLS enabled for secure connections
+    pub use_tls: bool,
 }
 
 impl Default for RedisConfig {
     fn default() -> Self {
+        Self::from_env()
+    }
+}
+
+impl RedisConfig {
+    /// Load configuration from environment variables
+    pub fn from_env() -> Self {
+        let base_url = std::env::var("STATEFABRIC_REDIS_URL")
+            .unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
+
+        let password = std::env::var("STATEFABRIC_REDIS_PASSWORD").ok();
+        // SECURITY: TLS enabled by default for secure connections
+        // Set STATEFABRIC_REDIS_TLS=false only for local development with localhost
+        let use_tls = std::env::var("STATEFABRIC_REDIS_TLS")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse()
+            .unwrap_or(true);
+
+        // Build secure URL with password if provided
+        let url = if let Some(ref pwd) = password {
+            // Insert password into URL: redis://:password@host:port
+            if base_url.contains('@') {
+                base_url // Already has credentials
+            } else {
+                base_url.replace("redis://", &format!("redis://:{}@", pwd))
+            }
+        } else {
+            base_url
+        };
+
         Self {
-            url: "redis://127.0.0.1:6379".to_string(),
-            connection_timeout: 5,
-            default_ttl: 3600, // 1 hour
-            max_connections: 10,
-            key_prefix: "statefabric:".to_string(),
+            url,
+            connection_timeout: std::env::var("STATEFABRIC_REDIS_CONNECTION_TIMEOUT")
+                .unwrap_or_else(|_| "5".to_string())
+                .parse()
+                .unwrap_or(5),
+            default_ttl: std::env::var("STATEFABRIC_REDIS_DEFAULT_TTL")
+                .unwrap_or_else(|_| "3600".to_string())
+                .parse()
+                .unwrap_or(3600),
+            max_connections: std::env::var("STATEFABRIC_REDIS_MAX_CONNECTIONS")
+                .unwrap_or_else(|_| "10".to_string())
+                .parse()
+                .unwrap_or(10),
+            key_prefix: std::env::var("STATEFABRIC_REDIS_KEY_PREFIX")
+                .unwrap_or_else(|_| "statefabric:".to_string()),
+            password,
+            use_tls,
         }
     }
 }

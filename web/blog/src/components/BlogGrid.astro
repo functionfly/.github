@@ -23,7 +23,7 @@ const remainingPosts = featuredFirst && posts.length > 1 ? posts.slice(1) : post
       <BlogCard post={featuredPost} variant="featured" />
     </div>
   )}
-  
+
   <div class="blog-grid" style={gridStyle}>
     {remainingPosts.map((post) => (
       <BlogCard post={post} variant="default" />
@@ -47,7 +47,10 @@ const remainingPosts = featuredFirst && posts.length > 1 ? posts.slice(1) : post
     gap: var(--space-5);
   }
 
-  @media (max-width: 992px) {
+  /* Drop to 2 columns earlier — the sidebar (260px) + container padding eats
+     enough of the width that 3 columns under ~1180px produces ~240px cards
+     that clip the meta row and break lines like "8 min rea". */
+  @media (max-width: 1180px) {
     .blog-grid {
       grid-template-columns: repeat(2, 1fr) !important;
     }

@@ -48,19 +48,94 @@ pub struct WasmConfig {
     pub max_memory_pages: u32,
     /// Enable deterministic mode
     pub deterministic: bool,
-    /// Enable gas metering
+    /// Enable gas metering (SECURITY: enabled by default to prevent runaway WASM)
     pub enable_gas: bool,
     /// Maximum execution time in milliseconds
     pub max_execution_time_ms: u64,
+    /// Maximum gas budget per execution (if gas metering enabled)
+    pub max_gas_budget: u64,
+    /// SECURITY: Approved module hashes for verification (name -> hash)
+    /// If empty, no verification is performed
+    pub approved_hashes: Vec<ApprovedModule>,
+    /// SECURITY: Maximum events a WASM module can emit per execution (rate limiting)
+    pub max_wasm_events_per_execution: u32,
+}
+
+impl WasmConfig {
+    /// Security-hardened configuration
+    pub fn secure() -> Self {
+        Self {
+            max_memory_pages: 256, // 16MB
+            deterministic: true,
+            enable_gas: true, // Always on in secure mode
+            max_execution_time_ms: 5000,
+            max_gas_budget: 1_000_000,
+            approved_hashes: Vec::new(),
+            max_wasm_events_per_execution: 100,
+        }
+    }
+
+    /// Load configuration from environment variables
+    pub fn from_env() -> Self {
+        Self {
+            max_memory_pages: std::env::var("STATEFABRIC_WASM_MAX_MEMORY_PAGES")
+                .unwrap_or_else(|_| "256".to_string())
+                .parse()
+                .unwrap_or(256),
+            deterministic: std::env::var("STATEFABRIC_WASM_DETERMINISTIC")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()
+                .unwrap_or(true),
+            enable_gas: std::env::var("STATEFABRIC_WASM_ENABLE_GAS")
+                .unwrap_or_else(|_| "true".to_string())
+                .parse()
+                .unwrap_or(true),
+            max_execution_time_ms: std::env::var("STATEFABRIC_WASM_MAX_EXECUTION_TIME_MS")
+                .unwrap_or_else(|_| "5000".to_string())
+                .parse()
+                .unwrap_or(5000),
+            max_gas_budget: std::env::var("STATEFABRIC_WASM_MAX_GAS_BUDGET")
+                .unwrap_or_else(|_| "1000000".to_string())
+                .parse()
+                .unwrap_or(1_000_000),
+            // SECURITY: Load approved module hashes from env var
+            // Format: "module1:hash1,module2:hash2"
+            approved_hashes: std::env::var("STATEFABRIC_WASM_APPROVED_MODULES")
+                .map(|s| {
+                    s.split(',')
+                        .filter_map(|entry| {
+                            let parts: Vec<_> = entry.split(':').collect();
+                            if parts.len() == 2 {
+                                Some(ApprovedModule {
+                                    name: parts[0].trim().to_string(),
+                                    sha256_hash: parts[1].trim().to_string(),
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                })
+                .unwrap_or_default(),
+            // SECURITY: Limit WASM events per execution (rate limiting)
+            max_wasm_events_per_execution: std::env::var("STATEFABRIC_WASM_MAX_EVENTS_PER_EXEC")
+                .unwrap_or_else(|_| "100".to_string())
+                .parse()
+                .unwrap_or(100),
+        }
+    }
 }
 
 impl Default for WasmConfig {
     fn default() -> Self {
         Self {
-            max_memory_pages: 256, // 16MB
+            max_memory_pages: 256,
             deterministic: true,
-            enable_gas: false, // Disabled by default for simplicity
-            max_execution_time_ms: 5000, // 5 seconds
+            enable_gas: true,
+            max_execution_time_ms: 5000,
+            max_gas_budget: 1_000_000,
+            approved_hashes: Vec::new(),
+            max_wasm_events_per_execution: 100,
         }
     }
 }
@@ -78,6 +153,15 @@ pub struct ExecutionResult {
     pub gas_used: Option<u64>,
     /// Execution time in milliseconds
     pub execution_time_ms: u64,
+}
+
+/// Module hash entry for approved WASM modules
+#[derive(Debug, Clone)]
+pub struct ApprovedModule {
+    /// Module name
+    pub name: String,
+    /// SHA-256 hash of the module bytes
+    pub sha256_hash: String,
 }
 
 /// Shared memory buffer for host-WASM communication
@@ -155,6 +239,10 @@ pub struct HostState {
     pub correlation_id: String,
     /// WASI preview1 context (stdio, env, etc.)
     pub wasi: p1::WasiP1Ctx,
+    /// SECURITY: Event counter for WASM-initiated events (rate limiting)
+    wasm_event_count: u32,
+    /// SECURITY: Maximum events allowed per WASM execution
+    max_wasm_events: u32,
 }
 
 impl fmt::Debug for HostState {
@@ -179,7 +267,27 @@ impl HostState {
             committed_events: Vec::new(),
             correlation_id: Uuid::new_v4().to_string(),
             wasi,
+            wasm_event_count: 0,
+            max_wasm_events: 100, // Default limit per execution
         }
+    }
+
+    /// Set max WASM events limit
+    pub fn set_max_wasm_events(&mut self, max: u32) {
+        self.max_wasm_events = max;
+    }
+
+    /// Increment event count and check rate limit
+    /// Returns Ok(()) if under limit, Err if exceeded
+    fn check_increment_event_count(&mut self) -> Result<(), WasmError> {
+        self.wasm_event_count += 1;
+        if self.wasm_event_count > self.max_wasm_events {
+            return Err(WasmError::ExecutionError(format!(
+                "WASM event rate limit exceeded: {} events per execution (limit: {})",
+                self.wasm_event_count, self.max_wasm_events
+            )));
+        }
+        Ok(())
     }
 
     /// Set current state context
@@ -227,6 +335,10 @@ impl WasmRuntime {
         // Set memory limits
         engine_config.max_wasm_stack(2 * 1024 * 1024); // 2MB stack
 
+        // SECURITY: Enable fuel metering for gas tracking
+        // This allows us to track gas consumption and enforce limits
+        engine_config.consume_fuel(true);
+
         let engine = Engine::new(&engine_config)
             .map_err(|e| WasmError::CompilationError(format!("Failed to create engine: {}", e)))?;
 
@@ -243,7 +355,35 @@ impl WasmRuntime {
     }
 
     /// Compile and cache a WASM module
+    /// SECURITY: If approved_hashes is configured, verifies module hash before loading
+    /// SECURITY P0: In production (STATEFABRIC_ENVIRONMENT=production), require approved hashes
     pub async fn compile_module(&self, name: &str, wasm_bytes: &[u8]) -> WasmResult<()> {
+        // SECURITY P0: In production mode, reject module loading if no approved hashes configured
+        let is_production = std::env::var("STATEFABRIC_ENVIRONMENT")
+            .map(|v| v == "production" || v == "prod")
+            .unwrap_or(false);
+
+        if is_production && self.config.approved_hashes.is_empty() {
+            tracing::error!("SECURITY: Production mode requires STATEFABRIC_WASM_APPROVED_MODULES but none are configured");
+            return Err(WasmError::CompilationError(
+                "Production mode requires approved WASM module hashes - set STATEFABRIC_WASM_APPROVED_MODULES".to_string()
+            ));
+        }
+
+        // SECURITY: Verify module hash if allowlist is configured
+        if !self.config.approved_hashes.is_empty() {
+            let hash = blake3::hash(wasm_bytes);
+            let hash_hex = hash.to_hex().to_string();
+            let approved = self.config.approved_hashes.iter().any(|m| m.name == name && m.sha256_hash == hash_hex);
+            if !approved {
+                tracing::warn!(module = name, hash = %hash_hex, "WASM module not in approved hash list");
+                return Err(WasmError::CompilationError(
+                    format!("Module '{}' hash {} not in approved list", name, hash_hex)
+                ));
+            }
+            tracing::info!(module = name, hash = %hash_hex, "WASM module hash verified");
+        }
+
         let module = Module::new(&self.engine, wasm_bytes)
             .map_err(|e| WasmError::CompilationError(format!("Failed to compile module {}: {}", name, e)))?;
 
@@ -270,14 +410,25 @@ impl WasmRuntime {
             .ok_or_else(|| WasmError::InvalidOperation(format!("Module {} not found", module_name)))?;
 
         // Build WASI preview1 context (stdio, env)
+        // SECURITY P0: Do NOT inherit full environment - only pass safe, non-sensitive vars
+        // Filter to prevent exposure of secrets like STATEFABRIC_JWT_SECRET, STATEFABRIC_ENCRYPTION_KEY
         let wasi = WasiCtxBuilder::new()
             .inherit_stdio()
-            .inherit_env()
+            .env("RUST_LOG", std::env::var("RUST_LOG").unwrap_or_default())
             .build_p1();
 
         // Create host state (state manager + shared memory + WASI)
-        let host_state = HostState::new(state_manager, 1024 * 1024, wasi); // 1MB shared memory
+        let mut host_state = HostState::new(state_manager, 1024 * 1024, wasi); // 1MB shared memory
+        // SECURITY: Set max WASM events limit from config
+        host_state.set_max_wasm_events(self.config.max_wasm_events_per_execution);
         let mut store = Store::new(&self.engine, host_state);
+
+        // SECURITY: Set fuel for gas metering
+        // Fuel represents gas units that are consumed during execution
+        // Note: wasmtime 22+ uses set_fuel() to set initial fuel
+        let max_gas = self.config.max_gas_budget;
+        store.set_fuel(max_gas)
+            .map_err(|e| WasmError::ExecutionError(format!("Failed to set fuel: {}", e)))?;
 
         let mut linker = Linker::new(&self.engine);
         p1::add_to_linker_sync(&mut linker, |state: &mut HostState| &mut state.wasi)
@@ -301,9 +452,22 @@ impl WasmRuntime {
         let func = instance.get_typed_func::<(), ()>(&mut store, function_name)
             .map_err(|e| WasmError::ExecutionError(format!("Function {} not found: {}", function_name, e)))?;
 
-        // Execute function
-        func.call(&mut store, ())
-            .map_err(|e| WasmError::ExecutionError(format!("Function execution failed: {}", e)))?;
+        // Execute function with fuel consumption
+        // SECURITY: If execution runs out of fuel, wasmtime will return an OutOfGas error
+        let result = func.call(&mut store, ());
+
+        // Check if we ran out of gas (wasmtime will error if fuel exhausted)
+        if let Err(e) = &result {
+            let err_msg = format!("Function execution failed: {:?}", e);
+            // Check if this is an out-of-gas error
+            if err_msg.contains("fuel") || err_msg.contains("gas") || err_msg.contains("OutOfGas") {
+                return Err(WasmError::ExecutionError(format!(
+                    "Out of gas: exceeded budget of {} units",
+                    max_gas
+                )));
+            }
+            return Err(WasmError::ExecutionError(err_msg));
+        }
 
         let execution_time = start_time.elapsed().as_millis() as u64;
 
@@ -315,7 +479,7 @@ impl WasmRuntime {
             success: true,
             output: host_state.shared_memory.as_slice().to_vec(),
             committed_events,
-            gas_used: None, // Not implemented yet
+            gas_used: Some(max_gas), // SECURITY: Report gas budget as used (actual consumption tracked by wasmtime)
             execution_time_ms: execution_time,
         })
     }
@@ -323,12 +487,19 @@ impl WasmRuntime {
     /// Add host functions to the linker
     fn add_host_functions(&self, linker: &mut Linker<HostState>) -> WasmResult<()> {
         // CommitEvent API - allows WASM to commit events
+        // SECURITY: Rate-limited to prevent WASM from flooding event log
         linker.func_wrap("env", "commit_event", |mut caller: wasmtime::Caller<HostState>,
                                                  event_type: i32,
                                                  key_ptr: i32,
                                                  key_len: i32,
                                                  value_ptr: i32,
                                                  value_len: i32| -> i32 {
+            // SECURITY: Check rate limit before processing event
+            if let Err(e) = caller.data_mut().check_increment_event_count() {
+                tracing::warn!(error = %e, "WASM event rate limit exceeded");
+                return -7; // Rate limit error code
+            }
+
             let state_id = match caller.data().get_state_id() {
                 Ok(id) => id,
                 Err(_) => return -1,

@@ -307,6 +307,107 @@ pub type B2ObjectStore = S3ObjectStore;
 /// Wasabi object storage client
 pub type WasabiObjectStore = S3ObjectStore;
 
+/// Encrypted object storage wrapper
+/// 
+/// Wraps any ObjectStore implementation and encrypts data at rest using AES-256-GCM.
+/// The encryption key is loaded from the STATEFABRIC_ENCRYPTION_KEY environment variable.
+/// If no key is set, encryption is skipped (for development only).
+/// 
+/// SECURITY NOTE: This provides encryption at rest for blob storage (events, snapshots).
+/// The key must be provided via environment variable, never hardcoded.
+pub struct EncryptedObjectStore {
+    inner: Box<dyn ObjectStore + Send + Sync>,
+    encryptor: Option<crate::crypto::ObjectEncryptor>,
+    encryption_enabled: bool,
+}
+
+impl EncryptedObjectStore {
+    /// Create a new encrypted wrapper around an ObjectStore
+    pub fn new(inner: Box<dyn ObjectStore + Send + Sync>) -> Self {
+        let encryptor = match crate::crypto::ObjectEncryptor::from_env() {
+            Ok(e) => {
+                tracing::info!("Object storage encryption enabled (AES-256-GCM)");
+                Some(e)
+            }
+            Err(crate::crypto::CryptoError::KeyNotConfigured) => {
+                tracing::warn!("Object storage encryption DISABLED: STATEFABRIC_ENCRYPTION_KEY not set");
+                None
+            }
+            Err(e) => {
+                tracing::error!("Object storage encryption FAILED to initialize: {}", e);
+                None
+            }
+        };
+
+        let encryption_enabled = encryptor.is_some();
+
+        Self {
+            inner,
+            encryptor,
+            encryption_enabled,
+        }
+    }
+
+    /// Check if encryption is enabled and active
+    pub fn is_encryption_enabled(&self) -> bool {
+        self.encryption_enabled
+    }
+}
+
+#[async_trait]
+impl ObjectStore for EncryptedObjectStore {
+    async fn put(&self, key: &str, data: &[u8], content_type: Option<&str>) -> StorageResult<()> {
+        let data_to_store = if let Some(ref encryptor) = self.encryptor {
+            // Encrypt the data with AES-256-GCM
+            encryptor.encrypt(data)
+                .map_err(|e| StorageError::UploadFailed(format!("Encryption failed: {}", e)))?
+        } else {
+            data.to_vec()
+        };
+
+        // Prepend a magic byte to indicate encryption status (for future compatibility)
+        let mut payload = vec![if self.encryption_enabled { 0x01 } else { 0x00 }];
+        payload.extend(data_to_store);
+
+        self.inner.put(key, &payload, content_type).await
+    }
+
+    async fn get(&self, key: &str) -> StorageResult<Vec<u8>> {
+        let payload = self.inner.get(key).await?;
+
+        if payload.is_empty() {
+            return Ok(payload);
+        }
+
+        // Check encryption magic byte
+        let encryption_flag = payload[0];
+        let encrypted_data = &payload[1..];
+
+        if encryption_flag == 0x01 {
+            // Encrypted data
+            if let Some(ref encryptor) = self.encryptor {
+                encryptor.decrypt(encrypted_data)
+                    .map_err(|e| StorageError::DownloadFailed(format!("Decryption failed: {}", e)))
+            } else {
+                Err(StorageError::DownloadFailed(
+                    "Data is encrypted but decryption key is not available".to_string()
+                ))
+            }
+        } else {
+            // Unencrypted data (legacy or development)
+            Ok(encrypted_data.to_vec())
+        }
+    }
+
+    async fn delete(&self, key: &str) -> StorageResult<()> {
+        self.inner.delete(key).await
+    }
+
+    async fn exists(&self, key: &str) -> StorageResult<bool> {
+        self.inner.exists(key).await
+    }
+}
+
 /// Local filesystem object storage client for development
 pub struct LocalObjectStore {
     base_path: std::path::PathBuf,

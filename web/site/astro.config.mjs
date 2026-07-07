@@ -1,6 +1,7 @@
 import react from "@astrojs/react";
 import sitemap from "@astrojs/sitemap";
 import vercel from "@astrojs/vercel";
+import robotsTxt from "astro-robots-txt";
 import { defineConfig } from "astro/config";
 
 const site = process.env.PUBLIC_SITE_URL || "https://functionfly.com";
@@ -35,7 +36,6 @@ export default defineConfig({
     react(),
     sitemap({
       changefreq: "weekly",
-      priority: 0.7,
       lastmod: new Date(),
       i18n: {
         defaultLocale: "en",
@@ -43,6 +43,22 @@ export default defineConfig({
           SUPPORTED_LOCALES.map((code) => [code, code]),
         ),
       },
+      customPages: [
+        { url: "/", priority: 1.0 },
+        { url: "/pricing/", priority: 1.0 },
+      ],
+    }),
+    robotsTxt({
+      sitemap: [
+        `${site}/sitemap-index.xml`,
+      ],
+      rules: [
+        {
+          userAgent: "*",
+          allow: "/",
+          disallow: ["/studio/", "/api/", "/docs/"],
+        },
+      ],
     }),
   ],
   adapter: vercel(),

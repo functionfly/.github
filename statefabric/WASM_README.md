@@ -151,6 +151,7 @@ let state_manager = StateManager::with_wasm(
     object_store,
     snapshot_repo,
     event_repo,
+    state_repo,
     wasm_config
 )?;
 ```

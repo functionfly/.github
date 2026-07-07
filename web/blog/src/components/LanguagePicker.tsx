@@ -169,6 +169,36 @@ export default function LanguagePicker({ currentLocale }: LanguagePickerProps) {
           opacity: 0.7;
           margin-top: 0.15rem;
         }
+
+        [data-theme='light'] .language-picker__trigger {
+          background: rgba(255, 255, 255, 0.8);
+          border-color: var(--color-border);
+          color: var(--color-text-muted);
+        }
+
+        [data-theme='light'] .language-picker__trigger:hover {
+          border-color: var(--ff-flame);
+        }
+
+        [data-theme='light'] .language-picker__dropdown {
+          background: var(--color-bg);
+          border-color: var(--color-border);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+
+        [data-theme='light'] .language-picker__option {
+          color: var(--color-text-muted);
+        }
+
+        [data-theme='light'] .language-picker__option:hover {
+          background: rgba(var(--ff-flame-rgb), 0.08);
+          color: var(--color-text);
+        }
+
+        [data-theme='light'] .language-picker__option.is-active {
+          background: rgba(var(--ff-flame-rgb), 0.12);
+          color: var(--ff-flame);
+        }
       `}</style>
     </div>
   );

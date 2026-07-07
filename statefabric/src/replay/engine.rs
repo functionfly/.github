@@ -1,6 +1,9 @@
 //! Deterministic replay engine
+//!
+//! SECURITY: Includes replay attack protection via sequence tracking and freshness windows.
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -23,6 +26,14 @@ pub enum ReplayError {
 
     #[error("Replay failed: {0}")]
     ReplayFailed(String),
+
+    /// SECURITY: Replay attack detected
+    #[error("Replay attack detected: event sequence {0} already processed")]
+    ReplayDetected(i64),
+
+    /// SECURITY: Event outside freshness window
+    #[error("Event outside freshness window: sequence {0}, expected > {1}")]
+    EventTooOld(i64, i64),
 }
 
 /// Result type for replay operations
@@ -39,6 +50,8 @@ pub struct ReplayOptions {
     pub verify: bool,
     /// Whether to apply side effects (false for dry-run)
     pub dry_run: bool,
+    /// SECURITY: Freshness window - reject events older than this sequence
+    pub freshness_window: Option<i64>,
 }
 
 impl Default for ReplayOptions {
@@ -48,6 +61,7 @@ impl Default for ReplayOptions {
             to_sequence: None,
             verify: true,
             dry_run: false,
+            freshness_window: Some(1000), // Default: allow up to 1000 events behind
         }
     }
 }
@@ -69,21 +83,94 @@ pub struct ReplayStatus {
     pub verified: bool,
 }
 
-/// Replay engine for deterministic state reconstruction
-pub struct ReplayEngine;
+/// SECURITY: Tracks processed sequences to prevent replay attacks
+#[derive(Debug, Clone, Default)]
+pub struct SequenceTracker {
+    /// Set of already-processed sequence numbers
+    processed: HashSet<i64>,
+    /// Highest sequence number seen
+    highest_sequence: i64,
+    /// Freshness window - events older than this are rejected
+    freshness_window: i64,
+}
 
-impl ReplayEngine {
-    /// Create a new replay engine
-    pub fn new() -> Self {
-        Self
+impl SequenceTracker {
+    /// Create a new sequence tracker with the given freshness window
+    pub fn new(freshness_window: i64) -> Self {
+        Self {
+            processed: HashSet::new(),
+            highest_sequence: 0,
+            freshness_window,
+        }
     }
 
-    /// Replay events to reconstruct state
-    pub fn replay(
+    /// SECURITY: Check if an event sequence is valid (not replayed and within freshness window)
+    ///
+    /// Returns Ok(true) if the event is valid and should be processed.
+    /// Returns Err(ReplayError) if the event is a replay or too old.
+    pub fn check_sequence(&self, sequence: i64) -> ReplayResult<bool> {
+        // SECURITY: Check if already processed (replay attack)
+        if self.processed.contains(&sequence) {
+            return Err(ReplayError::ReplayDetected(sequence));
+        }
+
+        // SECURITY: Check freshness window
+        if sequence < self.highest_sequence - self.freshness_window + 1 && self.highest_sequence > 0 {
+            return Err(ReplayError::EventTooOld(sequence, self.highest_sequence - self.freshness_window + 1));
+        }
+
+        Ok(true)
+    }
+
+    /// Mark a sequence as processed
+    pub fn mark_processed(&mut self, sequence: i64) {
+        self.processed.insert(sequence);
+        if sequence > self.highest_sequence {
+            self.highest_sequence = sequence;
+        }
+
+        // SECURITY: Prune old entries to prevent memory bloat
+        // Keep only sequences within the freshness window
+        let min_valid = self.highest_sequence - self.freshness_window;
+        self.processed.retain(|&seq| seq > min_valid);
+    }
+
+    /// Get the highest sequence number seen
+    pub fn highest(&self) -> i64 {
+        self.highest_sequence
+    }
+}
+
+/// Replay engine for deterministic state reconstruction
+pub struct ReplayEngine {
+    /// SECURITY: Sequence tracker for replay protection
+    sequence_tracker: SequenceTracker,
+}
+
+impl ReplayEngine {
+    /// Create a new replay engine with replay protection
+    pub fn new() -> Self {
+        Self {
+            sequence_tracker: SequenceTracker::new(1000), // Default 1000 event freshness window
+        }
+    }
+
+    /// Create a new replay engine with custom freshness window
+    pub fn with_freshness_window(window: i64) -> Self {
+        Self {
+            sequence_tracker: SequenceTracker::new(window),
+        }
+    }
+
+    /// SECURITY: Replay events with replay attack protection
+    ///
+    /// Events are validated against the sequence tracker before being applied.
+    /// Events outside the freshness window or already processed are rejected.
+    pub fn replay_with_protection(
         &self,
         events: &[Event],
         initial_state: Option<&serde_json::Value>,
-        _options: &ReplayOptions,
+        options: &ReplayOptions,
     ) -> ReplayResult<serde_json::Value> {
         let mut state = initial_state
             .cloned()
@@ -92,11 +179,32 @@ impl ReplayEngine {
         let state_obj = state.as_object_mut()
             .ok_or_else(|| ReplayError::ReplayFailed("State must be an object".to_string()))?;
 
+        // SECURITY: Validate freshness window from options
+        let freshness_window = options.freshness_window.unwrap_or(1000);
+let mut tracker = SequenceTracker::new(freshness_window);
+
         for event in events {
+            // SECURITY: Check sequence validity
+            tracker.check_sequence(event.sequence_num)?;
+
             self.apply_event(state_obj, event)?;
+
+            // Mark as processed
+            tracker.mark_processed(event.sequence_num);
         }
 
         Ok(state)
+    }
+
+    /// Replay events to reconstruct state
+    pub fn replay(
+        &self,
+        events: &[Event],
+        initial_state: Option<&serde_json::Value>,
+        options: &ReplayOptions,
+    ) -> ReplayResult<serde_json::Value> {
+        // Use the protected replay with fresh tracker
+        self.replay_with_protection(events, initial_state, options)
     }
 
     /// Apply a single event to state

@@ -1,16 +1,21 @@
-//! API handlers
+//! API handlers - with auth context and tenant isolation
+//!
+//! All state operations require a valid AuthContext with tenant_id.
+//! Tenant isolation is enforced at the handler level.
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Extension},
     response::Json,
     http::StatusCode,
 };
+use axum::http::Request;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::models::{CreateSnapshotRequest, RestoreSnapshotRequest};
 use crate::state::StateManager;
 use crate::wasm::WasmConfig;
+use crate::api::middleware::AuthContext;
 
 /// App state for Axum
 #[derive(Clone)]
@@ -29,9 +34,10 @@ impl AppState {
         object_store: Box<dyn crate::storage::ObjectStore + Send + Sync>,
         snapshot_repo: crate::storage::PostgresSnapshotRepository,
         event_repo: crate::storage::PostgresEventRepository,
+        state_repo: crate::storage::PostgresStateRepository,
     ) -> Self {
         Self {
-            state_manager: std::sync::Arc::new(StateManager::with_storage(object_store, snapshot_repo, event_repo)),
+            state_manager: std::sync::Arc::new(StateManager::with_storage(object_store, snapshot_repo, event_repo, state_repo)),
         }
     }
 
@@ -39,9 +45,10 @@ impl AppState {
         object_store: Box<dyn crate::storage::ObjectStore + Send + Sync>,
         snapshot_repo: crate::storage::PostgresSnapshotRepository,
         event_repo: crate::storage::PostgresEventRepository,
+        state_repo: crate::storage::PostgresStateRepository,
         wasm_config: WasmConfig,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let state_manager = StateManager::with_wasm(object_store, snapshot_repo, event_repo, wasm_config)?;
+        let state_manager = StateManager::with_wasm(object_store, snapshot_repo, event_repo, state_repo, wasm_config)?;
         Ok(Self {
             state_manager: std::sync::Arc::new(state_manager),
         })
@@ -129,15 +136,63 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-// ==================== State Handlers ====================
+// ==================== State Handlers (with tenant isolation) ====================
 
-/// Get entire state
+// Note: require_auth is used by middleware to validate requests
+// Kept for documentation purposes
+#[allow(dead_code)]
+fn require_auth(req: &Request<axum::body::Body>) -> Result<AuthContext, StatusCode> {
+    req.extensions()
+        .get::<AuthContext>()
+        .cloned()
+        .ok_or(StatusCode::UNAUTHORIZED)
+}
+
+/// Validate that a state_id belongs to the authenticated tenant
+/// SECURITY: Validate tenant access to a state
+///
+/// Queries the database to verify that the given state_id belongs to the
+/// authenticated tenant. This prevents cross-tenant data access.
+///
+/// In production, this MUST query the database - do not rely on client-provided
+/// tenant_id alone.
+async fn validate_tenant_access(
+    state: &AppState,
+    state_id: Uuid,
+    tenant_id: Uuid,
+) -> Result<(), StatusCode> {
+    // SECURITY: Reject nil tenant_id
+    if tenant_id == Uuid::nil() {
+        tracing::warn!(?state_id, "Rejecting access with nil tenant_id");
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // SECURITY: Query database to verify state belongs to tenant
+    // The state_manager should have access to verify ownership
+    match state.state_manager.verify_tenant_ownership(state_id, tenant_id).await {
+        Ok(true) => Ok(()),  // Tenant owns this state
+        Ok(false) => {
+            tracing::warn!(?state_id, ?tenant_id, "Tenant access denied to state");
+            Err(StatusCode::FORBIDDEN)
+        }
+        Err(e) => {
+            tracing::error!(?state_id, ?tenant_id, error = %e, "Error verifying tenant ownership");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Get entire state (tenant-isolated)
 pub async fn get_state(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<StateResponse>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    // Enforce tenant isolation
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
 
     let data = state.state_manager.get(uuid)
         .await
@@ -164,16 +219,20 @@ pub async fn get_state(
     }))
 }
 
-/// Set a value in state
+/// Set a value in state (tenant-isolated)
 pub async fn set_value(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
     Json(req): Json<SetValueRequest>,
 ) -> Result<Json<SetValueResponse>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    state.state_manager.set(uuid, key.clone(), req.value.clone())
+    // Enforce tenant isolation
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
+
+    state.state_manager.set_with_tenant(uuid, key.clone(), req.value.clone(), auth.tenant_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -188,13 +247,16 @@ pub async fn set_value(
     }))
 }
 
-/// Get a specific value
+/// Get a specific value (tenant-isolated)
 pub async fn get_value(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
 ) -> Result<Json<GetValueResponse>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
 
     let value = state.state_manager.get_key(uuid, &key)
         .await
@@ -206,31 +268,37 @@ pub async fn get_value(
     }))
 }
 
-/// Delete a value
+/// Delete a value (tenant-isolated)
 pub async fn delete_value(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
 ) -> Result<StatusCode, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    state.state_manager.delete(uuid, &key)
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
+
+    state.state_manager.delete_with_tenant(uuid, &key, auth.tenant_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Merge a value into an existing key
+/// Merge a value into an existing key (tenant-isolated)
 pub async fn merge_value(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
     Json(req): Json<SetValueRequest>,
 ) -> Result<Json<SetValueResponse>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    let merged_value = state.state_manager.merge(uuid, key.clone(), req.value)
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
+
+    let merged_value = state.state_manager.merge_with_tenant(uuid, key.clone(), req.value, auth.tenant_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -245,28 +313,34 @@ pub async fn merge_value(
     }))
 }
 
-/// Clear all state
+/// Clear all state (tenant-isolated)
 pub async fn clear_state(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<StatusCode, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    state.state_manager.clear(uuid)
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
+
+    state.state_manager.clear_with_tenant(uuid, auth.tenant_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Get list of keys
+/// Get list of keys (tenant-isolated)
 pub async fn list_keys(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<Vec<String>>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
 
     let keys = state.state_manager.keys(uuid)
         .await
@@ -275,13 +349,16 @@ pub async fn list_keys(
     Ok(Json(keys))
 }
 
-/// Get state hash
+/// Get state hash (tenant-isolated)
 pub async fn get_hash(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<String>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
 
     let hash = state.state_manager.hash(uuid)
         .await
@@ -302,16 +379,19 @@ pub async fn health() -> Json<serde_json::Value> {
 
 // ==================== Snapshot Handlers ====================
 
-/// Create a snapshot of the current state
+/// Create a snapshot of the current state (tenant-isolated)
 pub async fn create_snapshot(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
     Json(req): Json<CreateSnapshotRequest>,
 ) -> Result<Json<SnapshotResponse>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    let snapshot = state.state_manager.create_snapshot(uuid, req)
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
+
+    let snapshot = state.state_manager.create_snapshot_with_tenant(uuid, req, auth.tenant_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -325,29 +405,35 @@ pub async fn create_snapshot(
     }))
 }
 
-/// Restore state from a snapshot
+/// Restore state from a snapshot (tenant-isolated)
 pub async fn restore_snapshot(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
     Json(req): Json<RestoreSnapshotRequest>,
 ) -> Result<StatusCode, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    state.state_manager.restore_snapshot(uuid, req)
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
+
+    state.state_manager.restore_snapshot_with_tenant(uuid, req, auth.tenant_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(StatusCode::OK)
 }
 
-/// List snapshots for a state
+/// List snapshots for a state (tenant-isolated)
 pub async fn list_snapshots(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<Vec<SnapshotResponse>>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
 
     let snapshots = state.state_manager.list_snapshots(uuid)
         .await
@@ -367,13 +453,28 @@ pub async fn list_snapshots(
 
 // ==================== WASM Handlers ====================
 
-/// Load a WASM module
+/// SECURITY: Load a WASM module (requires authentication)
+///
+/// In production, consider removing this endpoint and using pre-approved
+/// signed modules instead of allowing arbitrary WASM upload.
 pub async fn load_wasm_module(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Json(req): Json<LoadWasmRequest>,
 ) -> Result<Json<LoadWasmResponse>, StatusCode> {
     if !state.state_manager.has_wasm_runtime() {
         return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
+
+    // SECURITY: Require valid non-nil tenant_id
+    if auth.tenant_id == Uuid::nil() {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // SECURITY: Enforce WASM module size limit (max 10MB)
+    const MAX_WASM_SIZE: usize = 10 * 1024 * 1024;
+    if req.wasm_bytes.len() > MAX_WASM_SIZE {
+        return Err(StatusCode::BAD_REQUEST);
     }
 
     state.state_manager.load_wasm_module(&req.name, &req.wasm_bytes)
@@ -386,9 +487,10 @@ pub async fn load_wasm_module(
     }))
 }
 
-/// Execute a WASM function
+/// Execute a WASM function (tenant-isolated)
 pub async fn execute_wasm_function(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
     Json(req): Json<ExecuteWasmRequest>,
 ) -> Result<Json<ExecuteWasmResponse>, StatusCode> {
@@ -398,6 +500,8 @@ pub async fn execute_wasm_function(
 
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
 
     let result = state.state_manager.clone().execute_wasm_function(
         &req.module_name,
@@ -425,13 +529,17 @@ pub async fn execute_wasm_function(
     }))
 }
 
-/// Get a specific snapshot by version
+/// SECURITY: Get a specific snapshot by version (requires authentication + tenant isolation)
 pub async fn get_snapshot(
     State(state): State<AppState>,
+    Extension(auth): Extension<AuthContext>,
     Path((state_id, version)): Path<(String, i64)>,
 ) -> Result<Json<SnapshotResponse>, StatusCode> {
     let uuid = Uuid::parse_str(&state_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
+
+    // SECURITY: Enforce tenant isolation
+    validate_tenant_access(&state, uuid, auth.tenant_id).await?;
 
     let snapshot = state.state_manager.get_snapshot(uuid, version)
         .await

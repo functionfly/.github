@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::cache::{RedisCache, RedisConfig, LruCache};
 use crate::models::{Event, EventType, Snapshot, SourceType, CreateSnapshotRequest, RestoreSnapshotRequest, SnapshotMetadata, EventMetadata};
 use crate::replay::compute_state_hash;
-use crate::storage::{ObjectStore, PostgresSnapshotRepository, PostgresEventRepository};
+use crate::storage::{ObjectStore, PostgresSnapshotRepository, PostgresEventRepository, PostgresStateRepository};
 use crate::wasm::{WasmRuntime, WasmConfig, ExecutionResult};
 
 /// Errors that can occur in state management
@@ -46,6 +46,8 @@ pub struct StateManager {
     snapshot_repo: Option<PostgresSnapshotRepository>,
     /// PostgreSQL event repository
     event_repo: Option<PostgresEventRepository>,
+    /// PostgreSQL state repository for tenant verification
+    state_repo: Option<PostgresStateRepository>,
     /// WASM runtime for function execution
     wasm_runtime: Option<WasmRuntime>,
 }
@@ -59,6 +61,7 @@ impl fmt::Debug for StateManager {
             .field("object_store", &self.object_store.as_ref().map(|_| "..."))
             .field("snapshot_repo", &self.snapshot_repo)
             .field("event_repo", &self.event_repo)
+            .field("state_repo", &self.state_repo)
             .field("wasm_runtime", &self.wasm_runtime)
             .finish()
     }
@@ -74,6 +77,7 @@ impl StateManager {
             object_store: None,
             snapshot_repo: None,
             event_repo: None,
+            state_repo: None,
             wasm_runtime: None,
         }
     }
@@ -87,6 +91,7 @@ impl StateManager {
             object_store: None,
             snapshot_repo: None,
             event_repo: None,
+            state_repo: None,
             wasm_runtime: None,
         }
     }
@@ -102,6 +107,7 @@ impl StateManager {
             object_store: None,
             snapshot_repo: None,
             event_repo: None,
+            state_repo: None,
             wasm_runtime: None,
         })
     }
@@ -111,6 +117,7 @@ impl StateManager {
         object_store: Box<dyn ObjectStore + Send + Sync>,
         snapshot_repo: PostgresSnapshotRepository,
         event_repo: PostgresEventRepository,
+        state_repo: PostgresStateRepository,
     ) -> Self {
         Self {
             lru_cache: Arc::new(RwLock::new(LruCache::new(1000))),
@@ -119,6 +126,7 @@ impl StateManager {
             object_store: Some(object_store),
             snapshot_repo: Some(snapshot_repo),
             event_repo: Some(event_repo),
+            state_repo: Some(state_repo),
             wasm_runtime: None,
         }
     }
@@ -128,6 +136,7 @@ impl StateManager {
         object_store: Box<dyn ObjectStore + Send + Sync>,
         snapshot_repo: PostgresSnapshotRepository,
         event_repo: PostgresEventRepository,
+        state_repo: PostgresStateRepository,
         wasm_config: WasmConfig,
     ) -> StateResult<Self> {
         let wasm_runtime = Some(WasmRuntime::new(wasm_config)
@@ -140,6 +149,7 @@ impl StateManager {
             object_store: Some(object_store),
             snapshot_repo: Some(snapshot_repo),
             event_repo: Some(event_repo),
+            state_repo: Some(state_repo),
             wasm_runtime,
         })
     }
@@ -159,7 +169,7 @@ impl StateManager {
                 // Verify cache is still valid (basic TTL check)
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
+                    .map_err(|_| StateError::StorageError("System time before epoch".to_string()))?
                     .as_secs();
 
                 if now < (cached_entry.cached_at + cached_entry.ttl) {
@@ -207,7 +217,7 @@ impl StateManager {
                 .unwrap()
                 .as_secs());
             if let Err(e) = redis_cache.set_state(&state_id, current_state.clone(), version).await {
-                eprintln!("Warning: Failed to update Redis cache: {}", e);
+                tracing::warn!(error = %e, state_id = %state_id, "Failed to update Redis cache");
                 // Continue execution - Redis failure shouldn't block operations
             }
         }
@@ -254,7 +264,7 @@ impl StateManager {
                 .unwrap()
                 .as_secs());
             if let Err(e) = redis_cache.set_state(&state_id, current_state.clone(), version).await {
-                eprintln!("Warning: Failed to update Redis cache: {}", e);
+                tracing::warn!(error = %e, state_id = %state_id, key = %key, "Failed to update Redis cache during delete");
             }
         }
 
@@ -297,7 +307,7 @@ impl StateManager {
                 .unwrap()
                 .as_secs());
             if let Err(e) = redis_cache.set_state(&state_id, snapshot, version).await {
-                eprintln!("Warning: Failed to update Redis cache during snapshot load: {}", e);
+                tracing::warn!(error = %e, state_id = %state_id, "Failed to update Redis cache during snapshot load");
             }
         }
     }
@@ -320,7 +330,7 @@ impl StateManager {
                 .unwrap()
                 .as_secs());
             if let Err(e) = redis_cache.set_state(&state_id, empty_state.clone(), version).await {
-                eprintln!("Warning: Failed to update Redis cache during clear: {}", e);
+                tracing::warn!(error = %e, state_id = %state_id, "Failed to update Redis cache during clear");
             }
         }
 
@@ -483,7 +493,7 @@ impl StateManager {
 
         // Phase 2: Cache hot snapshot in Redis for fast access
         if let Err(e) = self.cache_hot_snapshot(state_id, snapshot_version, state_data.clone()).await {
-            eprintln!("Warning: Failed to cache hot snapshot: {}", e);
+            tracing::warn!(error = %e, state_id = %state_id, snapshot_version = %snapshot_version, "Failed to cache hot snapshot");
             // Don't fail the operation for caching issues
         }
 
@@ -524,7 +534,7 @@ impl StateManager {
             // Cache this snapshot for future hot access
             if let Ok(snapshot_value) = serde_json::to_value(&snapshot) {
                 if let Err(e) = self.cache_hot_snapshot(state_id, request.snapshot_version, snapshot_value).await {
-                    eprintln!("Warning: Failed to cache hot snapshot during restore: {}", e);
+                    tracing::warn!(error = %e, state_id = %state_id, snapshot_version = %request.snapshot_version, "Failed to cache hot snapshot during restore");
                 }
             }
 
@@ -588,7 +598,9 @@ impl StateManager {
                                             if let Some(existing_value) = obj.get(key) {
                                                 // Perform a deep merge - implement simple object merge
                                                 if existing_value.is_object() && value.is_object() {
-                                                    let mut merged = existing_value.as_object().unwrap().clone();
+                                                    let mut merged = existing_value.as_object()
+                                                        .ok_or_else(|| StateError::InvalidOperation("Expected object value".to_string()))?
+                                                        .clone();
                                                     if let Some(new_obj) = value.as_object() {
                                                         for (k, v) in new_obj {
                                                             merged.insert(k.clone(), v.clone());
@@ -838,7 +850,7 @@ impl StateManager {
                 .unwrap()
                 .as_secs());
             if let Err(e) = redis_cache.set_state(&state_id, current_state.clone(), version).await {
-                eprintln!("Warning: Failed to update Redis cache during merge: {}", e);
+                tracing::warn!(error = %e, state_id = %state_id, key = %key, "Failed to update Redis cache during merge");
             }
         }
 
@@ -1033,6 +1045,141 @@ impl StateManager {
                 .map_err(|e| StateError::StorageError(format!("Redis health check error: {}", e)))
         } else {
             Ok(false)
+        }
+    }
+
+    // ===== TENANT ISOLATION METHODS =====
+
+    /// Set a value in state with tenant isolation
+    pub async fn set_with_tenant(
+        &self,
+        state_id: Uuid,
+        key: String,
+        value: serde_json::Value,
+        tenant_id: Uuid,
+    ) -> StateResult<serde_json::Value> {
+        // Validate tenant ownership via state_repo (queries DB)
+        self.validate_tenant(state_id, tenant_id).await?;
+        self.set(state_id, key, value).await
+    }
+
+    /// Delete a key with tenant isolation
+    pub async fn delete_with_tenant(
+        &self,
+        state_id: Uuid,
+        key: &str,
+        tenant_id: Uuid,
+    ) -> StateResult<()> {
+        self.validate_tenant(state_id, tenant_id).await?;
+        self.delete(state_id, key).await
+    }
+
+    /// Merge a value with tenant isolation
+    pub async fn merge_with_tenant(
+        &self,
+        state_id: Uuid,
+        key: String,
+        value: serde_json::Value,
+        tenant_id: Uuid,
+    ) -> StateResult<serde_json::Value> {
+        self.validate_tenant(state_id, tenant_id).await?;
+        self.merge(state_id, key, value).await
+    }
+
+    /// Clear state with tenant isolation
+    pub async fn clear_with_tenant(
+        &self,
+        state_id: Uuid,
+        tenant_id: Uuid,
+    ) -> StateResult<()> {
+        self.validate_tenant(state_id, tenant_id).await?;
+        self.clear(state_id).await
+    }
+
+    /// Create snapshot with tenant isolation
+    pub async fn create_snapshot_with_tenant(
+        &self,
+        state_id: Uuid,
+        request: CreateSnapshotRequest,
+        tenant_id: Uuid,
+    ) -> StateResult<Snapshot> {
+        self.validate_tenant(state_id, tenant_id).await?;
+        self.create_snapshot(state_id, request).await
+    }
+
+    /// Restore snapshot with tenant isolation
+    pub async fn restore_snapshot_with_tenant(
+        &self,
+        state_id: Uuid,
+        request: RestoreSnapshotRequest,
+        tenant_id: Uuid,
+    ) -> StateResult<()> {
+        self.validate_tenant(state_id, tenant_id).await?;
+        self.restore_snapshot(state_id, request).await
+    }
+
+    /// SECURITY: Verify tenant ownership of a state
+    ///
+    /// Queries the database to verify that the given state_id belongs to the
+    /// specified tenant. This prevents cross-tenant data access attacks.
+    ///
+    /// Returns Ok(true) if tenant owns the state, Ok(false) if not,
+    /// or an error if verification could not be completed.
+    pub async fn verify_tenant_ownership(&self, state_id: Uuid, tenant_id: Uuid) -> StateResult<bool> {
+        if tenant_id == Uuid::nil() {
+            tracing::warn!("verify_tenant_ownership called with nil tenant_id");
+            return Ok(false);
+        }
+
+        if let Some(state_repo) = &self.state_repo {
+            match state_repo.get_by_id(state_id).await {
+                Ok(Some(state)) => {
+                    if state.tenant_id == tenant_id {
+                        Ok(true)
+                    } else {
+                        tracing::warn!(
+                            "Tenant {} attempted to access state {} owned by tenant {}",
+                            tenant_id,
+                            state_id,
+                            state.tenant_id
+                        );
+                        Ok(false)
+                    }
+                }
+                Ok(None) => {
+                    tracing::debug!("State {} not found for tenant verification", state_id);
+                    Ok(false)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to verify tenant ownership via state repo: {}", e);
+                    Err(StateError::StorageError(
+                        "Could not verify tenant ownership".to_string(),
+                    ))
+                }
+            }
+        } else {
+            tracing::warn!("No state_repo configured - cannot verify tenant ownership");
+            Err(StateError::StorageError(
+                "State repository not configured - tenant verification unavailable".to_string(),
+            ))
+        }
+    }
+
+    /// Validate that the given tenant has access to the state
+    async fn validate_tenant(&self, state_id: Uuid, tenant_id: Uuid) -> StateResult<()> {
+        if tenant_id == Uuid::nil() {
+            return Err(StateError::InvalidOperation(
+                "Invalid tenant: tenant_id cannot be nil".to_string(),
+            ));
+        }
+
+        // SECURITY: Actually verify tenant ownership
+        match self.verify_tenant_ownership(state_id, tenant_id).await {
+            Ok(true) => Ok(()),
+            Ok(false) => Err(StateError::InvalidOperation(
+                "Tenant does not own this state".to_string(),
+            )),
+            Err(e) => Err(e),
         }
     }
 

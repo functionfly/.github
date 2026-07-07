@@ -29,19 +29,34 @@ async fn main() {
         .with_state(app_state);
 
     // Get address from environment or use default
+    // SECURITY P0: Bind to localhost by default to prevent unintended exposure
     let addr = std::env::var("ADDR")
         .unwrap_or_else(|_| "127.0.0.1:8080".to_string())
         .parse::<SocketAddr>()
+        .map_err(|e| {
+            eprintln!("FATAL: Invalid ADDR format '{}': {}", std::env::var("ADDR").unwrap_or_default(), e);
+            e
+        })
         .unwrap_or_else(|_| SocketAddr::from(([127, 0, 0, 1], 8080)));
+
+    // SECURITY P0: Warn if binding to all interfaces in production
+    if addr.ip().is_unspecified() {
+        eprintln!("WARNING: Binding to 0.0.0.0 - service will be publicly accessible!");
+        eprintln!("Set ADDR=127.0.0.1:8080 for localhost-only or use a firewall.");
+    }
 
     // Start server
     let listener = tokio::net::TcpListener::bind(&addr)
         .await
-        .expect("Failed to bind to address");
+        .map_err(|e| {
+            eprintln!("FATAL: Failed to bind to address {}: {}", addr, e);
+            e
+        })
+        .expect("listener setup failed"); // Only panics on programmer error, not runtime
 
     tracing::info!("Listening on {}", addr);
 
     serve(listener, app)
         .await
-        .expect("Failed to start server");
+        .expect("server future panicked"); // Only on programmer error
 }

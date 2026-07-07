@@ -117,7 +117,8 @@ export default defineConfig({
               label: "REST API",
               collapsed: true,
               items: [
-                { label: "Overview", link: "/api-reference/" },
+                { label: "Overview", link: "/api/" },
+                { label: "API Reference", link: "/api-reference/" },
                 { label: "Authentication", link: "/api/authentication/" },
                 { label: "Functions", link: "/api/functions/" },
                 { label: "Execution", link: "/api/execution/" },

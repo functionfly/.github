@@ -45,6 +45,21 @@ aws-smithy-runtime = "1.11.3"
 # Redis
 redis = { version = "1.2.2", features = ["tokio-comp", "connection-manager"] }
 
+# SECURITY: JWT validation using a proper library
+jsonwebtoken = "9.3.0"
+
+# SECURITY: Password hashing using bcrypt (secure replacement for plaintext API keys)
+bcrypt = "0.17"
+
+# Base64 encoding for hash storage
+base64 = "0.22"
+
+# Random for cryptographic operations
+rand = "0.8"
+
+# SECURITY: Constant-time comparison for API keys
+subtle = "2.6"
+
 # Async trait support
 async-trait = "0.1.89"
 
@@ -61,6 +76,10 @@ wasi-common = "45.0.1"
 
 # WASM utilities
 wasmparser = "0.251.0"
+
+# Encryption (AES-256-GCM for object storage)
+aes-gcm = "0.10.3"
+hex = "0.4.3"
 
 [dev-dependencies]
 criterion = "0.8.2"

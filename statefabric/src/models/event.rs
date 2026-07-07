@@ -242,6 +242,81 @@ impl Event {
         self.storage_key = Some(key);
         self
     }
+
+    /// Validate event data integrity and constraints
+    /// Returns Ok(()) if valid, Err with message if invalid
+    pub fn validate(&self) -> Result<(), String> {
+        // Validate state_id is not nil
+        if self.state_id == Uuid::nil() {
+            return Err("state_id cannot be nil".to_string());
+        }
+
+        // Validate key format if present (alphanumeric, dash, underscore, max 256 chars)
+        if let Some(ref key) = self.key {
+            if key.is_empty() {
+                return Err("key cannot be empty if provided".to_string());
+            }
+            if key.len() > 256 {
+                return Err("key exceeds maximum length of 256 characters".to_string());
+            }
+            if !key.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.') {
+                return Err("key contains invalid characters (allowed: alphanumeric, dash, underscore, dot)".to_string());
+            }
+        }
+
+        // Validate value sizes (prevent memory exhaustion)
+        if let Some(ref value) = self.new_value {
+            let value_size = serde_json::to_vec(value)
+                .map(|v| v.len())
+                .unwrap_or(0);
+            if value_size > 10 * 1024 * 1024 {
+                // 10MB limit
+                return Err("new_value exceeds maximum size of 10MB".to_string());
+            }
+        }
+
+        if let Some(ref value) = self.previous_value {
+            let value_size = serde_json::to_vec(value)
+                .map(|v| v.len())
+                .unwrap_or(0);
+            if value_size > 10 * 1024 * 1024 {
+                // 10MB limit
+                return Err("previous_value exceeds maximum size of 10MB".to_string());
+            }
+        }
+
+        // Validate source_id is not empty
+        if self.source_id.is_empty() {
+            return Err("source_id cannot be empty".to_string());
+        }
+
+        // Validate correlation_id is not empty
+        if self.correlation_id.is_empty() {
+            return Err("correlation_id cannot be empty".to_string());
+        }
+
+        // Validate event type constraints
+        match self.event_type {
+            EventType::Set | EventType::Merge => {
+                if self.key.is_none() {
+                    return Err("Set/Merge events must have a key".to_string());
+                }
+                if self.new_value.is_none() {
+                    return Err("Set/Merge events must have new_value".to_string());
+                }
+            }
+            EventType::Delete => {
+                if self.key.is_none() {
+                    return Err("Delete events must have a key".to_string());
+                }
+            }
+            EventType::Clear | EventType::Snapshot | EventType::Restore => {
+                // These don't require key/value
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Event metadata for indexing (stored in PostgreSQL)

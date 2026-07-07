@@ -6,6 +6,7 @@ use uuid::Uuid as UuidTrait;
 use crate::models::{EventMetadata, SnapshotMetadata, State};
 
 /// Repository for state metadata in PostgreSQL
+#[derive(Debug)]
 pub struct PostgresStateRepository {
     pool: PgPool,
 }
