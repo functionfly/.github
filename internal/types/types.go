@@ -178,6 +178,17 @@ type Tenant struct {
 	DegradedMode        bool      `json:"degraded_mode" gorm:"column:degraded_mode;default:false"`
 	DegradationReason   string    `json:"degradation_reason,omitempty" gorm:"column:degradation_reason"`
 	DegradationUpdatedAt *time.Time `json:"degradation_updated_at,omitempty" gorm:"column:degradation_updated_at"`
+	// DeploymentPath controls which Firecracker deployment model this tenant uses.
+	// One of: "marketplace" (default), "byoaws", "hybrid".
+	DeploymentPath      string    `json:"deployment_path,omitempty" gorm:"column:deployment_path;size:20;default:'marketplace'"`
+	// AWSAccountID is the customer's AWS account ID (BYOAWS/hybrid paths only).
+	AWSAccountID        *string   `json:"aws_account_id,omitempty" gorm:"column:aws_account_id;size:12"`
+	// AWSRegion is the customer's primary deployment region.
+	AWSRegion           *string   `json:"aws_region,omitempty" gorm:"column:aws_region;size:20"`
+	// AWSIAMRoleARN is the cross-account role ARN for hybrid managed deployments.
+	AWSIAMRoleARN       *string   `json:"aws_iam_role_arn,omitempty" gorm:"column:aws_iam_role_arn"`
+	// MicroVMManaged indicates FunctionFly actively manages the customer's Firecracker deployment.
+	MicroVMManaged      bool      `json:"microvm_managed" gorm:"column:microvm_managed;default:false"`
 	Users               []User    `json:"users,omitempty" gorm:"foreignKey:TenantID"`
 	Apps                []App     `json:"apps,omitempty" gorm:"foreignKey:TenantID"`
 	Teams               []Team    `json:"teams,omitempty" gorm:"foreignKey:TenantID"`

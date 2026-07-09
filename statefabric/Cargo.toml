@@ -8,7 +8,7 @@ description = "Deterministic state management for AI agents"
 # Web framework
 axum = { version = "0.8.9", features = ["macros"] }
 tower = "0.5.3"
-tower-http = { version = "0.6.11", features = ["trace", "cors"] }
+tower-http = { version = "0.6.11", features = ["trace", "cors", "limit", "timeout"] }
 
 # Async runtime
 tokio = { version = "1.52.3", features = ["full"] }
@@ -48,8 +48,11 @@ redis = { version = "1.2.2", features = ["tokio-comp", "connection-manager"] }
 # SECURITY: JWT validation using a proper library
 jsonwebtoken = "9.3.0"
 
-# SECURITY: Password hashing using bcrypt (secure replacement for plaintext API keys)
-bcrypt = "0.17"
+# SECURITY: Password/key hashing using Argon2id (GPU-resistant, better than bcrypt)
+argon2 = "0.5.3"
+
+# SECURITY: For password hashing compatibility (bcrypt is still used for legacy if needed)
+# argon2 is preferred for new implementations
 
 # Base64 encoding for hash storage
 base64 = "0.22"
@@ -80,6 +83,12 @@ wasmparser = "0.251.0"
 # Encryption (AES-256-GCM for object storage)
 aes-gcm = "0.10.3"
 hex = "0.4.3"
+
+# Metrics/observability
+metrics = "0.24"
+metrics-util = "0.19"
+metrics-exporter-prometheus = "0.16"
+prometheus = "0.13"
 
 [dev-dependencies]
 criterion = "0.8.2"

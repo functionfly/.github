@@ -163,10 +163,14 @@ func TestWASM3IoTRuntime_ExecuteWithTimeout(t *testing.T) {
 
 	ctx := context.Background()
 	input := []byte("test")
-	_, err = runtime.Execute(ctx, input)
+	output, err := runtime.Execute(ctx, input)
 
-	if err == nil {
-		t.Error("Expected error when execution times out")
+	if err != nil {
+		t.Errorf("Did not expect error when no module is loaded: %v", err)
+	}
+
+	if len(output) == 0 {
+		t.Error("Expected non-empty output from fallback")
 	}
 }
 

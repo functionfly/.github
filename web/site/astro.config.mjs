@@ -46,7 +46,19 @@ export default defineConfig({
       customPages: [
         { url: "/", priority: 1.0 },
         { url: "/pricing/", priority: 1.0 },
+        { url: "/registry/", priority: 0.9 },
+        { url: "/blog/", priority: 0.9 },
+        { url: "/trust/", priority: 0.8 },
+        { url: "/security/", priority: 0.8 },
+        { url: "/changelog/", priority: 0.7 },
+        { url: "/about/", priority: 0.7 },
+        { url: "/contact/", priority: 0.6 },
+        { url: "/careers/", priority: 0.6 },
       ],
+      filter: (page) =>
+        !page.url.includes("/studio/") &&
+        !page.url.includes("/api/") &&
+        !page.url.includes("/@"),
     }),
     robotsTxt({
       sitemap: [

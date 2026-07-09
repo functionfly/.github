@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Play, Pause, Trash2, ArrowRight, CheckCircle, AlertCircle, Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,7 @@ import {
   useUpdatePipeline,
   useExecutePipeline,
 } from "@/hooks/useStateFabric";
+import { stateFabricApi } from "@/api/stateFabric";
 import type { Pipeline, PipelineStep } from "@/types";
 import { PipelineStepEditor } from "./PipelineStepEditor";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -131,14 +132,15 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
 
     setIsExecuting(true);
     setExecutionProgress(0);
+    setExecutionResult(null);
+
+    const sortedSteps = runningPipeline.steps.sort((a, b) => a.order - b.order);
 
     // Initialize step executions for live tracking
-    const initialExecutions = runningPipeline.steps
-      .sort((a, b) => a.order - b.order)
-      .map((step) => ({
-        stepId: step.id,
-        status: "pending" as StepExecutionStatus,
-      }));
+    const initialExecutions = sortedSteps.map((step) => ({
+      stepId: step.id,
+      status: "pending" as StepExecutionStatus,
+    }));
     setStepExecutions(initialExecutions);
 
     try {
@@ -149,47 +151,94 @@ export function PipelineVisualization({ fabricId, pipelines }: PipelineVisualiza
         inputData = { raw: executionInput };
       }
 
-      // Simulate step-by-step execution progress for visual feedback
-      const totalSteps = runningPipeline.steps.length || 1;
-      for (let i = 0; i < totalSteps; i++) {
-        // Mark current step as running
-        setStepExecutions((prev) =>
-          prev.map((exec, idx) =>
-            idx === i ? { ...exec, status: "running" } : exec
-          )
-        );
+      // Mark all steps as running
+      setStepExecutions((prev) =>
+        prev.map((exec) => ({ ...exec, status: "running" as StepExecutionStatus }))
+      );
+      setExecutionProgress(10);
 
-        // Simulate step execution time (remove in production - use actual API feedback)
-        await new Promise((resolve) => setTimeout(resolve, 300));
+      // Execute pipeline via API
+      const { executionId } = await executePipeline.mutateAsync(inputData);
+      setExecutionProgress(20);
 
-        // Mark step as completed
-        setStepExecutions((prev) =>
-          prev.map((exec, idx) =>
-            idx === i ? { ...exec, status: "completed", durationMs: 300 } : exec
-          )
-        );
+      // Poll for execution status until completed or failed
+      const maxPolls = 60;
+      const pollInterval = 500;
+      let pollCount = 0;
 
-        // Update progress
-        setExecutionProgress(((i + 1) / totalSteps) * 100);
-      }
+      const pollStatus = async (): Promise<void> => {
+        if (pollCount >= maxPolls) {
+          throw new Error("Execution timed out");
+        }
 
-      const result = await executePipeline.mutateAsync(inputData);
-      setExecutionResult(result);
+        pollCount++;
+        const status = await stateFabricApi.getPipelineExecution(fabricId, runningPipeline.id, executionId);
+
+        // Update progress based on execution status
+        if (status.status === "completed") {
+          setExecutionProgress(100);
+          // Mark all steps as completed with real durations
+          setStepExecutions((prev) =>
+            prev.map((exec) => ({
+              ...exec,
+              status: "completed" as StepExecutionStatus,
+              durationMs: status.steps?.find((s) => s.id === exec.stepId)?.durationMs,
+            }))
+          );
+          setExecutionResult({ executionId, status: "completed" });
+          return;
+        }
+
+        if (status.status === "failed") {
+          const failedStep = status.steps?.find((s) => s.status === "error");
+          setStepExecutions((prev) =>
+            prev.map((exec) => ({
+              ...exec,
+              status: failedStep?.id === exec.stepId ? "error" : "completed",
+              error: failedStep?.id === exec.stepId ? failedStep.error : undefined,
+            }))
+          );
+          setExecutionResult({ executionId, status: "failed", error: failedStep?.error });
+          return;
+        }
+
+        // Update step statuses from API response
+        if (status.steps) {
+          setStepExecutions((prev) =>
+            prev.map((exec) => {
+              const stepStatus = status.steps?.find((s) => s.id === exec.stepId);
+              return {
+                ...exec,
+                status: (stepStatus?.status as StepExecutionStatus) || exec.status,
+                durationMs: stepStatus?.durationMs,
+                error: stepStatus?.error,
+              };
+            })
+          );
+        }
+
+        // Calculate progress (20-90% range for polling)
+        const estimatedProgress = 20 + Math.min((pollCount / maxPolls) * 70, 70);
+        setExecutionProgress(estimatedProgress);
+
+        // Continue polling
+        await new Promise((resolve) => setTimeout(resolve, pollInterval));
+        return pollStatus();
+      };
+
+      await pollStatus();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Execution failed";
       setExecutionResult({ error: errorMessage });
 
-      // Mark current step as error
-      const currentStepIndex = stepExecutions.findIndex((e) => e.status === "running");
-      if (currentStepIndex >= 0) {
-        setStepExecutions((prev) =>
-          prev.map((exec, idx) =>
-            idx === currentStepIndex
-              ? { ...exec, status: "error", error: errorMessage }
-              : exec
-          )
-        );
-      }
+      // Mark all running steps as error
+      setStepExecutions((prev) =>
+        prev.map((exec) =>
+          exec.status === "running"
+            ? { ...exec, status: "error" as StepExecutionStatus, error: errorMessage }
+            : exec
+        )
+      );
     } finally {
       setIsExecuting(false);
     }

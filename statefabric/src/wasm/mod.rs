@@ -356,7 +356,8 @@ impl WasmRuntime {
 
     /// Compile and cache a WASM module
     /// SECURITY: If approved_hashes is configured, verifies module hash before loading
-    /// SECURITY P0: In production (STATEFABRIC_ENVIRONMENT=production), require approved hashes
+    /// SECURITY P0: Hash verification is REQUIRED in ALL environments when approved_hashes is set
+    /// SECURITY P0: In production, fail fast if no approved hashes are configured
     pub async fn compile_module(&self, name: &str, wasm_bytes: &[u8]) -> WasmResult<()> {
         // SECURITY P0: In production mode, reject module loading if no approved hashes configured
         let is_production = std::env::var("STATEFABRIC_ENVIRONMENT")
@@ -370,18 +371,33 @@ impl WasmRuntime {
             ));
         }
 
-        // SECURITY: Verify module hash if allowlist is configured
+        // SECURITY P0: If approved_hashes is configured (in ANY environment), ALWAYS verify
+        // This prevents loading unverified modules even in development
         if !self.config.approved_hashes.is_empty() {
             let hash = blake3::hash(wasm_bytes);
             let hash_hex = hash.to_hex().to_string();
             let approved = self.config.approved_hashes.iter().any(|m| m.name == name && m.sha256_hash == hash_hex);
             if !approved {
                 tracing::warn!(module = name, hash = %hash_hex, "WASM module not in approved hash list");
+                // SECURITY: Log audit event for blocked execution
+                crate::api::middleware::get_audit_logger().log(
+                    crate::api::middleware::AuditEvent::WasmExecutionBlocked {
+                        module_name: name.to_string(),
+                        reason: format!("Hash {} not in approved list", hash_hex),
+                    }
+                ).await;
                 return Err(WasmError::CompilationError(
                     format!("Module '{}' hash {} not in approved list", name, hash_hex)
                 ));
             }
             tracing::info!(module = name, hash = %hash_hex, "WASM module hash verified");
+        } else if !is_production {
+            // DEVELOPMENT MODE WARNING: Log that unverified modules are being loaded
+            tracing::warn!(
+                module = name,
+                "SECURITY WARNING: Loading unverified WASM module in development mode. \
+                Set STATEFABRIC_WASM_APPROVED_MODULES to enforce hash verification."
+            );
         }
 
         let module = Module::new(&self.engine, wasm_bytes)
@@ -389,6 +405,15 @@ impl WasmRuntime {
 
         let mut modules = self.modules.write().await;
         modules.insert(name.to_string(), module);
+
+        // SECURITY: Log successful module load for audit
+        let hash = blake3::hash(wasm_bytes);
+        crate::api::middleware::get_audit_logger().log(
+            crate::api::middleware::AuditEvent::WasmModuleLoaded {
+                module_name: name.to_string(),
+                hash: hash.to_hex().to_string(),
+            }
+        ).await;
 
         Ok(())
     }
@@ -409,13 +434,12 @@ impl WasmRuntime {
         let module = modules.get(module_name)
             .ok_or_else(|| WasmError::InvalidOperation(format!("Module {} not found", module_name)))?;
 
-        // Build WASI preview1 context (stdio, env)
-        // SECURITY P0: Do NOT inherit full environment - only pass safe, non-sensitive vars
-        // Filter to prevent exposure of secrets like STATEFABRIC_JWT_SECRET, STATEFABRIC_ENCRYPTION_KEY
-        let wasi = WasiCtxBuilder::new()
-            .inherit_stdio()
-            .env("RUST_LOG", std::env::var("RUST_LOG").unwrap_or_default())
-            .build_p1();
+        // Build WASI preview1 context.
+        // SECURITY P0: Do NOT inherit stdio or env vars - WASM must not see the
+        // host's stdout/stderr/stdin or any environment variables. Only an
+        // explicit allow-list of safe vars would be permitted; we currently
+        // pass nothing to keep the attack surface minimal.
+        let wasi = WasiCtxBuilder::new().build_p1();
 
         // Create host state (state manager + shared memory + WASI)
         let mut host_state = HostState::new(state_manager, 1024 * 1024, wasi); // 1MB shared memory
@@ -484,20 +508,28 @@ impl WasmRuntime {
         })
     }
 
-    /// Add host functions to the linker
+    /// Add host functions to the linker.
+    ///
+    /// SECURITY: Host functions that need to call async code use
+    /// `tokio::task::block_in_place` + `Handle::current().block_on` instead of
+    /// a bare `block_on`. `block_in_place` moves the current worker thread out
+    /// of the async runtime's scheduling pool so the blocking call cannot
+    /// deadlock the runtime under concurrent WASM execution. This is the
+    /// recommended pattern for calling async code from synchronous wasmtime
+    /// host callbacks (see tokio docs).
     fn add_host_functions(&self, linker: &mut Linker<HostState>) -> WasmResult<()> {
-        // CommitEvent API - allows WASM to commit events
-        // SECURITY: Rate-limited to prevent WASM from flooding event log
+        // CommitEvent API - allows WASM to commit events.
+        // SECURITY: Rate-limited to prevent WASM from flooding the event log.
         linker.func_wrap("env", "commit_event", |mut caller: wasmtime::Caller<HostState>,
                                                  event_type: i32,
                                                  key_ptr: i32,
                                                  key_len: i32,
                                                  value_ptr: i32,
                                                  value_len: i32| -> i32 {
-            // SECURITY: Check rate limit before processing event
+            // SECURITY: Check rate limit before processing event.
             if let Err(e) = caller.data_mut().check_increment_event_count() {
                 tracing::warn!(error = %e, "WASM event rate limit exceeded");
-                return -7; // Rate limit error code
+                return -7; // Rate limit error code.
             }
 
             let state_id = match caller.data().get_state_id() {
@@ -523,7 +555,12 @@ impl WasmRuntime {
                 _ => return -5,
             };
             let manager = Arc::clone(&caller.data().state_manager);
-            match tokio::runtime::Handle::current().block_on(manager.commit_event(event)) {
+            // SECURITY: Use block_in_place + block_on so a single WASM
+            // execution cannot starve other tasks by holding a worker thread.
+            let commit_result = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(manager.commit_event(event))
+            });
+            match commit_result {
                 Ok(committed_event) => {
                     caller.data_mut().committed_events.push(committed_event);
                     0
@@ -547,7 +584,10 @@ impl WasmRuntime {
                 Err(_) => return -2,
             };
             let manager = Arc::clone(&caller.data().state_manager);
-            let value = match tokio::runtime::Handle::current().block_on(manager.get_key(state_id, &key)) {
+            let value_result = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(manager.get_key(state_id, &key))
+            });
+            let value = match value_result {
                 Ok(v) => v,
                 Err(_) => return -3,
             };
@@ -561,7 +601,7 @@ impl WasmRuntime {
             }
         })?;
 
-        // Set state value (direct, without event)
+        // Set state value (direct, without event).
         linker.func_wrap("env", "set_state", |mut caller: wasmtime::Caller<HostState>,
                                                key_ptr: i32,
                                                key_len: i32,
@@ -584,7 +624,10 @@ impl WasmRuntime {
                 Err(_) => return -4,
             };
             let manager = Arc::clone(&caller.data().state_manager);
-            match tokio::runtime::Handle::current().block_on(manager.set(state_id, key, value)) {
+            let set_result = tokio::task::block_in_place(|| {
+                tokio::runtime::Handle::current().block_on(manager.set(state_id, key, value))
+            });
+            match set_result {
                 Ok(_) => 0,
                 Err(_) => -5,
             }

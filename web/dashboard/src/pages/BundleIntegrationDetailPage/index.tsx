@@ -32,11 +32,16 @@ import {
 } from './components';
 import './styles.css';
 
+// Each integration card has a different prop signature (some take `appId`,
+// some only `config`), so we type `Card` as a generic component that accepts
+// arbitrary props. The actual rendering below uses the correct card per type.
+type CardComponent = React.ComponentType<Record<string, unknown>>;
+
 const INTEGRATION_META: Record<string, {
   title: string;
   description: string;
   icon: typeof Shield;
-  Card: typeof AuthCard;
+  Card: CardComponent;
   sectionTitle: string;
 }> = {
   'stripe-payments': {
@@ -75,7 +80,7 @@ export default function BundleIntegrationDetailPage() {
   const bundleSlug = searchParams.get('bundle') || 'saas-starter';
 
   const meta = INTEGRATION_META[type] || INTEGRATION_META['stripe-payments'];
-  const { title, description, icon: Icon, Card, sectionTitle } = meta;
+  const { title, description, icon: Icon, sectionTitle } = meta;
 
   usePageTitle(title);
 

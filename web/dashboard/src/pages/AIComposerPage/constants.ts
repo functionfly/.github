@@ -21,6 +21,7 @@ type IconComponent = LucideIcon | FC<{ className?: string }>;
 
 export const RUNTIMES: { value: string; label: string; icon: IconComponent }[] = [
   { value: 'python', label: 'Python 3.11', icon: PythonIcon },
+  { value: 'python-light', label: 'Python (light)', icon: PythonIcon },
   { value: 'nodejs', label: 'Node.js 20', icon: NodeIcon },
   { value: 'go', label: 'Go 1.21', icon: GoIcon },
   { value: 'rust', label: 'Rust', icon: RustIcon },

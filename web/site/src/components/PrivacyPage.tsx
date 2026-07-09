@@ -69,11 +69,17 @@ const PrivacyPage: React.FC = () => {
     { service: 'Stripe', purpose: 'Payment processing', data: 'Billing info, transaction metadata', location: 'US' },
     { service: 'OpenAI', purpose: 'AI completions & embeddings', data: 'Prompts, function metadata', location: 'US' },
     { service: 'Anthropic', purpose: 'AI completions (optional)', data: 'Prompts (if configured)', location: 'US' },
-    { service: 'Cloudflare', purpose: 'CDN, security, DNS', data: 'IP addresses, request logs', location: 'Global' },
+    { service: 'OpenRouter', purpose: 'AI model routing (100+ models)', data: 'Prompts, model responses', location: 'US' },
+    { service: 'Cloudflare', purpose: 'CDN, security, DNS, R2 object storage', data: 'IP addresses, request logs, artifacts, backups', location: 'Global' },
     { service: 'Vercel', purpose: 'Frontend hosting', data: 'IP addresses, analytics', location: 'US/EU' },
     { service: 'Resend', purpose: 'Transactional email', data: 'Email addresses, message content', location: 'US' },
     { service: 'Sentry', purpose: 'Error monitoring', data: 'Error logs, stack traces, IP addresses', location: 'US' },
-    { service: 'S3-Compatible Storage', purpose: 'Object storage', data: 'User files, encrypted vault data', location: 'Varies' },
+    { service: 'Upstash', purpose: 'Redis caching (serverless)', data: 'Session data, cache entries', location: 'Global' },
+    { service: 'Mailchimp', purpose: 'Newsletter & marketing emails', data: 'Email addresses, subscriber status', location: 'US' },
+    { service: 'Mixpanel', purpose: 'Product analytics', data: 'User interactions, event properties', location: 'US' },
+    { service: 'Sanity', purpose: 'CMS for blog & content', data: 'Blog posts, author information', location: 'US' },
+    { service: 'Google Analytics', purpose: 'Website analytics', data: 'Page views, session data', location: 'US' },
+    { service: 'Atlas', purpose: 'Agent execution tracing & observability (optional)', data: 'Execution traces, agent prompts, function calls', location: 'US' },
   ]
 
   return (
@@ -289,7 +295,7 @@ const PrivacyPage: React.FC = () => {
         <div className="trust-container">
           <h2 className="trust-section-title">Subprocessor list</h2>
           <p className="trust-section-lead">
-            Last reviewed: April 13, 2026. We update this list when adding or changing subprocessors.
+            Last reviewed: July 7, 2026. We update this list when adding or changing subprocessors.
           </p>
           <Chamber className="trust-table-chamber">
             <div className="trust-table-wrapper">
@@ -458,7 +464,7 @@ const PrivacyPage: React.FC = () => {
             </a>
           </div>
           <p className="trust-footer-note">
-            Last updated: April 13, 2026
+            Last updated: July 7, 2026
           </p>
         </div>
       </section>

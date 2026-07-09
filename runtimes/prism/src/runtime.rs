@@ -356,18 +356,75 @@ impl RuntimeContext {
     }
 
     /// Invoke a capability by name
-    pub async fn invoke_capability(&self, name: &str, _input: &[u8]) -> PrismResult<Vec<u8>> {
+    pub async fn invoke_capability(&self, name: &str, input: &[u8]) -> PrismResult<Vec<u8>> {
         let registry = self.capability_registry.read().await;
         let caps = registry.search(name).await;
 
         if let Some(cap) = caps.into_iter().next() {
-            // For now, return an error that capability invocation needs mesh
-            // In production, this would route to the capability provider
-            Err(PrismError::Internal(format!(
-                "Capability '{}' found but invocation requires mesh network", cap.name
-            )))
+            if let Some(wasm_bundle) = &cap.wasm_bundle {
+                let module_id = cap.capability_id.to_string();
+                self.execute_wasm_bundle(&module_id, wasm_bundle, input, 256).await
+            } else if cap.endpoint.is_some() {
+                Err(PrismError::Internal(format!(
+                    "Capability '{}' is remote and requires mesh network routing to {}",
+                    cap.name,
+                    cap.endpoint.as_ref().unwrap()
+                )))
+            } else {
+                Err(PrismError::Internal(format!(
+                    "Capability '{}' has no executable bundle or endpoint",
+                    cap.name
+                )))
+            }
         } else {
             Err(PrismError::Internal(format!("Capability '{}' not found", name)))
+        }
+    }
+
+    async fn execute_wasm_bundle(
+        &self,
+        module_id: &str,
+        wasm_bytes: &[u8],
+        input: &[u8],
+        memory_limit_mb: u64,
+    ) -> PrismResult<Vec<u8>> {
+        let fusion_executor_arc = self.fusion_executor.clone();
+        let input_vec = input.to_vec();
+        let module_id_owned = module_id.to_string();
+        let wasm_bytes_owned = wasm_bytes.to_vec();
+
+        let handle = tokio::task::spawn_blocking(move || {
+            let executor_guard = futures::executor::block_on(fusion_executor_arc.read());
+            let Some(executor) = executor_guard.as_ref() else {
+                return Err(PrismError::Internal("Fusion executor not initialized".to_string()));
+            };
+
+            use crate::wasm_fusion::{FusionGraph, FusionNode, FusionNodeType, NodeConfig};
+            let mut graph = FusionGraph::new(&module_id_owned);
+            graph.add_node(FusionNode {
+                node_id: module_id_owned.clone(),
+                name: module_id_owned.clone(),
+                node_type: FusionNodeType::Wasm,
+                config: NodeConfig {
+                    entry_point: "_start".to_string(),
+                    timeout_ms: 30_000,
+                    memory_limit_mb,
+                    imports: Vec::new(),
+                },
+            });
+
+            let module_id_for_register = module_id_owned.clone();
+            let _ = futures::executor::block_on(
+                executor.register_module(&module_id_for_register, &wasm_bytes_owned),
+            );
+
+            futures::executor::block_on(executor.execute_graph(&mut graph, &input_vec))
+        });
+
+        match handle.await {
+            Ok(Ok(output)) => Ok(output),
+            Ok(Err(e)) => Err(e),
+            Err(e) => Err(PrismError::Internal(format!("Execute task failed: {}", e))),
         }
     }
 

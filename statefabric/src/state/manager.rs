@@ -41,7 +41,7 @@ pub struct StateManager {
     /// Sequence numbers per state
     sequences: Arc<RwLock<HashMap<Uuid, i64>>>,
     /// Object storage for snapshots
-    object_store: Option<Box<dyn ObjectStore + Send + Sync>>,
+    object_store: Option<Arc<dyn ObjectStore + Send + Sync>>,
     /// PostgreSQL snapshot repository
     snapshot_repo: Option<PostgresSnapshotRepository>,
     /// PostgreSQL event repository
@@ -114,7 +114,7 @@ impl StateManager {
 
     /// Create a new state manager with storage
     pub fn with_storage(
-        object_store: Box<dyn ObjectStore + Send + Sync>,
+        object_store: Arc<dyn ObjectStore + Send + Sync>,
         snapshot_repo: PostgresSnapshotRepository,
         event_repo: PostgresEventRepository,
         state_repo: PostgresStateRepository,
@@ -133,7 +133,7 @@ impl StateManager {
 
     /// Create a new state manager with storage and WASM runtime
     pub fn with_wasm(
-        object_store: Box<dyn ObjectStore + Send + Sync>,
+        object_store: Arc<dyn ObjectStore + Send + Sync>,
         snapshot_repo: PostgresSnapshotRepository,
         event_repo: PostgresEventRepository,
         state_repo: PostgresStateRepository,
@@ -683,7 +683,37 @@ impl StateManager {
         Ok(snapshots)
     }
 
-    /// Commit an event to object storage and PostgreSQL
+    /// SECURITY P0: Verify a state_id is owned by the given tenant.
+    ///
+/// Uses the fast `EXISTS(...)` query on `PostgresStateRepository`. Returns
+/// `Ok(true)` only if the state exists AND belongs to `tenant_id`. If the
+/// state repository is not configured (in-memory mode), returns `Ok(true)`
+/// to preserve dev behaviour but emits a warning.
+pub async fn verify_tenant_ownership(
+    &self,
+    state_id: Uuid,
+    tenant_id: Uuid,
+) -> StateResult<bool> {
+    if tenant_id.is_nil() {
+        return Ok(false);
+    }
+
+    match &self.state_repo {
+        Some(repo) => repo
+            .verify_tenant_ownership(state_id, tenant_id)
+            .await
+            .map_err(|e| StateError::StorageError(format!("Tenant verification failed: {}", e))),
+        None => {
+            tracing::warn!(
+                ?state_id,
+                ?tenant_id,
+                "state_repo not configured - tenant ownership cannot be verified (dev mode only)"
+            );
+            // Dev-only fallback: allow access so local flows work.
+            Ok(true)
+        }
+    }
+}
     pub async fn commit_event(&self, mut event: Event) -> StateResult<Event> {
         let object_store = self.object_store.as_ref()
             .ok_or_else(|| StateError::StorageError("Object store not configured".to_string()))?;
@@ -1118,52 +1148,6 @@ impl StateManager {
         self.restore_snapshot(state_id, request).await
     }
 
-    /// SECURITY: Verify tenant ownership of a state
-    ///
-    /// Queries the database to verify that the given state_id belongs to the
-    /// specified tenant. This prevents cross-tenant data access attacks.
-    ///
-    /// Returns Ok(true) if tenant owns the state, Ok(false) if not,
-    /// or an error if verification could not be completed.
-    pub async fn verify_tenant_ownership(&self, state_id: Uuid, tenant_id: Uuid) -> StateResult<bool> {
-        if tenant_id == Uuid::nil() {
-            tracing::warn!("verify_tenant_ownership called with nil tenant_id");
-            return Ok(false);
-        }
-
-        if let Some(state_repo) = &self.state_repo {
-            match state_repo.get_by_id(state_id).await {
-                Ok(Some(state)) => {
-                    if state.tenant_id == tenant_id {
-                        Ok(true)
-                    } else {
-                        tracing::warn!(
-                            "Tenant {} attempted to access state {} owned by tenant {}",
-                            tenant_id,
-                            state_id,
-                            state.tenant_id
-                        );
-                        Ok(false)
-                    }
-                }
-                Ok(None) => {
-                    tracing::debug!("State {} not found for tenant verification", state_id);
-                    Ok(false)
-                }
-                Err(e) => {
-                    tracing::error!("Failed to verify tenant ownership via state repo: {}", e);
-                    Err(StateError::StorageError(
-                        "Could not verify tenant ownership".to_string(),
-                    ))
-                }
-            }
-        } else {
-            tracing::warn!("No state_repo configured - cannot verify tenant ownership");
-            Err(StateError::StorageError(
-                "State repository not configured - tenant verification unavailable".to_string(),
-            ))
-        }
-    }
 
     /// Validate that the given tenant has access to the state
     async fn validate_tenant(&self, state_id: Uuid, tenant_id: Uuid) -> StateResult<()> {

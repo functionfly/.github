@@ -22,6 +22,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::net::TcpListener;
+use tokio_util::sync::CancellationToken;
 use tracing::{info, warn, debug};
 
 /// Application state
@@ -35,6 +36,7 @@ pub struct AppState {
     pub started_at: Instant,
     pub circuit_breaker: Arc<CircuitBreaker>,
     pub api_token: Option<String>,
+    pub shutdown_token: Arc<CancellationToken>,
 }
 
 /// Circuit breaker state
@@ -476,15 +478,17 @@ async fn execute_versioned_handler(
     }
 }
 
-/// Shutdown handler
+/// Shutdown handler - triggers graceful shutdown with optional grace period
 async fn shutdown_handler(
-    State(_state): State<AppState>,
-    Json(_req): Json<ShutdownRequest>,
+    State(state): State<AppState>,
+    Json(req): Json<ShutdownRequest>,
 ) -> Json<serde_json::Value> {
-    // In production, this would trigger graceful shutdown
+    let grace_period = req.grace_period_seconds.unwrap_or(30);
+    info!(grace_period_seconds = grace_period, "Shutdown requested via API");
+    state.shutdown_token.cancel();
     Json(serde_json::json!({
         "ok": true,
-        "message": "Shutdown endpoint received"
+        "message": format!("Shutdown initiated with {}s grace period", grace_period)
     }))
 }
 
@@ -503,6 +507,9 @@ pub async fn run_server(
     security_auditor: Arc<SecurityAuditor>,
     api_token: Option<String>,
 ) -> anyhow::Result<()> {
+    let shutdown_token = Arc::new(CancellationToken::new());
+    let shutdown_token_clone = shutdown_token.clone();
+
     let state = AppState {
         executor,
         metrics,
@@ -512,6 +519,7 @@ pub async fn run_server(
         started_at: Instant::now(),
         circuit_breaker: CircuitBreaker::new(10, 30),
         api_token,
+        shutdown_token,
     };
 
     let app = create_app(state)
@@ -525,8 +533,13 @@ pub async fn run_server(
 
     info!(port = port, "Ruby runtime HTTP server started");
 
-    axum::serve(listener, app).await?;
+    let shutdown_future = async move { shutdown_token_clone.cancelled().await; };
 
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_future)
+        .await?;
+
+    info!("Ruby runtime HTTP server stopped");
     Ok(())
 }
 

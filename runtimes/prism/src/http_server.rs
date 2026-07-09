@@ -316,6 +316,7 @@ pub async fn run_server(
         // Health and readiness — public, no auth.
         .route("/health", get(health_handler))
         .route("/ready", get(ready_handler))
+        .route("/metrics", get(metrics_handler))
         // All other routes require auth (when configured).
         .route("/execute", post(execute_handler))
         .route("/cells", post(create_cell_handler))
@@ -397,6 +398,30 @@ async fn ready_handler(State(state): State<HttpState>) -> Json<serde_json::Value
         "mesh_enabled": runtime.mesh_enabled,
         "active_cells": runtime.active_cells,
     }))
+}
+
+async fn metrics_handler(State(state): State<HttpState>) -> Response {
+    let status = state.runtime.get_status().await;
+    let cells = state.runtime.cells.read().await;
+    let active_cells = cells.len() as u32;
+    drop(cells);
+
+    let body = format!(
+        "# HELP functionfly_prism_cells_total Total number of cells\n\
+         # TYPE functionfly_prism_cells_total gauge\n\
+         functionfly_prism_cells_total {}\n\
+         # HELP functionfly_prism_active_cells Currently active cells\n\
+         # TYPE functionfly_prism_active_cells gauge\n\
+         functionfly_prism_active_cells {}\n\
+         # HELP functionfly_prism_runtime_info Runtime info\n\
+         # TYPE functionfly_prism_runtime_info gauge\n\
+         functionfly_prism_runtime_info{{version=\"{}\",listen=\"{}\"}} 1\n",
+        status.total_cells,
+        active_cells,
+        status.version,
+        status.listen_address,
+    );
+    ([(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")], body).into_response()
 }
 
 #[derive(serde::Deserialize)]

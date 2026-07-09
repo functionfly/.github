@@ -10,6 +10,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use async_trait::async_trait;
+use chrono::Utc;
+use chrono_tz::Tz;
 use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha256;
 use tokio::sync::mpsc;
@@ -565,10 +567,21 @@ impl ScheduledEventSource {
 
     /// Parse cron expression and compute next trigger time
     fn next_trigger(&self) -> Option<Instant> {
-        // In production, use cron-parser crate
-        // For now, return a fixed interval for testing
-        Some(Instant::now() + Duration::from_secs(60))
+        compute_next_trigger(&self.cron_expression, &self.timezone)
     }
+}
+
+/// Compute the next trigger instant from a cron expression and timezone
+fn compute_next_trigger(cron_expression: &str, timezone: &str) -> Option<Instant> {
+    let now = Utc::now();
+    let tz: Tz = timezone.parse().unwrap_or(Utc);
+    let now_in_tz = now.with_timezone(&tz);
+
+    let next = cron_parser::parse(cron_expression, now_in_tz)
+        .map_err(|e| warn!(error = %e, "Failed to parse cron expression"))
+        .ok()?;
+
+    Some(Instant::from_secs(next.timestamp() as u64))
 }
 
 #[async_trait]
@@ -590,12 +603,17 @@ impl EventSource for ScheduledEventSource {
         );
 
         let schedule_id = self.schedule_id.clone();
+        let cron_expression = self.cron_expression.clone();
+        let timezone = self.timezone.clone();
         let running = self.running.clone();
 
         tokio::spawn(async move {
             while running.load(Ordering::SeqCst) {
-                // In production, sleep until next cron trigger
-                tokio::time::sleep(Duration::from_secs(60)).await;
+                let sleep_duration = compute_next_trigger(&cron_expression, &timezone)
+                    .map(|t| t.saturating_duration_since(Instant::now()))
+                    .unwrap_or(Duration::from_secs(60));
+
+                tokio::time::sleep(sleep_duration).await;
 
                 if !running.load(Ordering::SeqCst) {
                     break;

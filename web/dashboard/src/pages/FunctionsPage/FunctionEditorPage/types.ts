@@ -2,6 +2,7 @@ export type Runtime =
   | 'typescript'
   | 'javascript'
   | 'python'
+  | 'python-light'
   | 'python-wasm'
   | 'rust-wasm'
   | 'go'

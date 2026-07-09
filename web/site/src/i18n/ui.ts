@@ -17,8 +17,7 @@ export const ui = {
     "nav.blog": "Blog",
     "nav.dashboard": "Dashboard",
 
-    "footer.tagline":
-      "The trust layer for AI agents. Publish once, run everywhere, get paid.",
+    "footer.tagline": "Functions deployed. Agents trusted.",
     "footer.product": "Product",
     "footer.documentation": "Documentation",
     "footer.trustLayer": "Trust layer",
@@ -129,8 +128,7 @@ export const ui = {
     "nav.blog": "Blog",
     "nav.dashboard": "Panel",
 
-    "footer.tagline":
-      "La capa de confianza para agentes IA. Publica una vez, ejecuta en todas partes, cobra.",
+    "footer.tagline": "Funciones desplegadas. Agentes confiados.",
     "footer.product": "Producto",
     "footer.documentation": "Documentación",
     "footer.trustLayer": "Capa de confianza",

@@ -68,6 +68,7 @@ function mapPlatformRuntimeToRegistry(platformRuntime: string): string {
     'node20': 'node20',
     'node18': 'node18',
     'python': 'python3.12',
+    'python-light': 'python-light',
     'python-wasm': 'wasm',
     'rust-wasm': 'wasm',
     'browser-wasm': 'wasm',

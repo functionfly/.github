@@ -147,6 +147,7 @@ const StateDetailPage = lazyPage(() => import('@/pages/StatePage/StateDetailPage
 const TeamDecisionsPage = lazyPage(() => import('@/pages/TeamDecisionsPage'), 'TeamDecisionsPage');
 const TeamMemoryPage = lazyPage(() => import('@/pages/TeamMemoryPage'), 'TeamMemoryPage');
 const TeamsPage = lazyPage(() => import('@/pages/TeamsPage'), 'TeamsPage');
+const ConsciousnessPage = lazyPage(() => import('@/pages/ConsciousnessPage'), 'ConsciousnessPage');
 const TimeMachinePage = lazyPage(() => import('@/pages/TimeMachinePage'), 'TimeMachinePage');
 const NewReplayPage = lazyPage(() => import('@/pages/TimeMachinePage/NewReplayPage'), 'NewReplayPage');
 const ReplayDetailPage = lazyPage(() => import('@/pages/TimeMachinePage/ReplayDetailPage'), 'ReplayDetailPage');
@@ -671,6 +672,9 @@ function AppContent() {
             <Route path="time-machine" element={<TimeMachinePage />} />
             <Route path="time-machine/new" element={<NewReplayPage />} />
             <Route path="time-machine/:id" element={<ReplayDetailPage />} />
+
+            {/* Function Consciousness Routes */}
+            <Route path="consciousness" element={<ConsciousnessPage />} />
 
             {/* Certification Routes */}
             <Route path="certification" element={<CertificationPage />} />

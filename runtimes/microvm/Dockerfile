@@ -1,9 +1,20 @@
 # syntax=docker/dockerfile:1.6
 # FunctionFly MicroVM Orchestrator — production image.
 # The orchestrator drives Firecracker, which needs /dev/kvm and CAP_NET_ADMIN.
-# In production you should run this as a privileged container on a dedicated
-# host (or as a Kubernetes DaemonSet with KVM passthrough), NOT in a
-# multi-tenant pod.
+#
+# SECURITY REQUIREMENTS:
+#   - Run as privileged container OR with --device=/dev/kvm --privileged
+#   - Dedicated single-tenant host (not shared multi-tenant environments)
+#   - Kubernetes: DaemonSet with KVM passthrough + securityContext.privileged=true
+#   - Required capabilities: CAP_NET_ADMIN, CAP_SYS_ADMIN
+#   - Required devices: /dev/kvm (character device 10:232)
+#   - Required kernel features: KVM support (check /dev/kvm exists)
+#
+# Example docker run:
+#   docker run --device=/dev/kvm --privileged \
+#     --cap-add=SYS_ADMIN --cap-add=NET_ADMIN \
+#     -v /var/lib/functionfly:/var/lib/functionfly \
+#     functionfly-microvm
 
 FROM rust:1.96.1-bookworm AS builder
 

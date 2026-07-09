@@ -92,6 +92,22 @@ export const stateFabricApi = {
     );
   },
 
+  getPipelineExecution: async (
+    fabricId: string,
+    pipelineId: string,
+    executionId: string
+  ): Promise<{
+    executionId: string;
+    status: "pending" | "running" | "completed" | "failed";
+    steps?: Array<{ id: string; status: string; durationMs?: number; error?: string }>;
+  }> => {
+    return apiClient.get<{
+      executionId: string;
+      status: "pending" | "running" | "completed" | "failed";
+      steps?: Array<{ id: string; status: string; durationMs?: number; error?: string }>;
+    }>(`/v1/state-fabrics/${fabricId}/pipelines/${pipelineId}/executions/${executionId}`);
+  },
+
   // Event Logs
   listEventLogs: async (
     fabricId: string,

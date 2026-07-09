@@ -26,11 +26,19 @@ func (r *TenantRepository) GetTenantByID(ctx context.Context, tenantID uuid.UUID
 	tenant := &Tenant{}
 	var plan sql.NullString
 	var stripeCustomerID sql.NullString
+	var deploymentPath sql.NullString
+	var awsAccountID sql.NullString
+	var awsRegion sql.NullString
+	var awsIAMRoleARN sql.NullString
+	var microvmManaged sql.NullBool
 	err := r.db.QueryRowContext(ctx, `
-		SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at
+		SELECT id, name, plan, status, stripe_customer_id,
+		       deployment_path, aws_account_id, aws_region, aws_iam_role_arn, microvm_managed,
+		       created_at, updated_at
 		FROM tenants WHERE id = $1`, tenantID).Scan(
-		&tenant.ID, &tenant.Name, &plan, &tenant.Status,
-		&stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
+		&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID,
+		&deploymentPath, &awsAccountID, &awsRegion, &awsIAMRoleARN, &microvmManaged,
+		&tenant.CreatedAt, &tenant.UpdatedAt)
 
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -44,6 +52,23 @@ func (r *TenantRepository) GetTenantByID(ctx context.Context, tenantID uuid.UUID
 	}
 	if stripeCustomerID.Valid && stripeCustomerID.String != "" {
 		tenant.StripeCustomerID = &stripeCustomerID.String
+	}
+	if deploymentPath.Valid && deploymentPath.String != "" {
+		tenant.DeploymentPath = deploymentPath.String
+	} else {
+		tenant.DeploymentPath = "marketplace"
+	}
+	if awsAccountID.Valid && awsAccountID.String != "" {
+		tenant.AWSAccountID = &awsAccountID.String
+	}
+	if awsRegion.Valid && awsRegion.String != "" {
+		tenant.AWSRegion = &awsRegion.String
+	}
+	if awsIAMRoleARN.Valid && awsIAMRoleARN.String != "" {
+		tenant.AWSIAMRoleARN = &awsIAMRoleARN.String
+	}
+	if microvmManaged.Valid {
+		tenant.MicroVMManaged = microvmManaged.Bool
 	}
 	if tenant.Status == "" {
 		tenant.Status = "active" // Default status for backward compatibility
@@ -167,7 +192,10 @@ func (r *TenantRepository) CountRoutingEventsForTenantSince(ctx context.Context,
 
 // ListTenants lists all tenants
 func (r *TenantRepository) ListTenants(ctx context.Context) ([]*Tenant, error) {
-	query := `SELECT id, name, plan, status, stripe_customer_id, created_at, updated_at FROM tenants ORDER BY created_at DESC`
+	query := `SELECT id, name, plan, status, stripe_customer_id,
+	                 deployment_path, aws_account_id, aws_region, aws_iam_role_arn, microvm_managed,
+	                 created_at, updated_at
+	          FROM tenants ORDER BY created_at DESC`
 
 	rows, err := r.db.QueryContext(ctx, query)
 	if err != nil {
@@ -180,7 +208,16 @@ func (r *TenantRepository) ListTenants(ctx context.Context) ([]*Tenant, error) {
 		tenant := &Tenant{}
 		var plan sql.NullString
 		var stripeCustomerID sql.NullString
-		err := rows.Scan(&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
+		var deploymentPath sql.NullString
+		var awsAccountID sql.NullString
+		var awsRegion sql.NullString
+		var awsIAMRoleARN sql.NullString
+		var microvmManaged sql.NullBool
+		err := rows.Scan(
+			&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID,
+			&deploymentPath, &awsAccountID, &awsRegion, &awsIAMRoleARN, &microvmManaged,
+			&tenant.CreatedAt, &tenant.UpdatedAt,
+		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan tenant: %w", err)
 		}
@@ -189,6 +226,23 @@ func (r *TenantRepository) ListTenants(ctx context.Context) ([]*Tenant, error) {
 		}
 		if stripeCustomerID.Valid && stripeCustomerID.String != "" {
 			tenant.StripeCustomerID = &stripeCustomerID.String
+		}
+		if deploymentPath.Valid && deploymentPath.String != "" {
+			tenant.DeploymentPath = deploymentPath.String
+		} else {
+			tenant.DeploymentPath = "marketplace"
+		}
+		if awsAccountID.Valid && awsAccountID.String != "" {
+			tenant.AWSAccountID = &awsAccountID.String
+		}
+		if awsRegion.Valid && awsRegion.String != "" {
+			tenant.AWSRegion = &awsRegion.String
+		}
+		if awsIAMRoleARN.Valid && awsIAMRoleARN.String != "" {
+			tenant.AWSIAMRoleARN = &awsIAMRoleARN.String
+		}
+		if microvmManaged.Valid {
+			tenant.MicroVMManaged = microvmManaged.Bool
 		}
 		if tenant.Status == "" {
 			tenant.Status = "active" // Default status
@@ -242,13 +296,50 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 		setParts = append(setParts, "stripe_customer_id = NULL")
 	}
 
+	if dp, ok := updates["deployment_path"].(string); ok {
+		switch dp {
+		case "marketplace", "byoaws", "hybrid":
+			setParts = append(setParts, fmt.Sprintf("deployment_path = $%d", argIndex))
+			args = append(args, dp)
+			argIndex++
+		default:
+			return nil, fmt.Errorf("invalid deployment_path: %s", dp)
+		}
+	}
+
+	if awsAccount, ok := updates["aws_account_id"].(string); ok && awsAccount != "" {
+		setParts = append(setParts, fmt.Sprintf("aws_account_id = $%d", argIndex))
+		args = append(args, awsAccount)
+		argIndex++
+	}
+
+	if awsRegion, ok := updates["aws_region"].(string); ok && awsRegion != "" {
+		setParts = append(setParts, fmt.Sprintf("aws_region = $%d", argIndex))
+		args = append(args, awsRegion)
+		argIndex++
+	}
+
+	if role, ok := updates["aws_iam_role_arn"].(string); ok && role != "" {
+		setParts = append(setParts, fmt.Sprintf("aws_iam_role_arn = $%d", argIndex))
+		args = append(args, role)
+		argIndex++
+	}
+
+	if managed, ok := updates["microvm_managed"].(bool); ok {
+		setParts = append(setParts, fmt.Sprintf("microvm_managed = $%d", argIndex))
+		args = append(args, managed)
+		argIndex++
+	}
+
 	if len(setParts) == 0 {
 		return current, nil // No updates
 	}
 
 	setParts = append(setParts, "updated_at = NOW()")
 
-	query := fmt.Sprintf("UPDATE tenants SET %s WHERE id = $%d RETURNING id, name, plan, status, stripe_customer_id, created_at, updated_at",
+	query := fmt.Sprintf(`UPDATE tenants SET %s WHERE id = $%d RETURNING id, name, plan, status, stripe_customer_id,
+	    deployment_path, aws_account_id, aws_region, aws_iam_role_arn, microvm_managed,
+	    created_at, updated_at`,
 		strings.Join(setParts, ", "), argIndex)
 
 	args = append(args, tenantID)
@@ -256,7 +347,16 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 	updated := &Tenant{}
 	var plan sql.NullString
 	var stripeCustomerID sql.NullString
-	err = r.db.QueryRowContext(ctx, query, args...).Scan(&updated.ID, &updated.Name, &plan, &updated.Status, &stripeCustomerID, &updated.CreatedAt, &updated.UpdatedAt)
+	var deploymentPath sql.NullString
+	var awsAccountID sql.NullString
+	var awsRegion sql.NullString
+	var awsIAMRoleARN sql.NullString
+	var microvmManaged sql.NullBool
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(
+		&updated.ID, &updated.Name, &plan, &updated.Status, &stripeCustomerID,
+		&deploymentPath, &awsAccountID, &awsRegion, &awsIAMRoleARN, &microvmManaged,
+		&updated.CreatedAt, &updated.UpdatedAt,
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to update tenant: %w", err)
@@ -268,6 +368,21 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 	if stripeCustomerID.Valid && stripeCustomerID.String != "" {
 		updated.StripeCustomerID = &stripeCustomerID.String
 	}
+	if deploymentPath.Valid && deploymentPath.String != "" {
+		updated.DeploymentPath = deploymentPath.String
+	}
+	if awsAccountID.Valid && awsAccountID.String != "" {
+		updated.AWSAccountID = &awsAccountID.String
+	}
+	if awsRegion.Valid && awsRegion.String != "" {
+		updated.AWSRegion = &awsRegion.String
+	}
+	if awsIAMRoleARN.Valid && awsIAMRoleARN.String != "" {
+		updated.AWSIAMRoleARN = &awsIAMRoleARN.String
+	}
+	if microvmManaged.Valid {
+		updated.MicroVMManaged = microvmManaged.Bool
+	}
 
 	return updated, nil
 }
@@ -275,21 +390,34 @@ func (r *TenantRepository) UpdateTenant(ctx context.Context, tenantID uuid.UUID,
 // CreateTenant creates a new tenant with the free plan by default
 func (r *TenantRepository) CreateTenant(ctx context.Context, name string) (*Tenant, error) {
 	tenant := &Tenant{
-		ID:     uuid.New(),
-		Name:   name,
-		Plan:   plans.PlanFree, // Default new signups to free tier
-		Status: "active",
+		ID:             uuid.New(),
+		Name:           name,
+		Plan:           plans.PlanFree, // Default new signups to free tier
+		Status:         "active",
+		DeploymentPath: "marketplace", // Default deployment path
 	}
 
 	query := `
-		INSERT INTO tenants (id, name, plan, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, NOW(), NOW())
-		RETURNING id, name, plan, status, stripe_customer_id, created_at, updated_at`
+		INSERT INTO tenants (id, name, plan, status, deployment_path, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+		RETURNING id, name, plan, status, stripe_customer_id,
+		          deployment_path, aws_account_id, aws_region, aws_iam_role_arn, microvm_managed,
+		          created_at, updated_at`
 
 	var plan sql.NullString
 	var stripeCustomerID sql.NullString
-	err := r.db.QueryRowContext(ctx, query, tenant.ID, tenant.Name, tenant.Plan, tenant.Status).Scan(
-		&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID, &tenant.CreatedAt, &tenant.UpdatedAt)
+	var deploymentPath sql.NullString
+	var awsAccountID sql.NullString
+	var awsRegion sql.NullString
+	var awsIAMRoleARN sql.NullString
+	var microvmManaged sql.NullBool
+	err := r.db.QueryRowContext(ctx, query,
+		tenant.ID, tenant.Name, tenant.Plan, tenant.Status, tenant.DeploymentPath,
+	).Scan(
+		&tenant.ID, &tenant.Name, &plan, &tenant.Status, &stripeCustomerID,
+		&deploymentPath, &awsAccountID, &awsRegion, &awsIAMRoleARN, &microvmManaged,
+		&tenant.CreatedAt, &tenant.UpdatedAt,
+	)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tenant: %w", err)
@@ -300,6 +428,21 @@ func (r *TenantRepository) CreateTenant(ctx context.Context, name string) (*Tena
 	}
 	if stripeCustomerID.Valid && stripeCustomerID.String != "" {
 		tenant.StripeCustomerID = &stripeCustomerID.String
+	}
+	if deploymentPath.Valid && deploymentPath.String != "" {
+		tenant.DeploymentPath = deploymentPath.String
+	}
+	if awsAccountID.Valid && awsAccountID.String != "" {
+		tenant.AWSAccountID = &awsAccountID.String
+	}
+	if awsRegion.Valid && awsRegion.String != "" {
+		tenant.AWSRegion = &awsRegion.String
+	}
+	if awsIAMRoleARN.Valid && awsIAMRoleARN.String != "" {
+		tenant.AWSIAMRoleARN = &awsIAMRoleARN.String
+	}
+	if microvmManaged.Valid {
+		tenant.MicroVMManaged = microvmManaged.Bool
 	}
 
 	return tenant, nil

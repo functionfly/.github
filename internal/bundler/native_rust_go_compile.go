@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/functionfly/functionfly/internal/manifest"
 )
@@ -108,12 +107,13 @@ func pickWasmFromCargoTarget(dir, target string) ([]byte, error) {
 	return os.ReadFile(matches[0])
 }
 
-// bundleGoToWasm builds a Go main package to WASI WebAssembly (Go 1.21+).
-// If go.mod exists in the working directory, it runs go build in place; otherwise it creates a
-// temporary module and uses the manifest entry file as main.go.
+// bundleGoToWasm builds a Go main package to WASI WebAssembly (Go 1.26.5+).
+// If go.mod exists in the working directory, it runs go build in place; otherwise
+// it creates a temporary module and prepends a generated wrapper that provides
+// `main()` and the host I/O contract.
 func bundleGoToWasm(m *manifest.Manifest) ([]byte, error) {
-	if _, err := exec.LookPath("go"); err != nil {
-		return nil, NewBundlerErrorWithCause("go bundle", "go not on PATH; install Go 1.21+ from https://go.dev/dl/", err)
+	if err := requireGoVersion(); err != nil {
+		return nil, NewBundlerErrorWithCause("go bundle", err.Error(), err)
 	}
 
 	outName := ".functionfly_gobuild.wasm"
@@ -145,17 +145,19 @@ func bundleGoToWasm(m *manifest.Manifest) ([]byte, error) {
 	}
 	defer func() { _ = os.RemoveAll(tmpDir) }()
 
-	goMod := "module functionflyfn\n\ngo 1.21\n"
-	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(goMod), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "go.mod"), []byte(generatedGoMod), 0644); err != nil {
 		return nil, NewBundlerErrorWithCause("go bundle", "failed to write go.mod", err)
 	}
 	if err := os.WriteFile(filepath.Join(tmpDir, "main.go"), src, 0644); err != nil {
 		return nil, NewBundlerErrorWithCause("go bundle", "failed to write main.go", err)
 	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "zz_functionfly.go"), []byte(goWrapperSource), 0644); err != nil {
+		return nil, NewBundlerErrorWithCause("go bundle", "failed to write wrapper", err)
+	}
 
 	tidy := exec.Command("go", "mod", "tidy")
 	tidy.Dir = tmpDir
-	tidy.Env = os.Environ()
+	tidy.Env = goWasip1Env()
 	if out, err := tidy.CombinedOutput(); err != nil {
 		return nil, NewCompilationErrorWithOutput("go", "mod tidy", string(out), err)
 	}
@@ -168,15 +170,4 @@ func bundleGoToWasm(m *manifest.Manifest) ([]byte, error) {
 		return nil, NewCompilationErrorWithOutput("go", "build wasip1/wasm", string(out), err)
 	}
 	return os.ReadFile(outPath)
-}
-
-func goWasip1Env() []string {
-	var out []string
-	for _, e := range os.Environ() {
-		if strings.HasPrefix(e, "GOOS=") || strings.HasPrefix(e, "GOARCH=") {
-			continue
-		}
-		out = append(out, e)
-	}
-	return append(out, "GOOS=wasip1", "GOARCH=wasm")
 }

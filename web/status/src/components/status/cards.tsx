@@ -182,7 +182,7 @@ export function ServiceCard({ component, index }: ServiceCardProps) {
             <div className="flex items-center gap-2 text-xs">
               <Zap className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-emerald-400 font-medium">
-                {component.uptime_30d.toFixed(2)}%
+                {component.uptime_30d != null ? `${component.uptime_30d.toFixed(2)}%` : 'N/A'}
               </span>
             </div>
           </div>
@@ -190,7 +190,7 @@ export function ServiceCard({ component, index }: ServiceCardProps) {
           <div className="mt-4">
             <UptimeMiniBar
               days={30}
-              uptime={component.uptime_30d}
+              uptime={component.uptime_30d ?? undefined}
               className="opacity-60 group-hover:opacity-100 transition-opacity"
             />
           </div>

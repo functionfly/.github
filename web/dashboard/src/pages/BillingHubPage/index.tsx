@@ -8,6 +8,7 @@ import { InvoicesTab } from './components/InvoicesTab';
 import { PaymentMethodsTab } from './components/PaymentMethodsTab';
 import { WalletTab } from './components/WalletTab';
 import { UsageTab } from './components/UsageTab';
+import { PayoutsTab } from './components/PayoutsTab';
 import {
   Chamber,
   CornerBrace,
@@ -24,10 +25,11 @@ import {
   Zap,
   BarChart3,
   Package,
+  Banknote,
 } from 'lucide-react';
 import '@/styles/sc-billing.css';
 
-type BillingTab = 'overview' | 'plans' | 'addons' | 'invoices' | 'payment' | 'wallet' | 'usage';
+type BillingTab = 'overview' | 'plans' | 'addons' | 'invoices' | 'payment' | 'wallet' | 'payouts' | 'usage';
 
 const TABS: { id: BillingTab; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -36,6 +38,7 @@ const TABS: { id: BillingTab; label: string; icon: typeof LayoutDashboard }[] = 
   { id: 'invoices', label: 'Invoices', icon: FileText },
   { id: 'payment', label: 'Payment', icon: CreditCard },
   { id: 'wallet', label: 'Credits', icon: Wallet },
+  { id: 'payouts', label: 'Payouts', icon: Banknote },
   { id: 'usage', label: 'Usage', icon: BarChart3 },
 ];
 
@@ -190,6 +193,8 @@ export function BillingHubPage() {
             onTopUp={actions.handleTopUp}
           />
         )}
+
+        {activeTab === 'payouts' && <PayoutsTab />}
 
         {activeTab === 'usage' && (
           <UsageTab

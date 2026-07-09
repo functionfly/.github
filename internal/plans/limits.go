@@ -137,7 +137,127 @@ const (
 	// Function Consciousness max auto-fixes per day
 	EnterpriseMaxAutoFixesPerDay        = 5
 	AgentEnterpriseMaxAutoFixesPerDay   = -1 // Unlimited
+
+	// Function Consciousness: max active insights per tenant
+	ProConsciousnessMaxActiveInsights        = 50
+	EnterpriseConsciousnessMaxActiveInsights = 500
+	AgentEnterpriseConsciousnessMaxActiveInsights = -1 // Unlimited
+
+	// Function Consciousness: max history retention (days)
+	ProConsciousnessHistoryDays        = 30
+	EnterpriseConsciousnessHistoryDays = 90
+	AgentEnterpriseConsciousnessHistoryDays = 365
 )
+
+// GetConsciousnessLookbackDays returns the analysis lookback window (days) for a plan.
+// Returns 0 for plans without consciousness access, -1 for unlimited.
+func GetConsciousnessLookbackDays(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return AgentEnterpriseConsciousnessLookbackDays
+	case PlanEnterprise, PlanAgentPro, PlanMicroVMEnterprise:
+		return EnterpriseConsciousnessLookbackDays
+	case PlanPro, PlanAgentScale:
+		return ProConsciousnessLookbackDays
+	default:
+		return 0
+	}
+}
+
+// GetConsciousnessFrequencyHours returns how often scheduled analysis runs (hours).
+// 0 means real-time / sub-hourly.
+func GetConsciousnessFrequencyHours(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return AgentEnterpriseConsciousnessFrequencyHours
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseConsciousnessFrequencyHours
+	case PlanPro, PlanAgentScale:
+		return ProConsciousnessFrequencyHours
+	default:
+		return 0
+	}
+}
+
+// GetConsciousnessMaxAutoFixesPerDay returns the maximum auto-applied actions per day for a plan.
+// Returns 0 for plans without autonomous consciousness, -1 for unlimited.
+func GetConsciousnessMaxAutoFixesPerDay(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return AgentEnterpriseMaxAutoFixesPerDay
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseMaxAutoFixesPerDay
+	default:
+		return 0
+	}
+}
+
+// GetConsciousnessMaxActiveInsights returns the cap on simultaneously active insights per tenant.
+// Returns -1 for unlimited.
+func GetConsciousnessMaxActiveInsights(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return AgentEnterpriseConsciousnessMaxActiveInsights
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseConsciousnessMaxActiveInsights
+	case PlanPro, PlanAgentScale:
+		return ProConsciousnessMaxActiveInsights
+	default:
+		return 0
+	}
+}
+
+// GetConsciousnessHistoryDays returns how long insight + score history is retained.
+func GetConsciousnessHistoryDays(plan string) int {
+	switch plan {
+	case PlanAgentEnterprise:
+		return AgentEnterpriseConsciousnessHistoryDays
+	case PlanEnterprise, PlanAgentPro:
+		return EnterpriseConsciousnessHistoryDays
+	case PlanPro, PlanAgentScale:
+		return ProConsciousnessHistoryDays
+	default:
+		return 0
+	}
+}
+
+// HasConsciousnessFeature returns true if the plan has any consciousness capability (basic+).
+func HasConsciousnessFeature(plan string) bool {
+	return GetConsciousnessLookbackDays(plan) > 0 || GetConsciousnessLookbackDays(plan) == -1
+}
+
+// HasAdvancedConsciousnessFeature returns true if the plan has advanced consciousness (hourly+).
+func HasAdvancedConsciousnessFeature(plan string) bool {
+	return plan == PlanEnterprise || plan == PlanAgentPro || plan == PlanAgentEnterprise || plan == PlanMicroVMEnterprise
+}
+
+// HasAutonomousConsciousnessFeature returns true if the plan has autonomous (real-time, unlimited lookback).
+func HasAutonomousConsciousnessFeature(plan string) bool {
+	return plan == PlanAgentEnterprise
+}
+
+// ConsciousnessLimits provides a snapshot of all consciousness limits for a plan.
+type ConsciousnessLimits struct {
+	LookbackDays       int  `json:"lookback_days"`
+	FrequencyHours     int  `json:"frequency_hours"`
+	MaxActiveInsights  int  `json:"max_active_insights"`
+	MaxAutoFixesPerDay int  `json:"max_auto_fixes_per_day"`
+	HistoryDays        int  `json:"history_days"`
+	Unlimited          bool `json:"unlimited"`
+}
+
+// GetConsciousnessLimits returns all consciousness limits for a plan.
+func GetConsciousnessLimits(plan string) ConsciousnessLimits {
+	lookback := GetConsciousnessLookbackDays(plan)
+	return ConsciousnessLimits{
+		LookbackDays:       lookback,
+		FrequencyHours:     GetConsciousnessFrequencyHours(plan),
+		MaxActiveInsights:  GetConsciousnessMaxActiveInsights(plan),
+		MaxAutoFixesPerDay: GetConsciousnessMaxAutoFixesPerDay(plan),
+		HistoryDays:        GetConsciousnessHistoryDays(plan),
+		Unlimited:          lookback == -1,
+	}
+}
 
 // StateFabric limits
 const (
@@ -376,6 +496,7 @@ const (
 	RuntimePython        = "python"
 	RuntimeFlyMachines   = "fly-machines"    // CPython in Firecracker via Fly Machines API
 	RuntimePythonMicroVM = "python-microvm" // Legacy name - kept for backward compat with existing DB entries
+	RuntimePythonLight   = "python-light"   // Lightweight Python runtime: shared functionfly-python daemon
 	RuntimePrism         = "prism"
 	RuntimeBun           = "bun"
 	RuntimeDeno          = "deno"
@@ -822,14 +943,26 @@ type MicroVMLimits struct {
 // GetMicroVMLimits returns the MicroVM resource limits for the given plan
 // Returns nil for non-enterprise plans (MicroVMs not available)
 func GetMicroVMLimits(plan string) *MicroVMLimits {
-	// Only PlanEnterprise and PlanMicroVMEnterprise have MicroVM support
+	limits, _ := GetMicroVMLimitsForPath(plan, "")
+	return limits
+}
+
+// GetMicroVMLimitsForPath returns the MicroVM resource limits for the given plan
+// and deployment path. Hybrid and BYOAWS deployments have tighter caps because
+// compute costs are customer-borne; Marketplace is the loosest since AWS
+// handles capacity.
+//
+// deploymentPath is one of: "marketplace", "byoaws", "hybrid", or "" for default.
+//
+// Returns nil for non-enterprise plans (MicroVMs not available).
+func GetMicroVMLimitsForPath(plan, deploymentPath string) (*MicroVMLimits, error) {
 	if plan != PlanEnterprise && plan != PlanMicroVMEnterprise {
-		return nil
+		return nil, nil
 	}
 
-	// MicroVM Enterprise has enhanced limits
+	var base *MicroVMLimits
 	if plan == PlanMicroVMEnterprise {
-		return &MicroVMLimits{
+		base = &MicroVMLimits{
 			MaxMicroVMs:      MicroVMEnterpriseMaxMicroVMs,
 			MaxConcurrentVMs: MicroVMEnterpriseMaxConcurrentVMs,
 			DefaultMemoryMB:  MicroVMEnterpriseDefaultMemoryMB,
@@ -840,20 +973,45 @@ func GetMicroVMLimits(plan string) *MicroVMLimits {
 			MaxTimeout:       MicroVMEnterpriseMaxTimeoutMs,
 			IncludedBudget:   MicroVMEnterpriseComputeBudgetCents,
 		}
+	} else {
+		base = &MicroVMLimits{
+			MaxMicroVMs:      EnterpriseMaxMicroVMs,
+			MaxConcurrentVMs: EnterpriseMaxMicroVMs, // Concurrent = max for standard Enterprise
+			DefaultMemoryMB:  EnterpriseDefaultMemoryMB,
+			MaxMemoryMB:      EnterpriseMaxMemoryMB,
+			DefaultVCPU:      EnterpriseDefaultVCPU,
+			MaxVCPU:          EnterpriseMaxVCPU,
+			DefaultTimeout:   EnterpriseDefaultTimeoutMs,
+			MaxTimeout:       EnterpriseMaxTimeoutMs,
+			IncludedBudget:   0, // No included budget for standard Enterprise
+		}
 	}
 
-	// Standard Enterprise limits
-	return &MicroVMLimits{
-		MaxMicroVMs:      EnterpriseMaxMicroVMs,
-		MaxConcurrentVMs: EnterpriseMaxMicroVMs, // Concurrent = max for standard Enterprise
-		DefaultMemoryMB:  EnterpriseDefaultMemoryMB,
-		MaxMemoryMB:      EnterpriseMaxMemoryMB,
-		DefaultVCPU:     EnterpriseDefaultVCPU,
-		MaxVCPU:         EnterpriseMaxVCPU,
-		DefaultTimeout:  EnterpriseDefaultTimeoutMs,
-		MaxTimeout:      EnterpriseMaxTimeoutMs,
-		IncludedBudget:  0, // No included budget for standard Enterprise
+	// Apply per-path adjustments
+	switch deploymentPath {
+	case "byoaws":
+		// Customer pays AWS directly; we still enforce a sane ceiling.
+		if base.MaxMicroVMs > 200 {
+			base.MaxMicroVMs = 200
+		}
+		if base.MaxConcurrentVMs > 100 {
+			base.MaxConcurrentVMs = 100
+		}
+	case "hybrid":
+		// FunctionFly-managed: tighter to keep ops surface manageable.
+		if base.MaxMicroVMs > 100 {
+			base.MaxMicroVMs = 100
+		}
+		if base.MaxConcurrentVMs > 50 {
+			base.MaxConcurrentVMs = 50
+		}
+	case "marketplace", "":
+		// No additional restriction; AWS Marketplace handles capacity.
+	default:
+		return nil, fmt.Errorf("unknown deployment path: %s", deploymentPath)
 	}
+
+	return base, nil
 }
 
 // ValidationError represents a validation error with code and message

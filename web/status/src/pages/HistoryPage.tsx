@@ -320,9 +320,13 @@ export default function HistoryPage() {
                               {service.response_time_ms}ms
                             </td>
                             <td className="text-right" style={{ padding: 'var(--space-3) var(--space-2)' }}>
-                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: service.uptime_30d >= 99.98 ? 'var(--status-ok)' : service.uptime_30d >= 99.95 ? 'var(--status-pending)' : 'var(--status-revoked)' }}>
-                                {service.uptime_30d.toFixed(2)}%
-                              </span>
+                              {service.uptime_30d != null ? (
+                                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: service.uptime_30d >= 99.98 ? 'var(--status-ok)' : service.uptime_30d >= 99.95 ? 'var(--status-pending)' : 'var(--status-revoked)' }}>
+                                  {service.uptime_30d.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500, color: 'var(--text-faint)' }}>N/A</span>
+                              )}
                             </td>
                           </tr>
                         ))}

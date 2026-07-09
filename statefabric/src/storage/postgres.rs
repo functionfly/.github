@@ -110,6 +110,38 @@ impl PostgresStateRepository {
 
         Ok(())
     }
+
+    /// SECURITY P0: Verify a state_id belongs to the given tenant.
+    ///
+    /// Returns `Ok(true)` if the state exists and `tenant_id` matches,
+    /// `Ok(false)` if the state does not exist OR belongs to a different tenant
+    /// (we deliberately do not differentiate to avoid an enumeration oracle).
+    ///
+    /// This is the authoritative cross-tenant access gate.
+    pub async fn verify_tenant_ownership(
+        &self,
+        state_id: UuidTrait,
+        tenant_id: UuidTrait,
+    ) -> Result<bool, sqlx::Error> {
+        if tenant_id.is_nil() {
+            return Ok(false);
+        }
+
+        let row = sqlx::query(
+            r#"
+            SELECT EXISTS(
+                SELECT 1 FROM states
+                WHERE id = $1 AND tenant_id = $2
+            ) AS owned
+            "#,
+        )
+        .bind(state_id)
+        .bind(tenant_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row.get::<bool, _>("owned"))
+    }
 }
 
 /// Repository for event metadata in PostgreSQL

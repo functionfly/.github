@@ -161,6 +161,7 @@ export type RemixResponse = z.infer<typeof remixResponseSchema>;
 // Runtime to Monaco language mapping
 export const RUNTIME_MONACO_LANG: Record<string, string> = {
   python: 'python',
+  'python-light': 'python',
   nodejs: 'javascript',
   typescript: 'typescript',
   go: 'go',

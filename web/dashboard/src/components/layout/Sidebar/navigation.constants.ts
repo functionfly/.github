@@ -22,6 +22,7 @@ export const NAV_LABEL_KEYS: Record<string, string> = {
   'Wallet': 'nav.wallet',
   'Status': 'nav.status',
   'Time Machine': 'nav.timeMachine',
+  'Function Consciousness': 'nav.consciousness',
   'Evolution': 'nav.evolution',
   'Marketplace': 'nav.marketplace',
   'Brain': 'nav.brain',

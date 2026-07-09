@@ -187,7 +187,7 @@ function getSupplementaryValidation(code: string, runtime: Runtime): ValidationI
     });
   }
 
-  if (runtime === 'python' || runtime === 'python-wasm') {
+  if (runtime === 'python' || runtime === 'python-light' || runtime === 'python-wasm') {
     if (code.includes('os.system') || code.includes('subprocess')) {
       issues.push({
         type: 'warning',

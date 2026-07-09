@@ -2,6 +2,7 @@
 
 use async_trait::async_trait;
 use aws_sdk_s3::{config::{Credentials, Region}, primitives::ByteStream, Client};
+use std::sync::Arc;
 use thiserror::Error;
 
 /// Errors that can occur in object storage operations
@@ -308,22 +309,25 @@ pub type B2ObjectStore = S3ObjectStore;
 pub type WasabiObjectStore = S3ObjectStore;
 
 /// Encrypted object storage wrapper
-/// 
+///
 /// Wraps any ObjectStore implementation and encrypts data at rest using AES-256-GCM.
 /// The encryption key is loaded from the STATEFABRIC_ENCRYPTION_KEY environment variable.
 /// If no key is set, encryption is skipped (for development only).
-/// 
+///
 /// SECURITY NOTE: This provides encryption at rest for blob storage (events, snapshots).
 /// The key must be provided via environment variable, never hardcoded.
 pub struct EncryptedObjectStore {
-    inner: Box<dyn ObjectStore + Send + Sync>,
+    inner: Arc<dyn ObjectStore + Send + Sync>,
     encryptor: Option<crate::crypto::ObjectEncryptor>,
     encryption_enabled: bool,
 }
 
 impl EncryptedObjectStore {
-    /// Create a new encrypted wrapper around an ObjectStore
-    pub fn new(inner: Box<dyn ObjectStore + Send + Sync>) -> Self {
+    /// Create a new encrypted wrapper around an ObjectStore.
+    ///
+    /// Takes an `Arc` directly (rather than a `Box`) so the caller can keep a
+    /// handle to the inner store without any pointer-cast gymnastics.
+    pub fn new(inner: Arc<dyn ObjectStore + Send + Sync>) -> Self {
         let encryptor = match crate::crypto::ObjectEncryptor::from_env() {
             Ok(e) => {
                 tracing::info!("Object storage encryption enabled (AES-256-GCM)");
@@ -478,25 +482,84 @@ impl ObjectStore for LocalObjectStore {
     }
 }
 
-/// Create an object store client based on the configuration
-pub async fn create_object_store(config: &StorageConfig) -> StorageResult<Box<dyn ObjectStore>> {
+/// Create an object store client based on the configuration.
+///
+/// Returns `Arc<dyn ObjectStore + Send + Sync>` so the result can be cheaply
+/// cloned (e.g. moved into `EncryptedObjectStore` or shared across handlers).
+pub async fn create_object_store(
+    config: &StorageConfig,
+) -> StorageResult<Arc<dyn ObjectStore + Send + Sync>> {
     match config.backend {
         StorageBackend::R2 => {
             let client = R2ObjectStore::new(config).await?;
-            Ok(Box::new(client))
+            Ok(Arc::new(client) as Arc<dyn ObjectStore + Send + Sync>)
         }
         StorageBackend::B2 => {
             let client = B2ObjectStore::new(config).await?;
-            Ok(Box::new(client))
+            Ok(Arc::new(client) as Arc<dyn ObjectStore + Send + Sync>)
         }
         StorageBackend::Wasabi => {
             let client = WasabiObjectStore::new(config).await?;
-            Ok(Box::new(client))
+            Ok(Arc::new(client) as Arc<dyn ObjectStore + Send + Sync>)
         }
         StorageBackend::Local => {
             let client = LocalObjectStore::new(config)?;
-            Ok(Box::new(client))
+            Ok(Arc::new(client) as Arc<dyn ObjectStore + Send + Sync>)
         }
+    }
+}
+
+/// In-memory object storage for testing and development
+///
+/// WARNING: Data is not persisted and will be lost on restart.
+/// Do NOT use in production.
+pub struct ObjectStoreMemory {
+    data: std::sync::RwLock<std::collections::HashMap<String, Vec<u8>>>,
+}
+
+impl ObjectStoreMemory {
+    #[allow(dead_code)]
+    pub fn new() -> Self {
+        Self {
+            data: std::sync::RwLock::new(std::collections::HashMap::new()),
+        }
+    }
+}
+
+impl Default for ObjectStoreMemory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl ObjectStore for ObjectStoreMemory {
+    async fn put(&self, key: &str, data: &[u8], _content_type: Option<&str>) -> StorageResult<()> {
+        self.data.write()
+            .map_err(|_| StorageError::UploadFailed("Lock error".to_string()))?
+            .insert(key.to_string(), data.to_vec());
+        Ok(())
+    }
+
+    async fn get(&self, key: &str) -> StorageResult<Vec<u8>> {
+        self.data.read()
+            .map_err(|_| StorageError::DownloadFailed("Lock error".to_string()))?
+            .get(key)
+            .cloned()
+            .ok_or_else(|| StorageError::NotFound(key.to_string()))
+    }
+
+    async fn delete(&self, key: &str) -> StorageResult<()> {
+        self.data.write()
+            .map_err(|_| StorageError::DeleteFailed("Lock error".to_string()))?
+            .remove(key);
+        Ok(())
+    }
+
+    async fn exists(&self, key: &str) -> StorageResult<bool> {
+        Ok(self.data.read()
+            .map_err(|_| StorageError::DownloadFailed("Lock error".to_string()))?
+            .contains_key(key))
     }
 }
 

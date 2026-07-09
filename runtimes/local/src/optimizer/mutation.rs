@@ -22,6 +22,7 @@
 
 use std::collections::HashMap;
 
+use strsim::{jaro_winkler, normalized_levenshtein};
 use tracing::{debug, info, instrument, warn};
 use uuid::Uuid;
 
@@ -624,6 +625,20 @@ impl CanaryTester {
         similarity >= self.similarity_threshold
     }
 
+const STRING_SIMILARITY_THRESHOLD: f64 = 0.85;
+
+fn strings_similar(a: &str, b: &str) -> bool {
+    if a == b {
+        return true;
+    }
+    let jw_score = jaro_winkler(a, b);
+    if jw_score >= STRING_SIMILARITY_THRESHOLD {
+        return true;
+    }
+    let lev_score = normalized_levenshtein(a, b);
+    lev_score >= STRING_SIMILARITY_THRESHOLD
+}
+
     /// Check if two JSON values are "similar" (for canary evaluation).
     fn values_similar(&self, a: &serde_json::Value, b: &serde_json::Value) -> bool {
         match (a, b) {
@@ -638,9 +653,7 @@ impl CanaryTester {
                 }
             }
             (serde_json::Value::String(a), serde_json::Value::String(b)) => {
-                // For strings, check if they're "close enough" (simplified)
-                // In production, you might use edit distance or semantic similarity
-                a == b || a.to_lowercase() == b.to_lowercase()
+                strings_similar(a, b)
             }
             (serde_json::Value::Array(a), serde_json::Value::Array(b)) => {
                 if a.len() != b.len() {

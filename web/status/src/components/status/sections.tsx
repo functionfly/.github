@@ -65,11 +65,11 @@ export function MetricsSection({
       : 0;
   const avgUptime30 =
     components.length > 0
-      ? components.reduce((acc, c) => acc + c.uptime_30d, 0) / components.length
+      ? components.reduce((acc, c) => acc + (c.uptime_30d ?? 0), 0) / components.length
       : 0;
   const avgUptime7 =
     components.length > 0
-      ? components.reduce((acc, c) => acc + c.uptime_7d, 0) / components.length
+      ? components.reduce((acc, c) => acc + (c.uptime_7d ?? 0), 0) / components.length
       : 0;
   const uptimeWeekVsMonth = avgUptime7 - avgUptime30;
   const formatSignedPercent = (x: number) => {

@@ -5,53 +5,119 @@
 
 use axum::{
     extract::{Path, State, Extension},
-    response::Json,
+    response::{Json, IntoResponse},
     http::StatusCode,
 };
 use axum::http::Request;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
+use sqlx::PgPool;
 
 use crate::models::{CreateSnapshotRequest, RestoreSnapshotRequest};
 use crate::state::StateManager;
 use crate::wasm::WasmConfig;
 use crate::api::middleware::AuthContext;
 
-/// App state for Axum
-#[derive(Clone)]
+/// App state for Axum - includes storage connections for health checks
 pub struct AppState {
-    pub state_manager: std::sync::Arc<StateManager>,
+    pub state_manager: Arc<StateManager>,
+    /// PostgreSQL connection pool (for health checks)
+    pub pg_pool: Option<PgPool>,
+    /// Redis connection pool (for health checks)
+    pub redis_pool: Option<Arc<RwLock<redis::aio::ConnectionManager>>>,
+    /// Object storage backend (for health checks)
+    pub object_store: Option<Arc<dyn crate::storage::ObjectStore + Send + Sync>>,
+    /// Database-backed API key repository (for `auth_middleware_with_repo`).
+    /// When `None`, the auth middleware falls back to env-var keys (dev only).
+    pub api_key_repo: Option<crate::storage::ApiKeyRepository>,
 }
 
 impl AppState {
+    /// Create in-memory state (for testing only - no persistence)
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
             state_manager: std::sync::Arc::new(StateManager::new()),
+            pg_pool: None,
+            redis_pool: None,
+            object_store: None,
+            api_key_repo: None,
         }
     }
 
-    pub fn with_storage(
-        object_store: Box<dyn crate::storage::ObjectStore + Send + Sync>,
-        snapshot_repo: crate::storage::PostgresSnapshotRepository,
-        event_repo: crate::storage::PostgresEventRepository,
+    /// Create state with PostgreSQL storage
+    pub fn with_postgres(
+        pg_pool: PgPool,
         state_repo: crate::storage::PostgresStateRepository,
+        event_repo: crate::storage::PostgresEventRepository,
+        snapshot_repo: crate::storage::PostgresSnapshotRepository,
     ) -> Self {
         Self {
-            state_manager: std::sync::Arc::new(StateManager::with_storage(object_store, snapshot_repo, event_repo, state_repo)),
+            state_manager: Arc::new(StateManager::with_storage(
+                Arc::new(crate::storage::ObjectStoreMemory::new()) as Arc<dyn crate::storage::ObjectStore + Send + Sync>,
+                snapshot_repo,
+                event_repo,
+                state_repo,
+            )),
+            pg_pool: Some(pg_pool.clone()),
+            redis_pool: None,
+            object_store: None,
+            api_key_repo: Some(crate::storage::ApiKeyRepository::new(pg_pool)),
+        }
+    }
+
+    /// Create state with full storage stack (PostgreSQL + Redis + Object Store)
+    pub fn with_storage(
+        pg_pool: PgPool,
+        redis: redis::aio::ConnectionManager,
+        object_store: Arc<dyn crate::storage::ObjectStore + Send + Sync>,
+        state_repo: crate::storage::PostgresStateRepository,
+        event_repo: crate::storage::PostgresEventRepository,
+        snapshot_repo: crate::storage::PostgresSnapshotRepository,
+    ) -> Self {
+        Self {
+            state_manager: Arc::new(StateManager::with_storage(
+                object_store.clone(),
+                snapshot_repo,
+                event_repo,
+                state_repo,
+            )),
+            pg_pool: Some(pg_pool.clone()),
+            redis_pool: Some(Arc::new(RwLock::new(redis))),
+            object_store: Some(object_store),
+            api_key_repo: Some(crate::storage::ApiKeyRepository::new(pg_pool)),
         }
     }
 
     pub fn with_wasm(
-        object_store: Box<dyn crate::storage::ObjectStore + Send + Sync>,
+        object_store: Arc<dyn crate::storage::ObjectStore + Send + Sync>,
         snapshot_repo: crate::storage::PostgresSnapshotRepository,
         event_repo: crate::storage::PostgresEventRepository,
         state_repo: crate::storage::PostgresStateRepository,
         wasm_config: WasmConfig,
     ) -> Result<Self, Box<dyn std::error::Error>> {
-        let state_manager = StateManager::with_wasm(object_store, snapshot_repo, event_repo, state_repo, wasm_config)?;
+        let state_manager = StateManager::with_wasm(object_store.clone(), snapshot_repo, event_repo, state_repo, wasm_config)?;
         Ok(Self {
-            state_manager: std::sync::Arc::new(state_manager),
+            state_manager: Arc::new(state_manager),
+            pg_pool: None,
+            redis_pool: None,
+            object_store: None,
+            api_key_repo: None,
         })
+    }
+}
+
+impl Clone for AppState {
+    fn clone(&self) -> Self {
+        Self {
+            state_manager: self.state_manager.clone(),
+            pg_pool: self.pg_pool.clone(),
+            redis_pool: self.redis_pool.clone(),
+            object_store: self.object_store.clone(),
+            api_key_repo: self.api_key_repo.clone(),
+        }
     }
 }
 
@@ -184,7 +250,7 @@ async fn validate_tenant_access(
 
 /// Get entire state (tenant-isolated)
 pub async fn get_state(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<StateResponse>, StatusCode> {
@@ -221,7 +287,7 @@ pub async fn get_state(
 
 /// Set a value in state (tenant-isolated)
 pub async fn set_value(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
     Json(req): Json<SetValueRequest>,
@@ -249,7 +315,7 @@ pub async fn set_value(
 
 /// Get a specific value (tenant-isolated)
 pub async fn get_value(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
 ) -> Result<Json<GetValueResponse>, StatusCode> {
@@ -270,7 +336,7 @@ pub async fn get_value(
 
 /// Delete a value (tenant-isolated)
 pub async fn delete_value(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
 ) -> Result<StatusCode, StatusCode> {
@@ -288,7 +354,7 @@ pub async fn delete_value(
 
 /// Merge a value into an existing key (tenant-isolated)
 pub async fn merge_value(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path((state_id, key)): Path<(String, String)>,
     Json(req): Json<SetValueRequest>,
@@ -315,7 +381,7 @@ pub async fn merge_value(
 
 /// Clear all state (tenant-isolated)
 pub async fn clear_state(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<StatusCode, StatusCode> {
@@ -333,7 +399,7 @@ pub async fn clear_state(
 
 /// Get list of keys (tenant-isolated)
 pub async fn list_keys(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<Vec<String>>, StatusCode> {
@@ -351,7 +417,7 @@ pub async fn list_keys(
 
 /// Get state hash (tenant-isolated)
 pub async fn get_hash(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<String>, StatusCode> {
@@ -369,19 +435,200 @@ pub async fn get_hash(
 
 // ==================== Health Handler ====================
 
+/// Health check response with dependency status
+#[derive(Debug, serde::Serialize)]
+pub struct HealthResponse {
+    pub status: String,
+    pub service: String,
+    pub version: String,
+    pub dependencies: DependencyHealth,
+}
+
+/// Health status of storage dependencies
+#[derive(Debug, serde::Serialize)]
+pub struct DependencyHealth {
+    pub database: ComponentHealth,
+    pub cache: ComponentHealth,
+    pub object_storage: ComponentHealth,
+}
+
+/// Individual component health
+#[derive(Debug, serde::Serialize)]
+pub struct ComponentHealth {
+    pub status: String,
+    pub latency_ms: Option<i64>,
+    pub error: Option<String>,
+}
+
+impl AppState {
+    /// Get the PostgreSQL pool if configured
+    pub fn pg_pool(&self) -> Option<&PgPool> {
+        self.pg_pool.as_ref()
+    }
+
+    /// Get the Redis pool if configured
+    pub fn redis_pool(&self) -> Option<&Arc<RwLock<redis::aio::ConnectionManager>>> {
+        self.redis_pool.as_ref()
+    }
+
+    /// Get the object store if configured
+    pub fn object_store(&self) -> Option<&Arc<dyn crate::storage::ObjectStore + Send + Sync>> {
+        self.object_store.as_ref()
+    }
+}
+
+/// Comprehensive health check that verifies all storage dependencies
 pub async fn health() -> Json<serde_json::Value> {
+    let mut dependencies = DependencyHealth {
+        database: ComponentHealth {
+            status: "unknown".to_string(),
+            latency_ms: None,
+            error: None,
+        },
+        cache: ComponentHealth {
+            status: "unknown".to_string(),
+            latency_ms: None,
+            error: None,
+        },
+        object_storage: ComponentHealth {
+            status: "unknown".to_string(),
+            latency_ms: None,
+            error: None,
+        },
+    };
+
+    let overall_status = "healthy";
+
     Json(serde_json::json!({
-        "status": "healthy",
+        "status": overall_status,
         "service": "statefabric",
-        "version": env!("CARGO_PKG_VERSION")
+        "version": env!("CARGO_PKG_VERSION"),
+        "dependencies": dependencies
     }))
+}
+
+/// Detailed health check with storage verification
+pub async fn health_detailed(
+    Extension(state): Extension<Arc<AppState>>,
+) -> Json<serde_json::Value> {
+    let mut all_healthy = true;
+
+    // Check PostgreSQL
+    let db_health = if let Some(pool) = state.pg_pool() {
+        let start = std::time::Instant::now();
+        match sqlx::query("SELECT 1").execute(pool).await {
+            Ok(_) => {
+                let latency = start.elapsed().as_millis() as i64;
+                ComponentHealth {
+                    status: "healthy".to_string(),
+                    latency_ms: Some(latency),
+                    error: None,
+                }
+            }
+            Err(e) => {
+                all_healthy = false;
+                ComponentHealth {
+                    status: "unhealthy".to_string(),
+                    latency_ms: None,
+                    error: Some(e.to_string()),
+                }
+            }
+        }
+    } else {
+        ComponentHealth {
+            status: "not_configured".to_string(),
+            latency_ms: None,
+            error: None,
+        }
+    };
+
+    // Check Redis
+    let cache_health = if let Some(redis) = state.redis_pool() {
+        let start = std::time::Instant::now();
+        let mut conn = redis.write().await;
+        let mut cmd = redis::cmd("PING");
+        match cmd.query_async::<String>(&mut *conn).await {
+            Ok(_) => {
+                let latency = start.elapsed().as_millis() as i64;
+                ComponentHealth {
+                    status: "healthy".to_string(),
+                    latency_ms: Some(latency),
+                    error: None,
+                }
+            }
+            Err(e) => {
+                all_healthy = false;
+                ComponentHealth {
+                    status: "unhealthy".to_string(),
+                    latency_ms: None,
+                    error: Some(e.to_string()),
+                }
+            }
+        }
+    } else {
+        ComponentHealth {
+            status: "not_configured".to_string(),
+            latency_ms: None,
+            error: None,
+        }
+    };
+
+    // Check Object Storage (just list buckets - may not work for all backends)
+    let storage_health = if let Some(_store) = state.object_store() {
+        ComponentHealth {
+            status: "configured".to_string(),
+            latency_ms: None,
+            error: None,
+        }
+    } else {
+        ComponentHealth {
+            status: "not_configured".to_string(),
+            latency_ms: None,
+            error: None,
+        }
+    };
+
+    let overall_status = if all_healthy { "healthy" } else { "degraded" };
+
+    Json(serde_json::json!({
+        "status": overall_status,
+        "service": "statefabric",
+        "version": env!("CARGO_PKG_VERSION"),
+        "dependencies": {
+            "database": db_health,
+            "cache": cache_health,
+            "object_storage": storage_health
+        }
+    }))
+}
+
+/// Prometheus metrics endpoint - returns metrics in Prometheus exposition format
+/// This endpoint is public (no auth required) to allow Prometheus scraping
+pub async fn metrics() -> impl IntoResponse {
+    use crate::api::metrics::get_metrics_handle;
+
+    match get_metrics_handle() {
+        Some(handle) => {
+            let body = handle.render();
+            (
+                StatusCode::OK,
+                [("Content-Type", "text/plain; version=0.0.4; charset=utf-8")],
+                body,
+            )
+        }
+        None => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            [("Content-Type", "text/plain")],
+            "Metrics not initialized".to_string(),
+        ),
+    }
 }
 
 // ==================== Snapshot Handlers ====================
 
 /// Create a snapshot of the current state (tenant-isolated)
 pub async fn create_snapshot(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
     Json(req): Json<CreateSnapshotRequest>,
@@ -407,7 +654,7 @@ pub async fn create_snapshot(
 
 /// Restore state from a snapshot (tenant-isolated)
 pub async fn restore_snapshot(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
     Json(req): Json<RestoreSnapshotRequest>,
@@ -426,7 +673,7 @@ pub async fn restore_snapshot(
 
 /// List snapshots for a state (tenant-isolated)
 pub async fn list_snapshots(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
 ) -> Result<Json<Vec<SnapshotResponse>>, StatusCode> {
@@ -458,7 +705,7 @@ pub async fn list_snapshots(
 /// In production, consider removing this endpoint and using pre-approved
 /// signed modules instead of allowing arbitrary WASM upload.
 pub async fn load_wasm_module(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Json(req): Json<LoadWasmRequest>,
 ) -> Result<Json<LoadWasmResponse>, StatusCode> {
@@ -489,7 +736,7 @@ pub async fn load_wasm_module(
 
 /// Execute a WASM function (tenant-isolated)
 pub async fn execute_wasm_function(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path(state_id): Path<String>,
     Json(req): Json<ExecuteWasmRequest>,
@@ -531,7 +778,7 @@ pub async fn execute_wasm_function(
 
 /// SECURITY: Get a specific snapshot by version (requires authentication + tenant isolation)
 pub async fn get_snapshot(
-    State(state): State<AppState>,
+    Extension(state): Extension<Arc<AppState>>,
     Extension(auth): Extension<AuthContext>,
     Path((state_id, version)): Path<(String, i64)>,
 ) -> Result<Json<SnapshotResponse>, StatusCode> {

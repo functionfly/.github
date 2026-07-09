@@ -255,6 +255,7 @@ pnpm-lock.yaml
 # Python tooling caches
 .venv/
 .venv.bak/
+.venv2/
 .pytest_cache/
 .ruff_cache/
 

@@ -230,3 +230,5 @@ func (d *dummyRuntimeProvider) ExecuteWithConfig(_ context.Context, _ []byte, _ 
 func (d *dummyRuntimeProvider) Close() error {
 	return nil
 }
+
+func (d *dummyRuntimeProvider) LoadModule(_ []byte) error { return nil }

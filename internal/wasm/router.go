@@ -103,6 +103,10 @@ type RuntimeProvider interface {
 	// ExecuteWithConfig executes with custom configuration
 	ExecuteWithConfig(ctx context.Context, input []byte, config interface{}) ([]byte, error)
 
+	// LoadModule optionally preloads a WASM module into the provider.
+	// Implementations that do not require pre-loading may return nil.
+	LoadModule(moduleData []byte) error
+
 	// Close closes the runtime
 	Close() error
 }
@@ -614,6 +618,10 @@ func (p *WASMRuntimeProvider) Close() error {
 	}
 	return nil
 }
+
+// LoadModule is a no-op for the Python-backed WASM provider; the
+// runtime is built from the wasm at construction time.
+func (p *WASMRuntimeProvider) LoadModule(_ []byte) error { return nil }
 
 // CreateWASMProviderFromFactory creates a WASM runtime provider from a factory function
 func CreateWASMProviderFromFactory(wasmPath string, stdout, stderr io.Writer, handler HostFunctionHandler) (RuntimeProvider, error) {

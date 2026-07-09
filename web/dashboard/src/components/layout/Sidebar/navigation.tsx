@@ -332,6 +332,13 @@ export const navigationSections: NavSection[] = [
         description: 'Living code that evolves itself',
       },
       {
+        path: '/consciousness',
+        label: 'Function Consciousness',
+        icon: Brain,
+        badge: 'new',
+        description: 'Self-aware score, insights, and digest',
+      },
+      {
         path: '/time-machine',
         label: 'Time Machine',
         icon: History,

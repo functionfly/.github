@@ -83,6 +83,15 @@ func NewPythonRuntimeWithConfigAndDebug(wasmPath string, stdout, stderr io.Write
 	// Create store with WASI configuration
 	store := wasmtime.NewStore(engine)
 
+	// Pre-seed fuel so the module can actually run. With
+	// SetConsumeFuel(true) the store starts at 0 and any call traps
+	// with "all fuel consumed". We honor config.MaxInstructions.
+	if !config.DisableDeterministic {
+		if err := store.SetFuel(uint64(config.MaxInstructions)); err != nil {
+			return nil, fmt.Errorf("failed to seed fuel: %w", err)
+		}
+	}
+
 	// Configure memory limit interceptor
 	// We'll enforce this in allocate() method
 

@@ -27,6 +27,7 @@ anyhow = "1.0"
 uuid = { version = "1.23.3", features = ["v4", "serde"] }
 chrono = { version = "0.4.45", features = ["serde"] }
 futures = "0.3"
+tokio-util = { version = "0.7", features = ["io"] }
 dashmap = "6.2.1"
 parking_lot = "0.12"
 thiserror = "2.0"

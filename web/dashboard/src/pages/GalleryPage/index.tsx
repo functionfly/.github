@@ -54,6 +54,7 @@ import { SpotlightCard } from '@/components/ui/SpotlightCard';
 import { TextGradient } from '@/components/ui/TextGradient';
 import { cn } from '@/lib/utils';
 import { galleryApi, type GalleryFunction, RUNTIME_MONACO_LANG } from '@/api/composer';
+import { registryApi } from '@/api/registry';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -579,14 +580,36 @@ function FunctionDetailPanel({ functionData, isOpen, onClose, onRemix, onLike }:
 
   // Fetch function code when opening
   useEffect(() => {
-    if (isOpen && functionData) {
-      setIsLoadingCode(true);
-      // Simulated code fetch - in production this would be an API call
-      setTimeout(() => {
-        setCode(generateSampleCode(functionData));
-        setIsLoadingCode(false);
-      }, 500);
+    if (!isOpen || !functionData) return;
+
+    const author = functionData.author;
+    const name = functionData.name;
+
+    if (!author || !name) {
+      setCode(generateSampleCode(functionData));
+      return;
     }
+
+    let cancelled = false;
+    setIsLoadingCode(true);
+
+    registryApi.getFunctionVersionSource(author, name)
+      .then((sourceCode) => {
+        if (!cancelled) {
+          setCode(sourceCode);
+          setIsLoadingCode(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCode(generateSampleCode(functionData));
+          setIsLoadingCode(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, functionData]);
 
   const generateSampleCode = (fn: GalleryFunction): string => {

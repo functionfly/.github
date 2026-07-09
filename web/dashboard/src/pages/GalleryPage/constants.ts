@@ -12,6 +12,7 @@ export type ViewMode = 'grid' | 'runway' | 'radar';
 
 export const RUNTIME_COLORS: Record<string, { primary: string; glow: string; accent: string }> = {
   python: { primary: '#3b82f6', glow: '#60a5fa', accent: '#1d4ed8' },
+  'python-light': { primary: '#60a5fa', glow: '#93c5fd', accent: '#2563eb' },
   nodejs: { primary: '#10b981', glow: '#34d399', accent: '#059669' },
   typescript: { primary: '#10b981', glow: '#34d399', accent: '#059669' },
   go: { primary: '#06b6d4', glow: '#22d3ee', accent: '#0891b2' },
@@ -26,6 +27,7 @@ export const RUNTIME_COLORS: Record<string, { primary: string; glow: string; acc
 
 export const RUNTIME_ICONS: Record<string, string> = {
   python: '🐍',
+  'python-light': '🐍',
   nodejs: '🟢',
   typescript: '📘',
   go: '🐹',

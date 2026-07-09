@@ -4,6 +4,7 @@
 //!   - CLI mode: execute code directly via --code flag
 //!   - Daemon mode: run as HTTP server for the Go orchestrator (--daemon --port)
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -189,7 +190,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 // ============================================================================
 
 use axum::{
-    Router, routing::post,
+    Router, routing::{get, post},
     extract::{State, Json, Path},
     http::StatusCode,
     response::IntoResponse,
@@ -204,6 +205,21 @@ struct DaemonState {
     api_token: Option<String>,
 }
 
+/// Global metrics for Prometheus scraping
+static TOTAL_EXECUTIONS: AtomicU64 = AtomicU64::new(0);
+static SUCCESSFUL_EXECUTIONS: AtomicU64 = AtomicU64::new(0);
+static FAILED_EXECUTIONS: AtomicU64 = AtomicU64::new(0);
+
+/// Increment execution counters
+pub fn record_execution(success: bool) {
+    TOTAL_EXECUTIONS.fetch_add(1, Ordering::Relaxed);
+    if success {
+        SUCCESSFUL_EXECUTIONS.fetch_add(1, Ordering::Relaxed);
+    } else {
+        FAILED_EXECUTIONS.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
 /// POST /health — liveness check
 async fn health_handler() -> impl IntoResponse {
     Json(serde_json::json!({
@@ -211,6 +227,26 @@ async fn health_handler() -> impl IntoResponse {
         "runtime": "nodejs",
         "version": env!("CARGO_PKG_VERSION"),
     }))
+}
+
+/// GET /metrics — Prometheus metrics
+async fn metrics_handler() -> impl IntoResponse {
+    let total = TOTAL_EXECUTIONS.load(Ordering::Relaxed);
+    let successful = SUCCESSFUL_EXECUTIONS.load(Ordering::Relaxed);
+    let failed = FAILED_EXECUTIONS.load(Ordering::Relaxed);
+    let body = format!(
+        "# HELP functionfly_nodejs_executions_total Total number of function executions\n\
+         # TYPE functionfly_nodejs_executions_total counter\n\
+         functionfly_nodejs_executions_total {}\n\
+         # HELP functionfly_nodejs_successful_executions Total successful executions\n\
+         # TYPE functionfly_nodejs_successful_executions counter\n\
+         functionfly_nodejs_successful_executions {}\n\
+         # HELP functionfly_nodejs_failed_executions Total failed executions\n\
+         # TYPE functionfly_nodejs_failed_executions counter\n\
+         functionfly_nodejs_failed_executions {}\n",
+        total, successful, failed
+    );
+    ([(axum::http::header::CONTENT_TYPE, "text/plain; charset=utf-8")], body)
 }
 
 /// POST /execute/{function_id}/{version} — run a function
@@ -437,6 +473,7 @@ async fn run_daemon(port: u16, network_enabled: bool) -> Result<(), Box<dyn std:
 
     let app = Router::new()
         .route("/health", post(health_handler).get(health_handler))
+        .route("/metrics", get(metrics_handler))
         .route("/execute/{function_id}/{version}", post(execute_handler))
         .with_state(state)
         // Limit request body to 4 MiB. Node.js daemon accepts base64-encoded

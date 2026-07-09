@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -643,14 +644,36 @@ func BuildRuntimeRouter(
 	// Node engine uses sandbox fallback
 	nodeEngine := newNodeJSEngine()
 
+	// Python-light engine: shared functionfly-python daemon pool.
+	// Mirrors the CGO build wiring; honors PYTHON_LIGHT_ENABLED/PYTHON_LIGHT_ENABLE_TIER_REWRITE.
+	var pythonLightEngine RuntimeEngine
+	if pythonLightEnabled() {
+		if ple, err := newPythonLightEngine(); err != nil {
+			logrus.WithField("err", err).Warn("BuildRuntimeRouter: pythonLightEngine init failed; python-light runtime will fall back to sandbox")
+			pythonLightEngine = &disabledPythonLightEngine{}
+		} else {
+			pythonLightEngine = ple
+		}
+	} else {
+		pythonLightEngine = &disabledPythonLightEngine{}
+	}
+
 	// Fallback - sandbox execution
 	fallback := &sandboxEngine{}
+
+	router := NewRuntimeRouter(wasmEngine, pythonEngine, cpythonEngine, nodeEngine, fallback, nil, cacheL1, bundleSvc)
+	router.pythonLightEngine = pythonLightEngine
+	if v := os.Getenv("PYTHON_LIGHT_ENABLE_TIER_REWRITE"); v != "" {
+		if b, err := strconv.ParseBool(v); err == nil {
+			router.pythonLightTierRewriteEnabled = b
+		}
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"python_endpoint": endpoint,
 	}).Info("BuildRuntimeRouter: using external Python WASM runtime service (non-CGO build)")
 
-	return NewRuntimeRouter(wasmEngine, pythonEngine, cpythonEngine, nodeEngine, fallback, cacheL1, bundleSvc)
+	return router
 }
 
 // NodeEngineConfig for Node.js engine configuration.

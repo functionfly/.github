@@ -2,7 +2,6 @@ package wasm
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"testing"
 )
@@ -147,54 +146,43 @@ func TestPythonRuntime_MemoryManagement(t *testing.T) {
 }
 
 func TestPythonRuntime_HostFunctions(t *testing.T) {
-	// Create a test handler
+	// DefaultHostHandler is a documented no-op: KV/Fetch/AI/State all
+	// return sentinel errors. The semantics are tested here so future
+	// refactors don't accidentally turn the no-op into a working handler.
 	handler := NewDefaultHostHandler(nil)
 
-	// Test KV operations
-	err := handler.KVSet("test_key", "test_value")
-	if err != nil {
-		t.Fatalf("Failed to set KV: %v", err)
+	// KV operations should return ErrKVNotAvailable.
+	if err := handler.KVSet("test_key", "test_value"); err == nil {
+		t.Fatal("Expected ErrKVNotAvailable from default handler KVSet")
+	}
+	if _, err := handler.KVGet("any"); err == nil {
+		t.Fatal("Expected ErrKVNotAvailable from default handler KVGet")
 	}
 
-	value, err := handler.KVGet("test_key")
-	if err != nil {
-		t.Fatalf("Failed to get KV: %v", err)
+	// Fetch returns ErrFetchNotAvailable.
+	if _, err := handler.Fetch(`{"method": "GET", "url": "http://example.com"}`); err == nil {
+		t.Fatal("Expected ErrFetchNotAvailable from default handler Fetch")
 	}
 
-	if value != "test_value" {
-		t.Errorf("Expected 'test_value', got '%s'", value)
+	// AI returns ErrAINotAvailable.
+	if _, err := handler.AIInference("model", []byte("input"), ""); err == nil {
+		t.Fatal("Expected ErrAINotAvailable from default handler AIInference")
 	}
 
-	// Test getting non-existent key
-	_, err = handler.KVGet("nonexistent")
-	if err == nil {
-		t.Error("Expected error for non-existent key")
+	// State operations return ErrStateNotAvailable.
+	if _, err := handler.StateGet("path"); err == nil {
+		t.Fatal("Expected ErrStateNotAvailable from default handler StateGet")
+	}
+	if err := handler.StateSet("path", "value"); err == nil {
+		t.Fatal("Expected ErrStateNotAvailable from default handler StateSet")
 	}
 
-	// Test fetch with real HTTP request
-	response, err := handler.Fetch(`{"method": "GET", "url": "http://httpbin.org/get"}`)
-	if err != nil {
-		t.Fatalf("Fetch failed: %v", err)
+	// Empty env returns "".
+	if got := handler.GetEnv("ANY"); got != "" {
+		t.Errorf("Expected empty env, got %q", got)
 	}
 
-	// Parse the response
-	var fetchResp map[string]interface{}
-	if err := json.Unmarshal([]byte(response), &fetchResp); err != nil {
-		t.Fatalf("Failed to parse fetch response: %v", err)
-	}
-
-	// Check that we got a proper response structure
-	if _, ok := fetchResp["status"]; !ok {
-		t.Error("Response missing status field")
-	}
-	if _, ok := fetchResp["body"]; !ok {
-		t.Error("Response missing body field")
-	}
-	if _, ok := fetchResp["headers"]; !ok {
-		t.Error("Response missing headers field")
-	}
-
-	t.Log("Host functions test passed")
+	t.Log("DefaultHostHandler no-op contract verified")
 }
 
 func TestPythonRuntime_DebugMode(t *testing.T) {

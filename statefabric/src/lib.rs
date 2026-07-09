@@ -10,6 +10,8 @@
 //! - JWT/API key authentication
 //! - Rate limiting
 //! - Encryption at rest (AES-256-GCM)
+//! - Distributed rate limiting via Redis
+//! - Replay attack protection with PostgreSQL-backed sequence tracking
 
 pub mod api;
 pub mod cache;
@@ -29,3 +31,6 @@ pub use state::StateManager;
 
 // Re-export crypto utilities
 pub use crypto::{ObjectEncryptor, generate_key};
+
+// Re-export replay security types
+pub use replay::{PostgresSequenceStore, HybridSequenceTracker};

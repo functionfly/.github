@@ -22,6 +22,12 @@ export const RUNTIME_META: Record<
     description: 'CPython 3.12, batteries included',
     monacoLang: 'python',
   },
+  'python-light': {
+    label: 'Python (light)',
+    color: '#3b82f6',
+    description: 'Shared daemon pool for low-cost Python functions. Recommended for production.',
+    monacoLang: 'python',
+  },
   'python-wasm': {
     label: 'MicroPython',
     color: '#2b5b84',
@@ -116,6 +122,19 @@ def handler(request, env, ctx):
             "optimized_for": "edge",
         }),
     }`,
+  'python-light': `import json
+
+def handler(event, env=None, ctx=None):
+    """FunctionFly Python (light) handler — runs in the shared daemon pool."""
+    return {
+        "status": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({
+            "message": "Hello from FunctionFly (Python light)!",
+            "input": event,
+            "runtime": "python-light",
+        }),
+    }`,
   'rust-wasm': `use functionfly_sdk::{Request, Response, Env};
 
 #[no_mangle]
@@ -193,6 +212,7 @@ export const RUNTIME_VERSIONS: Record<Runtime, string[]> = {
   typescript: ['ES2022', 'ES2021', 'ES2020'],
   javascript: ['ES2022', 'ES2021', 'ES2020'],
   python: ['3.12', '3.11', '3.10'],
+  'python-light': ['3.12'],
   'python-wasm': ['1.23', '1.22', '1.21'],
   'rust-wasm': ['1.75', '1.74', '1.73'],
   go: ['1.23', '1.22', '1.21'],

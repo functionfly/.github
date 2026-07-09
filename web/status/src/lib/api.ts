@@ -22,9 +22,9 @@ export interface Component {
   status: ComponentStatus;
   type: string;
   description?: string;
-  uptime_24h: number;
-  uptime_7d: number;
-  uptime_30d: number;
+  uptime_24h: number | null;
+  uptime_7d: number | null;
+  uptime_30d: number | null;
   response_time_ms: number;
   last_checked?: string;
   history?: StatusHistoryPoint[];
@@ -283,6 +283,68 @@ class StatusAPI {
     }
     const wsURL = this.baseURL.replace(/^http/, "ws");
     return new WebSocket(`${wsURL}/ws/v1/status`);
+  }
+}
+
+// ============================================================================
+// External Services
+// ============================================================================
+
+export interface StateFabricHealth {
+  status: "operational" | "degraded" | "down" | "maintenance";
+  latency_ms?: number;
+  checked_at: string;
+}
+
+export interface DedicatedServerHealth {
+  status: "operational" | "degraded" | "down" | "maintenance";
+  latency_ms?: number;
+  checked_at: string;
+}
+
+export async function fetchStateFabricHealth(): Promise<StateFabricHealth> {
+  const start = Date.now();
+  try {
+    const res = await fetch(`${STATUS_API_BASE_URL}/v1/status/statefabric`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    const latency_ms = Date.now() - start;
+    if (!res.ok) {
+      return { status: "down", latency_ms, checked_at: new Date().toISOString() };
+    }
+    const data = await res.json();
+    return {
+      status: data.status === "operational" ? "operational" :
+              data.status === "degraded" ? "degraded" :
+              data.status === "maintenance" ? "maintenance" : "down",
+      latency_ms,
+      checked_at: new Date().toISOString(),
+    };
+  } catch {
+    return { status: "down", latency_ms: Date.now() - start, checked_at: new Date().toISOString() };
+  }
+}
+
+export async function fetchDedicatedServerHealth(): Promise<DedicatedServerHealth> {
+  const start = Date.now();
+  try {
+    const res = await fetch(`${STATUS_API_BASE_URL}/health/dedicated`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    const latency_ms = Date.now() - start;
+    if (!res.ok) {
+      return { status: "down", latency_ms, checked_at: new Date().toISOString() };
+    }
+    const data = await res.json();
+    return {
+      status: data.status === "healthy" ? "operational" :
+              data.status === "degraded" ? "degraded" :
+              data.status === "maintenance" ? "maintenance" : "down",
+      latency_ms,
+      checked_at: new Date().toISOString(),
+    };
+  } catch {
+    return { status: "down", latency_ms: Date.now() - start, checked_at: new Date().toISOString() };
   }
 }
 
