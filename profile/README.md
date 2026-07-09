@@ -57,9 +57,13 @@ FunctionFly™ is a serverless platform that enables developers to deploy and ru
 
 ## Community
 
-<img src="https://discordapp.com/api/guilds/1524584614453055548/widget.png?style=300" alt="FunctionFly Discord Server" style="border-radius: 8px; max-width: 100%;">
+<div align="center">
 
-Join our Discord community to get help, share feedback, and stay up to date.
+[![Discord](https://img.shields.io/badge/Discord-Join%20Us-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/cSTsz3WjpD)
+
+**Join our community** — get help, share feedback, and stay up to date with FunctionFly development.
+
+</div>
 
 ## Open Source Projects
 
