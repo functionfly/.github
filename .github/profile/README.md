@@ -2,9 +2,11 @@
 
 <div align="center">
 
-**A production-ready serverless function platform built for high-performance execution at the edge.**
+![FunctionFly Logo](https://raw.githubusercontent.com/functionfly/functionfly/main/web/site/public/functionfly.png)
 
-[![Discord](https://img.shields.io/discord/123456789?label=Discord)](https://discord.gg/functionfly)
+**A production-ready serverless function platform with ML-powered intelligence for high-performance execution at the edge.**
+
+[![Discord](https://img.shields.io/discord/123456789?label=Discord)](https://discord.com/invite/cSTsz3WjpD)
 
 </div>
 
@@ -12,7 +14,7 @@
 
 ## What We Build
 
-FunctionFly™ is a serverless platform that enables developers to deploy and run functions in multiple languages with automatic scaling, built-in monitoring, and pay-per-use pricing.
+FunctionFly™ is a serverless platform that enables developers to deploy and run functions in multiple languages with automatic scaling, built-in monitoring, pay-per-use pricing, and an integrated ML intelligence layer (FlyMind).
 
 ### Core Capabilities
 
@@ -22,6 +24,8 @@ FunctionFly™ is a serverless platform that enables developers to deploy and ru
 - **Automatic Scaling**: Scale from zero to millions of requests without configuration
 - **Built-in Monitoring**: Real-time metrics with Prometheus and Grafana
 - **Agent Runtime**: Stateful Agent Runtime (SAR) for complex agent workflows
+- **ML Intelligence (FlyMind)**: Cost anomaly detection, demand forecasting, Thompson Sampling routing, collaborative filtering recommendations
+- **MCP Server**: Work with functions from any MCP-compatible client
 
 ### Use Cases
 
@@ -31,19 +35,32 @@ FunctionFly™ is a serverless platform that enables developers to deploy and ru
 - Multi-step agent workflows
 - Custom business logic at the edge
 
-## Products & Services
+## Open Source Projects
 
-- **Function Platform**: Deploy serverless functions in seconds
-- **Edge Network**: Global distribution with low latency
-- **Agent Runtime**: Build complex agent workflows with SAR
-- **Multi-language SDKs**: Python, JavaScript, Go, Rust, and more
+| Repository | Description |
+|------------|-------------|
+| [ff-cli](https://github.com/functionfly/ff-cli) | Official CLI (`ff`) for FunctionFly |
+| [mcp-server](https://github.com/functionfly/mcp-server) | MCP server for functions, agents, vaults, and workflows |
+| [homebrew-tap](https://github.com/functionfly/homebrew-tap) | Homebrew tap for macOS/Linux installation |
+
+## Get Started
+
+```bash
+# Install the CLI
+curl -fsSL https://raw.githubusercontent.com/functionfly/ff-cli/main/scripts/install.sh | bash
+
+# Deploy your first function
+ff login
+ff deploy --path ./my-function
+```
 
 ## Contact
 
 - **Website**: [functionfly.com](https://functionfly.com)
 - **Discord**: [discord.gg/functionfly](https://discord.gg/functionfly)
 - **Email**: support@functionfly.com
+- **Docs**: [docs.functionfly.com](https://docs.functionfly.com)
 
 ---
 
-*© 2024 FunctionFly Inc. — All rights reserved.*
+*© 2026 FunctionFly Inc. — All rights reserved.*
