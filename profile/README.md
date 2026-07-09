@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![FunctionFly Logo](https://raw.githubusercontent.com/functionfly/functionfly/main/web/site/public/functionfly.png)
+![FunctionFly Logo](./functionfly.png)
 
 **A production-ready serverless function platform with ML-powered intelligence for high-performance execution at the edge.**
 
@@ -57,7 +57,7 @@ ff deploy --path ./my-function
 ## Contact
 
 - **Website**: [functionfly.com](https://functionfly.com)
-- **Discord**: [discord.gg/functionfly](https://discord.gg/functionfly)
+- **Discord**: [discord.com/invite/cSTsz3WjpD](https://discord.com/invite/cSTsz3WjpD)
 - **Email**: support@functionfly.com
 - **Docs**: [docs.functionfly.com](https://docs.functionfly.com)
 
