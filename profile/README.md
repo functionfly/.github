@@ -15,7 +15,6 @@ FunctionFly™
 
 [![ff-cli](https://img.shields.io/github/actions/workflow/status/functionfly/ff-cli/ci.yml?branch=main&label=ff-cli)](https://github.com/functionfly/ff-cli/actions)
 [![mcp-server](https://img.shields.io/github/actions/workflow/status/functionfly/mcp-server/ci.yml?branch=main&label=mcp-server)](https://github.com/functionfly/mcp-server/actions)
-[![functionfly](https://img.shields.io/github/actions/workflow/status/functionfly/functionfly/ci.yml?branch=develop&label=functionfly)](https://github.com/functionfly/functionfly/actions)
 
 </div>
 
