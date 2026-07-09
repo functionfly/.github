@@ -6,7 +6,7 @@
 
 **A production-ready serverless function platform with ML-powered intelligence for high-performance execution at the edge.**
 
-[![Discord](https://img.shields.io/discord/123456789?label=Discord)](https://discord.com/invite/cSTsz3WjpD)
+[![Discord](https://img.shields.io/discord/1524584614453055548?label=Discord)](https://discord.com/invite/cSTsz3WjpD)
 
 </div>
 
